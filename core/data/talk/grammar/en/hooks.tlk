@@ -61,3 +61,8 @@
   "Go on, what's next?"
   "Anything else to share?"
   "Right, so what now?"
+@rule hook.gift guard: hook=gift act: ask_about
+  "Here, take this snack. I saved it for you."
+  "I brought you something to eat. Go on."
+  "Hold out your hand. Snack time, on me."
+  "Here, a little something from me to you."

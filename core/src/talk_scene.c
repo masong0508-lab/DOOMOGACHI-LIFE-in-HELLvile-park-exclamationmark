@@ -995,6 +995,10 @@ static void talk_update(void)
 #endif
     if (T.after) {
         T.after = 0;
+        if (T.s.call_to && !T.leaving && !talk_dm_over(&T.s) && T.n < TALK_PARTS_MAX) {
+            invite((int)T.s.call_to - 1);                 /* TM2e: "I'll get someone": they come in (the event is applied by invite's talk_outcome_end) */
+            return;
+        }
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
         if (T.page == PG_MAIN) build_main();          /* new replies for what was just said */
     }

@@ -60,6 +60,18 @@ const char *sim_play(int id);
 const char *sim_talk(int id);
 const char *sim_heal(int id, int item);
 const char *sim_comfort(int id);
+/* TM2e: Talk's one way to move a resident. May `id` be nudged to venue `act` (ACT_PARK, CAFE, SHOP, CHURCH, WORKSHOP,
+ * BEACH, CONCERT, VAPE_SHOP) now? 1 for a living resident who is not asleep, in hospital, haunting, possessed, a ghost
+ * or worn out, at an hour and in a story chapter the venue is open to them. sim_nudge_activity sets the activity if so
+ * (returns 1, else 0 and nothing changes); `minutes` (1..60) is how long it is meant to last: the resident's routine
+ * is decided again at the next hour change, which ends it (no state is kept: 0 B on a console). The house plays the
+ * walk. sim_favourite_venue: where the resident's favourite hobby is practised (ACT_*). sim_can_raise_problem: no open
+ * problem for the resident and room in the queue (sim_problem_raise would take it). */
+int sim_nudge_ok(int id, int act);
+int sim_nudge_activity(int id, int act, int minutes);
+int sim_favourite_venue(int id);
+int sim_can_raise_problem(int id);
+
 /* Social interventions. */
 const char *sim_introduce(int a, int b);
 const char *sim_advise_confess(int id, int target, int encourage);

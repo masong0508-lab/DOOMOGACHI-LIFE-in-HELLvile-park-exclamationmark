@@ -98,6 +98,7 @@ int  sim_is_venue(int act);              /* social venue (not home/sleep)  */
 int  bit_get(const uint8_t *b, int i);
 void bit_set(uint8_t *b, int i, int on);
 void sim_ensure_init(void);
+extern const uint8_t doomo_hobby_venue[];       /* where a hobby is practised (ACT_*), HOBBY_COUNT entries (sim.c) */
 const char *sim_name(int id);            /* resident name or "Someone"     */
 const char *sim_venue_name(int act);     /* "the park"                     */
 

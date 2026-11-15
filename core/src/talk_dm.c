@@ -32,11 +32,14 @@
 #include "doomo/story.h"
 #include "doomo/resident_acc.h"
 #include "doomo/portrait.h"
+#include "doomo/items.h"
 
 /* ---- the plan of an exchange (TalkState.plan[].kind) ----------------------- */
 enum { DK_NONE = 0, DK_ANSWER, DK_REACT, DK_BEAT, DK_IDLE, DK_PROD, DK_JAB, DK_ROW, DK_ULT, DK_EXCUSE,
        DK_KIDASK, DK_MAKEUP, DK_GRUMBLE, DK_CUT, DK_K7, DK_FOLLOW,
-       DK_MORE };          /* TM2d: the story or the secret after the answer (talk_gen_more); inserted by talk_dm_step */
+       DK_MORE,            /* TM2d: the story or the secret after the answer (talk_gen_more); inserted by talk_dm_step */
+       DK_ACT };           /* TM2e: the line that says a sim action is being done (talk_gen_action); its event is added with it */
+#define ACT_ARG(tact, b) ((uint8_t)((((tact) - TACT_START) << 6) | ((b) & 63)))   /* plan arg: which action (TACT_START..TACT_CALL), its item or venue */
 
 #define BEATS_MAGIC 0x31544254u          /* "TBT1" (talkc_beats.py) */
 #define BEATS_HDR   12
@@ -227,6 +230,157 @@ static int adult_room(const TalkState *s)
     for (k = 0; k < s->nparts; k++)
         if (s->part[k].stage_class != TSC_ADULT) return 0;
     return 1;
+}
+
+/* ---- TM2e: sim actions (design 6; docs/TALK.md 6p) -------------------------------------------------------
+ * The plan asks first (invite_plan, action_after), the line is made only when the plan said yes, and the event
+ * is added with the line (make_line DK_ACT): a line never says it and an event never exists without the line. */
+static int minor_room(const TalkState *s)
+{
+    const TalkAudience *a = &s->conv.aud;
+    int k;
+    if (a->any_minor || a->avatar_minor || a->cast_kid) return 1;
+    for (k = 0; k < s->nparts; k++) if (s->part[k].stage_class == TSC_MINOR) return 1;
+    return 0;
+}
+
+/* the town slot of participant k, -1 for the pet and a family pool member (no town slot: nothing to nudge) */
+static int res_id(const TalkState *s, int k)
+{
+    int id = k >= 0 && k < s->nparts ? s->part[k].id : -1;
+    return id >= 0 && id < DOOMO_MAX_RESIDENTS && !is_pet(s, k) && !talk_safe_is_pet(id) ? id : -1;
+}
+
+/* 0: the resident will go (venue set); else why not (TAW_*): a rule (a minor, a date, a closed venue), a cap, the sim */
+static int invite_plan(const TalkState *s, int who, int *venue)
+{
+    int id = res_id(s, who), v, hour = town_hour(), minor = minor_room(s), why;
+    static const uint8_t fall[2] = { ACT_PARK, ACT_CAFE };
+    if (id < 0) return TAW_SIM;
+    v = talk_act_venue_of(s->in.topic[0]);
+    if (v < 0) {                                           /* no venue named: where their favourite hobby is practised, else a kid-safe one */
+        int j, f = sim_favourite_venue(id);
+        v = ACT_PARK;
+        if (f != ACT_VAPE_SHOP && talk_act_invite_ok(TA_INVITE, f, minor, hour) && sim_nudge_ok(id, f)) v = f;
+        else for (j = 0; j < 2; j++) if (sim_nudge_ok(id, fall[j])) { v = fall[j]; break; }
+    }
+    if (!talk_act_invite_ok(TA_INVITE, v, minor, hour)) return TAW_RULE;
+    why = talk_outcome_why_in(s, TEV_ACT_INVITE, id);
+    if (why) return why;
+    if (!sim_nudge_ok(id, v)) return TAW_SIM;
+    *venue = v;
+    return TAW_NONE;
+}
+
+/* a romance partner (dating, married) of resident i among the room and the player */
+static int partner_in_room(const TalkState *s, int i)
+{
+    int k, rk;
+    for (k = 0; k < s->nparts; k++) {
+        if (s->part[k].id == i || is_pet(s, k)) continue;
+        rk = rel_kind(i, s->part[k].id);
+        if (rk == REL_DATING || rk == REL_MARRIED) return 1;
+    }
+    rk = rel_kind(i, s->conv.avatar);
+    return rk == REL_DATING || rk == REL_MARRIED;
+}
+
+/* two people of the room (or the player) who are partners: a child called in must not meet a couple */
+static int couple_in_room(const TalkState *s)
+{
+    int j, k, rk;
+    for (j = 0; j < s->nparts; j++) {
+        if (is_pet(s, j)) continue;
+        rk = rel_kind(s->part[j].id, s->conv.avatar);
+        if (rk == REL_DATING || rk == REL_MARRIED) return 1;
+        for (k = j + 1; k < s->nparts; k++) {
+            if (is_pet(s, k)) continue;
+            rk = rel_kind(s->part[j].id, s->part[k].id);
+            if (rk == REL_DATING || rk == REL_MARRIED) return 1;
+        }
+    }
+    return 0;
+}
+
+/* who the speaker would call over: a living, awake resident, not in the room, not the player or the pet, with some bond
+ * to the speaker (the same venue counts more); the best by that score, ties to the lower id. -1 none. Pure on the state. */
+static int pick_call(const TalkState *s, int who)
+{
+    int id = res_id(s, who), i, k, best = -1, bs = 0, rmin = minor_room(s), couple;
+    const DoomoResident *sp = id >= 0 ? town_res(id) : NULL;
+    if (!sp || s->nparts >= TALK_PARTS_MAX) return -1;
+    couple = couple_in_room(s);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        const DoomoResident *r = town_res(i);
+        int sc, in_room = 0, cm;
+        if (!r || r->status != RES_ALIVE || i == s->conv.avatar || talk_safe_is_pet(i)) continue;
+        if (r->activity == ACT_SLEEPING || r->activity == ACT_HAUNTING || r->activity == ACT_HOSPITAL) continue;
+        for (k = 0; k < s->nparts; k++) if (s->part[k].id == i) in_room = 1;
+        if (in_room) continue;
+        sc = rel_value(id, i) + (r->activity == sp->activity ? 20 : 0);
+        if (sc <= bs) continue;
+        cm = talk_safe_minor(i);
+        if (!talk_act_call_ok(rmin || cm, partner_in_room(s, i) || (cm && couple), 1)) continue;
+        bs = sc;
+        best = i;
+    }
+    return best;
+}
+
+static int has_trait(int id, int t)
+{
+    TalkTraitSet ts;
+    return talk_trait_get(id, &ts) && talk_traitset_has(&ts, t);
+}
+
+static int has_event(const TalkState *s, int kind)
+{
+    int k;
+    for (k = 0; k < s->nev; k++) if (s->ev[k].kind == kind) return 1;
+    return 0;
+}
+
+/* After the answer line `L` of `who`: which action, if any, does this reply carry? Inserts the DK_ACT entry right
+ * after it. One action a reply; none after a refusal, a sincere or safety line, romance or the care window. */
+static void action_after(TalkState *s, int who, const TalkLine *L)
+{
+    int act = s->in.act[0], id = res_id(s, who), tact = 0, b = 0, kinds, yes, no, minor, j, at;
+    DoomoRng rng;
+    if (id < 0 || s->gate != TG_PASS || !talker(s, who) || s->conv.care || TA_IS_ROMANCE(act) || TA_IS_SAFETY(act) ||
+        (L->flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE | TLF_END)) || s->nev >= TALK_EVENTS_MAX || s->nplan >= 6 ||
+        (s->flags & TDF_OVER) || act == TA_FAREWELL)
+        return;
+    kinds = talk_gen_kinds_of(L->act);
+    yes = kinds && !(kinds & ~(int)(TKM(TK_ACCEPT) | TKM(TK_AGREE)));
+    no = (kinds & (int)(TKM(TK_DENY) | TKM(TK_REFUSE) | TKM(TK_DEFLECT))) != 0;
+    minor = minor_room(s);
+    if (act == TA_INVITE) {
+        int v;
+        if (yes && invite_plan(s, who, &v) == TAW_NONE) { tact = TACT_START; b = v; }
+    } else if (!no) {
+        const DoomoResident *r = town_res(id);
+        int band = talk_gen_rel_band(id, s->conv.avatar), item;
+        rng_for(s, &rng, 0xAC70u + (uint32_t)who);
+        if ((band == TRB_BEST || band == TRB_PARTNER || band == TRB_FAMILY) && r &&
+            (TDEP_LEVEL(s->conv.dep[who]) >= 2 || r->mood == MOOD_HAPPY || r->mood == MOOD_ECSTATIC) &&
+            rng_range(&rng, 100) < 35 && (item = talk_act_food_item(id, minor)) > 0 &&
+            talk_act_gift_ok(item, !adult(s, who), minor) && inv_count(item) < 99 &&
+            talk_outcome_can_in(s, TEV_ACT_GIFT, id)) {
+            tact = TACT_GIFT; b = item;
+        } else if (has_trait(id, TT_GLUTTON) && rng_range(&rng, 100) < 30 && (item = talk_act_food_item(id, minor)) > 0 &&
+                   talk_act_gift_ok(item, !adult(s, who), minor) && sim_can_raise_problem(id) &&
+                   talk_outcome_can_in(s, TEV_ACT_ASK, id)) {
+            tact = TACT_ASKITEM; b = item;
+        } else if ((has_trait(id, TT_OUTGOING) || has_trait(id, TT_CURIOUS)) && s->turn >= 2 && rng_range(&rng, 100) < 25 &&
+                   !has_event(s, TEV_ACT_CALL) && pick_call(s, who) >= 0) {
+            tact = TACT_CALL;
+        }
+    }
+    if (!tact) return;
+    at = s->plan_at;
+    for (j = s->nplan; j > at; j--) s->plan[j] = s->plan[j - 1];
+    s->plan[at].kind = DK_ACT; s->plan[at].who = (int8_t)who; s->plan[at].to = -1; s->plan[at].arg = ACT_ARG(tact, b);
+    s->nplan++;
 }
 
 /* ---- begin ------------------------------------------------------------------- */
@@ -1181,7 +1335,15 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     case DK_ANSWER:
         *hflags = 0;
         c->engage = s->part[who].engage;                         /* TM2d: the depth gate reads the engagement */
+        s->part[who].actp = s->part[who].actw = 0;
+        if (s->in.act[0] == TA_INVITE && s->gate == TG_PASS && talker(s, who)) {   /* TM2e: ask the caps and the rules BEFORE the plan, so a "yes" is never promised and then denied */
+            int v, why = invite_plan(s, who, &v);
+            s->part[who].actp = (uint8_t)(why ? TACT_REFUSE : TACT_ACCEPT);
+            s->part[who].actw = (uint8_t)why;
+            if (why) c->plain |= TPLAIN_NOYES;
+        }
         ok = talk_gen_line(c, who, to, s->in.act[0], s->in.topic[0], L, tr);
+        c->plain &= (uint8_t)~TPLAIN_NOYES;
         if (ok && !L->face && s->gate == TG_PASS && !(L->flags & TLF_SINCERE) && !TA_IS_ROMANCE(s->in.act[0])) {
             int e = talk_dm_expect(s, who, s->in.act[0], s->in.tone, s->in.topic[0]);   /* how they took it, on the face */
             if (e >= 5) L->face = EXPR_HAPPY + 1;
@@ -1254,7 +1416,28 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     case DK_MAKEUP: ok = talk_gen_entry(c, who, to, TGE_MAKEUP, TA_NONE, topic, L, tr); *hflags = 0; break;
     case DK_GRUMBLE: ok = talk_gen_entry(c, who, to, TGE_GRUMBLE, TA_NONE, topic, L, tr); *hflags = 0; break;
     case DK_KIDASK: ok = talk_gen_entry(c, who, -2, TGE_KIDASK, TA_NONE, TC_NONE, L, tr); *hflags = 0; break;
-    case DK_EXCUSE: ok = talk_gen_entry(c, who, -1, TGE_EXCUSE, TA_FAREWELL, TC_NONE, L, tr); *hflags = THF_LEAVE; break;
+    case DK_EXCUSE: ok = talk_gen_entry(c, who, -1, TGE_EXCUSE, TA_FAREWELL, TC_NONE, L, tr); *hflags = THF_LEAVE; L->action = TACT_WALKOFF; break;
+    case DK_ACT: {                                          /* TM2e: the line and its event, or neither */
+        int tact = TACT_START + (arg >> 6), b = arg & 63, id = res_id(s, who), cid = -1;
+        uint16_t t = TC_NONE;
+        if (id < 0 || s->nev >= TALK_EVENTS_MAX) return 0;
+        if (tact == TACT_START) {
+            int v;
+            if (invite_plan(s, who, &v) != TAW_NONE || v != b) return 0;
+            if (talk_act_venue_of(s->in.topic[0]) == b) t = s->in.topic[0];
+        } else if (tact == TACT_CALL) {
+            cid = pick_call(s, who);
+            if (cid < 0) return 0;
+        }
+        ok = talk_gen_action(c, who, -1, tact, t, L, tr);
+        if (!ok || (L->flags & (TLF_SAFE | TLF_FALLBACK))) { memset(L, 0, sizeof *L); return 0; }
+        add_event(s, tact == TACT_START ? TEV_ACT_INVITE : tact == TACT_GIFT ? TEV_ACT_GIFT : tact == TACT_ASKITEM ? TEV_ACT_ASK : TEV_ACT_CALL,
+                  who, tact == TACT_CALL ? 0 : b);
+        if (cid >= 0) s->call_to = (uint16_t)(cid + 1);
+        L->action = (uint8_t)tact;
+        *hflags = 0;
+        break;
+    }
     case DK_K7:
         ok = talk_gen_entry(c, who, -1, TGE_END_K7, TA_REFUSE_SEXUAL, TC_NONE, L, tr);
         L->act = TA_REFUSE_SEXUAL;
@@ -1292,6 +1475,7 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         } else if (kind == DK_ANSWER) {
             s->conv.more = 0;
         }
+        if (kind == DK_ANSWER && !s->conv.more) action_after(s, who, L);     /* TM2e: the action this reply carries, a line right after it */
         if (who >= 0 && who < s->nparts) { s->part[who].flags |= TPF_SPOKE; s->conv.spoke |= (uint8_t)(1u << who); }
         hist_push(s, who, L->act, hf, to, L->topic);
         if (kind == DK_EXCUSE) {                            /* walks out */
@@ -1335,6 +1519,7 @@ void talk_dm_end(TalkState *s, TalkSummary *out)
     }
     for (k = 0; k < 6; k++) out->pair_d[k] = (int8_t)clampi(s->pair_d[k], -TALK_PAIR_D_MAX, TALK_PAIR_D_MAX);
     out->beats_used = s->beats_used;
+    out->call_to = s->call_to;
     out->topic[0] = s->topic_stack[0];
     out->topic[1] = s->topic_stack[1];
     out->mem_flags = s->mem_earned;

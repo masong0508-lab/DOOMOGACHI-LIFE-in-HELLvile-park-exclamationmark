@@ -580,6 +580,7 @@ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET
        TGE_SECRET,   /* depth 3: the reveal of a like, a fear, the hated food or a small problem          */
        TGE_UNK,      /* the reply to a line the parser did not understand: guess, name or ask             */
        TGE_HOOK,     /* layer d: the question, the offer, the call or the acknowledgement after a reply   */
+       TGE_ACT,      /* TM2e: the line that says a sim action is being done (act.start, act.ask_item, act.call) */
        TGE_COUNT };
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
@@ -635,6 +636,7 @@ enum {
 #ifdef DOOMO_PLATFORM_GBA
 #define TALK_NO_UNK 1              /* the GBA has no typed line: TalkConv keeps no unknown-word state (see TC_* below) */
 #endif
+#define TPLAIN_NOYES 0x10u         /* TalkConv.plain bit 4: the plan takes no accept / agree kind (a cap or a rule forbids the action it would promise) */
 typedef struct TalkConv {
     uint32_t seed;                               /* the conversation seed            */
     int16_t  avatar;                             /* the player's id (play-as aware)  */
@@ -650,7 +652,8 @@ typedef struct TalkConv {
     uint8_t  chapter;                            /* story_chapter() at the start     */
     uint8_t  lines;                              /* lines made (the RNG stream)      */
     uint8_t  plain;                              /* bit 0: the core part only, no opener, callback, tag or hand-off (tests; a short UI preview);
-                                                    bits 1-3: a forced plan kind, TK_* (the creator's preview; 0 none) */
+                                                    bits 1-3: a forced plan kind, TK_* (the creator's preview; 0 none);
+                                                    bit 4 (TPLAIN_NOYES): TM2e, the plan may not say yes (the cap or rule of the action it would promise is spent) */
     uint8_t  care;                               /* 1: the care window (K-11, TDF_CARE): the next answer is the sincere bank, no joke, no reaction */
     TalkAudience aud;                            /* talk_safe_ctx() of the room       */
     uint16_t recent[TALK_PARTS_MAX][TALK_NOVELTY]; /* novelty rings: alternatives used, newest first */
@@ -773,7 +776,8 @@ typedef struct TalkLine {
     int8_t   who;                   /* participant slot                                 */
     int8_t   to;                    /* the slot addressed; -1 the player; -2 everyone    */
     uint8_t  act;                   /* the reply act (TA_*)                             */
-    uint8_t  stance;                /* TST_*                                            */
+    uint8_t  stance : 4;            /* TST_*                                            */
+    uint8_t  action : 4;            /* TM2e: TACT_* the line says it is doing (0 none); the drama manager sets it with the event */
     uint8_t  face;                  /* EXPR_* + 1 of a [FACE] code, 0 none              */
     uint8_t  flags;                 /* TLF_*                                            */
     uint16_t topic;                 /* what it is about, TC_NONE                         */
@@ -845,7 +849,9 @@ enum { TMORE_NONE = 0, TMORE_STORY, TMORE_SECRET };
 /* how an unknown line is answered (unk.* rules, TGP_UNK): a guess from the word network, the word named back,
  * a plain ask, an ask that echoes nothing, the answer to "what kind of thing is it" */
 enum { TU_NONE = 0, TU_GUESS, TU_NAME, TU_ASK, TU_NOECHO, TU_TAUGHT, TU_COUNT };
-enum { TH_NONE = 0, TH_ASK, TH_OFFER, TH_CALL, TH_ACK, TH_COUNT };
+enum { TH_NONE = 0, TH_ASK, TH_OFFER, TH_CALL, TH_ACK,
+       TH_START, TH_ITEM, TH_GIFT, TH_CALLER,      /* TM2e: the action lines (talk_gen_action): start an activity, ask for an item, give a gift, call someone over */
+       TH_COUNT };
 #define TDEP_LEVEL(b)    ((b) & 3u)
 #define TDEP_TURNS(b)    (((b) >> 2) & 7u)
 #define TDEP_HOOKED      0x20u
@@ -992,6 +998,12 @@ int  talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t t
  * backchannel), chosen by stance clash and persona; after a sincere line a
  * comfort line or nothing (K-10). Returns 1, 0 for no reaction. */
 int  talk_gen_react(TalkConv *c, int who, const TalkLine *prev, uint16_t topic, TalkLine *out, TalkTrace *tr);
+/* TM2e: the line that says a sim action is being done (tact TACT_START / GIFT / ASKITEM / CALL): the rules act.start,
+ * act.ask_item, act.call and hook.gift, picked by the guard hook=. topic is the venue concept for TACT_START (0: no
+ * venue named). The caller (the drama manager) adds the event only when this returns 1 with no TLF_SAFE / TLF_FALLBACK. */
+int  talk_gen_action(TalkConv *c, int who, int to, int tact, uint16_t topic, TalkLine *out, TalkTrace *tr);
+/* The relationship band (TRB_*) of a towards b as the generator sees it (b may be the player's id). */
+int  talk_gen_rel_band(int a, int b);
 
 /* =========================================================================
  * T6: the drama manager (core/src/talk_dm.c; PS1, Dreamcast, native). Design
@@ -1060,7 +1072,7 @@ typedef struct TalkPart {             /* one participant, 12 B (the novelty ring
     uint8_t  turns_ignored;
     uint8_t  flags;                   /* TPF_*                                         */
     uint8_t  low_turns;               /* turns in a row under TALK_ENGAGE_LEAVE        */
-    uint8_t  pad[2];
+    uint8_t  actp, actw;              /* TM2e: the last invitation's plan (TACT_ACCEPT / TACT_REFUSE) and why not (TAW_*) */
 } TalkPart;
 
 /* what a session did (TalkState.ev, TalkSummary.ev); a / b are slots */
@@ -1078,6 +1090,10 @@ enum { TEV_NONE = 0,
        TEV_HATE,          /* the player was refused for hate (K-8): a bond penalty   */
        TEV_LEARNED,       /* TM2d: a told a secret the player did not know: b = the like (0 food, 1 hobby, 2 music,
                              3 fear, 4 hated food; 5 a small problem). T6-OUT: talk_mem_know_like               */
+       TEV_ACT_INVITE,    /* TM2e: a accepted the player's invitation and will go to venue b (ACT_*): sim_nudge_activity */
+       TEV_ACT_GIFT,      /* TM2e: a gives the player the item b (ITEM_*): inv_add                                     */
+       TEV_ACT_ASK,       /* TM2e: a asks the player for the item b: sim_problem_raise(PROB_WANTS_ITEM)               */
+       TEV_ACT_CALL,      /* TM2e: a calls someone over (TalkSummary.call_to is who): the scene's invite              */
        TEV_COUNT };
 typedef struct TalkEvent { uint8_t kind, a, b, turn; } TalkEvent;
 
@@ -1127,6 +1143,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint16_t  beats_used;           /* a bit per TBEAT_* entered this session         */
     uint16_t  beats_recent;         /* a bit per TBEAT_* of the last 2 talks with these people
                                        (novelty; the house sets it from talk memory, 0 = none) */
+    uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over (TEV_ACT_CALL), 0 none; the scene lets them in */
     struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
     uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
     TalkHist  hist[TALK_HIST];      /* newest first                                   */
@@ -1152,6 +1169,7 @@ typedef struct TalkSummary {
     int8_t    rel_d_player[TALK_PARTS_MAX]; /* -TALK_REL_D_MAX..+TALK_REL_D_MAX        */
     int8_t    pair_d[6];                    /* -TALK_PAIR_D_MAX..+TALK_PAIR_D_MAX      */
     uint16_t  beats_used;
+    uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over, 0 none */
     uint16_t  topic[2];             /* the last two topics (talk memory)              */
     uint8_t   mem_flags;            /* TMF_* the player earned (complimented, insulted, promised) */
     uint8_t   nev;
@@ -1203,6 +1221,9 @@ void talk_dm_end(TalkState *s, TalkSummary *out);
 #define TALK_CAP_MOOD_DAY   12     /* STAT_HAPPY change, per resident per day (+-)          */
 #define TALK_CAP_NEWS_DAY   4      /* Talk headlines a town day (one a conversation)         */
 #define TALK_CAP_SOCIAL_DAY 12     /* STAT_SOCIAL gain, per resident per day                */
+#define TALK_CAP_INVITE_TOWN 3     /* TM2e: accepted invitations a town day (1 a resident a day)   */
+#define TALK_CAP_GIFT_TOWN   3     /* TM2e: gifts a resident gives a town day (1 a resident a day) */
+#define TALK_CAP_ASK_DAY     1     /* TM2e: asks for an item, per resident per town day            */
 typedef struct TalkOutcome {
     int8_t   rel[TALK_PARTS_MAX];  /* the bond change with the player really applied        */
     int8_t   mood[TALK_PARTS_MAX]; /* the STAT_HAPPY change really applied                  */
@@ -1215,6 +1236,11 @@ typedef struct TalkOutcome {
     uint8_t  dating;               /* ... and how many of them the sim said yes to          */
     uint8_t  news;                 /* NT_TALK_* posted, 0 none (one headline a conversation) */
     uint8_t  learned;              /* TM2d: likes, fears or hated foods the player learned (talk_mem_know_like) */
+    uint8_t  invited;              /* TM2e: invitations the sim took (sim_nudge_activity)    */
+    uint8_t  gifted;               /* TM2e: gifts that moved an item into the inventory      */
+    uint8_t  asked;                /* TM2e: PROB_WANTS_ITEM raised                           */
+    uint8_t  called;               /* TM2e: call-overs (the scene lets the resident in)      */
+    uint8_t  skipped;              /* TM2e: action events a rule or a cap refused at apply (a test fails on it) */
 } TalkOutcome;
 /* talk_dm_begin, then the talk memory of the participants (talk_mem_begin:
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */
@@ -1227,6 +1253,40 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out);
 /* Forget today's ledger (a new town does it by itself: the ledger is keyed by day and town seed). */
 void talk_outcome_reset(void);
+
+/* ---- TM2e: sim actions a reply can carry (core/src/talk_act.c, talk_outcome.c; docs/TALK.md 6o; design 6) ----
+ * A reply carries at most one action. The rule, in code and tested: a line says it only if the sim will do it
+ * (the plan asks talk_outcome_can_in and the sim's own predicate first), and the sim does it only if the line
+ * was said (the event is added when the line is made, and talk_outcome_apply applies the event). */
+enum { TACT_NONE = 0,
+       TACT_ACCEPT,       /* plan: an invitation is accepted and the sim will do it (TalkPart.actp)      */
+       TACT_REFUSE,       /* plan: an invitation is refused: a cap, a rule or the sim says no (TalkPart.actw has why) */
+       TACT_START,        /* line: "let's go" (act.start): TEV_ACT_INVITE                                */
+       TACT_GIFT,         /* line: the resident gives a snack (hook.gift): TEV_ACT_GIFT                  */
+       TACT_ASKITEM,      /* line: the resident asks for a food (act.ask_item): TEV_ACT_ASK              */
+       TACT_CALL,         /* line: "I'll get someone" (act.call): TEV_ACT_CALL                           */
+       TACT_WALKOFF,      /* line: the excuse of one who leaves (TEV_WALKOUT, exists)                    */
+       TACT_COUNT };
+/* why a plan refused an invitation (TalkPart.actw) */
+enum { TAW_NONE = 0, TAW_CAP_DAY, TAW_CAP_TOWN, TAW_RULE, TAW_SIM };
+/* The pure rules (talk_act.c; the exhaustive tables are tests). venue is an ACT_* (sim.h); the hour 0..23.
+ * minor_room is 1 when a minor speaks, listens or is the player. TA_ASK_OUT (a date) is never an invitation. */
+int  talk_act_invite_ok(int act, int venue, int minor_room, int hour);
+int  talk_act_item_adult(int item);                    /* 1: an item a minor never gives or gets (love letter, perfume, ring, vape pen, pills, caffeine) */
+int  talk_act_gift_ok(int item, int minor_giver, int minor_taker);
+/* May `called` join a room? room_minor: a minor is in the new room; partner: the called one is a romance partner
+ * (dating or married) of someone there; alive: a living resident of the town; not the pet, not a ghost. */
+int  talk_act_call_ok(int room_minor, int partner, int alive);
+/* The venue (ACT_*) a topic concept names (a place from the venue list: "park", "Brimstone Bites", ...), -1 none. */
+int  talk_act_venue_of(uint16_t topic);
+/* The item a resident gives or asks for: their liked food as an item, 0 when it is no item, hated or for adults only. */
+int  talk_act_food_item(int id, int minor);
+/* May the ledger (and the events s already holds) allow one more of kind (TEV_ACT_INVITE / _GIFT / _ASK) for
+ * resident id today? talk_outcome_can counts the ledger only, talk_outcome_can_in also the events of the session. */
+int  talk_outcome_can(int kind, int id);
+int  talk_outcome_can_in(const TalkState *s, int kind, int id);
+/* The reason talk_outcome_can_in says no: TAW_NONE (it can), TAW_CAP_DAY (this resident today), TAW_CAP_TOWN (the town day's cap). */
+int  talk_outcome_why_in(const TalkState *s, int kind, int id);
 /* The target tension of player turn `turn` (design 5.2: up to a peak at
  * turns 8-10, down by 14-16, then "lively"). */
 int  talk_dm_target_tension(int turn);

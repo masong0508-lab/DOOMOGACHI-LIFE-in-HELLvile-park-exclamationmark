@@ -122,7 +122,9 @@ FIXED = ["open", "cb", "tag", "handoff", "safe", "end.k7", "pet", "idle", "grief
          # keeping the talk going (talk_dm.c DK_FOLLOW): a resident hands the talk back to the player
          "follow",
          # TM2d (talk_gen.c): the reason of a stance, the story, the secret, the unknown word, the hook
-         "reason", "story", "secret", "unk", "hook"]
+         "reason", "story", "secret", "unk", "hook",
+         # TM2e (talk_gen.c talk_gen_action): the line that says a sim action is being done
+         "act"]
 # K-10: the sincere banks (talk.h TGE_GRIEF, TGE_COMFORT); a comfort line is a reaction
 GRIEF_BANKS = ("grief", "comfort")
 COMFORT_ACTS = ("AGREE", "BACKCHANNEL")

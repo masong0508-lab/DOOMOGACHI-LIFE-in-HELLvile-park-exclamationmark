@@ -313,7 +313,7 @@ int sim_marriage_ok(int a, int b) { return sim_romance_level(a, b) == 2; }
 /* ---------------------------------------------------------------------- */
 /* daily routines                                                           */
 /* Favourite hobby -> where they like to spend free time. */
-static const uint8_t hobby_venue[HOBBY_COUNT] = {
+const uint8_t doomo_hobby_venue[HOBBY_COUNT] = {   /* TM2e: sim_favourite_venue (sim_nudge.c) reads it; no code, no RAM */
     ACT_CAFE, ACT_HOME, ACT_PARK, ACT_PARK, ACT_PARK,          /* bake knit garden star skate */
     ACT_HOME, ACT_PARK, ACT_CONCERT, ACT_CONCERT, ACT_HOME,   /* games paint sing dance read */
     ACT_BEACH, ACT_HOME, ACT_SHOP, ACT_CONCERT, ACT_CAFE,     /* fish nap cosplay karaoke board */
@@ -488,7 +488,7 @@ static int decide_activity(int id, const DoomoResident *r, const ResIn *in)
     }
     if (doomo_town.mode == TOWN_STORY && doomo_town.story.chapter < 2 && !hell)
         w[ACT_VAPE_SHOP] = 0;
-    w[hobby_venue[in->hobby % HOBBY_COUNT]] += 22;
+    w[doomo_hobby_venue[in->hobby % HOBBY_COUNT]] += 22;
     if (RES_LIKE_MUSIC(r) == sim_concert_genre() && (h >= 17 || h < 2)) w[ACT_CONCERT] += 30;
     if (r->stat[STAT_SOCIAL] < 35) { w[ACT_CAFE] += 10; w[ACT_PARK] += 8; w[ACT_HOME] /= 2; }
     if (r->stat[STAT_ENERGY] < 30) w[ACT_HOME] += 25;
@@ -607,7 +607,7 @@ static void apply_needs(int id, DoomoResident *r, int m, const ResIn *in)
     /* happiness: the activity, a favourite pastime, then a drift toward
      * how well cared-for they are */
     rate = fx[STAT_HAPPY];
-    if (hobby_venue[in->hobby % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
+    if (doomo_hobby_venue[in->hobby % HOBBY_COUNT] == r->activity && r->activity != ACT_HOME) rate += 2;
     if (r->activity == ACT_CONCERT && RES_LIKE_MUSIC(r) == sim_concert_genre()) rate += 4;
     sim_stat_add(r, STAT_HAPPY, dith_div(&dz, rate, m, 120));
     target = (r->stat[STAT_HUNGER] + r->stat[STAT_HYGIENE] + r->stat[STAT_ENERGY] +

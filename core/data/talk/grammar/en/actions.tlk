@@ -1,0 +1,33 @@
+# core/data/talk/grammar/en/actions.tlk - TM2e: the lines that say a sim action is being done (owner: TK;
+# docs/TALK.md 6o; design TALK_MULTILEVEL 6.1 and 10). Each is a second line by the same resident, said only
+# when the drama manager has added the event the line promises (talk_gen_action; talk_outcome_apply does it):
+#   act.start     the invitation was accepted and the resident really goes (sim_nudge_activity)
+#   act.ask_item  the resident asks the player for their favourite food (PROB_WANTS_ITEM)
+#   act.call      the resident goes to get someone and the scene lets them into the room
+#   hook.gift (in hooks.tlk)  the resident hands over a snack (inv_add)
+# Kid-safe everywhere: a place, a snack, a friend. No register word, no romance, nothing to a child alone.
+# The guard `hook=` is set by the generator.
+
+@rule act.start guard: hook=start&topic act: ask_about
+  "Okay, {x} it is. Race you there!"
+  "Deal! Let's go to {x}. Come on!"
+  "Yes! Off to {x}, then. Follow me!"
+  "{x:cap}? Say no more. I'm already walking!"
+  "Fine, {x}. I'm in. Let's move!"
+@rule act.start.open guard: hook=start&!topic act: ask_about
+  "Okay, I know a spot. Follow me!"
+  "Deal! My pick of places. Come on!"
+  "Sure thing. Let's go somewhere fun!"
+  "Say no more. I'm already heading out."
+@rule act.ask_item guard: hook=item act: ask_about
+  "Got any {food} on you, {you}? I'd be so happy."
+  "I'm dreaming of {food}. Do you have some?"
+  "Psst, {you}. Any {food} in your bag?"
+  "Could you bring me some {food}? Please?"
+@rule act.call guard: hook=caller act: ask_about
+  "Hang on, I'll wave someone over."
+  "Wait here. I'll go get a friend."
+  "This needs more people. Let me call someone over."
+  "The more the merrier. Be right back!"
+  "Hold that thought. I'm fetching someone."
+  "I know who'd love this. Back in a sec!"

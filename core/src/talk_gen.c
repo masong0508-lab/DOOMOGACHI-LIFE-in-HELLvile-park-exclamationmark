@@ -1766,6 +1766,7 @@ static void make_plan(Gen *g, int act)
     memset(&in, 0, sizeof in);
     in.act = (uint8_t)act;
     in.allowed = g->kid_room ? (uint8_t)kinds_kid(act, row) : row[15];
+    if (c->plain & TPLAIN_NOYES) in.allowed &= (uint8_t)~(TKM(TK_ACCEPT) | TKM(TK_AGREE));   /* TM2e: the action it would promise is not allowed */
     in.dflt = drow[14];
     in.lean = g->lean;
     in.rel = g->rel;
@@ -2278,6 +2279,35 @@ int talk_gen_entry(TalkConv *c, int who, int to, int entry, int act, uint16_t to
     out->to = (int8_t)to;
     return r;
 }
+
+/* TM2e: the line that says a sim action is being done. The rules are picked by the guard hook= (TH_START, TH_ITEM,
+ * TH_CALLER in the act entry; TH_GIFT in the hook entry). Only the core part: no opener, tag or hook of its own, and no
+ * plan (the drama manager decided before it asked). The caller adds the event only when this returns 1. */
+int talk_gen_action(TalkConv *c, int who, int to, int tact, uint16_t topic, TalkLine *out, TalkTrace *tr)
+{
+    Gen g;
+    int sym, r, th, entry = TGE_ACT;
+    if (!out) return 0;
+    memset(out, 0, sizeof *out);
+    switch (tact) {
+    case TACT_START:   th = TH_START; break;
+    case TACT_ASKITEM: th = TH_ITEM; break;
+    case TACT_CALL:    th = TH_CALLER; break;
+    case TACT_GIFT:    th = TH_GIFT; entry = TGE_HOOK; break;
+    default: return 0;
+    }
+    if (!setup(&g, c, who, to, TA_NONE, topic) || c->id[who] == TALK_PET_ID) return 0;
+    sym = entry_sym(&g, ENT_FIXED, entry);
+    if (sym < 0) return 0;
+    g.hook_now = (uint8_t)th;
+    g.plan.hook = (uint8_t)th;
+    r = gen_line(&g, sym, 0, out, tr);
+    out->who = (int8_t)who;
+    out->to = (int8_t)to;
+    return r;
+}
+
+int talk_gen_rel_band(int a, int b) { return band_rel(a, b); }
 
 uint32_t talk_gen_seed(int avatar, const int *ids, int n)
 {

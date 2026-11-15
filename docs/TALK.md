@@ -1703,6 +1703,77 @@ Not changed: `talk_outcome.c`, the sim, `mature_adult_ok`, the kid-cast list. `T
 does not link it); GBA RAM unchanged (the new code is ROM).
 
 ---------------------------------------------------------------------------
+## 6p. Sim actions a reply can carry (TM2e-ACTIONS)
+
+Owner decision 2026-11-15 ("TALK DYNAMIC, MULTILEVEL, PERSONALITY SCREEN"). Design:
+`docs/design/talk/TALK_MULTILEVEL.md` 6 and 13 (TM2e, tests 1 to 4 and 7). A reply can now do
+something as well as say it. The rule is code and is tested: **a line says it only if the sim will do it,
+and the sim does it only if the line was said.** Files: `core/src/talk_act.c` (new, the pure rules),
+`talk_dm.c` (the plan and the line), `talk_gen.c` (`talk_gen_action`), `talk_outcome.c` (the caps and the
+apply), `sim_nudge.c` (new, the sim hook), `talk_scene.c` (call over), the grammar file
+`core/data/talk/grammar/en/actions.tlk` and `hook.gift` in `hooks.tlk`, `core/tests/test_talk_actions.c`.
+
+### The actions
+
+| Action (`TACT_*`) | Line | Event | Sim effect | Cap |
+|---|---|---|---|---|
+| accept an invitation | the answer, then `act.start` (9 alternatives, with the venue or without) | `TEV_ACT_INVITE` (slot, `ACT_*`) | `sim_nudge_activity(id, venue, 60)`: the resident's activity is the venue's until the next hour change; the house plays the walk | 1 a resident a day, 3 a town day |
+| refuse an invitation | the existing refusal and its hook (offer) | none | none: the plan only says no (`TalkPart.actp` = `TACT_REFUSE`, `actw` = why) | costs nothing |
+| gift | `hook.gift` (4) from a best friend, partner or family member, at depth 2 or in a good mood (35% a turn) | `TEV_ACT_GIFT` (slot, item) | `inv_add(item, 1)`: their liked food as an item, never a hated one | 1 a resident a day, 3 a town day |
+| ask for an item | `act.ask_item` (4) from a glutton | `TEV_ACT_ASK` (slot, item) | `sim_problem_raise(PROB_WANTS_ITEM)`, only without an open problem and with room in the queue | 1 a resident a day |
+| call someone over | `act.call` (6) from an outgoing or curious resident, turn 2 on (25%) | `TEV_ACT_CALL` (slot); who is `TalkState.call_to` (id + 1) | the scene's `invite(id)` (the person joins the room, room size 4); `sim_introduce` when they are strangers of the same kind | 1 a conversation |
+| walk off | the existing excuse (`TLF` action `TACT_WALKOFF`) | `TEV_WALKOUT` (exists) | exists | exists |
+
+One action a reply, never after a refusal, a sincere or safety line, a romance act or the care window.
+`TalkLine.action` says which action a line carries (4 bits packed with `stance`: 0 B). `talk_gen_action()` makes
+the line through the guard `hook=` (`TH_START`, `TH_ITEM`, `TH_GIFT`, `TH_CALLER`) and the new entry `TGE_ACT`.
+
+### Plan time and apply time
+
+* **Plan time.** An invitation is asked BEFORE the answer is planned (`invite_plan` in `talk_dm.c`): the venue
+  (the topic's venue, else the resident's favourite hobby venue, else the park, else the cafe), the rule
+  (`talk_act_invite_ok`), the caps (`talk_outcome_why_in`: the ledger of the day plus the events this talk already
+  holds) and the sim (`sim_nudge_ok`). If any says no, the talk's `TalkConv.plain` gets `TPLAIN_NOYES` and the plan may
+  not pick accept or agree: the answer is a refusal with its offer hook, `TalkPart.actw` says why (`TAW_CAP_DAY`,
+  `TAW_CAP_TOWN`, `TAW_RULE`, `TAW_SIM`). A refused action costs nothing and changes nothing.
+* **The line and its event are one step.** `DK_ACT` (a second line right after the answer, like the story) adds the
+  event only when `talk_gen_action` made the line (no S3 replacement, no fallback) and the event table has room.
+  A failed line makes no event.
+* **Apply time.** `talk_outcome_apply` re-checks the cap and the minor rule from the summary (a minor anywhere in the
+  room, or the player) and does the sim call; what it refuses is counted in `TalkOutcome.skipped` (a test fails on
+  any). The ledger gained two bytes (`invn`, `giftn`, in padding) and three flag bits per resident (in `LedP.flags`):
+  0 B more.
+* **The sim hook** `sim_nudge_activity(id, act, minutes)` (`core/src/sim_nudge.c`, SIM's code written small by TALK;
+  the SIM stream is told in its status file). It keeps no state: it sets `activity` for a living resident who is not
+  asleep, in the hospital, haunting, possessed, a ghost or worn out, at an hour and chapter the venue is open (the
+  same story gate as `decide_activity`); `decide_activity` chooses again at the next hour change, which ends it.
+  Console builds drop the file with the rest of Talk (`--gc-sections`).
+
+### Minor and room rules (code in `talk_act.c`, tables in the tests)
+
+* **Invitation.** A date (`TA_ASK_OUT`) is never an invitation action (romance has its own consent path). With a
+  minor in the room (the speaker, a listener or the player) only the park, the cafe, the church and the beach
+  between 8:00 and 18:00; never the vape shop, a concert hall, the shop or the workshop. Adults: any open venue;
+  the vape shop only in an adult room.
+* **Gift and ask.** A minor on either side: food or a toy (plushie, board game, video game), never an item flagged
+  adult (love letter, perfume, ring, vape pen, chill pill, energy drink, coffee). A resident gives or asks only for
+  their liked food that is an item; a hated food or an adult food for a minor is no gift and no ask.
+* **Call over.** Never the dead, a ghost or the pet; never a partner (dating, married) of anyone in the room when
+  a minor is in the new room, and never a minor into a room that holds a couple. The caller names no one: "I'll
+  go get someone" (the toast says who joins).
+* A hug toward a child stays a plain hug the child may decline: no action is ever attached to it.
+
+### Tests (`core/tests/test_talk_actions.c`, 6 tests)
+
+`action_says_only_if_done` (3,000 sessions: every line with an action has its event and the reverse, `skipped` 0,
+walk-offs match `TEV_WALKOUT`), `action_caps` (1 a resident a day, 3 a town day, gift 1 and 3, ask 1; the second
+invitation is refused with `TAW_CAP_DAY` and the first line is a plain yes in 0 of 30 seeds, 30 of 30 without
+`TPLAIN_NOYES`; the town day rolls), `action_minor_rules` (the exhaustive act x venue x minor x hour, item x giver x
+taker and call tables; a child at night asked to the beach, the vape shop alone with an adult and with a child
+around, the partner never called into a child's room and called in an adult room), `action_sim_effects` (the nudge
+sets the venue's activity, a gift moves exactly one item, an ask raises one `PROB_WANTS_ITEM` and never over an open
+problem, a call-over introduces strangers), `action_sim_nudge`, `action_p2_p3_p7_random` (1,500 random sessions with
+traits and actions on, 1,046 with a minor in the room: no couple made, no unsafe invitation or gift).
 
 ---------------------------------------------------------------------------
 

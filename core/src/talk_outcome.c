@@ -11,6 +11,12 @@
  *   news                  NT_TALK_*, one headline a conversation, none for a row of minors
  *   romance               only ever ASKED: a yes to CONFESS / ASK_OUT calls sim_confess,
  *                         once a pair a day; the sim owns every crush bit and dating edge
+ *   actions (TM2e)        TEV_ACT_INVITE sim_nudge_activity (1 a resident, 3 a town day), TEV_ACT_GIFT inv_add
+ *                         (1 and 3), TEV_ACT_ASK sim_problem_raise(PROB_WANTS_ITEM) (1 a resident, only without an
+ *                         open problem), TEV_ACT_CALL sim_introduce for strangers (the scene lets them in).
+ *                         talk_outcome_can asks the same caps at plan time, so a line never promises what the
+ *                         caps would deny; the apply re-checks the minor rules and counts what it refuses
+ *                         (TalkOutcome.skipped: a test fails on it)
  * A ledger of the day (keyed by town day and seed) keeps the caps across conversations,
  * so no number of talks farms more than the caps. It is not saved. Native builds only
  * reference this file (the console ports link no Talk): 0 B on GBA / PS1 / DC.
@@ -22,12 +28,16 @@
 #include "doomo/town.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/items.h"
 #include "sim_int.h"
 
 #define LED_P 64
 #define LED_Q 64
 #define LPF_PROBLEM 0x01u          /* a problem was resolved today */
 #define LPF_CARE    0x02u          /* family_care was given today  */
+#define LPF_INVITE  0x04u          /* TM2e: an invitation was taken today */
+#define LPF_GIFT    0x08u          /* TM2e: the resident gave a gift today */
+#define LPF_ASK     0x10u          /* TM2e: the resident asked for an item today */
 #define LQF_MADE_UP 0x01u
 #define LQF_ASKED   0x02u          /* sim_confess was asked today  */
 
@@ -36,6 +46,7 @@ typedef struct { uint16_t a, b; int8_t d; uint8_t flags; } LedQ;                
 static struct {
     uint32_t day, seed;
     uint8_t  live, np, nq, rp, rq, news;
+    uint8_t  invn, giftn;          /* TM2e: invitations taken and gifts given today (the town caps); in the struct's padding */
     LedP p[LED_P];
     LedQ q[LED_Q];
 } led;
@@ -60,6 +71,13 @@ static LedP *led_p(int id)
     memset(&led.p[i], 0, sizeof led.p[i]);
     led.p[i].id = (uint16_t)id;
     return &led.p[i];
+}
+
+static const LedP *led_peek(int id)
+{
+    int i;
+    for (i = 0; i < led.np; i++) if (led.p[i].id == (uint16_t)id) return &led.p[i];
+    return NULL;
 }
 
 static LedQ *led_q(int a, int b)
@@ -137,6 +155,95 @@ static int alive_resident(int id)
 {
     const DoomoResident *r = resident_id(id) ? town_res(id) : NULL;
     return r && (r->status == RES_ALIVE);
+}
+
+/* ---- TM2e: the caps of the actions, asked at plan time and again at apply ---- */
+static int cap_flag(int kind)
+{
+    return kind == TEV_ACT_INVITE ? LPF_INVITE : kind == TEV_ACT_GIFT ? LPF_GIFT : kind == TEV_ACT_ASK ? LPF_ASK : 0;
+}
+
+static int cap_town(int kind)
+{
+    return kind == TEV_ACT_INVITE ? led.invn : kind == TEV_ACT_GIFT ? led.giftn : 0;
+}
+
+static int cap_town_max(int kind)
+{
+    return kind == TEV_ACT_INVITE ? TALK_CAP_INVITE_TOWN : kind == TEV_ACT_GIFT ? TALK_CAP_GIFT_TOWN : 1000;
+}
+
+int talk_outcome_can(int kind, int id)
+{
+    const LedP *lp;
+    if (!cap_flag(kind) || !resident_id(id)) return 0;
+    roll();
+    lp = led_peek(id);
+    return !(lp && (lp->flags & cap_flag(kind))) && cap_town(kind) < cap_town_max(kind);
+}
+
+int talk_outcome_why_in(const TalkState *s, int kind, int id)
+{
+    int k, mine = 0, all = 0;
+    const LedP *lp;
+    if (!s || !cap_flag(kind) || !resident_id(id)) return TAW_RULE;
+    roll();
+    lp = led_peek(id);
+    for (k = 0; k < s->nev && k < TALK_EVENTS_MAX; k++) {
+        if (s->ev[k].kind != kind) continue;
+        all++;
+        if (s->ev[k].a < s->nparts && s->part[s->ev[k].a].id == id) mine++;
+    }
+    if ((lp && (lp->flags & cap_flag(kind))) || mine) return TAW_CAP_DAY;
+    return cap_town(kind) + all >= cap_town_max(kind) ? TAW_CAP_TOWN : TAW_NONE;
+}
+
+int talk_outcome_can_in(const TalkState *s, int kind, int id) { return talk_outcome_why_in(s, kind, id) == TAW_NONE; }
+
+/* the stage rules again, from the summary: is anyone in the room (or the player) a minor */
+static int minor_room_of(const TalkSummary *sum)
+{
+    int k;
+    if (sum->avatar >= 0 && minor_id(sum->avatar)) return 1;
+    for (k = 0; k < sum->n && k < TALK_PARTS_MAX; k++) if (minor_id(sum->id[k])) return 1;
+    return 0;
+}
+
+static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, TalkOutcome *out)
+{
+    LedP *lp;
+    if (ia < 0 || !alive_resident(ia)) { out->skipped++; return; }
+    if (!talk_outcome_can(e->kind, ia)) { out->skipped++; return; }
+    lp = led_p(ia);
+    switch (e->kind) {
+    case TEV_ACT_INVITE:
+        if (e->b < ACT_COUNT && talk_act_invite_ok(TA_INVITE, e->b, minor_room_of(sum), town_hour()) &&
+            sim_nudge_activity(ia, e->b, 60)) {
+            lp->flags |= LPF_INVITE;
+            led.invn++;
+            out->invited++;
+        } else out->skipped++;
+        break;
+    case TEV_ACT_GIFT: {
+        int before;
+        if (e->b >= ITEM_COUNT || !talk_act_gift_ok(e->b, minor_id(ia), minor_room_of(sum))) { out->skipped++; break; }
+        before = inv_count(e->b);
+        if (before < 99 && inv_add(e->b, 1) == before + 1) {
+            lp->flags |= LPF_GIFT;
+            led.giftn++;
+            out->gifted++;
+        } else out->skipped++;
+        break;
+    }
+    case TEV_ACT_ASK:
+        if (e->b < ITEM_COUNT && talk_act_gift_ok(e->b, minor_id(ia), minor_room_of(sum)) && sim_can_raise_problem(ia) &&
+            sim_problem_raise(ia, PROB_WANTS_ITEM, -1, e->b) >= 0) {
+            lp->flags |= LPF_ASK;
+            out->asked++;
+        } else out->skipped++;
+        break;
+    default: break;
+    }
 }
 
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
@@ -257,6 +364,17 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
                 out->learned++;
             }
             break;
+        case TEV_ACT_INVITE: case TEV_ACT_GIFT: case TEV_ACT_ASK:
+            apply_action(sum, e, ia, out);
+            break;
+        case TEV_ACT_CALL: {                                 /* the scene lets them in; strangers of the same kind meet (sim_introduce) */
+            int called = (int)sum->call_to - 1;
+            if (ia >= 0 && alive_resident(ia) && alive_resident(called) && called != ia) {
+                out->called++;
+                if (rel_kind(ia, called) < 0 && minor_id(ia) == minor_id(called)) sim_introduce(ia, called);
+            } else out->skipped++;
+            break;
+        }
         case TEV_GREAT_NIGHT: {
             int j;
             for (j = 0; j < sum->n && j < TALK_PARTS_MAX; j++) {
