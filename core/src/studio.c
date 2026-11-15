@@ -1027,6 +1027,7 @@ static void studio_enter(int arg)
             studio.slot = (int8_t)arg;
         } else {
             new_song();
+            st_card_open();                /* an empty page: "Start a song" */
         }
         studio.tab = STAB_SONG;
     } else if (arg == -3) {
