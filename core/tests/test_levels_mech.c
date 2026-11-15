@@ -173,6 +173,25 @@ TEST(mech_bounce_without_an_arc_hops_in_place_and_low_gravity_hangs_longer)
     }
 }
 
+TEST(mech_step_rise_edge_gravities_match_the_bfs)
+{
+    /* a zone gravity of 0 and of 255 (no clamp; the arg is a byte): the same rise as the BFS */
+    static MapBfs b;
+    static const DoomoZone z0[1] = { { 0, 0, 3, 3, ZONE_GRAVITY, 0, 0 } };
+    static const DoomoZone z3[1] = { { 0, 0, 3, 3, ZONE_GRAVITY, 255, 0 } };
+    DoomoMapExt e;
+    memset(&e, 0, sizeof e);
+    memset(&b, 0, sizeof b);
+    b.d = &map_def_t3_kit;
+    b.x = &e;
+    e.zone_count = 1; e.zones = z0;
+    CHECK_EQ(mm_step_rise(&e, 1, 1), map_bfs_rise(&b, 1 + map_def_t3_kit.w));
+    CHECK_EQ(mm_step_rise(&e, 1, 1), DOOMO_STEP_UP);
+    e.zones = z3;
+    CHECK_EQ(mm_step_rise(&e, 1, 1), map_bfs_rise(&b, 1 + map_def_t3_kit.w));
+    CHECK_EQ(mm_step_rise(&e, 1, 1), DOOMO_STEP_UP * 100 / 255);
+}
+
 /* ---- tubes ------------------------------------------------------------------- */
 TEST(mech_tube_whoosh_teleports_under_the_fade)
 {

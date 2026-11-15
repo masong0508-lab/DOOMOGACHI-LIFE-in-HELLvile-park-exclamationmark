@@ -87,9 +87,12 @@ int mm_gravity_at(const DoomoMapExt *x, int cx, int cy)
 /* the same number as map_bfs_rise (core/tools/map_bfs.h): test_levels_mech proves it */
 int mm_step_rise(const DoomoMapExt *x, int cx, int cy)
 {
-    int rise = DOOMO_STEP_UP, z;
+    int rise = DOOMO_STEP_UP, g = 0, z;
     if (!x) return rise;
-    rise = DOOMO_STEP_UP * 100 / mm_gravity_at(x, cx, cy);
+    if (x->gravity) g = x->gravity;
+    z = map_zone_at(x, cx, cy, ZONE_GRAVITY, 0);
+    if (z >= 0) g = x->zones[z].arg;
+    if (g > 0) rise = DOOMO_STEP_UP * 100 / g;      /* no clamp: exactly the BFS rule */
     z = map_zone_at(x, cx, cy, ZONE_BOUNCE, 0);
     if (z >= 0 && x->zones[z].arg * DOOMO_HEIGHT_STEP > rise) rise = x->zones[z].arg * DOOMO_HEIGHT_STEP;
     return rise;
