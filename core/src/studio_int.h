@@ -160,6 +160,10 @@ typedef struct StEasy {
     uint32_t seed;              /* the Start card's seed */
     uint32_t desc_key;          /* NOTES cursor line cache */
     char     desc[STUDIO_DESC_LEN];
+    uint32_t ord_key;           /* NOTES "in Order 2,3,5" cache (the order slots of the pattern) */
+    char     ord[24];
+    uint8_t  bpm_val, bpm_wf, bpm_ws;   /* the tab strip's "110 bpm" / "110" text and widths, cached */
+    char     bpm_full[10], bpm_short[5];
     uint8_t  redo[STUDIO_REDO_BYTES];
 } StEasy;
 StEasy *st_easy(void);

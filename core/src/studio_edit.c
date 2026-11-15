@@ -560,6 +560,11 @@ static void pattern_pills(int x, int y)
     }
 }
 
+static const char step_num[SONG_STEPS][3] = {
+    " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", "11", "12", "13", "14", "15", "16",
+    "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32"
+};
+
 void tab_notes_draw(StRect r)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
@@ -573,17 +578,27 @@ void tab_notes_draw(StRect r)
     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
     pattern_pills(r.x + 6, r.y + 4);
     {
+        /* ST-EASY (speed): the slot list is built when the order or the pattern changes, not every frame */
+        StEasy *ez = st_easy();
+        char *ord = ez ? ez->ord : buf;          /* the text lives in the cache when there is one (both 24 bytes) */
         int k, n = 0, x = r.x + 84;
-        buf[0] = 0;
+        uint32_t key = 0x80000000u | (uint32_t)studio.pat;
         for (k = 0; k < s->order_len && n < 6; k++)
-            if (s->order[k] == studio.pat) {
-                char one[5];
-                doomo_snprintf(one, sizeof(one), n ? ",%d" : "%d", k + 1);
-                if ((int)strlen(buf) + 4 < (int)sizeof(buf)) memcpy(buf + strlen(buf), one, strlen(one) + 1);
-                n++;
-            }
+            if (s->order[k] == studio.pat) { key = key * 33u + (uint32_t)(k + 1); n++; }
+        if (!ez || ez->ord_key != key) {
+            int m = 0;
+            ord[0] = 0;
+            for (k = 0; k < s->order_len && m < 6; k++)
+                if (s->order[k] == studio.pat) {
+                    char one[5];
+                    doomo_snprintf(one, sizeof(one), m ? ",%d" : "%d", k + 1);
+                    if ((int)strlen(ord) + 4 < 24) memcpy(ord + strlen(ord), one, strlen(one) + 1);
+                    m++;
+                }
+            if (ez) ez->ord_key = key;
+        }
         ui_text(x, r.y + 6, n ? "in Order" : "not in the song", st->text_dim);   /* C15: its slots in the ORDER tab */
-        if (n) ui_text(x + 54, r.y + 6, buf, st_pattern_color(studio.pat, 0));
+        if (n) ui_text(x + 54, r.y + 6, ord, st_pattern_color(studio.pat, 0));
     }
     /* track headers */
     for (t = 0; t < 4; t++) {
@@ -598,8 +613,7 @@ void tab_notes_draw(StRect r)
         uint8_t rowbg = (stp & 3) == 0 ? st->fill_lo : st->fill;
         plat_rect(gx, y, colw * 4, 9, head ? PAL_PAINT(PAINT_LEMON, 2) : rowbg);
         if ((stp & 15) == 0) plat_rect(gx, y, colw * 4, 1, st->outline);
-        doomo_snprintf(buf, sizeof(buf), "%2d", stp + 1);
-        ui_text(r.x + 5, y + 1, buf, (stp & 3) == 0 ? st->text : st->text_dim);
+        ui_text(r.x + 5, y + 1, step_num[stp & 31], (stp & 3) == 0 ? st->text : st->text_dim);   /* "%2d" of stp + 1 */
         for (t = 0; t < 4; t++) {
             int x = gx + t * colw, v = s->notes[studio.pat][t][stp];
             int cur = t == studio.trk && stp == studio.stp;

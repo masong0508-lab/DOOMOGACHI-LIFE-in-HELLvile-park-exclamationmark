@@ -242,7 +242,7 @@ void ed_commit(void)
     studio.undo_open = 0;
     studio.dirty = 1;
     ez = st_easy();
-    if (ez) ez->edited = 1;                /* the one-line help has done its job */
+    if (ez) { ez->edited = 1; ez->help_t = 0; }   /* the one-line help has done its job */
 }
 
 int ed_undo_steps(void) { return studio.undo_steps; }
@@ -848,11 +848,31 @@ static void draw_tabs(void)
     {
         int sw = plat_screen_w(), age = song_beat_age();
         int beat = song_playing() ? (age < 3) : ((int)(studio.t * SS->bpm / 1800) & 1);
-        char buf[12];
-        int rx = sw - 4;
-        doomo_snprintf(buf, sizeof(buf), "%d bpm", SS->bpm);   /* C15: the heart beats the tempo: say so */
-        if (sw - 4 - ui_text_width(buf) <= x + 12) doomo_snprintf(buf, sizeof(buf), "%d", SS->bpm);
-        rx -= ui_text_width(buf);
+        StEasy *ez = st_easy();
+        char tmp[12];
+        const char *buf;
+        int rx = sw - 4, bw;
+        /* C15: the heart beats the tempo: say so. ST-EASY (speed): the two texts and their widths are kept until the
+         * tempo changes (a snprintf and two text measures a frame on every tab) */
+        if (ez && ez->bpm_val == SS->bpm && ez->bpm_full[0]) {
+            buf = ez->bpm_full; bw = ez->bpm_wf;
+            if (sw - 4 - bw <= x + 12) { buf = ez->bpm_short; bw = ez->bpm_ws; }
+        } else {
+            doomo_snprintf(tmp, sizeof(tmp), "%d bpm", SS->bpm);
+            if (ez) {
+                doomo_snprintf(ez->bpm_full, sizeof(ez->bpm_full), "%d bpm", SS->bpm);
+                doomo_snprintf(ez->bpm_short, sizeof(ez->bpm_short), "%d", SS->bpm);
+                ez->bpm_wf = (uint8_t)ui_text_width(ez->bpm_full);
+                ez->bpm_ws = (uint8_t)ui_text_width(ez->bpm_short);
+                ez->bpm_val = SS->bpm;
+                buf = ez->bpm_full; bw = ez->bpm_wf;
+                if (sw - 4 - bw <= x + 12) { buf = ez->bpm_short; bw = ez->bpm_ws; }
+            } else {
+                if (sw - 4 - ui_text_width(tmp) <= x + 12) doomo_snprintf(tmp, sizeof(tmp), "%d", SS->bpm);
+                buf = tmp; bw = ui_text_width(tmp);
+            }
+        }
+        rx -= bw;
         if (rx > x + 12) {
             ui_text_outline(rx, y + 3, buf, PAL_WHITE, st->outline);
             ui_heart(rx - 7, y + 7, beat ? 5 : 4, song_playing() ? PAL_PAINT(PAINT_ROSE, 1)
@@ -1035,7 +1055,11 @@ static void studio_enter(int arg)
     studio.muse = -1;
     studio.sing_pos = -1;
     studio.fmode = 0;
-    st_help_arm();
+    if (arg != -1) {                       /* a new visit: the help line is back (not when a pushed scene returns) */
+        StEasy *ez = st_easy();
+        if (ez) ez->edited = 0;
+        st_help_arm();
+    }
 }
 
 static void studio_leave(void)
@@ -1096,7 +1120,16 @@ static void studio_update(void)
     studio.t++;
     if (studio.tab_t < 60000) studio.tab_t++;
     if (studio.msg_t) studio.msg_t--;
-    { StEasy *ez = st_easy(); if (ez && ez->help_t) ez->help_t--; }
+    {
+        /* the one-line help stays on the bar until the first button press on the tab (the switch back to the prompt
+         * bar then lands on a frame that has work anyway, not on an idle one), at most 30 s */
+        StEasy *ez = st_easy();
+        if (ez && ez->help_t) {
+            if (btn_pressed(BTN_A | BTN_B | BTN_X | BTN_Y | BTN_L | BTN_R | BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT |
+                            BTN_START | BTN_SELECT)) ez->help_t = 0;
+            else ez->help_t--;
+        }
+    }
     song_tick();
     studio_sel_tap = 0;
     if (studio.picking) { st_picker_update(); return; }

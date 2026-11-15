@@ -2,7 +2,8 @@
  *
  *  - st_tab_label():  the tab strip's names (plan 2.2: Start, Edit, Arrange, Words, Choir, Show, File)
  *  - st_tab_help():   one line per tab (tab_help[]), at most 36 glyphs so it fits a 240 px bar. It replaces the
- *                     prompt bar for a few seconds when a tab opens, until the first edit of the session
+ *                     prompt bar when a tab opens, until the first button press on it (or 30 s), and not at all
+ *                     once an edit was made in this session
  *  - the control card ("?" = SELECT + UP): a popup that lists this tab's buttons by the pad's own names (the
  *                     prompt bar's glyph builder, ui_prompts_text) and the buttons every tab shares
  *  - st_level():      the Studio level, Easy / Advanced (FILE). In st_easy() and in bit 15 of studio_stats.lines.
@@ -33,7 +34,7 @@ const char *st_tab_help(int tab)
 void st_help_arm(void)
 {
     StEasy *ez = st_easy();
-    if (ez && !ez->edited) ez->help_t = 120;
+    if (ez && !ez->edited) ez->help_t = 900;
 }
 
 void st_bar_draw(void)

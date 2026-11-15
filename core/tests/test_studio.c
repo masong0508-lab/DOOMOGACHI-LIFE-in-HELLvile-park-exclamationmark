@@ -1307,6 +1307,18 @@ TEST(studio_tab_help_and_control_cards_fit_the_screen)
         CHECK_MSG(!st_help_is_open(), "tab %d: B did not close the card", t);
         CHECK(scene_top() == &SCENE_STUDIO);
     }
+    /* the one-line help is on the bar when a tab opens and goes with the first button press; edits stop it for good */
+    st_set_tab(STAB_ORDER);
+    CHECK(st_easy()->help_t > 0);
+    frames(1, 0);
+    CHECK(st_easy()->help_t > 0);
+    press(BTN_DOWN);
+    CHECK_EQ(st_easy()->help_t, 0);
+    st_set_tab(STAB_LYRICS);
+    CHECK(st_easy()->help_t > 0);
+    set_bpm(131);
+    st_set_tab(STAB_ORDER);
+    CHECK_EQ(st_easy()->help_t, 0);                         /* after an edit a tab opens without it */
     /* every bar item still fits and no tab's bar is empty */
     for (t = 0; t < STAB_COUNT; t++) {
         n = tab_prompts(t, pr);
