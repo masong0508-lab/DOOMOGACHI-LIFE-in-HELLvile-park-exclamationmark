@@ -796,9 +796,14 @@ plugs in).
   the Dreamcast on Flycast (`make -C dc ui-compare`, the script is in the default list and the checker runs on its shots).
   The checker has a self-test (`parts-check`: a slider that moves nothing fails, an animation does not count).
 * **Memory.** PS1: the resident table is 96 B + a 16 B step array (was 120 B) and `sanitize` gained one load and add:
-  `_end` 0x801ee3e0 -> 0x801ee3d0 (16 B less: 72,720 -> 72,736 B below the stack top = 71.0 KB, so the tree is still under the 72 KB plan gate until SPEED PS1-RAM; on the rebased tip 72,304 -> 72,320 B, docs/PS1.md "CR-BODY");
+  16 B less resident (`_end` 0x801ee560, 72,336 B below the stack top on the landed tree; the 72 KB plan gate is not met on the tip
+  either, 1,392 B short, until SPEED PS1-RAM; docs/PS1.md "CR-BODY");
   the catalog rows, the six part icons and the slider table are overlay / disc data. GBA: `.bss`, `.iwram`, `.iwram_bss`,
-  `.data` identical, `.text` +328 B and `.rodata` +2,624 B in ROM (docs/GBA.md ledger row 48).
+  `.data` identical (free EWRAM 12,164 B), `.text` +336 B and `.rodata` +2,612 B in ROM (docs/GBA.md ledger row 49).
+* **Head size on the stepped bodies.** A body with a head step (Bobble +4, Bean and Gangly +1) adds it to the slider before the 4-bit
+  clamp, so the last few steps of Head size draw the same picture on those bodies (Bobble: 4 of 16, its default 11 already reads
+  "Big"). Known and kept: it costs no resident byte on the PS1. `crbody_head_size_steps_repeat_only_at_the_big_end_by_the_body_step`
+  pins that it happens only at the Big end and never more often than the step; every other slider step on every body differs.
 * **Not done here / next.** The language packs do not carry the slider and body names yet: the labels are in English
   like every creator label (the part names reach the packs with CR14). A saved look made with a new body type loads on
   an older build as the average body (its `sanitize` puts a value past its list back): new saves only.
