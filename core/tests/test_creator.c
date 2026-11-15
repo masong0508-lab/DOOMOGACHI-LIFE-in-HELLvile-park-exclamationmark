@@ -1340,6 +1340,15 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
     look_pool_reset();
 }
 
+/* glasses on the first 254 citizens in town: a gene trailer of 2 + 8 * 254 B (GBA-500: with LIVE=500 not
+ * every id below 254 lives here; where all 1000 live these are ids 0..253) */
+static void glasses_on_254(void)
+{
+    int i, n = 0;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < 254; i++)
+        if (town_res(i)->status != RES_EMPTY) { res_gset(town_res(i), GF_GLASSES, 3); n++; }
+}
+
 /* CR5-FIX: the save chunk budget counts a new nickname and the gene trailer, not only the pool. A town
  * whose chunk is 12 B under the limit (a big gene trailer, a pool nearly full): a commit that changes a
  * run without growing it but adds a 16 B nickname would push the pool out of the chunk, so it is refused. */
@@ -1352,7 +1361,7 @@ TEST(cr5_fix_a_new_nickname_that_would_overflow_the_chunk_is_refused)
     int i, id = 5, rem;
     town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
     look_pool_reset();
-    for (i = 0; i < 254; i++) res_gset(town_res(i), GF_GLASSES, 3);       /* a trailer of 2 + 8 * 254 B */
+    glasses_on_254();                                                      /* a trailer of 2 + 8 * 254 B */
     CHECK_EQ(look_gene_ext_size(), 2u + 8u * 254u);
     CHECK(look_pool_put(id, RUN_DEEP, lash1, 2));
     want = DOOMO_SAVE_EXT_MAX - 12u - 1u - look_gene_ext_size() - 2u;    /* pool bytes for a chunk 12 B short */
@@ -1398,7 +1407,7 @@ TEST(cr5_fix_a_shrinking_run_plus_a_new_nickname_still_overflows_and_is_refused)
     int i, id = 5, rem;
     town_new(TOWN_FREEPLAY, 5, TOWN_POP_PREMADE);
     look_pool_reset();
-    for (i = 0; i < 254; i++) res_gset(town_res(i), GF_GLASSES, 3);       /* a trailer of 2 + 8 * 254 B */
+    glasses_on_254();                                                      /* a trailer of 2 + 8 * 254 B */
     CHECK_EQ(look_gene_ext_size(), 2u + 8u * 254u);
     CHECK(look_pool_put(id, RUN_DEEP, two, 4));
     want = DOOMO_SAVE_EXT_MAX - 12u - 1u - look_gene_ext_size() - 2u;    /* pool bytes for a chunk 12 B short */
