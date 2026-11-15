@@ -1,3 +1,4 @@
-# --console: the game sees test flags 0 (a real console)
+# --console: the game sees test flags 0 (a real console) except the FMV's own bit (DC9C: the
+# movie stays off unless --fmv); `--console --fmv` is 0 (console_fmv.txt run, selftest.sh)
 wait 2
-expect-log test flags 0
+expect-log test flags 2147483648

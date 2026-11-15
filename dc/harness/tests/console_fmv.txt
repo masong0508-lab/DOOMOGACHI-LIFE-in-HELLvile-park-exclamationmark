@@ -1,0 +1,3 @@
+# --console --fmv: test flags 0, the boot FMV plays as on a real console (DC9C)
+wait 2
+expect-log test flags 0

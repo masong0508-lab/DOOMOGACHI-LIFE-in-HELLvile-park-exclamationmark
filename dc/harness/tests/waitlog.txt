@@ -1,0 +1,7 @@
+# DC9C: wait-log runs video frames until the log has the text; print-frames and
+# expect-town-crc 0xCRC (an earlier run's value) work
+wait-log 60 test flags
+print-frames boot
+town-fill 9
+town-crc
+expect-town-crc

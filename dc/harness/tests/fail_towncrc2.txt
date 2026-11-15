@@ -1,0 +1,4 @@
+# must fail: the crc is not the one given
+wait 2
+town-fill 1
+expect-town-crc 0x12345678

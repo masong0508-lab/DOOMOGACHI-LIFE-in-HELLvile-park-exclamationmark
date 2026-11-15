@@ -1,0 +1,3 @@
+# --fmv alone: picker and tips off, the boot FMV on = 3 (DC9C)
+wait 2
+expect-log test flags 3

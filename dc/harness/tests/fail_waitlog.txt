@@ -1,0 +1,2 @@
+# must fail: wait-log never sees its text
+wait-log 5 this is never logged
