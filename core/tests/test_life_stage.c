@@ -293,13 +293,13 @@ static const struct { const char *key; uint8_t wedding; } romance_keys[] = {
  * longer one. Only a longer name that really stands there covers it. */
 static int covered_by_longer_name(const char *line, const char *p, int self)
 {
-    const char *name = doomo_town.res[self].name;
+    const char *name = TOWN_RES(self)->name;
     size_t n = strlen(name);
     int j;
     for (j = 0; j < DOOMO_MAX_RESIDENTS; j++) {
-        const char *other = doomo_town.res[j].name, *at;
+        const char *other = TOWN_RES(j)->name, *at;
         size_t m = strlen(other);
-        if (j == self || doomo_town.res[j].status == RES_EMPTY || m <= n) continue;
+        if (j == self || TOWN_RES(j)->status == RES_EMPTY || m <= n) continue;
         for (at = strstr(other, name); at; at = strstr(at + 1, name)) {
             size_t off = (size_t)(at - other);
             const char *q;
@@ -316,7 +316,7 @@ static int covered_by_longer_name(const char *line, const char *p, int self)
 /* the name of resident `i` is a word of `line` (somewhere that is not just a longer resident's name) */
 static int names_resident(const char *line, int i)
 {
-    const char *name = doomo_town.res[i].name, *p = line;
+    const char *name = TOWN_RES(i)->name, *p = line;
     size_t n = strlen(name);
     if (n == 0) return 0;
     while ((p = strstr(p, name)) != NULL) {

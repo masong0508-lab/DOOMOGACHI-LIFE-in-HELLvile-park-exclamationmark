@@ -12,7 +12,8 @@
 #include "test.h"
 #include "../src/sim_int.h"
 
-#define NRES DOOMO_MAX_RESIDENTS
+/* the cursor and sim_s.stamp walk the slots (GBA-500: 500 with LIVE=500; the slot is the id where all 1000 live) */
+#define NRES DOOMO_LIVE_RESIDENTS
 #define DEFAULT_PER 300         /* OPT_DAY_LENGTH 2 (ticks_per_minute_q) and OPT_SIM_SPEED 1 (speed_q 4):   */
 #define DEFAULT_SPD 4           /* one game minute every 75 ticks, the interval 1,125 ticks (37.5 s)        */
 
@@ -58,9 +59,9 @@ static void watch_tick(void)
     if ((int)sim_last_tick_ops() > w.max_ops) w.max_ops = (int)sim_last_tick_ops();
 }
 
-static int live(int id)
+static int live(int s)            /* by slot, like the cursor */
 {
-    return doomo_town.res[id].status != RES_EMPTY && doomo_town.res[id].status != RES_DEAD;
+    return doomo_town.res[s].status != RES_EMPTY && doomo_town.res[s].status != RES_DEAD;
 }
 
 /* ticks of one SIM_INTERVAL at a clock (ticks_per_minute_q and speed_q of sim.c) */
@@ -174,7 +175,7 @@ TEST(sim_pass_every_clock_and_speed)
     for (d = 0; d < 5; d++) {
         for (s = 0; s < 4; s++) {
             const int T = interval_ticks(per[d], spd[s]);
-            int bad = 0, cap = (1000 * spd[s] + SIM_INTERVAL * per[d] - 1) / (SIM_INTERVAL * per[d]);   /* slots a tick, rounded up */
+            int bad = 0, cap = (NRES * spd[s] + SIM_INTERVAL * per[d] - 1) / (SIM_INTERVAL * per[d]);   /* slots a tick, rounded up */
             if (d == 0 && s != 3) continue;                 /* the 2 h day: 54,000 / 27,000 / 13,500 ticks an interval, its fastest speed is enough */
             town_new(TOWN_FREEPLAY, 100u + (uint32_t)(d * 4 + s), TOWN_POP_PREMADE);
             set_clock(d, s);
@@ -205,7 +206,7 @@ TEST(sim_pass_day_length_change_does_not_burst)
     premade_town(61);
     set_clock(0, 0);                 /* 7,200 / 2: a slot costs 21,600, a tick earns 400 */
     for (i = 0; i < 53; i++) sim_tick();                    /* 21,200 of credit, no slot yet */
-    CHECK_EQ(sim_s.pass_credit, 21200);
+    CHECK_EQ(sim_s.pass_credit, 53 * 2 * SIM_PASS_NUM);     /* (LIVE=500: 10,600) */
     set_clock(4, 3);                 /* 75 / 16: a slot costs 225, a tick earns 3,200 */
     watch_start();
     for (i = 0; i < 4; i++) watch_tick();

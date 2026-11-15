@@ -166,18 +166,31 @@ static int ref_cmp(const void *x, const void *y)
     return p->a != q->a ? (int)p->a - (int)q->a : (int)p->b - (int)q->b;
 }
 
+/* (GBA-500) LIVE=500: an id of the first 250 of its district (they get slots below), in the same order */
+static int ref_id(int id)
+{
+    return DOOMO_RES_SLOTS ? RES_DISTRICT(id) * DOOMO_DISTRICT_SIZE + id % DOOMO_DISTRICT_SIZE % DOOMO_LIVE_PER_DISTRICT
+                           : id;
+}
+
 TEST(relationships_insert_and_remove_match_a_reference_table)
 {
     static RefEdge ref[DOOMO_MAX_EDGES];
+    /* LIVE=500: fewer bonds than the 1,024 the graph keeps (a full graph evicts, the reference does not) */
+    const int tries = DOOMO_RES_SLOTS ? 1000 : 1500;
     int n = 0, i, k, bad = 0;
     DoomoRng r;
     rng_seed(&r, 17);
-    for (i = 0; i < 1500; i++) {
+    if (DOOMO_RES_SLOTS)
+        for (i = 0; i < DOOMO_LIVE_PER_DISTRICT; i++) { test_res(i); test_res(DOOMO_DISTRICT_SIZE + i); }
+    for (i = 0; i < tries; i++) {
         int a, b, lo, hi;
         DoomoEdge *e;
         RefEdge key;
         if (i < 4) { a = i < 2 ? 900 : 1; b = i % 2 ? 901 : 902; }       /* first, then below and above it */
         else { a = rng_range(&r, 1000); b = rng_range(&r, 1000); }
+        a = ref_id(a);
+        b = ref_id(b);
         if (a == b) continue;
         lo = a < b ? a : b; hi = a < b ? b : a;
         key.a = (uint16_t)lo; key.b = (uint16_t)hi;
@@ -192,7 +205,7 @@ TEST(relationships_insert_and_remove_match_a_reference_table)
         n++;
         CHECK_EQ(doomo_town.edge_count, n);
     }
-    CHECK(n > 1000);
+    CHECK(n > (DOOMO_RES_SLOTS ? 900 : 1000));
     for (i = 0; i < n; i++) {
         const DoomoEdge *e = &doomo_town.edges[i];
         if (e->a != ref[i].a || e->b != ref[i].b || e->value != ref[i].value || e->kind != ref[i].kind) bad++;
