@@ -80,6 +80,9 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   **2026-11-15 19:50:** HOUSEHOLDS (session_01Xd63cyoVQMX8CCuWDX8Db9, part of the CREATOR family) gets **3.5 KB
   (3,584 B) from the reserve** for the resident household records (24 households x 144 B + 98 B = 3,554 B);
   **reserve now about 3 KB** (3,072 B). Its GBA EWRAM (about 3.9 KB) comes out of CREATOR's 6 KB share.
+  **2026-11-15 19:55:** HOUSEHOLDS' pet families (HH-PETS: a town pool of 48 pet records x 24 B) get **1,152 B
+  of PS1 resident from the reserve** (reserve now about 1.9 KB, 1,920 B) and **1,152 B of GBA EWRAM from the
+  GBA reserve** (GBA reserve now about 3.8 KB), so CREATOR's own GBA share stays for its pages.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
   resident memory: ask the coordinator first. The slot is 131,072 B. With PS1-RAM (2026-11-15) the
   combat group is 129,380 B in the link map (1,692 B of room; the planner's estimate says 129,956 B),
