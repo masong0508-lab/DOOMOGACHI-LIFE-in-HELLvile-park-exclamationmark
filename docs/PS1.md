@@ -1572,7 +1572,7 @@ no-op.
 **S2-4c (the kitchen as layers over kept pictures).** Nothing of it is built here (`COOK_KEPT` is 0 on the PS1: no
 kept picture, no layers, no baked poses; the core's new box and key helpers and the poses' lookup `cook_pose_find` are
 `!DOOMO_PLATFORM_PS1`), and the kitchen draws its whole frame as before. On the tips `5aa25cd1` (PS1-RAM in),
-`366ee6c1` and `9dc5e39a`, and each + S2-4c: `_end` 0x801df9f0 both times (132,608 B below the stack top with the boot FMV: delta 0 B), `TEXT.BIN`
+`366ee6c1`, `9dc5e39a` and `167c08ba` (S2-4b in), and each + S2-4c: `_end` 0x801df9f0 both times (132,608 B below the stack top with the boot FMV: delta 0 B), `TEXT.BIN`
 and `SFX.BIN` the same, `OVL.BIN` and the EXE's overlay table differ (the fishcook group's code: the screens are split
 into parts). Measured (PCSX-Redux, `speed2.sh fishcook`, `game_smoke` passes): the kitchen's table is the tip's, row
 for row (book, chop, stir, fry, bake, simmer 30.12-30.17 with every frame two vsyncs; the result card 30.00 with one
