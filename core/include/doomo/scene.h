@@ -102,6 +102,9 @@ void *scene_scratch_block(void) __attribute__((const));
  *                           area of OwScratch: scripted overworld scenes (the
  *                           Feast guests, the Say It walk). A cache: rebuilt
  *                           from STRY whenever another owner took the block
+ *   SBKE / SEZY studio.c    the Music Studio: its baked shapes (GBA) with ST-EASY's state (redo journal, Start card,
+ *                           caches: `StEasy`, 448 B) as the tail of the same 12 KB block; where shapes are not baked
+ *                           (PS1, host, Dreamcast) the state alone, tag SEZY
  * A scene that keeps its own state here must not call anything that
  * claims it for another owner (e.g. weld_view_image()). */
 

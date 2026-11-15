@@ -15,14 +15,17 @@ Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_R
 | `core/include/doomo/song.h` | the contract: `DoomoSong`, the player API, the song book |
 | `core/src/song_player.c` | the player + helpers (timing, singing, choir, syllables, scales) |
 | `core/src/song_book.c` | `doomo_song_book[6]` and the `'SONG'` save extension chunk |
-| `core/src/studio.c` | the scene: tabs, input, undo journal, popups, citizen picker, unlock rules |
+| `core/src/studio.c` | the scene: tabs, input, undo / redo journal, popups, citizen picker, unlock rules, `st_easy()` |
 | `core/src/studio_edit.c` | SONG, NOTES (tracker) and ORDER tabs |
 | `core/src/studio_words.c` | LYRICS and CHOIR tabs |
 | `core/src/studio_stage.c` | PERFORM: the choir show |
-| `core/src/studio_file.c` | FILE: song book, templates, Inspire me, undo |
+| `core/src/studio_file.c` | FILE: song book, new song, templates, Inspire me, undo / redo, Studio level (scrolls) |
+| `core/src/studio_start.c` | ST-EASY: the "Start a song" card, `studio_make_song` |
+| `core/src/studio_play.c` | ST-EASY: START plays and names its target, the NOTES cursor line |
+| `core/src/studio_help.c` | ST-EASY: one-line help per tab, the control card, tab labels, the Studio level |
 | `core/src/studio_gen.c` | composer, lyric writer, 14 templates, choir fills, parts, auto-fit, word filter |
 | `core/src/unlocks_studio.c` | unlock ids 240..255 and the activities |
-| `core/tests/test_studio.c`, `core/tests/scripts/studio.txt` | tests and the runner tour |
+| `core/tests/test_studio.c`, `core/tests/scripts/studio.txt`, `studio_easy.txt` | tests and the runner tours |
 
 You find it in the **Concert Hall** (activities table `doomo_activities_studio`,
 free play and story from chapter 1). (CL5, clarity C9: it is no longer a second
@@ -44,8 +47,52 @@ pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
 | SELECT + L / R | previous / next tab from any tab [L2 / R2] |
 | SELECT (tap) | the tab's tools menu |
 | SELECT + B | undo [Triangle] |
-| START | play / stop |
+| SELECT + A | redo [Square] (ST-EASY) |
+| SELECT + UP | "?": the control card of the tab (ST-EASY) |
+| START | play / stop, the prompt bar names the target: "Play song", "Play from here", "Stop" (ST-EASY) |
 | B | leave the studio (asks if the song is unsaved; in NOTES: erase / tie) |
+
+### Easy mode (ST-EASY, 2026-11-15)
+The first package of the studio overhaul (`design/STUDIO_PLAN.md` 2.1, 2.2, 2.3). Easy is the only level there is
+for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothing yet (ST-ADV).
+
+* **Start a song.** The studio opens on it when the song is empty (a new save, or an empty page) and FILE's
+  "New song..." opens it again. It lives on the SONG tab (`studio.card`; the picks, the seed and the row are in
+  `st_easy()`). Rows: **Style** (16 short names: Bubblegum, Lo-fi, City Pop, Chiptune, Lullaby, Jazz, Classical, Folk,
+  Disco, Shanty, Hymn, Synthwave, Goth, Punk, Doom, Industrial), **Mood** (Happy = major in C, Sweet = pentatonic in
+  F, Sad = minor in A, Spooky = harmonic minor in E, Fierce = blues in D: key mode, key and with them the chord
+  family), **Tempo** (Slow, Medium, Fast, Frantic: the style's own bpm range at `lo - 6`, its middle, `hi`, `hi + 20`,
+  clamped 60..220; the card shows the bpm), **Length** (Short 8 passes = 16 bars, Song 12 = 24 bars, Long 16 = 32
+  bars: the plan's 32 / 64 bars wait for ST-ADV, `SONG_ORDER_MAX` is 16), **Shuffle** (a new seed, the same picks, the
+  song plays and the card stays), **Make it!** (compose with the seed, play, the card closes: what Shuffle played is
+  what is kept), **Inspire me!** (the FILE citizen picker), **Templates...** (FILE's template list). B skips the card
+  and leaves the blank song. `studio_make_song(song, picks)` is a pure function of the picks, the seed and the
+  song's choir / words (tested: all 16 x 5 styles / moods twice, equal bytes); the mood reaches the composer through
+  `studio_compose_scale()` (`studio_compose` is unchanged for every other caller).
+* **One line per tab** (`st_tab_help`, at most 36 glyphs so it fits the 240 px bar). It replaces the prompt bar when a
+  tab opens until the first button press on it (30 s at most), and never again once an edit was made in the visit.
+* **The control card** (SELECT + UP, "?" on the pads that have it): a popup with the one-line help, this tab's buttons
+  and the buttons every tab has, written with the pad's own names (the prompt bar's glyph builder). A, B or START
+  closes it.
+* **START always plays**, second press stops, and the bar says what it plays: "Play from here" on NOTES (the pattern
+  from the cursor step, looping), ORDER (from the selected pass) and LYRICS (from the pass that sings the selected
+  line), "Play song" everywhere else, "Stop" while anything plays. Two old START jobs moved: LYRICS "Fit this line" is
+  the last item of its SELECT tools (it was START), and CHOIR's section cycle is only in the singer's A menu
+  ("Change section", it was also START).
+* **Redo.** An undo keeps the bytes it overwrites in a second journal in the scene scratch (the same record format,
+  `STUDIO_REDO_BYTES` 384); a redo replays it and puts the step back on the undo journal. Any new edit empties it.
+  A step too big for the redo journal (a whole composed song) can be undone but says "Too big to redo" instead of
+  redoing half. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
+* **The cursor's cell on NOTES**, one line under the grid: "Bar 2, beat 3, Lead: E4 (3rd of C)", "... Harmony: F#4
+  (off the scale)", "... Bass: hold", "... Drums: Snare". It falls back to shorter forms until it fits; the text is
+  cached and rebuilt only when the cell, the key or the scale change.
+* **Tab labels.** Start, Edit, Arrange, Words, Choir, Show, File (the old Song, Notes, Order, Lyrics, Choir, Stage,
+  File). The current tab spells its name; when the strip is too narrow for all names (240x160) the others show
+  L and R beside it (the neighbours that L / R reach) and their number.
+* **Studio level** (FILE row, A or LEFT / RIGHT toggles): Easy or Advanced, in `st_easy()->level` and bit 15 of
+  `studio_stats.lines` (`STUDIO_LINES_LEVEL`; the lyric-line count is the low 15 bits, `STUDIO_LINES()`), so it
+  rides in the existing `'SONG'` chunk with no new save tag; an old save reads Easy. Advanced shows no extra tools
+  yet.
 
 ### SONG
 Title (typed with the on-screen keyboard), genre, tempo (60..220 bpm, hold for
@@ -71,7 +118,7 @@ notes of the key/scale with mint dots.
 | hold A + L / R | an octave down / up |
 | B | erase; on a rest right after a note: a tie (hold) |
 | L / R | pattern A..D |
-| START | loop the pattern from the cursor |
+| START | loop the pattern from the cursor ("Play from here"; again: stop) |
 | SELECT | copy / paste pattern or track, clear track, nudge a track a scale step |
 
 Every placed note is previewed on its own channel (`song_preview`).
@@ -100,17 +147,17 @@ of that pass sings the next syllable.
 * LEFT / RIGHT choose **who sings the line**: a solo, a duet, a section
   (sopranos, altos, tenors, basses), a half of the choir (call and response)
   or the full choir - stored in `line_singers`.
-* START **auto-fits** the line: too few words get "la"s (or an "oh"), and
-  if there is no room left the last notes merge into long ones (only when no
+* **Fit this line** (SELECT tools; it was START until ST-EASY, START plays now) auto-fits the line: too few words
+  get "la"s (or an "oh"), and if there is no room left the last notes merge into long ones (only when no
   other line uses the pattern); too many words split long notes into new
   onsets. SELECT: sing this line, auto-fit all, share out parts, write lyrics
-  for me, clear the line.
+  for me, clear the line, fit this line. START plays from the pass that sings the line.
 
 ### CHOIR
 Up to 25 citizens on a 9/8/8 grid, each tile tinted by voice section with an
 S/A/T/B badge. Sections are automatic from the voice pitch slider (>= 22
-soprano, >= 15 alto, >= 8 tenor, else bass) and editable (START cycles
-auto -> S -> A -> T -> B). A on a singer: hear their voice (they sing the first
+soprano, >= 15 alto, >= 8 tenor, else bass) and editable (A on a singer, "Change section", cycles
+auto -> S -> A -> T -> B; START plays the song). A on a singer: hear their voice (they sing the first
 sung line alone), change singer (the citizen picker), change section, remove.
 SELECT **quick fills**: friends of the selected singer, a Hillvile choir, a
 Hellvile choir, both districts, random choir, share out parts, sort by section,
@@ -134,8 +181,9 @@ stage when that module offers it (`concert_stage_song`).
 
 ### FILE
 The song book (6 pages: save here / open / favourite / delete, with
-confirmations), a blank song, **templates**, **Inspire me!**, undo (with the
-number of steps left) and leave. Saving into the book is kept in memory and
+confirmations), **New song...** (the Start card, with a confirmation when the song is unsaved), **templates**,
+**Inspire me!**, undo and redo (with the number of steps), the **Studio level** and leave. The list is 13 rows and
+scrolls (`studio.ftop`) when the screen is too short (240x160 shows 11). Saving into the book is kept in memory and
 written with the game save (the `'SONG'` chunk).
 
 ## Templates
@@ -219,7 +267,46 @@ Boom 808 (2 shows), Hell Forge (songs in 4 genres), the shanty / disco /
 jazz / synthwave / industrial templates (3 songs, 3 shows, 3 inspirations,
 an encore, a full 25 choir), the choir pyramid (10+ singers).
 
+## Function ledger (ST-EASY, the detail gate of `design/STUDIO_PLAN.md` 2.5c)
+One row per control this package added or changed: what it says, what it does, how it answers, how to take it back,
+what tests it. Keys are GBA names; the pads' names are on the control card. "Journal" = SELECT + B undoes it, SELECT
++ A redoes it.
+
+| Control | Says | Does | Feedback | Undo | Tested by |
+|---|---|---|---|---|---|
+| Start card: Style (L / R, A) | Style | next / previous of the 16 styles | value on the row, cursor blip; the song is not touched until Shuffle / Make it! | nothing changed | `studio_start_card_opens_on_an_empty_song...` |
+| Start card: Mood | Mood | Happy / Sweet / Sad / Spooky / Fierce: key mode, key, chord family | value, blip | nothing changed | the same, `studio_make_song_is_deterministic...` (scale per mood) |
+| Start card: Tempo | Tempo | Slow / Medium / Fast / Frantic: bpm of the style's range | value and the bpm | nothing changed | `studio_make_song...` (four tempos rise, in range) |
+| Start card: Length | Length | 8 / 12 / 16 order passes | value and the bars | nothing changed | `studio_make_song...` (passes, order ends on a chorus) |
+| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the history restarts if the song before was too big to remember) | `studio_start_card_opens...` |
+| Start card: Make it! | Make it! | composes with the current seed, plays, closes the card | sparkle, toast "Made it! START stops the song" | journal | the same (same notes as the last Shuffle; undo twice reaches the blank page) |
+| Start card: Inspire me! | Inspire me! | the FILE citizen picker, then an Inspire song | picker, toast "A Jazz song about ...!" | journal; B in the picker cancels | `studio_start_card_inspire_templates_and_skip...` |
+| Start card: Templates... | Templates... | FILE tab, template list | the list | B goes back to the FILE list | the same |
+| Start card: B | Skip | closes the card, blank song | cancel blip, toast "A blank page. SEL+Up: help" | nothing changed | the same |
+| START (every tab but a running show) | Play song / Play from here / Stop | plays the named target; again stops | the bar's verb, the heart and playhead | n/a | `studio_start_plays_from_the_cursor_and_names_its_target` (every tab, both presses, targets) |
+| SELECT + UP | (on the bar's help line, the control card) | opens the tab's control card | popup, blip | A / B / START closes | `studio_tab_help_and_control_cards_fit_the_screen` |
+| SELECT + A | Redo | puts back the step the last undo took | toast "Redo! (n more)", "Too big to redo", "Nothing to redo" | SELECT + B | `studio_undo_redo_round_trip` |
+| FILE: Redo | Redo (n) | the same | the same | SELECT + B | the same, runner `studio_easy` |
+| FILE: Undo | Undo (n) | as before | toast "Undone! (n left)" | Redo | the same |
+| FILE: Studio level | Studio level: Easy / Advanced | toggles (A, LEFT, RIGHT) | the row, toast "Advanced: more tools soon" | press again | `studio_level_switch_is_kept_in_the_stats_and_the_save` |
+| FILE: New song... | New song... | confirms if unsaved, blanks the song, opens the Start card | the card | journal | `studio_start_card_inspire_templates_and_skip...` |
+| NOTES: cursor line | (under the grid) | describes the cell: bar, beat, track, note, interval, "off the scale" | text under the grid | n/a | `studio_cursor_cell_is_described_in_one_line_that_fits` (every cell, key and scale fits 240 and 320 px) |
+| LYRICS: Fit this line (SELECT tools, was START) | Fit this line | auto-fits the selected line to its notes | toast "Line 2 fits now!" | journal | `studio_fit_one_line_moved_to_the_lyric_tools` |
+| CHOIR: START | Play song | plays the song (it cycled a section before: A menu "Change section" has it) | the bar | stop with START | `studio_start_plays...` |
+| Tab strip labels | Start / Edit / Arrange / Words / Choir / Show / File, L / R / numbers on the others | names the tabs | the strip | n/a | `studio_tab_help...` (labels set), runner shots |
+
+Not in the ledger because they did not change: every SONG row, the NOTES keys, ORDER, the CHOIR grid, the PERFORM
+show, the song book pages.
+
 ## Budgets
+ST-EASY adds **no `.bss` and no IWRAM** on the GBA (`make -C gba sizes`: `.bss` 254,820 B before and after, `.iwram`
+11,272, `.iwram_bss` 4,088): its state (`StEasy`, 448 B: the redo journal 384 B, the Start card's picks, the cursor
+line and slot-list caches, the bpm text) is the tail of the studio's baked-shape block in the 12 KB scene scratch
+(`BakeSt`, 11,716 B before, 12,164 B now; a compile-time assert keeps it inside `DOOMO_SCENE_SCRATCH`). Where the
+shapes are not baked (PS1, native, Dreamcast) `st_easy()` claims the scratch itself (`EZ_TAG`, no static pointer).
+The two flags `card` and `help` are bytes of `Studio` that were padding. The level is a spare bit of a stat that is
+saved already. ROM: +6.8 KB `.text`, +2.2 KB `.rodata` (GBA, thumb).
+
 `.bss`: the book 6 x 892 B + stats 12 B = 5364 B; everything else 2002 B (the
 working song, a 768-byte undo journal - run-length coded byte ranges, 16+
 ordinary edits always fit and template loads are undoable too -, UI state,
@@ -278,6 +365,24 @@ template picker keeps the full backdrop). Floating notes under the panel are ski
 GBA work avg: SONG idle 35.2 -> 33.1, NOTES idle 33.4 -> 29.6, ORDER 31.0 -> 27.1, LYRICS 38.6 -> 36.5, CHOIR 50.8 -> 46.9, PERFORM 52.1 -> 51.0 ms
 (measured in the session before the figures above were re-built; not re-profiled on the final tree). Measured while doing it: backdrop + tab strip +
 hint bar ~14 ms of every tab; the 25 CHOIR chibis ~14 ms (CHOIR without them 36.8 ms). See `docs/MUSIC_STUDIO_ROADMAP.md` "Facts to know before MS-P4".
+
+### GBA speed, ST-EASY (2026-11-15, libmgba, `make -C gba profile-studio`, same script, before = `d979c93`)
+Work per drawn tick in ms (average / worst; the budget at 30 fps is 33.3); every window is 30.0 drawn fps before and after.
+| window | before | after |
+|---|---:|---:|
+| SONG idle | 31.6 / 33.2 | 31.2 / 32.7 |
+| SONG playing | 32.3 / 37.0 | 32.0 / 36.8 |
+| NOTES idle | 27.8 / 29.1 | 27.5 / 28.8 |
+| NOTES playing | 27.9 / 32.0 | 27.7 / 31.8 |
+| ORDER | 25.5 / 26.8 | 25.2 / 26.5 |
+| LYRICS | 32.4 / 34.3 | 32.0 / 33.9 |
+| CHOIR | 30.5 / 31.9 | 30.5 / 31.7 |
+| PERFORM early / later | 22.3 / 22.8, 22.9 / 32.3 | 22.3 / 22.7, 22.8 / 32.2 |
+The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) by three cached things that were rebuilt
+every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
+step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
+(A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
+it now switches on the first button press.) PS1 and Dreamcast were not measured in this package: see the commit.
 
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 

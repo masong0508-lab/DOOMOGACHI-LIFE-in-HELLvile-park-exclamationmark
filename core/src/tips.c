@@ -83,7 +83,7 @@ static const TipText tip_text[TIP_COUNT] = {
     /* TIP_STUDIO */
     { SPK_MAYOR, ICON_NOTE,
       "The Music Studio! I wrote the town anthem here. It is one note. It is a very good note.",
-      "%L/%R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage, File). A: edit the row. START: play. B: back." },
+      "%L/%R: switch tabs (Start, Edit, Arrange, Words, Choir, Show, File). A: edit the row. START: play. B: back." },
     /* TIP_WORKSHOP */
     { SPK_RIVET, ICON_WRENCH,
       "My workshop! Pick parts, weld them, get a gun. Keep all your fingers. Most people do.",
