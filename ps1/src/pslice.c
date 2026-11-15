@@ -16,6 +16,7 @@
  * 156 B of RAM. */
 #include "ps1.h"
 #include "doomo/portrait.h"
+#include "doomo/pslice_policy.h"
 
 /* weak references: the engine-test build links no portrait cache */
 extern int portrait_idle_next(void) __attribute__((weak));
@@ -56,17 +57,15 @@ static void learn(int cls, uint32_t c)
 
 int plat_portrait_slice_ok(int cls, int waited)
 {
-    uint32_t vb, limit;
     c0 = timer_us();
     if (in_idle) return 1;
     if (spent_frame != g_frame) { spent_frame = g_frame; spent = 0; }
     if (waited < 0) return 1;
-    vb = (base_last + FRAME_US - 1) / FRAME_US;
-    if (vb < 2) vb = 2;
-    limit = vb * FRAME_US - (vb > 2 ? MARGIN_WIDE_US : MARGIN_US);
-    if (base_last + spent + est(cls) <= limit) return 1;
-    if (spent) return 0;
-    return waited >= (est(cls) <= CHEAP_US ? PATIENCE : PATIENCE_BIG);
+    /* S3-2: a forced slice runs only when it ends before the next vblank (doomo/pslice_policy.h) */
+    if (est(cls) == UNKNOWN_US)                             /* never timed: nothing to compare (as before) */
+        return spent ? 0 : waited >= PATIENCE_BIG;
+    return pslice_ok(base_last, spent, est(cls), FRAME_US, MARGIN_US, MARGIN_WIDE_US, waited, PATIENCE,
+                     PATIENCE_BIG, CHEAP_US);
 }
 
 void plat_portrait_slice_done(int cls)

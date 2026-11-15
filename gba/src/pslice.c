@@ -27,6 +27,7 @@
 #include "gba_plat.h"
 #include "iwram_ovl.h"
 #include "doomo/portrait.h"
+#include "doomo/pslice_policy.h"
 
 /* weak references: the engine test's NOCORE build links no portrait cache (then there is nothing to run) */
 extern int portrait_idle_next(void) __attribute__((weak));
@@ -74,19 +75,16 @@ static void learn(int cls, uint32_t c)
 
 int plat_portrait_slice_ok(int cls, int waited)
 {
-    uint32_t vb, limit;
     c0 = gba_cycles();
     if (in_idle) return 1;
     if (spent_tick != gba_frames) { spent_tick = gba_frames; spent = 0; }
     if (waited < 0) return 1;                               /* forced by the core: just timed */
-    vb = (base_last + FRAME_CYC - 1) / FRAME_CYC;
-    if (vb < 2) vb = 2;
-    /* a frame that is over 2 vblanks anyway varies more from tick to tick (a dialogue over the overworld): a
-     * wider margin keeps its slices off the next vblank */
-    limit = vb * FRAME_CYC - (vb > 2 ? MARGIN_WIDE_CYC : MARGIN_CYC);
-    if (base_last + spent + est(cls) <= limit) return 1;
-    if (spent) return 0;                                    /* one forced slice a tick at most */
-    return waited >= (est(cls) <= CHEAP_CYC ? PATIENCE : PATIENCE_BIG);
+    /* (a frame that is over 2 vblanks anyway varies more from tick to tick: a wider margin keeps its slices off the
+     * next vblank; S3-2: a forced slice runs only when it ends before the next vblank: doomo/pslice_policy.h) */
+    if (est(cls) == UNKNOWN_CYC)                            /* never timed: nothing to compare (as before) */
+        return spent ? 0 : waited >= PATIENCE_BIG;
+    return pslice_ok(base_last, spent, est(cls), FRAME_CYC, MARGIN_CYC, MARGIN_WIDE_CYC, waited, PATIENCE,
+                     PATIENCE_BIG, CHEAP_CYC);
 }
 
 void plat_portrait_slice_done(int cls)
