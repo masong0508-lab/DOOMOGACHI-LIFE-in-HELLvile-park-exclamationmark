@@ -848,7 +848,7 @@ TEST(talk_safe_output_lint_units)
     CHECK_EQ(talk_safe_lint("The Hell Breach! Hellvile! Hell.", &kids, &sw), TL_OK);  /* the place, not a swear */
     CHECK_EQ(talk_safe_lint("[R4]{.}Needs salt.", &kids, &sw), TL_OK);
     CHECK_EQ(talk_safe_lint("This line is far, far too long to fit in a bubble of three short lines, so the lint"
-                            " says no to it.", &adults, &sw), TL_LENGTH);
+                            " says no to it. It goes on past any bubble, even the Dreamcast's three lines of forty.", &adults, &sw), TL_LENGTH);
     CHECK(talk_safe_lint_hits() > h0);
     {
         /* distress wins over hate: the kind answer, the ugly words unseen */
