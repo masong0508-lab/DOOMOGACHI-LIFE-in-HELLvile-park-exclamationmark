@@ -32,30 +32,56 @@ What the numbers say:
 
 ## The plan (defaults chosen by Claude, owner may override)
 
-* **Length:** a full 1:30 opening (the anime standard) as the series main title; the pilot's 0:50 cut
-  stays as its short version and is re-cut from the long one.
-* **Pacing map:** intro and A-melo hold like Ika Musume (2 s shots, gags in the holds); the B-melo builds
-  like Attack on Titan (holds turning into bursts); the chorus runs at the Going Wild bounce (about 1 s
-  shots, everything on the beat); the bridge drops to a single held shot; the last chorus is the Attack on
-  Titan finish (cuts every half beat), into a calm end pose.
-* **Motions** (from the references, made ours): the hero run toward camera, the cast line-up pops on the
-  beat, whip pans and smear frames between groups, the big sky crane, speed-line backgrounds on the
-  chorus, a sudden freeze-frame gag, the final group pose and logo slam.
-* **Tempo:** around 170-180 BPM for the J-pop drive; the existing master's keys and hits stay where they
-  fit (the six-hit stab of the GAG_BIBLE, the drop as a record scratch).
-* **The huggle motif:** the owner's term. Read as a hug-and-snuggle hook: a short, singable "huggle"
-  vocal figure that is the chorus's answer line and comes back, slower and alone, as the bridge, with
-  the picture of the cast piling into one big hug (Mascotty still in the middle, not hugging). Every hug
+Owner, 2026-11-15, on the first draft of this plan: the structure should be refined and properly
+structured instead of weird brokenness, especially the weird interruption that reveals the "nothing to
+see here" gag; but it must still feel cheeky. So: **one clean, standard anime-opening form, on a fixed
+bar grid, with no stops, no record scratch and no tempo breaks.** The cheek comes from what happens on
+the beat, never from breaking the beat.
+
+### The song: one steady form
+
+* **176 BPM, 4/4, one key** (a single lift of a whole step for the last chorus, the classic opening
+  move); one bar = 1.36 s; **66 bars = 1:30.0** exactly. Every phrase is 4 or 8 bars.
+
+| Section | Bars | Time | Music | Picture (shots cut on the bar grid) |
+|---|---:|---|---|---|
+| Intro | 8 | 0:00-0:11 | the chorus hook on lead and bass, full band from bar 1 | crane up over pastel HaHaland; the logo letters land one per beat on bars 7-8; 2-bar shots |
+| A-melo (verse) | 16 | 0:11-0:33 | the story verse, steady groove | the cast introduced on the beat, one character per bar; Mascotty simply in every shot, perfectly still; 1-bar shots |
+| B-melo (pre-chorus) | 8 | 0:33-0:44 | the build: rising line, drums double up in bars 5-8 | the mirrored knock at the Wall, both sides on the same beat; half-bar shots in bars 5-8; the gate with seven padlocks on bar 8 |
+| Sabi (chorus) | 16 | 0:44-1:05 | the main hook; the huggle answer line after each sung line | everything on the beat: speed-line runs, Hellify rotting the town on the sweetest line, three candles out in rhythm; 1-bar shots, 2 per bar on the last 4 bars |
+| Bridge (huggle) | 8 | 1:05-1:16 | the huggle hook alone, half-time feel, then the band builds back over bars 5-8 | one slow push-in on the cast piling into one big hug (Mascotty in the middle, not hugging); held, then 1-bar shots as the band returns |
+| Last chorus (key lift) | 8 | 1:16-1:27 | the last half of the chorus a step higher | the fastest cutting of the song, still on the grid: half-bar shots, every main gag of the show as a beat-synced flash |
+| End pose | 2 | 1:27-1:30 | the final hit and a short ring-out | the two halves meet on the logo; the Mayor's pink roller paints over the red drip on beat 1; the drip creeps back through on beat 4 |
+
+* **No interruptions.** No silence gaps, no record-scratch drop (the old 0:02 "drop" is now the last bar
+  of the B-melo, a drum fill into the chorus), no tempo change. The song never stops to make a joke.
+* **The huggle motif:** read as a hug-and-snuggle hook (the owner's term): a short, singable "huggle"
+  vocal figure that answers each chorus line and becomes the bridge, over the big group hug. Every hug
   stays a plain hug a child may decline; nothing suggestive. If the owner means something else by
-  "huggle", the hook changes, not the plan.
-* **The show's own rules stay:** the mirrored knock at the Wall, the gate with seven padlocks, Hellify
-  rotting the town on the sweetest line, the pink paint roller over the red drip, the Hellvile side in
-  silhouette. These become shots inside the new pacing.
+  "huggle", the hook changes, not the form.
+
+### The cheek, kept on the beat
+
+* **"Nothing to see here! ♥"** stays, but as a beat, not a break: in the intro's bar 8, a red drop splats
+  on the lens on beat 1 and the star sticker slaps over it on beat 3 with a snare hit (the band keeps
+  playing). The same sticker comes back once more on the last chorus, a beat late, as the button gag.
+* **Cheek in the holds, not the gaps:** characters glance at the camera on off-beats, Mascotty never
+  moves while everyone else bounces, the Hellvile side mimes along a bar behind, the sweetest lyric
+  over the nastiest picture.
+* **Motions** (from the references, made ours): the hero run toward camera, the line-up pops, whip pans
+  between groups, the big sky crane, speed-line backgrounds on the chorus, the final group pose and
+  logo slam. All cut on the bar grid.
+
+### Same fix in the trailer
+
+The trailer's title sting (`trailer/README.md` shot `s02_title`, `docs/design/story/comic_timing.md`
+row s02) has the same break: the splat, 10 frames of silence, then the sticker. When the redo runs it
+gets the same treatment: the music keeps going and the sticker lands on a beat.
 
 ## Steps when it starts
 
-1. Song: a new arrangement and lyric of "Doomtastic Times" at the new length, with the huggle hook in
-   the chorus answer and the bridge; a demo with a click track and the section map.
+1. Song: a new arrangement and lyric of "Doomtastic Times" in the form above (176 BPM, 66 bars), with the
+   huggle hook in the chorus answer and the bridge; a demo with a click track and the bar map.
 2. Board: shot list timed to the demo (shot lengths per section from the map above).
 3. Animatic, then the cut, then the 0:50 short version from it.
 4. Every pass is compared against the pacing table above (cuts per 9 s and shot lengths, measured the
