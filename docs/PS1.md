@@ -1572,12 +1572,13 @@ no-op.
 **S2-4c (the kitchen as layers over kept pictures).** Nothing of it is built here (`COOK_KEPT` is 0 on the PS1: no
 kept picture, no layers, no baked poses; the core's new box and key helpers and the poses' lookup `cook_pose_find` are
 `!DOOMO_PLATFORM_PS1`), and the kitchen draws its whole frame as before. On the tips `5aa25cd1` (PS1-RAM in),
-`366ee6c1`, `9dc5e39a` and `167c08ba` (S2-4b in), and each + S2-4c: `_end` 0x801df9f0 both times (132,608 B below the stack top with the boot FMV: delta 0 B), `TEXT.BIN`
+`366ee6c1`, `9dc5e39a` and `167c08ba` (S2-4b in), and each + S2-4c: `_end` 0x801df9f0 both times (132,608 B below the stack top with the boot FMV: delta 0 B; on `262bf2b7`, S3-2 in, 0x801dfb10 both times, 132,320 B), `TEXT.BIN`
 and `SFX.BIN` the same, `OVL.BIN` and the EXE's overlay table differ (the fishcook group's code: the screens are split
 into parts). Measured (PCSX-Redux, `speed2.sh fishcook`, `game_smoke` passes): the kitchen's table is the tip's, row
 for row (book, chop, stir, fry, bake, simmer 30.12-30.17 with every frame two vsyncs; the result card 30.00 with one
 50 ms frame, its first: the dish's unlocks granted that tick; the counter and serving 30.00 with one 50 ms frame each:
-whole faces rendered in one tick, S3-2), and so is the fishcook group's overlay read (313 + 315 ms).
+whole faces rendered in one tick, S3-2), and so is the fishcook group's overlay read (313 + 315 ms); on `262bf2b7` (S3-2 in)
+the table is again the tip's, row for row.
 
 **S2-8 (text pages as kept panels).** Nothing is built here (`UI_PANELS` 0: the Field Guide's and the Almanac page's
 text panels compile out, `page_text` keeps its old path; the Field Guide's preview scroll byte sits in the wing's

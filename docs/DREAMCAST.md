@@ -385,7 +385,8 @@ ticks over 33.3 ms of work, worst 17.1 ms (the Gallery); `make dc-host-test` pas
 church (DC9B's `stage_begin` answers 0 for `DOOMO_BACKDROP_KITCHEN`) and `plat_cook_pose` keeps its weak default, so every
 kitchen screen asks once and draws in full as before. Flycast, `speed2.sh fishcook` on `5aa25cd1`, `e587f9c1` and
 `167c08ba` (with S2-4b), each + S2-4c: all 16 fishing and kitchen windows 30.0, 0 of 3,334 ticks over 33.3 ms, worst
-16.5 ms at tick 3262 (COOKING); speed audit 3 had 18.1 ms.)
+16.5 ms at tick 3262 (COOKING); on `262bf2b7` (S3-2 in) + S2-4c the same 16 windows, 0 of 3,335 ticks over 33.3 ms, worst
+17.0 ms; speed audit 3 had 18.1 ms.)
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
