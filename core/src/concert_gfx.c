@@ -997,11 +997,56 @@ static int bob_of(const StageView *v, int i, int amp)
     return b > 0 ? -b * ((i & 1) ? 1 : 1) : 0;
 }
 
+/* (G2-CO) the choir's sizes: a singer's box, the column and row pitch, the songbook, the note and the glow, all at
+ * the singers' size (StageView.choir_pct, 240x160 only; 100 = the full size, the same numbers as before) */
+typedef struct ChoirDims { int sc, pct, sw, sh, cw, rh, bx, by, bw, bh, nx, ny, gr; } ChoirDims;
+
+static int cpct(int n, const ChoirDims *d) { return d->pct == 100 ? n * d->sc : (n * d->sc * d->pct + 50) / 100; }
+
+static void choir_dims(const StageView *v, const StageLayout *L, ChoirDims *d)
+{
+    d->sc = L->big ? 2 : 1;
+    d->pct = !L->big && v->minis && v->choir_pct > 0 && v->choir_pct < 100 ? v->choir_pct : 100;
+    d->sw = cpct(16, d);
+    d->sh = cpct(24, d);
+    d->cw = d->sw + 2;
+    d->rh = cpct(12, d);
+    d->bx = cpct(3, d);  d->by = cpct(9, d);  d->bw = cpct(6, d);  d->bh = cpct(4, d);
+    d->nx = cpct(4, d);  d->ny = cpct(26, d); d->gr = cpct(7, d);
+}
+
+/* the smaller copy of choir slot i's chibi (nearest neighbour; divisions only when it is made) */
+static const DoomoImage *choir_mini(const StageView *v, int i, const DoomoImage *img, const ChoirDims *d,
+                                    DoomoImage *out)
+{
+    ChoirMini *m;
+    uint32_t key;
+    int x, y;
+    if (i < 0 || i >= CHOIR_MINI_N || img->w != BODYSPR_W || img->h != BODYSPR_H) return img;
+    m = &v->minis[i];
+    key = img->uid ? img->uid : (uint32_t)(uintptr_t)img->pix;
+    if (m->key != key || m->w != d->sw || m->h != d->sh) {
+        for (y = 0; y < d->sh; y++) {
+            const uint8_t *src = img->pix + ((2 * y + 1) * BODYSPR_H / (2 * d->sh)) * BODYSPR_W;
+            for (x = 0; x < d->sw; x++) m->pix[y * d->sw + x] = src[(2 * x + 1) * BODYSPR_W / (2 * d->sw)];
+        }
+        m->key = key;
+        m->w = (uint8_t)d->sw;
+        m->h = (uint8_t)d->sh;
+    }
+    out->w = m->w;
+    out->h = m->h;
+    out->pix = m->pix;
+    out->uid = 0;
+    return out;
+}
+
 /* choir formation: position of member i (feet y, centre x, scale) */
-static void choir_pos(const StageView *v, const StageLayout *L, int i, int *x, int *feet, int *scale)
+static void choir_pos(const StageView *v, const StageLayout *L, const ChoirDims *d, int i, int *x, int *feet,
+                      int *scale)
 {
     const ConcertCast *c = v->cast;
-    int n = c->n, sc = L->big ? 2 : 1, cw = 16 * sc + 2, rh = 12 * sc;
+    int n = c->n, sc = d->sc, cw = d->cw, rh = d->rh;
     int row = 0, col = 0, rown = n, k, center = L->w / 2;
     switch (c->layout) {
     case CHOIR_PYRAMID: {
@@ -1063,14 +1108,14 @@ static void choir_pos(const StageView *v, const StageLayout *L, int i, int *x, i
     }
 }
 
-static void draw_risers(const StageView *v, const StageLayout *L)
+static void draw_risers(const StageView *v, const StageLayout *L, const ChoirDims *d)
 {
-    int k, sc = L->big ? 2 : 1, rh = 12 * sc;
+    int k, rh = d->rh, cw = d->cw;
     uint8_t c = PAL_RAMP(RAMP_WOOD, 2), cl = PAL_RAMP(RAMP_WOOD, 4);
     if (v->cast->layout == CHOIR_SECTIONS || v->cast->layout == CHOIR_PYRAMID) {
         int rows = v->cast->layout == CHOIR_PYRAMID ? 5 : 3;
         for (k = rows - 1; k >= 1; k--) {
-            int w = v->cast->layout == CHOIR_PYRAMID ? (11 - 2 * k) * (16 * sc + 2) : L->w * 7 / 8;
+            int w = v->cast->layout == CHOIR_PYRAMID ? (11 - 2 * k) * cw : L->w * 7 / 8;
             int y = v->cast->layout == CHOIR_PYRAMID ? L->floor_y + 4 - k * rh * 2 / 3 : L->floor_y + 4 - k * rh;
             plat_rect(L->w / 2 - w / 2, y, w, L->floor_y + 6 - y, c);
             plat_rect(L->w / 2 - w / 2, y, w, 1, cl);
@@ -1078,7 +1123,7 @@ static void draw_risers(const StageView *v, const StageLayout *L)
         return;
     }
     for (k = 2; k >= 1; k--) {
-        int w = (k == 2 ? 8 : 8) * (16 * sc + 2) + 8, y = L->floor_y + 6 - k * rh;
+        int w = (k == 2 ? 8 : 8) * cw + 8, y = L->floor_y + 6 - k * rh;
         plat_rect(L->w / 2 - w / 2, y, w, L->floor_y + 6 - y, c);
         plat_rect(L->w / 2 - w / 2, y, w, 1, cl);
     }
@@ -1091,21 +1136,30 @@ void concert_draw_performers(const StageView *v, const StageLayout *L)
     int i, lead = c->ids[0], cx = L->w / 2, feet = L->floor_y + (L->big ? 12 : 9);
     uint8_t steel = PAL_RAMP(RAMP_STEEL, 3);
     if (c->mode == CMODE_CHOIR) {
-        draw_risers(v, L);
+        ChoirDims d;
+        choir_dims(v, L, &d);
+        draw_risers(v, L, &d);
         /* back rows first: draw from the last member to the first */
         for (i = c->n - 1; i >= 0; i--) {
             int x, f, sc, sing = (v->singing >> i) & 1;
-            choir_pos(v, L, i, &x, &f, &sc);
+            choir_pos(v, L, &d, i, &x, &f, &sc);
             if (sing && v->lights > 4)
-                ui_fill_ellipse(x, f, 7 * sc, 2, PAL_PAINT(g->c1, 2));
+                ui_fill_ellipse(x, f, d.gr, 2, PAL_PAINT(g->c1, 2));
             f += sing ? bob_of(v, i, 3) : ui_wave((int)v->t + i * 13, 90, 1);
-            chibi(c->ids[i], x, f, sc, 0, 0, 0);
+            if (d.pct == 100) {
+                chibi(c->ids[i], x, f, sc, 0, 0, 0);
+            } else if (res_of(c->ids[i])) {
+                /* (G2-CO) the smaller singer: its chibi's kept copy at that size */
+                DoomoImage mi;
+                const DoomoImage *img = bodyspr_image(c->ids[i], 0, 0);
+                if (img) img = choir_mini(v, i, img, &d, &mi);
+                if (img) plat_image(x - img->w / 2, f - img->h, img, 1, 0, 0);
+            }
             /* a little songbook */
-            plat_rect(x - 3 * sc, f - 9 * sc, 6 * sc, 4 * sc, (i & 1) ? PAL_PAINT(PAINT_CHERRY, 1)
-                                                                       : PAL_PAINT(PAINT_NAVY, 1));
-            plat_rect(x - 3 * sc, f - 9 * sc, 6 * sc, 1, PAL_PAINT(PAINT_WHITE, 2));
+            plat_rect(x - d.bx, f - d.by, d.bw, d.bh, (i & 1) ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_NAVY, 1));
+            plat_rect(x - d.bx, f - d.by, d.bw, 1, PAL_PAINT(PAINT_WHITE, 2));
             if (sing && ((v->t / 6 + (uint32_t)i) % 5) == 0)
-                concert_note_glyph(x + 4 * sc, f - 26 * sc - (int)(v->t % 6), PAL_PAINT(g->c1, 2));
+                concert_note_glyph(x + d.nx, f - d.ny - (int)(v->t % 6), PAL_PAINT(g->c1, 2));
         }
         if (c->layout == CHOIR_SECTIONS) {
             /* little signs on the stage lip: who sings which part */

@@ -51,6 +51,9 @@ typedef struct ConcertState {
     StageView v;
     uint32_t t;
     uint32_t setup_sig;         /* (G2-CO) what the setup's backdrop shows (setup_draw's hold) */
+#if !defined(DOOMO_PLATFORM_PS1)
+    ChoirMini minis[CHOIR_MINI_N];   /* (G2-CO) the choir's smaller singers (StageView.choir_pct) */
+#endif
 } ConcertState;
 DOOMO_STATIC_ASSERT(sizeof(ConcertState) <= DOOMO_SCENE_SCRATCH, concert_state_fits_the_scratch);
 static ConcertState *cs;
@@ -202,10 +205,24 @@ static int concert_lite(void)
 #endif
 }
 
+/* (G2-CO) the choir's singers' size on this port, in % (docs/GBA.md "G2-CO", the choir experiment): the full size
+ * everywhere but where a measured smaller size buys the choir its 30 fps */
+#if !defined(CONCERT_CHOIR_PCT)
+#define CONCERT_CHOIR_PCT 100
+#endif
+static void view_trades(void)
+{
+    C.v.lite = concert_lite();
+#if !defined(DOOMO_PLATFORM_PS1) && defined(DOOMO_PLATFORM_GBA)
+    C.v.choir_pct = CONCERT_CHOIR_PCT;
+    C.v.minis = C.minis;
+#endif
+}
+
 static void prep_view(void)
 {
     memset(&C.v, 0, sizeof(C.v));
-    C.v.lite = concert_lite();
+    view_trades();
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
     C.v.stage = C.stage_sel >= 0 ? C.stage_sel : auto_stage();
@@ -283,7 +300,7 @@ static void start_studio_show(void)
 static void stage_begin(void)
 {
     memset(&C.v, 0, sizeof(C.v));
-    C.v.lite = concert_lite();
+    view_trades();
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
     C.v.stage = C.stage;

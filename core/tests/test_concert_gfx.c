@@ -240,6 +240,60 @@ TEST(concert_lite_flames_draw_fewer_bars)
     CHECK_MSG(nlite * 2 < nfull, "lite %u rects, full %u", (unsigned)nlite, (unsigned)nfull);
 }
 
+/* (G2-CO, the choir experiment) singers at a % of their size: each one is its chibi's nearest-neighbour copy at
+ * that size (made once per picture), the frame changes, the same frame comes again from the kept copies, and a new
+ * size makes them again; 100 % (or no buffer) is the full-size choir */
+TEST(concert_choir_singers_drawn_smaller)
+{
+    static ConcertCast cast;
+    static ChoirMini minis[CHOIR_MINI_N];
+    static uint8_t full[240 * 160], small[240 * 160];
+    static const int pcts[4] = { 85, 75, 66, 50 };
+    StageView v;
+    StageLayout L;
+    int i, k, ok = 1;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    nat_w = 240; nat_h = 160;
+    portrait_cache_reset();
+    memset(&v, 0, sizeof(v));
+    concert_cast_make(&cast, 3, CMODE_CHOIR, 12, CHOIR_RISERS);
+    v.cast = &cast;
+    v.t = 400;
+    concert_layout(&L);
+    memset(nat_fb, 0, sizeof(full));
+    concert_draw_performers(&v, &L);
+    memcpy(full, nat_fb, sizeof(full));
+    v.choir_pct = 75;                                        /* no buffer: full size */
+    memset(nat_fb, 0, sizeof(full));
+    concert_draw_performers(&v, &L);
+    CHECK(memcmp(full, nat_fb, sizeof(full)) == 0);
+    v.minis = minis;
+    memset(minis, 0, sizeof(minis));
+    for (k = 0; k < 4; k++) {
+        int w = (16 * pcts[k] + 50) / 100, h = (24 * pcts[k] + 50) / 100;
+        v.choir_pct = pcts[k];
+        memset(nat_fb, 0, sizeof(full));
+        concert_draw_performers(&v, &L);
+        memcpy(small, nat_fb, sizeof(small));
+        if (memcmp(full, small, sizeof(full)) == 0) ok = 0;
+        for (i = 0; i < cast.n; i++) {
+            const DoomoImage *img = bodyspr_image(cast.ids[i], 0, 0);
+            int x, y;
+            if (!img || minis[i].w != w || minis[i].h != h) { ok = 0; continue; }
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++)
+                    if (minis[i].pix[y * w + x] != img->pix[((2 * y + 1) * 24 / (2 * h)) * 16 + (2 * x + 1) * 16 / (2 * w)])
+                        ok = 0;
+        }
+        memset(nat_fb, 0, sizeof(full));                    /* again, from the kept copies */
+        concert_draw_performers(&v, &L);
+        if (memcmp(small, nat_fb, sizeof(small)) != 0) ok = 0;
+    }
+    CHECK(ok);
+    portrait_cache_reset();
+}
+
 /* (G2-CO) the baker's keys are every key a view can ask for */
 TEST(concert_stage_keys_cover_every_view)
 {

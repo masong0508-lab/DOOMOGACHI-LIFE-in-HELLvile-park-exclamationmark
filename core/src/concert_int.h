@@ -232,7 +232,17 @@ typedef struct StageView {
     int16_t crowd[CROWD_MAX]; /* resident ids (-1 = anonymous silhouette)  */
     int ncrowd;
     int lite;                 /* (G2-CO) CLITE_* trades of the GBA, 0 elsewhere */
+    int choir_pct;            /* (G2-CO) the choir's singers at this % of their size (0 / 100: full; 240x160) */
+    struct ChoirMini *minis;  /* (G2-CO) where the smaller singers are kept (NULL: full size) */
 } StageView;
+/* (G2-CO) a choir singer drawn smaller: a nearest-neighbour copy of the chibi, made again only when its picture
+ * (the image uid) or the size changes. One a choir slot, in the concert's scene scratch (none on the PS1). */
+typedef struct ChoirMini {
+    uint32_t key;
+    uint8_t w, h, pad[2];
+    uint8_t pix[BODYSPR_W * BODYSPR_H];
+} ChoirMini;
+#define CHOIR_MINI_N SONG_SINGERS
 /* (G2-CO) the owner's approved trades for the GBA (docs/GBA.md "G2-CO"; OWNER_DECISIONS 2026-11-13): the scene
  * sets them on the GBA only, so the PS1, the Dreamcast and the native goldens draw the full stage.
  *   CLITE_FLAMES  the flame wall in 6 wider flames of 4-row bars (9 flames of 2-row bars) */
