@@ -858,3 +858,28 @@ TEST(quest_kid_sessions)
     CHECK_MSG(raised > 20, "only %d kid-room requests in 600 sessions", raised);
     CHECK(saw_toy > 0);
 }
+
+/* a yes or no later in the talk, on another topic, does not answer a request that is no longer on the table */
+TEST(quest_stray_yes_no_ignored)
+{
+    TalkState s;
+    TalkOutcome out;
+    int giver, a;
+    premade_town();
+    CHECK(open_en());
+    people();
+    giver = adults[6];
+    for (a = 0; a < 3; a++) {
+        static const int acts[3] = { TA_AGREE, TA_NO, TA_DISAGREE };
+        CHECK(raise(&s, giver, 0, 0x7000u + (uint32_t)a * 977u));
+        say(&s, TA_TELL);                                   /* the player ignores the request */
+        say(&s, acts[a]);
+        CHECK_EQ(st_ev(&s, TEV_QUEST_ACCEPT), 0);
+        CHECK_EQ(st_ev(&s, TEV_QUEST_DECLINE), 0);
+        memset(&out, 0, sizeof out);
+        talk_outcome_end(&s, &out, NULL);
+        CHECK_EQ(out.quests_new, 0);
+        CHECK_EQ(out.quests_declined, 0);
+        talk_mem_quest_set(giver, 0, 0, 0, 0);
+    }
+}

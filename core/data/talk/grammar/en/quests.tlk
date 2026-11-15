@@ -116,7 +116,7 @@
 # ---- done: handing it in --------------------------------------------------------------------------------------
 @rule quest.done.fetch guard: qphase=done&qkind=fetch act: tell
   "Is that {item:indef}? You legend. Thank you so much!"
-  "You brought {item:indef}! I could hug you. Is that allowed?"
+  "You brought {item:indef}! You absolute star."
 @rule quest.done.toy guard: qphase=done&qkind=toy act: tell
   "You found one! Thank you, thank you, thank you!"
   "Yay! {item:indef}! You're the best friend ever!"

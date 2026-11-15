@@ -360,7 +360,7 @@ int talk_quest_open_count(void)
     for (i = 0; i < talk_mem_count(); i++) {
         const TalkMem *e = talk_mem_at(i);
         int st = 0;
-        if (e && talk_mem_quest_get(e->id, NULL, &st, NULL, NULL) && (st == TQS_ACTIVE || st == TQS_READY)) n++;
+        if (e && alive_slot(e->id) && talk_mem_quest_get(e->id, NULL, &st, NULL, NULL) && (st == TQS_ACTIVE || st == TQS_READY)) n++;
     }
     return n;
 }
@@ -523,7 +523,7 @@ int talk_quest_log_count(void)
     for (i = 0; i < talk_mem_count() && n < TALK_QUEST_LOG_MAX; i++) {
         const TalkMem *e = talk_mem_at(i);
         int st = 0;
-        if (e && talk_mem_quest_get(e->id, NULL, &st, NULL, NULL) && (st == TQS_ACTIVE || st == TQS_READY)) n++;
+        if (e && alive_slot(e->id) && talk_mem_quest_get(e->id, NULL, &st, NULL, NULL) && (st == TQS_ACTIVE || st == TQS_READY)) n++;
     }
     return n;
 }
@@ -535,7 +535,7 @@ int talk_quest_log_row(int i, TalkQuestRow *out)
     for (k = 0; k < talk_mem_count(); k++) {
         const TalkMem *e = talk_mem_at(k);
         int kind, st, days, bonus;
-        if (!e || !talk_mem_quest_get(e->id, &kind, &st, &days, &bonus) || (st != TQS_ACTIVE && st != TQS_READY)) continue;
+        if (!e || !alive_slot(e->id) || !talk_mem_quest_get(e->id, &kind, &st, &days, &bonus) || (st != TQS_ACTIVE && st != TQS_READY)) continue;
         if (n++ != i) continue;
         memset(out, 0, sizeof *out);
         out->giver = (int16_t)e->id;

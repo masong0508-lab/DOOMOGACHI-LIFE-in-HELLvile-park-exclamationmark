@@ -436,10 +436,10 @@ static void quest_after(TalkState *s, int who, const TalkLine *L)
 }
 
 /* the player answered a request on the table: the phase the giver's line has (accept, decline, haggle, ask more), or 0 */
-static int quest_phase_for(TalkState *s, int act, DoomoRng *rng, int *kind, int *slot)
+static int quest_phase_for(TalkState *s, int was_asked, int act, DoomoRng *rng, int *kind, int *slot)
 {
     int qr, ph;
-    if (!s->q_kind || (s->q_st & TQ_ST_CLOSED)) return 0;
+    if (!was_asked || !s->q_kind || (s->q_st & TQ_ST_CLOSED)) return 0;   /* only the turn right after the request answers it */
     qr = talk_quest_reply_class(act);
     if (!qr) return 0;
     *kind = s->q_kind;
@@ -1156,11 +1156,12 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
     DoomoRng rng;
-    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0;
+    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked;
     if (!s || !u) return TG_PASS;
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
     if (s->flags & TDF_OVER) return TG_PASS;
+    q_was_asked = (s->q_st & TQ_ST_ASKED) != 0;
     s->q_st &= (uint8_t)~TQ_ST_ASKED;                       /* TQ: the request's quick replies last one turn */
     s->in = *u;
     for (k = 0; k < s->nparts; k++)
@@ -1224,7 +1225,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
 
     /* ---- the utterance stood ---- */
     {                                                       /* TQ: an answer to the request on the table: the giver answers it */
-        int qk = 0, qs = 0, ph = quest_phase_for(s, act, &rng, &qk, &qs);
+        int qk = 0, qs = 0, ph = quest_phase_for(s, q_was_asked, act, &rng, &qk, &qs);
         if (ph) {
             s->plan[0].kind = DK_QUEST;
             s->plan[0].who = (int8_t)qs;
