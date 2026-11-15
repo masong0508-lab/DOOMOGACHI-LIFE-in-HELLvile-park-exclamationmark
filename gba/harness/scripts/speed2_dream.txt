@@ -1,9 +1,16 @@
-# speed2_dream.txt - speed tour 2 (SA2): the dreams (SCENE_DREAM, concert_int.h args; the
-# window rules are in speed2_fair.txt). Nana Puddin's dream (-2: the night bedroom, the thought
-# bubble, the first vignette cute then its twist, the second vignette) and Vex's forced
-# nightmare (-3666: the red turn and the wake-up choice).
-# S2-4d: every window holds 30 on the GBA; each closes with expect-fps 29.5 and expect-gap 34 (no frame over two
-# vblanks). The bedroom held 30 before; its floor keeps it there.
+# speed2_dream.txt - speed tour 2 (SA2): the dreams (SCENE_DREAM, concert_int.h args; the window rules are in
+# speed2_fair.txt). Three dreams, every vignette in a window (dream.c timing after the press: the bubble 46 ticks,
+# each vignette 180, each wipe 18):
+#   Nana Puddin's dream (-2): the night bedroom, the thought bubble, Endless Doors (cute, then its twist), Wobbly
+#   Teeth, The Mirror;
+#   Vex's forced nightmare (-3666): Falling Up, Endless Doors, Snack Rain (cute, then red) and the wake-up choice;
+#   Stitchwick's dream (-3): Endless Doors, The Giant Plush, Cloud Concert.
+# S2-4d: each window closes with expect-fps and expect-gap. A window that holds 30 on the GBA has expect-fps 29.5 and
+# expect-gap 34 (no frame over two vblanks). The spots S2-4d left open (docs/GBA.md "Speed wave 2: S2-4d", "Left")
+# have floors at their measured level instead, so they cannot get worse unseen: the wake-up choice's first frame
+# (one 117 ms frame) and The Giant Plush (about 24 fps; its first frame, the figure drawn, 117 ms). The window over
+# The Mirror ends before the unlock toast that slides in near its end on this run (a toast costs ~5 ms of a GBA frame
+# wherever it shows: open too).
 wait 40
 expect-log doomo: init
 sync on 61
@@ -19,52 +26,85 @@ shot dream_bedroom
 press A
 wait 2
 fps start
-wait 60
+wait 40
 expect-fps 29.5 dream: thought bubble
 expect-gap 34
 shot dream_bubble
 wait 10
 fps start
-wait 110
+wait 84
 expect-fps 29.5 dream: vignette 1 cute
 expect-gap 34
 shot dream_v1_cute
 fps start
-wait 100
+wait 86
 expect-fps 29.5 dream: vignette 1 twist
 expect-gap 34
 shot dream_v1_twist
+wait 30
 fps start
-wait 130
+wait 168
 expect-fps 29.5 dream: vignette 2
 expect-gap 34
 shot dream_v2
+wait 30
+fps start
+wait 140
+expect-fps 29.5 dream: vignette 3 (the mirror)
+expect-gap 34
+shot dream_v3_mirror
 
 seed 1
 scene DREAM -3666
 wait 20
 press A
-wait 120
+wait 50
 fps start
-wait 130
+wait 172
 expect-fps 29.5 dream: nightmare vignette 1
 expect-gap 34
 shot dream_nm_v1
-wait 190
+wait 26
 fps start
-wait 130
+wait 172
 expect-fps 29.5 dream: nightmare vignette 2
 expect-gap 34
 shot dream_nm_v2
-wait 100
+wait 26
 fps start
-wait 100
+wait 172
 expect-fps 29.5 dream: nightmare vignette 3 (cute, then red)
 expect-gap 34
 shot dream_nm_v3
-wait 60
+fps start
+wait 8
+expect-fps 20 dream: wake-up choice entry (open: one 117 ms frame)
+expect-gap 120
 fps start
 wait 60
 expect-fps 29.5 dream: wake-up choice
 expect-gap 34
 shot dream_nm_choice
+
+seed 1
+scene DREAM -3
+wait 20
+press A
+wait 50
+fps start
+wait 172
+expect-fps 29.5 dream: plush dream vignette 1
+expect-gap 34
+shot dream_p_v1
+wait 8
+fps start
+wait 190
+expect-fps 20 dream: the giant plush (open: about 24 fps, its first frame 117 ms)
+expect-gap 120
+shot dream_p_plush
+wait 26
+fps start
+wait 172
+expect-fps 29.5 dream: plush dream vignette 3
+expect-gap 34
+shot dream_p_v3
