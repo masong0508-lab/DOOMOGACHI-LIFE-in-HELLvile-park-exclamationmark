@@ -885,6 +885,10 @@ TEST(talk_dm_care_after_distress)
         for (turns = 0; turns < TALK_CARE_TURNS; turns++) turn(&s, TA_COMFORT, TC_NONE, 0, NULL);
         CHECK_EQ(s.care_left, 0);
         CHECK(!(s.flags & TDF_CARE));
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(s.conv.care);                                  /* the last care turn is still marked ...  */
+        talk_dm_tick(&s, 100000);
+        CHECK(!s.conv.care);                                 /* ... but an idle line after it is ordinary (review 1) */
         n = turn(&s, TA_JOKE, TC_NONE, 0, NULL);
         CHECK(n >= 1);
         CHECK(!s.conv.care);

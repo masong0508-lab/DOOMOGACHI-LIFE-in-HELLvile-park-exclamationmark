@@ -1103,6 +1103,7 @@ int talk_dm_tick(TalkState *s, int frames)
     if (!s || (s->flags & TDF_OVER) || frames <= 0) return 0;
     if (s->nplan > s->plan_at && s->nlines < TALK_EXCHANGE_MAX) return 0;      /* lines are still playing */
     if (s->care_left) return 0;                                 /* K-11: no idle banter while the care window is open */
+    s->conv.care = 0;                                           /* the window is over: an idle line is ordinary */
     if ((int)s->idle_frames + frames > 65000) s->idle_frames = 65000; else s->idle_frames = (uint16_t)(s->idle_frames + frames);
     if (s->idle_frames < TALK_IDLE_FRAMES) return 0;
     s->idle_frames = 0;

@@ -1033,7 +1033,7 @@ callback, tag or hand-off), as it does for a grief topic; (2) `react_line` makes
 answer and nothing else: no beat line, argument step, walk-out, reaction or hand-off ("anything else on your mind?"); (4) the
 pet never answers when someone else can; (5) `talk_dm_tick` makes no idle chatter or prod while the window is open. A new
 distress line or grief answer renews it; a grief answer inside the window does not (the window ends). It ends after the four
-turns, when the player says goodbye or leaves (the state is gone). Bytes: `TalkState` stays 940 B and `TalkConv` 128 B (the
+turns, when the player says goodbye or leaves (the state is gone). `talk_dm_tick` clears `TalkConv.care` once the window is shut, so an idle line right after the last care turn is ordinary (review finding, tested). Bytes: `TalkState` stays 940 B and `TalkConv` 128 B (the
 new `care` and `care_left` bytes took padding), 0 resident bytes on any port (talk is not linked on PS1). Tests, each of which
 fails without the fix: `talk_dm_care_after_distress` (all 17 cast voices x 12 kind or playful acts x 3 seeds x alone / two
 residents x the four turns = 4,896 answers: one sincere line, no joke act, window shows and then closes, no idle chat, renewal),
