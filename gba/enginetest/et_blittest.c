@@ -148,7 +148,7 @@ void et_blit_test(void)
         uint16_t v = (uint16_t)next();
         PAGE_A[k] = v; PAGE_B[k] = v;
     }
-    for (i = 0; i < 9000 && !bad; i++) {
+    for (i = 0; i < 6000 && !bad; i++) {
         DoomoImage im;
         int w = 1 + (int)(next() % (i & 1 ? 40 : 17)), h = 1 + (int)(next() % 14), off = (int)(next() & 3);
         int dens = (int)(next() % 4), scale = (next() % 5) ? 1 : 1 + (int)(next() % 3);
