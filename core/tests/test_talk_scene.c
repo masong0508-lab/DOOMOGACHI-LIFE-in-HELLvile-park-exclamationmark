@@ -156,7 +156,12 @@ TEST(talk_scene_saying_goodbye_ends_with_a_clean_toast)
     CHECK(!talk_scene_debug(&d));                          /* the talk is over */
     for (k = 0; ui_toast_text(k); k++) {
         const char *t = ui_toast_text(k);
-        if (strstr(t, "Bond")) found = 1;
+        const char *b = strstr(t, "Bond ");
+        if (b) {                                           /* the sign is printed by hand: "+2", "-1" or "0" */
+            found = 1;
+            CHECK(b[5] == '+' || b[5] == '-' || b[5] == '0');
+            CHECK(b[5] == '0' || (b[6] >= '0' && b[6] <= '9'));
+        }
         CHECK(strchr(t, '%') == NULL);                     /* "Bond %+d" once leaked through: the game's snprintf has no "%+d" */
     }
     CHECK(found);
