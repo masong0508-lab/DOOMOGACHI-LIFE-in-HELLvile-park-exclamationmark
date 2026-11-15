@@ -20,7 +20,8 @@ wait 20
 expect-scene TITLE
 # 1. the house visit: walk up to the host and press A. Since 2a54b72 the resident opens
 # the talk with two lines (four A's: each line types out, then pages); the goodbye box
-# then takes three A's (a fourth would be a new Talk with the host)
+# then takes four A's (GBA-500: the GBA's town of 500 gives the host a two-line goodbye,
+# "I'm out of words. / I'll buy more tomorrow."; it was three A's with 1000)
 push HOME 3
 wait 60
 shot visit_house

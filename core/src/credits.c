@@ -12,7 +12,13 @@
 #include "overworld_int.h"
 #include "story_ch34.h"   /* S3: the parade's Chapter 3-4 touches (story_sprites.c) */
 
-#define RANKS 500
+#define RANKS DOOMO_LIVE_PER_DISTRICT /* 500 ranks of two (GBA-500: 250 on the GBA)  */
+/* the marcher of rank r on side d: id d * 500 + r; (GBA-500) the side's r-th slot, -1 if free */
+#if DOOMO_RES_SLOTS
+#define CR_ID(d, r) town_slot_id((d) * DOOMO_LIVE_PER_DISTRICT + (r))
+#else
+#define CR_ID(d, r) ((d) * DOOMO_DISTRICT_SIZE + (r))
+#endif
 #define RANK_TICKS 11                 /* a new pair every 11 ticks          */
 #define MARCH_SPEED 6                 /* world units per tick               */
 #define ROAD_Y (47 * DOOMO_CELL_UNITS + 40)
@@ -188,8 +194,8 @@ static void build(void)
     for (r = first; r <= last; r++) {
         int32_t x = rank_x(r);
         if (x < 0 || x > END_X || x < vx0 || x > vx1) continue;
-        marcher(r, x, ROAD_Y - 14, ct);
-        marcher(DOOMO_DISTRICT_SIZE + r, x - 8, ROAD_Y + 14, ct);
+        marcher(CR_ID(0, r), x, ROAD_Y - 14, ct);
+        marcher(CR_ID(1, r), x - 8, ROAD_Y + 14, ct);
     }
     /* the cast cheers from the roadside */
     {
@@ -221,9 +227,9 @@ static void build(void)
         int32_t x = rank_x(r);
         if (x >= vx0) continue;                         /* in the range (asked above) or past it */
         {
-            const DoomoResident *a = town_res(r), *b = town_res(DOOMO_DISTRICT_SIZE + r);
-            if (a && a->status != RES_EMPTY && !bodyspr_image(r, 2, CR_POSE)) break;
-            if (b && b->status != RES_EMPTY && !bodyspr_image(DOOMO_DISTRICT_SIZE + r, 2, CR_POSE)) break;
+            const DoomoResident *a = town_res(CR_ID(0, r)), *b = town_res(CR_ID(1, r));
+            if (a && a->status != RES_EMPTY && !bodyspr_image(CR_ID(0, r), 2, CR_POSE)) break;
+            if (b && b->status != RES_EMPTY && !bodyspr_image(CR_ID(1, r), 2, CR_POSE)) break;
         }
         break;                                          /* one rank ahead */
     }
@@ -245,7 +251,7 @@ static void draw_ticker(int sw, int sh)
         return;
     }
     {
-        const DoomoResident *a = town_res(ticker_rank), *b = town_res(DOOMO_DISTRICT_SIZE + ticker_rank);
+        const DoomoResident *a = town_res(CR_ID(0, ticker_rank)), *b = town_res(CR_ID(1, ticker_rank));
         doomo_snprintf(buf, sizeof(buf), "%s " STR_ICON_HEART " %s",
                        (a && a->status != RES_EMPTY) ? a->name : "...",
                        (b && b->status != RES_EMPTY) ? b->name : "...");
@@ -253,7 +259,11 @@ static void draw_ticker(int sw, int sh)
     x = 10;
     plat_text(x, y + 1, STR_ICON_STAR, PAL_UI_GOLD);
     ui_text(x + 10, y + 1, buf, PAL_RAMP(RAMP_PASTEL_PINK, 1));
+#if DOOMO_RES_SLOTS
+    doomo_snprintf(buf, sizeof(buf), "%d/500", DOOMO_MIN(500, (ticker_rank + 1) * 2));     /* GBA-500 */
+#else
     doomo_snprintf(buf, sizeof(buf), "%d/1000", DOOMO_MIN(1000, (ticker_rank + 1) * 2));
+#endif
     ui_text(sw - 10 - ui_text_width(buf), y + 1, buf, PAL_GRAY_D);
 }
 
