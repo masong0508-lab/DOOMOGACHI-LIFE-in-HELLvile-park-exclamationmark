@@ -221,8 +221,9 @@ def table_dc(path):
             logic = 30.0 * ticks / want if ticks is not None else 0.0
             o33, o50 = len(works), sum(w > 50.0 for w in works)
             worst = "%.1f" % wworst if wworst is not None else "%.1f" % max(works) if works else "<33.3"
-            print("| %s | %.1f | %s | %s | %d | %d | %s | %s |" % (win, logic, "%.1f" % wmean if wmean is not None else "-",
-                                                            worst, o33, o50, "%.0f" % gap if gap is not None else "-",
+            mean = "%.1f" % wmean if wmean is not None else "-"
+            print("| %s | %.1f | %s | %s | %d | %d | %s | %s |" % (win, logic, mean, worst, o33, o50,
+                                                            "%.0f" % gap if gap is not None else "-",
                                                        # a tenth of the ticks over budget: the PVR frame
                                                        # is skipped that often (dcrun "game drew")
                                                        "MISS" if o33 * 10 >= want else verdict(logic, logic, o33)))
