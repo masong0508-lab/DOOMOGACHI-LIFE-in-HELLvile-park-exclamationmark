@@ -163,11 +163,10 @@ static union {
 static void send_prim(const DcFrame *f, const DcPrim *p, const DcPrim *last)
 {
     int sprite = dc2d_is_sprite(p);
-    uint32_t argb = dc2d_prim_argb(f, p);
     if (!last || !dc2d_same_header(f, last, p)) {
         compile(f, p, sprite);
         hdr_out = hdr_base;
-        if (sprite) hdr_out.argb = argb;
+        if (sprite) hdr_out.argb = dc2d_prim_argb(f, p);      /* (a sprite's colour is in its header) */
         pvr_prim(&hdr_out, sizeof(hdr_out));
     }
     if (sprite && p->tex == DC2D_NOTEX) {
@@ -193,6 +192,7 @@ static void send_prim(const DcFrame *f, const DcPrim *p, const DcPrim *last)
         pvr_prim(s, sizeof(*s));
     } else {
         pvr_vertex_t *v = vbuf.v;
+        uint32_t argb = dc2d_prim_argb(f, p);
         int i;
         for (i = 0; i < 4; i++) {
             v[i].flags = i == 3 ? PVR_CMD_VERTEX_EOL : PVR_CMD_VERTEX;

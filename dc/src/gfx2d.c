@@ -437,6 +437,7 @@ int DC2D_FN(hold_frame)(int on)
 #define STAGE_VARS  4                    /* + shaded copies of a canvas (full-screen shades) */
 #define STAGE_POOL  (STAGE_SLOTS + STAGE_VARS)
 #define STAGE_MARK  0x5Au
+#define STAGE_VAR_AREA 12000             /* logical pixels of a shade that gets a shaded copy */
 typedef struct StageEnt {
     uint32_t key, used;          /* used: frame of the last use (0: free)           */
     uint32_t uid;                /* the canvas texture's image uid                  */
@@ -678,7 +679,11 @@ static int reemit(const DcPrim *p, float X0, float Y0, float X1, float Y1, int l
     if (p->x1 <= X0 || p->x0 >= X1 || p->y1 <= Y0 || p->y0 >= Y1) return 1;
     dc2d_stats.shade_prims++;
     if (p->mode == DC2D_IMAGE && p->pad[0] == STAGE_MARK) {     /* DC9B: the kept backdrop's canvas */
-        vi = stage_variant(p, level);                  /* its shaded copy: the same prim over it */
+        /* a big shade: the prim again over a shaded copy of its canvas (3.8 ms to upload, once per key and
+         * level); a small one: the canvas's solid runs under the rect (a few hundred prims) */
+        float w = (p->x1 < X1 ? p->x1 : X1) - (p->x0 > X0 ? p->x0 : X0);
+        float h = (p->y1 < Y1 ? p->y1 : Y1) - (p->y0 > Y0 ? p->y0 : Y0);
+        vi = w * h >= (float)(STAGE_VAR_AREA * DC2D_SCALE * DC2D_SCALE) ? stage_variant(p, level) : -1;
         if (vi >= 0) {
             DcPrim *u = emit(DC2D_SOLID);              /* (index 0 of a canvas is clear) */
             if (!u) return 0;

@@ -151,7 +151,13 @@ uint32_t dc2d_prim_argb(const DcFrame *f, const DcPrim *p)
 
 int dc2d_same_header(const DcFrame *f, const DcPrim *a, const DcPrim *b)
 {
-    int sa = dc2d_is_sprite(a), sb = dc2d_is_sprite(b);
+    int sa, sb;
+    if (a->mode == DC2D_SOLID && b->mode == DC2D_SOLID) {      /* DC9B: the common case first: two rects */
+        if ((a->flags ^ b->flags) & DC2D_PF_LERP) return 0;    /* (another palette bank)  */
+        if (a->color == b->color) return 1;
+        return dc2d_prim_argb(f, a) == dc2d_prim_argb(f, b);
+    }
+    sa = dc2d_is_sprite(a), sb = dc2d_is_sprite(b);
     if (a->mode != b->mode || a->tex != b->tex || sa != sb || dc2d_bank(f, a) != dc2d_bank(f, b))
         return 0;
     /* a sprite's colour is in its header; a polygon's is in its vertices */

@@ -486,6 +486,7 @@ static void stage_frame(uint32_t key, int shades)
     if (shades & 8) plat_rect(200, 150, 40, 30, 44);
     if (shades & 16) plat_shade_rect(0, 0, 320, 240, 8);
     if (shades & 32) plat_shade_rect(100, 120, 90, 50, 12);
+    if (shades & 128) plat_shade_rect(30, 30, 200, 100, 7);          /* big enough for a shaded copy */
     if (shades & 64) plat_image(190, 90, &stage_img, 2, IMG_SHADOW | IMG_FLIPX, 0);
     dc2d_stage_end();
     plat_end_frame();
@@ -509,13 +510,13 @@ static void test_stage(void)
     CHECK(dc2d_stats.stage_hits == h0 + 3, "stage: kept frames were not hits (%u)", (unsigned)(dc2d_stats.stage_hits - h0));
     CHECK(stage_draws == d0, "stage: draw(key) ran again for a kept key");
     CHECK(dc2d_last()->n <= 4, "stage: a kept backdrop is %d prims", dc2d_last()->n);
-    for (f = 1; f < 128; f++) {                              /* shades over it, in every mix: every one exact */
+    for (f = 1; f < 256; f++) {                              /* shades over it, in every mix: every one exact */
         stage_frame(1, f);
         { int me, bad = frame_diff(&me); CHECK(bad == 0, "stage: shades %d over a kept backdrop differ (%d px, max error %d)", f, bad, me); }
     }
-    stage_frame(2, 127);                                     /* another key, then back */
+    stage_frame(2, 255);                                     /* another key, then back */
     CHECK(frame_diff(NULL) == 0, "stage: another key differs");
-    stage_frame(1, 127);
+    stage_frame(1, 255);
     CHECK(frame_diff(NULL) == 0, "stage: the first key again differs");
     m0 = dc2d_stats.stage_misses; h0 = dc2d_stats.stage_hits; d0 = stage_draws;
     for (f = 0; f < 3; f++) {                               /* a backdrop that cannot be baked: drawn each tick, exact */
@@ -524,6 +525,43 @@ static void test_stage(void)
     }
     CHECK(dc2d_stats.stage_misses == m0 && dc2d_stats.stage_hits == h0, "stage: an unbakeable backdrop was counted as kept");
     CHECK(stage_draws == d0 + 4, "stage: an unbakeable backdrop drew %d times in 3 ticks (a try, then each tick)", stage_draws - d0);
+}
+
+
+/* ---- palette ARGB table and the header test (DC9B) ----------------------------------------------- */
+static uint32_t argb_of_1555_ref(uint16_t c)
+{
+    return (uint32_t)((c & 0x8000u) ? 0xFFu : 0u) << 24 | (uint32_t)x5to8((c >> 10) & 31) << 16 |
+           (uint32_t)x5to8((c >> 5) & 31) << 8 | (uint32_t)x5to8(c & 31);
+}
+
+static void test_header(void)
+{
+    DcFrame f;
+    DcPrim a, b;
+    int bank, i, j, bad = 0;
+    memset(&f, 0, sizeof(f));
+    f.lerp_bank = 2;
+    for (bank = 0; bank < 4; bank++) {
+        if (bank >= 2) dc2d_pal_lerp_build(bank, PAL_SEPIA, 9);     /* a bank built after init */
+        for (i = 0; i < 256; i++)
+            if (dc2d_pal_argb(bank, (uint8_t)i) != (0xFF000000u | argb_of_1555_ref(dc2d_pal_1555(bank, (uint8_t)i)))) bad++;
+    }
+    CHECK(bad == 0, "pal: %d ARGB table entries differ from their 1555 colour", bad);
+    memset(&a, 0, sizeof(a)); memset(&b, 0, sizeof(b));
+    a.mode = b.mode = DC2D_SOLID;
+    a.tex = b.tex = DC2D_NOTEX;
+    for (bad = 0, i = 0; i < 256; i += 3)
+        for (j = 0; j < 256; j += 5)
+            for (bank = 0; bank < 4; bank++) {              /* flags of a and b: lerp or not */
+                int want;
+                a.color = (uint8_t)i; b.color = (uint8_t)j;
+                a.flags = (bank & 1) ? DC2D_PF_LERP : 0; b.flags = (bank & 2) ? DC2D_PF_LERP : 0;
+                want = a.flags == b.flags &&
+                       dc2d_pal_argb(a.flags ? f.lerp_bank : 0, a.color) == dc2d_pal_argb(b.flags ? f.lerp_bank : 0, b.color);
+                if (dc2d_same_header(&f, &a, &b) != want) bad++;
+            }
+    CHECK(bad == 0, "header: %d rect pairs where same_header is not 'same bank and same colour'", bad);
 }
 
 /* ---- vertex budget ----------------------------------------------------------------------------------- */
@@ -594,6 +632,7 @@ int main(void)
     test_texcache();
     test_hold();
     test_stage();
+    test_header();
     test_budget();
     test_post();
     printf("dc2d tests: %d checks, %d failed\n", checks, fails);
