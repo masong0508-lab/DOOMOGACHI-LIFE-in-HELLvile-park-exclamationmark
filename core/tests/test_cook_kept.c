@@ -6,6 +6,7 @@
  * ticks with the same key must paint the same picture. */
 #include "test.h"
 #include "../src/fishcook_int.h"
+#include "doomo/lang.h"
 
 static void set_res(int w, int h)
 {
@@ -203,7 +204,8 @@ TEST(cook_kept_back_parts_box_and_key)
  * frame. One tour: the recipe book (every page, a jump, the counter and back), the buy popup,
  * a dish cooked by hand (late on every step: misses, a burnt bake, the result's buttons), the
  * bot cooking a bake, a fry, a simmer, a scorch and a second simmer, then the counter (cursor,
- * the dish list, serving, the reaction). Day and night, 240x160 and 320x240. */
+ * the dish list, serving, the reaction). Day and night, 240x160 and 320x240, and in Spanish
+ * (translated text is longer: the bubbles' typewriter and the boxes follow the translation). */
 #include "doomo/backdrop.h"
 #define KF_MAX 6400
 
@@ -257,7 +259,7 @@ static uint32_t kpad(const KPad *p, int f)
 
 static int kept_frames, full_frames;
 
-static int krun(uint32_t *out, int stage, int night, int upto)
+static int krun(uint32_t *out, int stage, int night, int lang, int upto)
 {
     int s, f, n = 0;
     nat_stage_on = stage;
@@ -278,6 +280,7 @@ static int krun(uint32_t *out, int stage, int night, int upto)
             ui_toast_clear();
         }
         doomo_town.minute = (uint16_t)(night ? 22 * 60 : 12 * 60);
+        doomo_town.opt[OPT_LANGUAGE] = (uint8_t)lang;
         if (s == 0) scene_push(&SCENE_COOKING, g->arg);
         else scene_set(&SCENE_COOKING, g->arg);
         for (f = 0; f < g->frames && n < KF_MAX && n < upto; f++) {
@@ -292,28 +295,29 @@ static int krun(uint32_t *out, int stage, int night, int upto)
         }
     }
     nat_stage_on = 0;
+    doomo_town.opt[OPT_LANGUAGE] = LANG_EN;
     return n;
 }
 
-static int kcompare(int w, int h, int night, int *kept)
+static int kcompare(int w, int h, int night, int lang, int *kept)
 {
     static uint32_t off[KF_MAX], on[KF_MAX];
     int n, f;
     set_res(w, h);
-    n = krun(off, 0, night, KF_MAX);
-    krun(on, 1, night, KF_MAX);
+    n = krun(off, 0, night, lang, KF_MAX);
+    krun(on, 1, night, lang, KF_MAX);
     *kept = kept_frames;
     for (f = 0; f < n; f++)
         if (off[f] != on[f]) {
             static uint8_t a[NAT_MAX_W * NAT_MAX_H];
             char m[300], path[600];
             int i, x0 = w, y0 = h, x1 = -1, y1 = -1, nd = 0;
-            krun(off, 0, night, f + 1);
+            krun(off, 0, night, lang, f + 1);
             memcpy(a, nat_fb, (size_t)(w * h));
-            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_off.png", test_tmp_dir, w, h);
+            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_lang%d_off.png", test_tmp_dir, w, h, lang);
             nat_png_write(path, nat_fb, w, h, 2);
-            krun(on, 1, night, f + 1);
-            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_on.png", test_tmp_dir, w, h);
+            krun(on, 1, night, lang, f + 1);
+            snprintf(path, sizeof(path), "%s/cook_kept_%dx%d_lang%d_on.png", test_tmp_dir, w, h, lang);
             nat_png_write(path, nat_fb, w, h, 2);
             for (i = 0; i < w * h; i++)
                 if (a[i] != nat_fb[i]) {
@@ -321,13 +325,13 @@ static int kcompare(int w, int h, int night, int *kept)
                     x0 = DOOMO_MIN(x0, i % w); x1 = DOOMO_MAX(x1, i % w);
                     y0 = DOOMO_MIN(y0, i / w); y1 = DOOMO_MAX(y1, i / w);
                 }
-            snprintf(m, sizeof(m), "kitchen %dx%d night %d: frame %d (state %d) differs with the stage on (%d px in %d,%d..%d,%d)",
-                     w, h, night, f, cook_scene_state(), nd, x0, y0, x1, y1);
+            snprintf(m, sizeof(m), "kitchen %dx%d night %d lang %d: frame %d (state %d) differs with the stage on (%d px in %d,%d..%d,%d)",
+                     w, h, night, lang, f, cook_scene_state(), nd, x0, y0, x1, y1);
             test_fail(__FILE__, __LINE__, m);
             return 0;
         }
-    printf("      kept kitchen %dx%d night %d: %d frames, %d over the kept picture, %d of them drawn in full\n", w, h, night, n,
-           *kept, full_frames);
+    printf("      kept kitchen %dx%d night %d lang %d: %d frames, %d over the kept picture, %d of them drawn in full\n", w, h,
+           night, lang, n, *kept, full_frames);
     if (full_frames * 8 > *kept) {
         test_fail(__FILE__, __LINE__, "the stage drew too many kitchen frames in full");
         return 0;
@@ -339,15 +343,26 @@ TEST(cook_kept_kitchen_is_pixel_identical)
 {
     int kept, n, asked;
     CHECK(stage_mem_bytes() <= 2048u);
-    n = kcompare(240, 160, 0, &kept);
+    n = kcompare(240, 160, 0, LANG_EN, &kept);
     CHECK(n > 0);
     /* every pose of Granny the tour drew from an image is one the GBA bakes (and some were) */
     CHECK_MSG(nat_cook_pose_unlisted(&asked) == 0, "%d of %d poses are not in cook_poses()", nat_cook_pose_unlisted(&asked), asked);
     CHECK_MSG(asked >= 40, "only %d poses drawn from images", asked);
     CHECK_MSG(kept > n / 3, "only %d of %d frames over the kept picture", kept, n);
-    CHECK(kcompare(240, 160, 1, &kept) > 0);
-    CHECK(kcompare(320, 240, 0, &kept) > 0);
-    CHECK(kcompare(320, 240, 1, &kept) > 0);
+    CHECK(kcompare(240, 160, 1, LANG_EN, &kept) > 0);
+    CHECK(kcompare(320, 240, 0, LANG_EN, &kept) > 0);
+    CHECK(kcompare(320, 240, 1, LANG_EN, &kept) > 0);
+    set_res(240, 160);
+}
+
+/* the same tour in Spanish (a shipped language): its text is longer than the English, so a box or
+ * a key taken from the English string misses pixels (the bubbles' typewriter, the step banner) */
+TEST(cook_kept_kitchen_spanish_is_pixel_identical)
+{
+    int kept;
+    CHECK(doomo_lang_info[LANG_ES].ready && doomo_lang_tables[LANG_ES]);
+    CHECK(kcompare(240, 160, 0, LANG_ES, &kept) > 0);
+    CHECK(kcompare(320, 240, 0, LANG_ES, &kept) > 0);
     set_res(240, 160);
 }
 

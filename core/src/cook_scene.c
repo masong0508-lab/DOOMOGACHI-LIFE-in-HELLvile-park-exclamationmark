@@ -758,9 +758,13 @@ static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int
 {
     int body[4], tail[4], n;
     uint32_t key;
+    const char *shown;
     if (!K.lpass) { fc_bubble(x, y, w, s, tx, ty, chars); return; }
-    n = (int)strlen(s);
-    key = kh_str((uint32_t)DOOMO_CLAMP(chars, 0, n + 1) << 8 ^ (uint32_t)(tx & 0xFF) << 16 ^ (uint32_t)ty, s);
+    /* the typewriter counts the characters of the text shown: the translation, which can be
+     * longer than the English (wrap_core: lang_tr) */
+    shown = lang_tr(s);
+    n = shown ? (int)strlen(shown) : 0;
+    key = kh_str((uint32_t)DOOMO_CLAMP(chars, 0, n + 1) << 8 ^ (uint32_t)(tx & 0xFF) << 16 ^ (uint32_t)ty, shown);
     if (!fc_bubble_boxes(x, y, w, s, tx, ty, body, tail)) {
         fc_bubble_box(x, y, w, s, tx, ty, body);
         if (L(id, body, key)) fc_bubble(x, y, w, s, tx, ty, chars);
@@ -1442,9 +1446,12 @@ static void draw_cooking(void)
         }
     }
     if (K.st == CS_INTRO) {
-        int sc = fc_big() ? 3 : 2, half = ui_text_big_width(step_name(K.step), sc) / 2 + 8;
+        /* step_banner centres the name by its popped width tw = W * s / 256 but draws it at full
+         * scale from s = 200 on: then its right edge reaches stage_x() + W * 312 / 512 + 2, so the
+         * box reaches W * 5 / 8 + 8 to the right (a long translated name) */
+        int sc = fc_big() ? 3 : 2, bw = ui_text_big_width(step_name(K.step), sc), half = bw / 2 + 8;
         b[0] = stage_x() - half; b[1] = counter_y() - (fc_big() ? 86 : 64);
-        b[2] = 2 * half; b[3] = (fc_big() ? 16 : 14) + 9 * sc + 6;
+        b[2] = half + bw * 5 / 8 + 8; b[3] = (fc_big() ? 16 : 14) + 9 * sc + 6;
         if (L(LC_BANNER, b, (uint32_t)ui_pop_scale(K.t) << 4 | K.step)) step_banner();
         bubble_layer(LC_BUBBLE, 4, fc_big() ? 30 : 24, stage_x() - (fc_big() ? 70 : 62), step_tip(), gran_x() + 8,
                      counter_y() - (fc_big() ? 44 : 34), K.t * 2);
