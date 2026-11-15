@@ -15,27 +15,29 @@
 
 #define LOOK_NO_COLOR 0xFF  /* e.g. hair_highlight = none */
 
+/* CR-SLIDERX: the 11 build sliders (height .. horn_size) are int8_t: a saved look holds 0..15, the look drawn under
+ * the cheat "Slider range" (portrait.h look_slider_range) can go a little either side. */
 typedef struct DoomoLook {
     uint8_t species;        /* SPECIES_*                        */
     uint8_t body;           /* BODY_*                           */
-    uint8_t height;         /* 0..15                            */
-    uint8_t build;          /* 0..15 skinny..chonky             */
+    int8_t  height;         /* 0..15                            */
+    int8_t  build;          /* 0..15 skinny..chonky             */
     uint8_t skin;           /* 0..7 natural, 8..39 paint        */
     uint8_t head_shape;     /* HEAD_*                           */
-    uint8_t head_size;      /* 0..15                            */
+    int8_t  head_size;      /* 0..15                            */
     uint8_t eye_style;      /* EYE_*                            */
     uint8_t eye_color;      /* paint                            */
-    uint8_t eye_size;       /* 0..15                            */
-    uint8_t eye_spacing;    /* 0..15                            */
-    uint8_t eye_height;     /* 0..15                            */
-    uint8_t eye_tilt;       /* 0..15, 8 = level                 */
+    int8_t  eye_size;       /* 0..15                            */
+    int8_t  eye_spacing;    /* 0..15                            */
+    int8_t  eye_height;     /* 0..15                            */
+    int8_t  eye_tilt;       /* 0..15, 8 = level                 */
     uint8_t eye_count;      /* 1..3 (yes, three)                */
     uint8_t brow_style;     /* BROW_*                           */
-    uint8_t brow_height;    /* 0..15                            */
+    int8_t  brow_height;    /* 0..15                            */
     uint8_t nose_style;     /* NOSE_*                           */
-    uint8_t nose_size;      /* 0..15                            */
+    int8_t  nose_size;      /* 0..15                            */
     uint8_t mouth_style;    /* MOUTH_*                          */
-    uint8_t mouth_size;     /* 0..15                            */
+    int8_t  mouth_size;     /* 0..15                            */
     uint8_t fangs;          /* 0..3                             */
     uint8_t hair_style;     /* HAIR_*                           */
     uint8_t hair_color;     /* paint                            */
@@ -44,7 +46,7 @@ typedef struct DoomoLook {
     uint8_t ears;           /* EARS_*                           */
     uint8_t horns;          /* HORNS_*                          */
     uint8_t horn_color;     /* paint                            */
-    uint8_t horn_size;      /* 0..15                            */
+    int8_t  horn_size;      /* 0..15                            */
     uint8_t tail;           /* TAIL_*                           */
     uint8_t wings;          /* WINGS_*                          */
     uint8_t halo;           /* HALO_*                           */

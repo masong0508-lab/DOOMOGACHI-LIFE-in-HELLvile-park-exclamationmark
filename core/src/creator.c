@@ -984,6 +984,7 @@ static void talk_update(void)
 static void view_of(const DoomoResident *r, DoomoLook *out, DoomoDeep *dout, const uint8_t *dd)
 {
     res_get_look(r, out);
+    if (LIFE_IS_ADULT(RES_STAGE(r))) look_slider_range(out);     /* CR-SLIDERX: the cheat's range, as the world draws a grown-up */
     *dout = doomo_deep_zero;
     look_gene_deep(r, LV_ALL, dout);
     if (dd) memcpy(dout->v + DF_POOL_FIRST, dd, DF_POOL_N);

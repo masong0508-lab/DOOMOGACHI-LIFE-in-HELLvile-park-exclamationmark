@@ -24,27 +24,38 @@
 #include "doomo/lang.h"
 #include "doomo/rng.h"
 #include "doomo/tips.h"
+#include "doomo/portrait.h"
 
 static const char *const v_off_on_[] = { "Off", "On" };
 static const char *const v_stick_[] = { "Turn", "Strafe" };
 static const char *const v_mature_[] = { "Off", "Censored", "On", "On + pack" };
+static const char *const v_srange_[] = { "x1", "x2", "x3", "x4" };
 
 const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
     /* OPT_MATURE */ { "Mature",  MATURE_LEVELS, MATURE_OFF, v_mature_, OPTPAGE_GAME },
     /* OPT_LOSS   */ { "Loss",    2, 1, v_off_on_, OPTPAGE_SIM },
     /* OPT_RUMBLE */ { "Rumble",  2, 1, v_off_on_, OPTPAGE_CONTROLS },
     /* OPT_TIPS   */ { "Tips",    2, 1, v_off_on_, OPTPAGE_GAME },
-    /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS }
+    /* OPT_STICK_MODE */ { "Stick", 2, STICK_TURN, v_stick_, OPTPAGE_CONTROLS },
+    /* OPT_SLIDER_RANGE */ { "Slider range", 4, 0, v_srange_, OPTPAGE_CHEATS }     /* (CR-SLIDERX) a cheat */
 };
 
 #define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
 static uint8_t s_opt2[STICK_IDX] = { MATURE_OFF, 1, 1, 1 };    /* the ids before OPT_STICK_MODE */
 /* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
  * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
-static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
-typedef char opt2_stick_is_the_last_id[OPT2_END == OPT_STICK_MODE + 1 ? 1 : -1];   /* a later id grows s_opt2 */
-static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
-static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
+static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1, srange : 2; } s_fl;   /* stick = OPT_STICK_MODE's value, srange = OPT_SLIDER_RANGE's (CR-SLIDERX: same byte, no EWRAM) */
+typedef char opt2_srange_is_the_last_id[OPT2_END == OPT_SLIDER_RANGE + 1 && OPT_SLIDER_RANGE == OPT_STICK_MODE + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+static int o2_load(int i)
+{
+    return i == STICK_IDX ? s_fl.stick : i == STICK_IDX + 1 ? s_fl.srange : s_opt2[i];
+}
+static void o2_store(int i, int v)
+{
+    if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;            /* anything else reads Turn */
+    else if (i == STICK_IDX + 1) s_fl.srange = (unsigned)v & 3u;   /* 0..3 (opt2_set clamps, a chunk byte is checked by the count) */
+    else s_opt2[i] = (uint8_t)v;
+}
 
 static int is_machine(int opt)
 {
@@ -56,6 +67,7 @@ static void apply2(int opt)
 {
     int v = o2_load(opt - OPT2_FIRST);
     if (opt == OPT_LOSS) family_loss_set(v);
+    if (opt == OPT_SLIDER_RANGE) look_slider_range_set(v + 1);      /* (CR-SLIDERX) x1..x4; drops the portraits drawn at the old range */
     if (opt == OPT_RUMBLE && !s_fl.quiet) plat_option_changed(opt, v);
 }
 
@@ -327,7 +339,7 @@ static int opt2_read(const uint8_t *src, uint32_t len, uint16_t version)
     }
     /* an older chunk is shorter: the world's options it does not carry (STKOPT) go to their defaults */
     for (; i < OPT2_COUNT; i++)
-        if (!is_machine(OPT2_FIRST + (int)i)) o2_store((int)i, doomo_option2_info[i].def);
+        if (!is_machine(OPT2_FIRST + (int)i)) { o2_store((int)i, doomo_option2_info[i].def); apply2(OPT2_FIRST + (int)i); }
     return 1;
 }
 
@@ -337,6 +349,8 @@ static void opt2_reset(void)
     o2_store(OPT_LOSS - OPT2_FIRST, doomo_option2_info[OPT_LOSS - OPT2_FIRST].def);
     apply2(OPT_LOSS);
     o2_store(STICK_IDX, STICK_TURN);
+    o2_store(OPT_SLIDER_RANGE - OPT2_FIRST, 0);                  /* CR-SLIDERX: an old save reads x1 */
+    apply2(OPT_SLIDER_RANGE);
     if (!have_config()) {
         o2_store(OPT_MATURE - OPT2_FIRST, MATURE_OFF);
         o2_store(OPT_RUMBLE - OPT2_FIRST, 1);

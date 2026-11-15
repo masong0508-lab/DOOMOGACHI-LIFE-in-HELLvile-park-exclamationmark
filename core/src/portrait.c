@@ -38,6 +38,19 @@ static void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status,
 
 /* ====================================================================== */
 /* context                                                                 */
+/* the 11 build sliders: a saved look holds 0..15 and anything past is 15 (as it always was); under the cheat
+ * "Slider range" (look_slider_range) a look to draw holds a little either side, each slider within its own safe range */
+static void sanitize_sliders(DoomoLook *l)
+{
+    uint8_t *b = (uint8_t *)l;
+    int i, wide = look_slider_range_get() > 1;
+    for (i = 0; i < LOOK_SLIDERS; i++) {
+        const LookSlider *s = &look_sliders[i];
+        if (wide) b[s->off] = (uint8_t)(int8_t)DOOMO_CLAMP((int8_t)b[s->off], s->lo, s->hi);
+        else if (b[s->off] > 15) b[s->off] = 15;
+    }
+}
+
 static void sanitize(DoomoLook *l)
 {
 #define FIXE(f, n) if (l->f >= (n)) l->f = 0
@@ -60,10 +73,8 @@ static void sanitize(DoomoLook *l)
     FIXP(hat, HAT_COUNT, GF_HAT); FIXP(accessory, ACC_COUNT, GF_ACCESSORY); FIXP(aura, AURA_COUNT, GF_AURA);
     FIXE(pattern, PATTERN_COUNT);
     l->head_size += pb_body_head[l->body];                      /* CR-BODY: the body's head size step, once */
-    FIXS(height, 15); FIXS(build, 15); FIXS(head_size, 15); FIXS(eye_size, 15);
-    FIXS(eye_spacing, 15); FIXS(eye_height, 15); FIXS(eye_tilt, 15);
-    FIXS(brow_height, 15); FIXS(nose_size, 15); FIXS(mouth_size, 15);
-    FIXS(fangs, 3); FIXS(horn_size, 15);
+    sanitize_sliders(l);
+    FIXS(fangs, 3);
     if (l->eye_count < 1) l->eye_count = 1;
     if (l->eye_count > 3) l->eye_count = 3;
     if (l->skin >= 8 + PAL_PAINT_COUNT) l->skin = SKIN_FAIR;
@@ -1557,6 +1568,12 @@ typedef struct BodyLH {
     uint8_t  seen;                  /* S2-7: the low byte of the tick it was last used (in the struct's padding) */
 } BodyLH;
 static BodyLH blh[BLH_N];
+
+void portrait_slider_range_changed(void)          /* CR-SLIDERX: the memoised hashes were of the old range's looks */
+{
+    int i;
+    for (i = 0; i < BLH_N; i++) blh[i].ok = 0;
+}
 
 /* V11 (docs/INVADED_SPEED.md): a body the cache does not have is ~20 ms of one frame on the GBA, and the invaded
  * map asks for one every few seconds (a citizen turning to a facing it has not shown yet). With bodyspr_lazy(1)

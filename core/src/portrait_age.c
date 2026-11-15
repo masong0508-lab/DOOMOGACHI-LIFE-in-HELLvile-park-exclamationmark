@@ -25,6 +25,42 @@
 #include "doomo/resident.h"
 #include "doomo/part_meta.h"
 
+/* CR-SLIDERX: the cheat "Slider range" (portrait.h). One row per build slider, in creator_data.c CR_SLIDERS' order:
+ * the DoomoLook byte, the slider's default (test_cr_sliderx.c checks both against CR_SLIDERS) and the range the
+ * renderers draw safely (every formula in portrait*.c stays positive and inside the picture's own clip: the
+ * low ends are where a size reaches 0 or a width would turn negative, the high ends where a part leaves the head). */
+#define LS(f, d, lo, hi) { (uint8_t)offsetof(DoomoLook, f), d, lo, hi }
+const LookSlider look_sliders[LOOK_SLIDERS] = {
+    LS(height, 7, -14, 29), LS(build, 8, -6, 27), LS(head_size, 11, -8, 27), LS(eye_size, 10, -6, 27),
+    LS(eye_spacing, 7, -8, 27), LS(eye_height, 8, -10, 27), LS(eye_tilt, 8, -8, 23), LS(brow_height, 7, -10, 22),
+    LS(nose_size, 6, -2, 27), LS(mouth_size, 6, -2, 27), LS(horn_size, 7, -10, 27)
+};
+static uint8_t s_mult = 1;
+
+void look_slider_range_set(int m)
+{
+    if (m < 1 || m > 4) m = 1;
+    if (m == s_mult) return;
+    s_mult = (uint8_t)m;
+    portrait_slider_range_changed();
+}
+
+int look_slider_range_get(void) { return s_mult; }
+
+void look_slider_range(DoomoLook *l)
+{
+    uint8_t *b = (uint8_t *)l;
+    int i;
+    if (!l || s_mult <= 1) return;
+    for (i = 0; i < LOOK_SLIDERS; i++) {
+        const LookSlider *s = &look_sliders[i];
+        int v = b[s->off], e;
+        if (v > 15) v = 15;
+        e = s->def + (v - s->def) * s_mult;
+        b[s->off] = (uint8_t)(int8_t)DOOMO_CLAMP(e, s->lo, s->hi);
+    }
+}
+
 #define AGE_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define AGE_MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -82,6 +118,7 @@ void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out)
     /* CR12: a minor is never drawn in a part above their stage (catalog age class), whoever
      * made the look: the part is drawn as the slot's default. A no-op for adults and elders. */
     part_age_filter_look(out, stage);
+    if (LIFE_IS_ADULT(stage)) look_slider_range(out);        /* CR-SLIDERX: grown-ups only, never a minor */
 }
 
 const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, int expr)

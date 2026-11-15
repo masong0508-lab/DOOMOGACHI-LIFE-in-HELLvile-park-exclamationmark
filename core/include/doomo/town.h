@@ -152,6 +152,7 @@ enum {
     OPT_RUMBLE,               /* controller rumble, apart from Screen shake: 0 off, 1 on; machine-wide */
     OPT_TIPS,                 /* (CL4) first-time tip cards (tips.h): 0 off, 1 on; machine-wide */
     OPT_STICK_MODE,           /* (STKOPT) Dreamcast one-stick: 0 Turn (stick X turns, triggers strafe), 1 Strafe (X strafes, triggers turn); saved with the world */
+    OPT_SLIDER_RANGE,         /* (CR-SLIDERX) cheat "Slider range": 0 x1, 1 x2, 2 x3, 3 x4 (portrait.h look_slider_range); saved with the world, an old save reads x1 */
     OPT2_END
 };
 enum { STICK_TURN = 0, STICK_STRAFE = 1 };

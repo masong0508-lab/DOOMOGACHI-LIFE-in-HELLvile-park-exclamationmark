@@ -187,6 +187,7 @@ static const char *help_of(int opt)
 #if DOOMO_TRIGGERS                       /* the row only shows on a one-stick Dreamcast pad: no byte on the PS1 / GBA */
     if (opt == OPT_STICK_MODE) return "Controls: Auto only. Turn: stick X turns, L / R strafe. Strafe: stick X strafes, L / R turn.";
 #endif
+    if (opt == OPT_SLIDER_RANGE) return "Cheat: grown-ups' build sliders go x2, x3 or x4 as far. Saved looks never change; x1 is normal.";
     if (opt == OPT_TIPS) return "A short card the first time you reach a new place: what it is and which buttons do what.";
     if (opt == OPT_MATURE)
         /* (CL5 land) three lines at 240x160 (it took five, and the help pill shows three) */

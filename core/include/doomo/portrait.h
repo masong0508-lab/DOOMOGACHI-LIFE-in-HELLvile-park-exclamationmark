@@ -218,4 +218,18 @@ const DoomoImage *portrait_pool_big(uint32_t key, int w, int h, int *fresh);
 void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out);
 const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, int expr);
 
+/* ---- CR-SLIDERX: the cheat "Slider range x1 / x2 / x3 / x4" (OPT_SLIDER_RANGE) ------------------------
+ * The saved look never changes (its sliders stay 0..15, so a look made at x3 is the same look at x1). The
+ * cheat acts on the look to DRAW, for grown-ups only (look_for_stage, and the creator's preview of a draft):
+ * each of the 11 build sliders (look_sliders[], same table as creator_data.c CR_SLIDERS) goes
+ * def + (value - def) * m, then is clamped to the range its renderers draw safely, which is wider than 0..15
+ * (the DoomoLook fields are signed for it). m = 1 changes nothing, bit for bit. Minors are never scaled.
+ * look_slider_range_set drops the cached portraits (their keys do not know the range) when m changes. */
+void look_slider_range_set(int m);               /* 1..4; anything else is 1 */
+int  look_slider_range_get(void);
+void look_slider_range(DoomoLook *l);            /* in place; l's sliders are the saved 0..15 */
+typedef struct LookSlider { uint8_t off; int8_t def, lo, hi; } LookSlider;   /* DoomoLook byte, default, safe range */
+extern const LookSlider look_sliders[];
+#define LOOK_SLIDERS 11
+
 #endif

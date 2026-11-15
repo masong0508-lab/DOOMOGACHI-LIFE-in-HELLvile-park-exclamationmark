@@ -946,7 +946,9 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
         /* CR-BODY: the value is the distance from the default ("+3", "-2", "0"); the bar has a notch at the default */
         const CrSlider *sl = cr_slider_of(row);
         int def = sl ? sl->def : 0;
-        doomo_snprintf(buf, sizeof(buf), "%s%d", idx > def ? "+" : "", idx - def);
+        int dist = idx - def;
+        if (RES_F_IS_LOOK(row->field)) dist *= look_slider_range_get();   /* CR-SLIDERX: the build sliders' effect under the cheat ("+9" at x3); voice and personality are not scaled */
+        doomo_snprintf(buf, sizeof(buf), "%s%d", dist > 0 ? "+" : "", dist);
         mini_slider(vx_right - sw - 14, y, sw, idx, n - 1, sel, def);
         ui_text(vx_right - 12, y, buf, vc);
         return; }
