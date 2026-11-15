@@ -454,7 +454,7 @@ static int q8a_ok(const TalkConv *c, const TalkUtter *u, const TalkLine *l, cons
     int k = t->plan.kind, kid = c->aud.any_minor || c->aud.avatar_minor || c->aud.target_minor;
     int sgn = (k == TK_ACCEPT || k == TK_AGREE) ? 1 : (k == TK_DENY || k == TK_REFUSE) ? -1 : 0;
     if (!(t->plan.allowed & TKM(k)) || (t->plan.allowed & ~talk_gen_kinds_after(u->act[0]))) return 0;
-    if (!(t->plan.flags & (TPL_MISS | TPL_OPEN)) && !(talk_gen_kinds_of(l->act) & TKM(k))) return 0;
+    if (!(t->plan.flags & (TPL_MISS | TPL_OPEN)) && !(talk_gen_kinds_reply(u->act[0], l->act) & (int)TKM(k))) return 0;
     if (sgn * t->plan.lean < 0 && !(t->plan.flags & TPL_REASON)) return 0;
     if (TA_IS_ROMANCE(u->act[0]) && k != TK_ACCEPT && k != TK_DEFLECT && k != TK_REFUSE) return 0;
     if (u->act[0] == TA_HUG && (kid || talk_safe_minor(c->id[l->who])) && k != TK_ACCEPT && k != TK_REFUSE) return 0;
@@ -543,14 +543,7 @@ static int q8_topic_act(int a)
 /* which side of the topic a reply takes: +1 for it, -1 against, 0 none (an agree reads the player's side) */
 static int q8_valence(int reply, int player)
 {
-    int pv = player == TA_OPINE_POS ? 1 : player == TA_OPINE_NEG ? -1 : 0;
-    switch (reply) {
-    case TA_OPINE_POS: return 1;
-    case TA_OPINE_NEG: return -1;
-    case TA_AGREE: return pv;
-    case TA_DISAGREE: return -pv;
-    }
-    return 0;
+    return talk_gen_reply_side(player, reply);
 }
 
 /* the visible text of a line: no line codes, no *stage directions*, one space between words */
@@ -919,7 +912,9 @@ static void q8_count(CensusResult *res, const CensusCfg *cfg, uint32_t i, const 
         if (cfg->q8fails)
             for (n = 0; n < Q8_COUNT; n++)
                 if ((bad >> n) & 1u) {
-                    fprintf(cfg->q8fails, "%s\t", talk_census_qf_names[QF_Q8_KIND + n]);
+                    fprintf(cfg->q8fails, "%s [plan kind %d flags %d lean %d; line act %d stance %d]\t", talk_census_qf_names[QF_Q8_KIND + n],
+                            x->n ? tr[0].plan.kind : 0, x->n ? tr[0].plan.flags : 0, x->n ? tr[0].plan.lean : 0, x->n ? x->line[0].act : 0,
+                            x->n ? x->line[0].stance : 0);
                     write_sample(cfg->q8fails, i, c, u, x, tr);
                 }
     }

@@ -147,6 +147,32 @@ int talk_gen_kinds_of(int reply_act)
     return act_row(reply_act, row) ? row[14] : 0;
 }
 
+/* TM2F-Q8: the kinds a reply act serves, read against the player's act. The kinds are signed by the topic (agree = yes to
+ * it, deny = no to it), but AGREE and DISAGREE are signed by the player's claim: after a negative opinion an AGREE is a
+ * no to the topic and a DISAGREE is a yes. acts.tsv carries the plain reading; this turns it round for OPINE_NEG. */
+int talk_gen_kinds_reply(int player_act, int reply_act)
+{
+    int m = talk_gen_kinds_of(reply_act);
+    if (player_act == TA_OPINE_NEG) {
+        if (reply_act == TA_AGREE) m = (m & ~(int)(TKM(TK_ACCEPT) | TKM(TK_AGREE))) | (int)TKM(TK_DENY);
+        else if (reply_act == TA_DISAGREE) m = (m & ~(int)TKM(TK_DENY)) | (int)TKM(TK_AGREE);
+    }
+    return m;
+}
+
+/* which side of the topic a reply act takes after the player's act: +1 for it, -1 against, 0 none */
+int talk_gen_reply_side(int player_act, int reply_act)
+{
+    int pv = player_act == TA_OPINE_POS ? 1 : player_act == TA_OPINE_NEG ? -1 : 0;
+    switch (reply_act) {
+    case TA_OPINE_POS: return 1;
+    case TA_OPINE_NEG: return -1;
+    case TA_AGREE: return pv;
+    case TA_DISAGREE: return -pv;
+    }
+    return 0;
+}
+
 int talk_gen_kinds_after(int act)
 {
     uint8_t row[16];
@@ -396,6 +422,7 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
 #define PLAN_MARGIN 8
 #define KF_KIND 1
 #define KF_COOL 2
+#define KF_STANCE 4
 typedef struct Gen {
     GHdr h;
     TalkConv *c;
@@ -728,10 +755,16 @@ static int avoided(const int *avoid, int navoid, int a)
  * and the rule's reply act must serve the plan's kind (acts.tsv KINDS: byte 14 of the act's row) */
 static int kind_serves(const Gen *g, int act)
 {
-    uint8_t b = 0;
-    if (act <= 0 || act >= TA_COUNT || !talk_db_read(TB_GRAMMAR, g->h.acts + 16u * (uint32_t)act + 14u, &b, 1))
-        return 0;
-    return (b & TKM(g->plan.kind)) != 0;
+    if (act <= 0 || act >= TA_COUNT) return 0;
+    return (talk_gen_kinds_reply(g->act, act) & (int)TKM(g->plan.kind)) != 0;
+}
+
+/* TM2F-Q8: an opinion answer never takes the side the speaker's own stance is against (design 7.2, Q8a), unless the plan
+ * went against the lean for a reason. Applies even when the plan is open (a close call binds no kind). */
+static int stance_clash(const Gen *g, int act)
+{
+    int side = talk_gen_reply_side(g->act, act);
+    return (g->stance == TST_PRO && side < 0) || (g->stance == TST_CON && side > 0);
 }
 
 static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
@@ -750,6 +783,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
             if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
+            if ((g->kf & KF_STANCE) && stance_clash(g, r.act)) continue;
         }
         for (a = r.alt_first; a < r.alt_first + r.nalt; a++) {
             GAlt al;
@@ -1412,6 +1446,19 @@ static int alt_topicy(const TalkAltInfo *ai)
     return 0;
 }
 
+/* the soft filters of the core pick: the plan's kind (not when the plan is open or missed), the kid room's cool acts, and
+ * the stance (an opinion answer, a decided stance, no reason against the lean) */
+static uint8_t core_filters(const Gen *g)
+{
+    uint8_t kf;
+    if (!g->plan.kind) return 0;
+    kf = (uint8_t)((g->plan.flags & (TPL_MISS | TPL_OPEN) ? 0 : KF_KIND) | (g->kid_room ? KF_COOL : 0));
+    if (g->topic && g->stance != TST_NEUTRAL && !(g->plan.flags & (TPL_REASON | TPL_FORCED)) &&
+        (g->act == TA_ASK_OPINION || g->act == TA_ASK_ABOUT || g->act == TA_OPINE_POS || g->act == TA_OPINE_NEG))
+        kf |= KF_STANCE;
+    return kf;
+}
+
 static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr)
 {
     TalkConv *c = g->c;
@@ -1427,10 +1474,14 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     for (try_ = 0; try_ < TRIES && !ok; try_++) {
         int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got, hook_req = 0, bridge_req = 0;
         memset(use, 0, sizeof use);
-        g->kf = g->plan.kind ? (uint8_t)((g->plan.flags & (TPL_MISS | TPL_OPEN) ? 0 : KF_KIND) | (g->kid_room ? KF_COOL : 0)) : 0;
+        g->kf = core_filters(g);
         got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
-        while (!got && (g->kf & KF_KIND)) {                 /* TM2c: the soft filter: no rule of the kind passes the guards */
-            if (!talk_plan_next(&g->plan)) {                /* the next best kind, else drop the filter and count the miss */
+        while (!got && (g->kf & (KF_KIND | KF_STANCE))) {   /* TM2c: the soft filter: no rule of the kind passes the guards */
+            if ((g->kf & KF_KIND) && talk_plan_next(&g->plan)) {       /* the next best kind (its reason decides the stance filter) */
+                g->kf = core_filters(g);
+            } else if (g->kf & KF_STANCE) {                 /* TM2F-Q8: the stance filter goes first, it is the softer one */
+                g->kf &= (uint8_t)~KF_STANCE;
+            } else {                                        /* else drop the filter and count the miss */
                 g->plan.flags |= TPL_MISS;
                 g->kf &= (uint8_t)~KF_KIND;
             }

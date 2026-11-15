@@ -825,6 +825,8 @@ int  talk_plan_next(TalkPlan *p);
  * kinds allowed after a player's act. Read from the open database. */
 int  talk_gen_kinds_of(int reply_act);
 int  talk_gen_kinds_after(int act);
+int  talk_gen_kinds_reply(int player_act, int reply_act);   /* TM2F-Q8: kinds_of read against the player's act */
+int  talk_gen_reply_side(int player_act, int reply_act);    /* +1 for the topic, -1 against, 0 none */
 /* The speaker's effective sliders in the room `aud` describes (stored + trait deltas, the edgy traits
  * dropped for a minor speaker or a minor in the room), PERS_COUNT bytes; 0 if nobody has that id. */
 int  talk_gen_eff_persona(int id, int minor_room, uint8_t out[5]);
