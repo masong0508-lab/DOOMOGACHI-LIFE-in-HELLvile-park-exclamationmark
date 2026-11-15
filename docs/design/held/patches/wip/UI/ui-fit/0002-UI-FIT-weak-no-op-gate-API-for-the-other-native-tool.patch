@@ -1,0 +1,59 @@
+From c93052974b071c3bf35ef2b63cacec30ed5124b6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:43:44 +0000
+Subject: [PATCH 2/2] UI-FIT: weak no-op gate API for the other native tools,
+ status with the measurements
+
+The part_icons tool and the other native programs that link the core objects got
+undefined tf_* symbols from the new DOOMO_TEXTFIT enumerators (make check-gen failed).
+core/src/stubs.c now has weak no-ops, native build only; the unit tests define the
+real ones. Status file: memory numbers and the gates that ran.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czLgdbSn871LSJKjVC
+---
+ core/src/stubs.c              | 18 ++++++++++++++++++
+ docs/design/held/status/UI.md |  2 +-
+ 2 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/stubs.c b/core/src/stubs.c
+index 5a15a12..c12e7ae 100644
+--- a/core/src/stubs.c
++++ b/core/src/stubs.c
+@@ -1383,3 +1383,21 @@ WEAK const uint8_t *look_pool_find(int id, int kind, int *len)
+ WEAK int  look_pool_put(int id, int kind, const uint8_t *data, int len)
+ { (void)id; (void)kind; (void)data; (void)len; STUB("look_pool_put"); return 0; }
+ WEAK void look_pool_drop(int id) { (void)id; STUB("look_pool_drop"); }
++
++#if defined(DOOMO_TEXTFIT) && DOOMO_TEXTFIT
++/* (UI-FIT) the text-fit gate's API (doomo/textfit.h): the enumerators of the screens' files call it; the unit
++ * tests define it (core/tests/textfit_engine.c), the other native tools that link the core get these no-ops.
++ * Native build only: the consoles compile none of it. */
++#include "doomo/textfit.h"
++WEAK int tf_sw(const TfScreen *s) { (void)s; return 240; }
++WEAK int tf_sh(const TfScreen *s) { (void)s; return 160; }
++WEAK int tf_big(const TfScreen *s) { (void)s; return 0; }
++WEAK int tf_lang(const TfScreen *s) { (void)s; return 0; }
++WEAK void tf_state(TfScreen *s, const char *fmt, ...) { (void)s; (void)fmt; }
++WEAK void tf_text(TfScreen *s, const char *what, const char *str, int x, int y, int w, int maxlines, int flags)
++{ (void)s; (void)what; (void)str; (void)x; (void)y; (void)w; (void)maxlines; (void)flags; }
++WEAK void tf_block(TfScreen *s, const char *what, int x, int y, int w, int h)
++{ (void)s; (void)what; (void)x; (void)y; (void)w; (void)h; }
++WEAK void tf_fit(TfScreen *s, const char *what, int need_w, int avail_w)
++{ (void)s; (void)what; (void)need_w; (void)avail_w; }
++#endif
+diff --git a/docs/design/held/status/UI.md b/docs/design/held/status/UI.md
+index 38401d0..fa50c46 100644
+--- a/docs/design/held/status/UI.md
++++ b/docs/design/held/status/UI.md
+@@ -5,6 +5,6 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5).
+ - **Last update:** 2026-11-15 (UI-FIT build agent): the text-fit gate is built on branch `fut-ui-fit` (not yet landed).
+ - **Lead:** session_01Xd63czLgdbSn871LSJKjVC (Sonnet, from 2026-11-15)
+ - **Landed:** nothing yet. GBA EWRAM used of share: 0 B (share 0); PS1 resident used of share: 0 B (share 0).
+-- **In flight:** UI-FIT is **on the branch `fut-ui-fit`, waiting for review and landing**: `make -C core test` has the gate (`docs/UI_TEXTFIT.md`), registration API `core/include/doomo/textfit.h`; screens on it: Options, shop, title, pause, and a source scan of hints / confirms / titles / fixed buttons. First hit list 24 (6 in English), now 0. Every UI package must keep it green and list its new screens on it. Streams add theirs in `core/tests/textfit_<stream>.c`. UI-0 (`docs/design/UI_PLAN.md`) waits for LANDING_HOLD.
++- **In flight:** UI-FIT is **on the branch `fut-ui-fit`, waiting for review and landing**: `make -C core test` has the gate (`docs/UI_TEXTFIT.md`), registration API `core/include/doomo/textfit.h`; screens on it: Options, shop, title, pause, and a source scan of hints / confirms / titles / fixed buttons. First hit list 24 (6 in English), now 0. Memory: GBA .text -16 B, .rodata -84 B, EWRAM / IWRAM / overlay groups unchanged (0 B of the share); PS1 110,608 B below the stack top with the boot FMV, before and after (delta 0). Gates run: core test (1472 passed), SAN, check-gen, xcheck, GBA build + test + sizes, PS1 build, dc-host-test; PS1 harness and Dreamcast build not run (PCSX-Redux, KallistiOS and Flycast were not installed yet). Every UI package must keep it green and list its new screens on it. Streams add theirs in `core/tests/textfit_<stream>.c`. UI-0 (`docs/design/UI_PLAN.md`) waits for LANDING_HOLD.
+ - **Next up:** UI-OPTIONS (its rows and 8 tabs go on the gate in the same commit), UI-MENUS, UI-POLISH (../leads/UI.md). Still to put on the gate: quest log, news, unlocks, save / load, citizen picker and roster, library lists.
+ - **Blockers:** none.
+-- 
+2.43.0
+

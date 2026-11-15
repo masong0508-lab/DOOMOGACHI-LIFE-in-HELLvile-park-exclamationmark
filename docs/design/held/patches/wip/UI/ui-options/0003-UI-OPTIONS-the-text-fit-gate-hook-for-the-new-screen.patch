@@ -1,0 +1,194 @@
+From 03db7e9386e774d82bf360a852379f481e14187f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:46:07 +0000
+Subject: [PATCH 3/3] UI-OPTIONS: the text-fit gate hook for the new screen
+ (compiled only with DOOMO_TEXTFIT), locked-value hint keeps to two lines
+
+fp_options_textfit lists every row, help line, card, preset card, group header, header counter, tab strip and
+hint bar of the rebuilt screen in the UI-FIT registration API (core/include/doomo/textfit.h, not on this branch
+yet: the block is compiled out until it lands). The Stick card takes DC10A's sentence. A long unlock hint drops
+its 'Next: ' so it stays on the help pill's two lines (checked in every language).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czLgdbSn871LSJKjVC
+---
+ core/src/fp_options.c | 142 +++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 141 insertions(+), 1 deletion(-)
+
+diff --git a/core/src/fp_options.c b/core/src/fp_options.c
+index 629136b..c3468ae 100644
+--- a/core/src/fp_options.c
++++ b/core/src/fp_options.c
+@@ -837,6 +837,15 @@ static void draw_hint(int style, int id)
+     ui_prompts(p, n, style);
+ }
+ 
++/* "Next: ??? (how)" in fp_tmp: what the next locked value needs. A long "how" drops the "Next: " so that it keeps to the
++ * help pill's two lines; returns the lines it takes at width w. */
++static int unlock_hint(const DoomoUnlock *u, int w)
++{
++    doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Next: ??? (%s)", u->how);
++    if (ui_text_wrap(0, 0, w, lang_tr(fp_tmp), 0, 0) > 2) doomo_snprintf(fp_tmp, sizeof(fp_tmp), "??? (%s)", u->how);
++    return ui_text_wrap(0, 0, w, lang_tr(fp_tmp), 0, 0);
++}
++
+ /* the help line's text: what the row does, or what the next locked value needs (c = its colour) */
+ static const char *help_line(int id, uint8_t *c, const UiStyle *st)
+ {
+@@ -854,7 +863,7 @@ static const char *help_line(int id, uint8_t *c, const UiStyle *st)
+                 const DoomoUnlock *u = id >= OPT_CHEAT_BIG_HEAD ? unlock_find(UL_CAT_CHEAT, 0, id)
+                                                                 : unlock_find(UL_CAT_SKIN, id, nv);
+                 if (u && u->how && k == 1) {
+-                    doomo_snprintf(fp_tmp, sizeof(fp_tmp), "Next: ??? (%s)", u->how);
++                    unlock_hint(u, fp_sw() - 20 - 4);
+                     help = fp_tmp;
+                     *c = PAL_UI_GOLD;
+                 }
+@@ -1041,6 +1050,127 @@ static const char options_scene_name[] = "OPTIONS";
+ const DoomoScene SCENE_OPTIONS = { options_scene_name, opt_enter, NULL, opt_update, opt_draw, 0 };
+ 
+ 
++#if defined(DOOMO_TEXTFIT) && DOOMO_TEXTFIT
++/* (UI-OPTIONS for UI-FIT, docs/UI_TEXTFIT.md) every string of the Options screen with its real box, for the text-fit gate:
++ * the same geometry as opt_draw (x = 10, rows at x + 12, one help line, the preview strip, the tab strip, the detail
++ * card, the hint bars). Compiled only into the native test build: no byte on any console. */
++#include "doomo/textfit.h"
++#include "doomo/unlocks.h"
++
++static void tf_row(TfScreen *s, const char *label, const char *value, int raw)
++{
++    int sw = tf_sw(s), x0 = 10 + 12, rw = sw - 20 - 18, right = x0 + rw, y = tf_big(s) ? 42 : 35;
++    int vw = ui_text_width(value);
++    tf_state(s, "row %s = %s", label, value);
++    tf_block(s, "left arrow", right - vw - 19, y, 6, 8);
++    tf_block(s, "right arrow", right - 8, y, 6, 8);
++    tf_block(s, "changed dot", 10 + sw - 20 - 5, y + 3, 3, 3);
++    tf_text(s, "label", label, x0 + 2, y, rw - 2, 1, TF_ONE);
++    tf_text(s, "value", value, x0, y, rw - 11, 1, TF_ONE | TF_RIGHT | (raw ? TF_RAW : 0));
++}
++
++static void tf_help(TfScreen *s, const char *what, const char *h, int lines)
++{
++    int big = tf_big(s);
++    tf_state(s, "help %s", what);
++    tf_text(s, what, h, 10 + 2, (big ? 42 : 35) + opt_vis() * opt_rh() + 3 + 2, tf_sw(s) - 20 - 4, lines, lines > 1 ? TF_WRAP : TF_ONE);
++}
++
++static void tf_card(TfScreen *s, const char *what, const char *name, const char *text)
++{
++    int big = tf_big(s), cx = 14, cw = tf_sw(s) - 28, cy = big ? 40 : 28, tx = cx + 10, tw = cw - 20;
++    tf_state(s, "card %s", what);
++    tf_text(s, "card title", name, tx, cy + 6, tw, 1, TF_ONE);
++    if (text) tf_text(s, "card text", text, tx, cy + 21, tw, 6, TF_WRAP);
++}
++
++static void tf_hint(TfScreen *s, const char *what, const UiPrompt *p, int n)
++{
++    char out[160];
++    int w = ui_prompts_text(out, (int)sizeof(out), p, n, ui_prompts_maxw());
++    tf_state(s, "hint %s", what);
++    tf_fit(s, what, w, ui_prompts_maxw());
++}
++
++void fp_options_textfit(TfScreen *s)
++{
++    int sw = tf_sw(s), opt, v, i, k, p, nopt = OPT_COUNT + (OPT2_END - OPT2_FIRST);
++    char buf[160], name[64];
++    for (i = 0; i < nopt; i++) {
++        const DoomoOptionInfo *oi;
++        opt = i < OPT_COUNT ? i : OPT2_FIRST + i - OPT_COUNT;
++        oi = info_of(opt);
++        if (!oi->name) continue;
++        if (oi->values) {
++            for (v = 0; v < oi->count; v++) tf_row(s, oi->name, oi->values[v], 0);
++        } else {
++            doomo_snprintf(buf, sizeof(buf), "%d", oi->count - 1);
++            tf_row(s, oi->name, buf, 1);
++        }
++        doomo_snprintf(name, sizeof(name), "help of %s", oi->name);
++        if (opt == OPT_CONTROL_SCHEME || opt == OPT_TURN_SWAP || opt == OPT_CAMERA_DEFAULT) {
++            const char *const *a = opt == OPT_CONTROL_SCHEME ? card_controls : opt == OPT_TURN_SWAP ? card_turn : card_camera;
++            tf_help(s, name, help_of(opt), 1);
++            for (k = 0; k < PAD_COUNT; k++) tf_card(s, name, oi->name, a[k]);
++        } else {
++            const char *h = help_of(opt), *c = card_of(opt);
++            if (h && h[0]) tf_help(s, name, h, 1);
++            if (c) tf_card(s, name, oi->name, c);
++        }
++        for (v = 1; v < oi->count; v++) {              /* a locked value: "Next: ??? (how)" */
++            const DoomoUnlock *u = opt >= OPT_CHEAT_BIG_HEAD ? unlock_find(UL_CAT_CHEAT, 0, opt)
++                                                             : unlock_find(UL_CAT_SKIN, opt, v);
++            if (u && u->how) {
++                unlock_hint(u, sw - 20 - 4);
++                doomo_snprintf(name, sizeof(name), "unlock hint of %s", oi->name);
++                tf_help(s, name, fp_tmp, 2);
++            }
++        }
++    }
++    for (p = 0; p < PRESET_N; p++) {
++        tf_row(s, "Preset", preset_name[p], 0);
++        tf_help(s, "preset help", preset_help[p], 1);
++        tf_card(s, "preset card", preset_name[p], preset_card[p]);
++    }
++    tf_row(s, reset_page_label, "", 1);
++    tf_help(s, "reset help", reset_page_help, 1);
++    tf_row(s, tips_reset_label, "", 1);
++    tf_help(s, "tips reset help", tips_reset_help, 1);
++    for (p = 0; p < G_COUNT; p++) {                    /* a group header: the name, then its rule */
++        tf_state(s, "group %s", group_name[p]);
++        tf_text(s, "group", group_name[p], 10 + 8, tf_big(s) ? 42 : 35, 60, 1, TF_ONE);
++    }
++    tf_state(s, "header");                              /* the title pill and the counter */
++    tf_block(s, "title", sw / 2 - (ui_text_width(opt_title) + 12) / 2, 3, ui_text_width(opt_title) + 12, 12);
++    tf_text(s, "counter", "12 / 13", sw - 10 - ui_text_width("12 / 13"), 5, ui_text_width("12 / 13"), 1, TF_ONE | TF_RAW);
++    /* the tab strip at every page: the open one by name and icon, the others icons (draw_tabs) */
++    for (p = 0; p < OPTPAGE_COUNT; p++) {
++        int need = 4;
++        for (k = 0; k < OPTPAGE_COUNT; k++) {
++            if (k == p) {
++                doomo_snprintf(buf, sizeof(buf), "%s %s", page_icon[k], lang_tr(doomo_option_page_names[k]));
++                need += ui_text_width(buf) + 8 + 2;
++            } else {
++                need += ui_text_width(page_icon[k]) + 6 + 1;
++            }
++        }
++        tf_state(s, "tabs at page %d", p);
++        tf_fit(s, "tab strip", need, sw - 2 * 10);
++    }
++    {
++        UiPrompt a[3] = { { BTN_LEFT | BTN_RIGHT, 0, "Change" }, { BTN_Y, 1, "Reset" }, { BTN_B, 0, "Back" } };
++        UiPrompt b[3] = { { BTN_LEFT | BTN_RIGHT, 0, "Change" }, { BTN_SELECT, 1, "Info" }, { BTN_B, 0, "Back" } };
++        UiPrompt c[3] = { { BTN_LEFT | BTN_RIGHT, 0, "Change" }, { BTN_L | BTN_R, 1, "Page" }, { BTN_B, 0, "Back" } };
++        UiPrompt d[3] = { { BTN_A, 0, "Apply" }, { BTN_SELECT, 1, "Info" }, { BTN_B, 0, "Back" } };
++        UiPrompt e[3] = { { BTN_A, 0, "Reset" }, { BTN_L | BTN_R, 1, "Page" }, { BTN_B, 0, "Back" } };
++        UiPrompt f[3] = { { BTN_LEFT | BTN_RIGHT, 0, "Change" }, { BTN_Y, 1, "Reset" }, { BTN_B, 0, "Close" } };
++        tf_hint(s, "hint (changed row)", a, 3); tf_hint(s, "hint (row with a card)", b, 3);
++        tf_hint(s, "hint (row)", c, 3); tf_hint(s, "hint (preset)", d, 3);
++        tf_hint(s, "hint (reset rows)", e, 3); tf_hint(s, "hint (card)", f, 3);
++    }
++}
++#endif
++
+ /* (UI-OPTIONS, clarity C13) the text fit of the Options screen at the current size and language: how many help
+  * lines (every option's, the machine-wide ones from OPT2_FIRST too, every preset's, the tips and page reset rows)
+  * need more than ONE line of the help pill, plus how many detail cards need more than 6 lines or a name wider
+@@ -1069,6 +1199,16 @@ int fp_options_help_overflow(char *why, int cap)
+         if (n > 6) bad = fit_note(why, cap, bad, "card lines", n, c);
+         if (opt >= 0 && opt != OPT_LANGUAGE && ui_text_width(info_of(opt)->name) > cw)
+             bad = fit_note(why, cap, bad, "wide name", 0, info_of(opt)->name);
++        if (opt >= 0 && opt != OPT_LANGUAGE && opt != OPT_MATURE) {        /* "Next: ??? (how)": the help line of a locked value, from the unlock tables: up to two lines (the pill grows) */
++            int k;
++            for (k = 1; k < info_of(opt)->count; k++) {
++                const DoomoUnlock *u;
++                if (value_ok(opt, k)) continue;
++                u = opt >= OPT_CHEAT_BIG_HEAD ? unlock_find(UL_CAT_CHEAT, 0, opt) : unlock_find(UL_CAT_SKIN, opt, k);
++                if (!u || !u->how) continue;
++                if (unlock_hint(u, w) > 2) { bad = fit_note(why, cap, bad, "unlock lines", 3, fp_tmp); break; }   /* (the pill grows to two lines for these) */
++            }
++        }
+     }
+     return bad;
+ }
+-- 
+2.43.0
+
