@@ -274,7 +274,9 @@ static int intro_hold(int mode)
 {
     int y, h;
     lvd_banner_band(intro_cy(), &y, &h);
-    return combat_modal_hold(mode, br.state == BR_INTRO && br.t >= 26, 0, y, plat_screen_w(), h, 64);
+    /* (LV11: the note page is as still as the card once the dim is in (t >= 12); it is another card of the scene) */
+    return combat_modal_hold(mode, (br.state == BR_INTRO && br.t >= 26) || (br.state == BR_NOTE && br.t >= 12),
+                             0, y, plat_screen_w(), h, br.state == BR_INTRO ? 64 : 65);
 }
 
 static void intro_draw(int shaded)
@@ -493,8 +495,8 @@ static void br_draw(void)
     int shaded;
     /* S2-2: S2-1's modal hold, one per frame: the pause menu over the held picture (only its window repaints), or
      * the settled intro card (only the banner's band repaints) */
-    if (br.state == BR_INTRO ? intro_hold(0) : combat_pause_hold(0, br.state == BR_PAUSE, BP_COUNT, br.t, pause_sig())) {
-        if (br.state == BR_INTRO) {
+    if (br_introish() ? intro_hold(0) : combat_pause_hold(0, br.state == BR_PAUSE, BP_COUNT, br.t, pause_sig())) {
+        if (br_introish()) {
             const LevelInfo *L = &lv_info[br.level];
             lvd_banner(intro_cy(), L->tag, L->title, br.t, L->theme == WIN_HELL || L->theme == WIN_DARK);
         } else {
