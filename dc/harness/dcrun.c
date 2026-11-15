@@ -1252,6 +1252,20 @@ static int tk_read(int max)
     return !(r & TKS_ON) || !(r & TKS_BUSY);
 }
 
+/* TD3: the answer is made a step a tick on the Dreamcast (the native runner makes it in one): after a press that
+ * says something, step until the dialogue is up (BUSY) or the screen asks for a topic, so the next expect-talk-*
+ * reads the finished answer. Not an error when it takes the whole budget: the expects then say what is wrong. */
+static int tk_settle(void)
+{
+    for (int k = 0; k < 240; k++) {
+        uint32_t r;
+        if (!tk_q(DC_TQ_STATE, NULL, &r)) return 0;
+        if (!(r & TKS_ON) || (r & TKS_BUSY) || ((r >> 2) & 7) != 0) return 1;
+        if (!run_ticks(1)) return 0;
+    }
+    return 1;
+}
+
 static int tk_main(void)
 {
     for (int k = 0; k < 6; k++) {
@@ -1303,6 +1317,7 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         row = ((st >> 2 & 7) == 0) ? (c[10] ? tk_find(tk_kind("quick"), -1, act, "") : tk_find(tk_kind("quick"), atoi(a1), -1, "")) : -1;
         if (row == -2) return 0;
         if (!tk_pick(row)) fail("line %d: no quick reply %s", lineno, a1);
+        else if (!tk_settle()) return 0;
     } else if (!strcmp(c, "talk-say")) {
         int act = tk_act(a1), cat, row, m;
         if (!ok || act < 0) { fail("line %d: talk-say: %s", lineno, ok ? "no such act" : "no Talk screen"); return 1; }
@@ -1319,6 +1334,7 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
             if (t < 0) t = tk_find(tk_kind("notopic"), -1, -1, "");
             if (!tk_pick(t)) fail("line %d: talk-say %s: no topic row", lineno, a1);
         }
+        if (!tk_settle()) return 0;
     } else if (!strcmp(c, "talk-type") || !strcmp(c, "talk-key")) {
         /* talk-type: the characters go to the text entry as the native runner feeds them; talk-key: the same
          * line through the Maple keyboard (device N keyboard), the way a player with a keyboard types it */
@@ -1337,7 +1353,7 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
             if (!mb_cmd(DC_HC_TEXT_FEED, '\n', NULL, &r)) return 0;
             if (!r) { fail("line %d: no text entry open for OK", lineno); return 1; }
         }
-        if (!run_ticks(4)) return 0;
+        if (!run_ticks(4) || !tk_settle()) return 0;
     } else if (!strcmp(c, "talk-page")) {
         int m = tk_main();
         if (m <= 0) { if (m < 0) return 0; fail("line %d: talk-page: no main page", lineno); return 1; }
@@ -1399,6 +1415,22 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         if (!tk_q(DC_TQ_REPLY, NULL, &r)) return 0;
         got = c[12] == 'r' ? (int)(r >> 10 & 1) : c[12] == 'c' ? (int)(r >> 9 & 1) : (int)(r >> 8 & 1);
         if (!r || got != (want != 0)) fail("line %d: %s is %d, wanted %d", lineno, c, got, want);
+    } else if (!strcmp(c, "expect-talk-act")) {      /* TD3: does the category page offer the act? (the native runner's walk) */
+        int act = tk_act(a1), want = n > 2 ? atoi(v[2]) : 1, found = 0, m, row, cat;
+        if (!ok || act < 0) { fail("line %d: expect-talk-act: no talk or no such act", lineno); return 1; }
+        if (!tk_q(DC_TQ_ACT | 0x100u | (uint32_t)act << 16, NULL, &r)) return 0;
+        cat = (int)r - 1;
+        if ((m = tk_main()) <= 0) { if (m < 0) return 0; fail("line %d: expect-talk-act: cannot get to the main page", lineno); return 1; }
+        row = tk_find(tk_kind("cat"), cat, -1, "");
+        if (row == -2) return 0;
+        if (row >= 0) {
+            if (!tk_pick(row)) return 0;
+            found = tk_find(tk_kind("act"), act, -1, "");
+            if (found == -2) return 0;
+            found = found >= 0;
+            if (!tk_press("B")) return 0;
+        }
+        if (found != (want != 0)) fail("line %d: the screen %s %s", lineno, want ? "does not offer" : "offers", a1);
     } else if (!strcmp(c, "expect-talk-to")) {
         int who;
         if (!tk_q(DC_TQ_WHO, a1, &r)) return 0;
@@ -1724,6 +1756,10 @@ static int run_script(FILE *f)
             memset(rumble_seen, 0, sizeof rumble_seen);
         } else if (!strcmp(c, "vmu-shot") && n >= 2) {
             vmu_shot(v[1]);
+        } else if (!strcmp(c, "expect-toast") || !strcmp(c, "expect-no-toast")) {
+            uint32_t r;
+            if (!tk_q(DC_TQ_TOAST, n > 1 ? v[1] : "", &r)) return 0;
+            if ((r == 2) != (c[7] == 't')) fail("line %d: %s", lineno, c[7] == 't' ? "no toast says that" : "a toast still says that");
         } else if (!strncmp(c, "talk-", 5) || !strncmp(c, "expect-talk", 11)) {
             if (!talk_cmd(c, n, v, lineno)) return 0;
         } else {

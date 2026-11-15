@@ -1,0 +1,55 @@
+# assert-no-stubs
+# T8: Talk with more than one person (SCENE_TALK, docs/TALK.md 6h). Nana starts alone; Steamy, Gusty and
+# Pirouette are invited in from Options; SELECT turns to another person ("To:"), "everyone" included;
+# acts that need two people (mediate) appear only once there are two; at four people the invite row is
+# gone. Invite order: the list offers the people closest to the first one.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+expect-talk-act mediate 0
+talk-invite Steamy
+wait 10
+shot group_0_joins
+talk-read
+expect-talk-act mediate 1
+talk-page more
+expect-talk-row "To:"
+wait 4
+shot group_1_options_two
+talk-page main
+# turn to Steamy (SELECT), then to everyone
+talk-to Steamy
+expect-talk-to Steamy
+wait 4
+shot group_2_to_steamy
+talk-to everyone
+expect-talk-to everyone
+talk-to Nana
+# a third and a fourth person
+talk-invite Gusty
+talk-read
+talk-invite Pirouette
+talk-read
+wait 4
+shot group_3_four
+talk-page more
+expect-talk-row "Invite" 0
+expect-talk-row "To:"
+wait 4
+shot group_4_options_full
+talk-page main
+talk-to Pirouette
+talk-say compliment
+expect-talk-you "You're great"
+talk-read
+talk-say mediate
+talk-read
+wait 4
+shot group_5_after
+talk-leave
+expect-talk off

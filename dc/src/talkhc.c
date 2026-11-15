@@ -14,6 +14,7 @@
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
 #include "doomo/town.h"
+#include "doomo/ui.h"
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug */
 #include "../harness/dc_mailbox.h"
 
@@ -138,6 +139,10 @@ uint32_t dc_talk_hcmd(uint32_t arg, const char *name)
         talk_scene_party(ids, n);
         return 1;
     }
+    case DC_TQ_TOAST:                   /* TD3: expect-toast / expect-no-toast */
+        for (i = 0; ui_toast_text(i); i++)
+            if (strstr(ui_toast_text(i), name)) return 2;
+        return 1;
     default:
         return 0;
     }

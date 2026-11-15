@@ -1,0 +1,66 @@
+# assert-no-stubs
+# T8 (TALK round 7): the owner's Talk screen (SCENE_TALK, core/src/talk_scene.c) played through the pad
+# with the runner's talk-* commands: the opener, a quick reply, a compliment from the Be nice page, a
+# topic act (the topic page), a typed line, the Options page, goodbye. Every talk-* command presses real
+# buttons, so these are the presses a player makes. Shots are reviewed at 320x240 for readability: one
+# instruction line ("Say something" / "You: ..."), the list below it, the people strip on top.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+# Nana Puddin: the resident's greeting comes first, in the dialogue box
+talk-enter Nana
+wait 20
+shot talk_0_opener
+talk-read
+expect-talk on
+expect-talk-page main
+expect-talk-to Nana
+expect-talk-row "Say goodbye"
+expect-talk-row "Be nice >"
+expect-talk-row "Type your own line..."
+expect-talk-row "Options"
+wait 4
+shot talk_1_ready
+# a quick reply: the top row, one press
+talk-quick 0
+wait 10
+shot talk_2_quick_said
+talk-read
+shot talk_3_after
+# a kind word from the category page
+talk-say compliment
+expect-talk-you "You're great"
+wait 12
+shot talk_4_compliment
+talk-read
+# an act that wants a topic: the topic page opens, the script picks "pie"
+talk-say ask_about pie
+expect-talk-you "pie"
+talk-read
+# a typed line (native: the keyboard row; the parser reads it, the gate runs first)
+talk-type "i love the pie"
+expect-talk-you "pie"
+wait 12
+shot talk_5_typed
+talk-read
+# Options: the topic row and the invite row (one person here, so no "To:" row)
+talk-page more
+expect-talk-page more
+expect-talk-row "Topic:"
+expect-talk-row "Invite someone"
+expect-talk-row "To:" 0
+wait 4
+shot talk_6_options
+talk-page main
+expect-talk-page main
+# say goodbye: B on the main page, then the farewell boxes
+talk-leave
+expect-talk off
+# the toast says the bond with its sign ("Chat over. Bond +2"), never a raw format code
+expect-toast "Chat over. Bond"
+expect-no-toast "%"
+wait 40
+shot talk_7_after
