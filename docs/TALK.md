@@ -1644,7 +1644,7 @@ shouted word comes back out; a kid room says nothing over 12 letters), "it's a f
 counter has a hook, `talk_lex_near`, the parser's offsets. The smoke census (20,000 contexts, seed 20261108):
 Q8 exchanges with a failure 1,534 (7.67%) -> 254 (1.27%); Q8a 120 of 560 -> 123 of 562 (not at budget: the failing lines carry the bank's own act labels and TM2c's plan leaves a close call to the bank), Q8b 1,071 of 3,992 (26.8%) -> 126 (3.2%), Q8c 0, Q8d 156 of 2,976 (5.2%) -> 0,
 Q8e 104 -> 5 (a three-sentence line cannot take a fourth, lower-case voices), Q8f 91 of 395 (23%) -> 0. Surface 17,094
--> 17,146 distinct (85.7%), Skeleton 17,016 -> 17,038, Meaning 5,130 -> 5,180; S3 hits 0.
+-> 17,146 distinct (85.7%), Skeleton 17,033 -> 17,038, Meaning 5,057 -> 5,180; S3 hits 0.
 
 ---------------------------------------------------------------------------
 
