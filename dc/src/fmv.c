@@ -242,8 +242,12 @@ void dc_fmv_play(void)
                 (unsigned)shown, (unsigned)skipped, (unsigned)(dec_n ? dec_sum / dec_n : 0), (unsigned)dec_max,
                 (unsigned)apushed);
     }
-    /* the PCM left in the ring plays out (a skip leaves up to 3 slots, 0.1 s) */
-    while (dcsnd_queued() > 0) vid_waitvbl();
+    /* the PCM left in the ring plays out (a skip leaves up to 3 slots, 0.1 s); a stream that is
+     * not running (no sound at all) never drains it: give up after 20 vblanks */
+    {
+        int w;
+        for (w = 0; w < 20 && dcsnd_queued() > 0; w++) vid_waitvbl();
+    }
 out:
     if (tex[0]) pvr_mem_free(tex[0]);
     if (tex[1]) pvr_mem_free(tex[1]);
