@@ -365,7 +365,8 @@ minutes instead of 32 residents in 32 ticks every 15 minutes) is shared. The SH4
 inside every window) reads 30.1 ticks/s with no tick over 33.3 ms of work in all four windows both before (origin
 `f91bd3e4`) and after (Flycast, `sh dc/harness/speed2.sh OUT sim`, the stripped ELF and `doomogachi.nm` rebuilt first); the
 work mean over the run went 10,054 -> 10,077 us a tick (the steady cost of the update, ~20 us) and the worst tick of the group
-is the same 125 ms dialog entry in both (tick 53). `.text` +32 B, `.bss` unchanged (4,580,884 B). The halfword edge move is
+is the same 125 ms dialog entry in both (tick 53). Again on the tree it landed on (`cb7d48d9` + S3-1): every window 30.1, 1 of
+5,783 ticks over 33.3 ms (the same dialog entry, tick 53), work mean 10,079 us; `.bss` 4,580,980 B. The halfword edge move is
 GBA-only. `make dc-host-test` passes.
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)

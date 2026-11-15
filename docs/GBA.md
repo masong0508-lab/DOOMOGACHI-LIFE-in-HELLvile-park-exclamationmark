@@ -440,7 +440,7 @@ against the LAST row, not against a figure from an older base.
 | 47 | S2-11: the house's view turn built over several ticks, the room group's row loops, checksum pass and cursor, HomeMart's UI loops (docs: "Speed wave 2: S2-11" below) | after CR4 A3 and PS1-FLAT (`ee4e053`) | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `ee4e053` and that tree + S2-11, both built clean (`make -C gba sizes`; ROM 8,087,036 -> 8,091,916 B): `.bss` 245,788 B, `.iwram` 11,256 B, `.iwram_bss` 4,084 B and `.data` 816 B all unchanged, no resident EWRAM or IWRAM. `RBig` (the house's region, in the scene scratch arena) loses `match` (56 B, now on the stack in `incremental()`) and gains 32 B of turn-build state (`tkey[5]`, `bkey`, `bsub`, `bstep`, `brow`, `bld`, `bturns`, `k_last`); the overlay's room group grows 3,588 -> 9,512 B inside the 3D group's 10,352 B slot (840 B free in the slot); `hold.c` one flag bit. PS1: the EXE and the overlays are byte for byte the tip's (the hooks are not built there), `_end` 0x801ee3e0 before and after, 72,736 B below the stack top with the boot FMV (the margin delta is 0 B) |
 | 48 | S2-9: the workshop (weapon picture in slices, kept panels, docs: "Speed wave 2: S2-9" below) | `d530565` | 12,500 B | **12,324 B** | -176 B | 6,288 B | measured on `d530565` and that tree + S2-9, both built clean (`make -C gba sizes`): `.bss` 248,748 -> 248,924 B. The tip itself is 2,960 B under row 47 (`.bss` 245,788 -> 248,748 B, and `.iwram` 11,256 -> 11,272 B, `.iwram_bss` 4,084 -> 4,088 B, so the main stack 6,308 -> 6,288 B: the commits since row 47, the Talk screen on the GBA ROM and the music IRQ among them, have no row of their own). This package: the slicer's state (`weld_slice.c` `Ws`: the job, the weapon it composes, the far slots' keys and picture pointers: 100 B), the workshop's panel keys and plans (list, stats, header: 76 B), less three of its ints made bytes; +168 B on `9877a45` and `4c0f369` where it was built, +176 B here (padding). The room it takes is part of what CR5a (row 41) freed; moving `Ws` and the plans into the arena (`plat_scene_scratch`, as on the PS1) is left (docs: "Speed wave 2: S2-9", Left). No IWRAM resident: the slicer's row loops are ARM in the **UI group** of the IWRAM overlay (4,772 -> 9,740 B of the slot's 10,352 B, 612 B left), the two far weapon pictures (2 x 6,144 B) are blocks of the portrait cache's pool (no new buffer); ROM 25,376 B of `.text` and 1,012 B of `.rodata` more. PS1: `_end` 0x801ee580 -> 0x801ee570 (-16 B: 72,320 -> 72,336 B below the stack top with the boot FMV, the tip being 1,408 B under the 72 KB gate); `weld_slice.c` is in the workshop overlay group (16 -> 50 KB), its state in the overlay slot's scene scratch (256 B reserved, `WS_SCRATCH` asserts that it fits) |
 | 49 | CR-BODY: 16 body types, the slider table, the slider test (docs/CREATOR.md "CR-BODY") | after CR4 A4 and DC6C (`9f52eb14`) | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured 2026-11-15 on `9f52eb14` (clean tip) and the same + CR-BODY (`make -C gba`, `make -C gba sizes`): `.bss` 249,084 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, `.mailbox` 80 B and the four overlay slots (ovl_ui 9,740 B) identical (free EWRAM 262,144 - 80 - 816 - 249,084 = 12,164 B); ROM `.text` 1,486,224 -> 1,486,560 B (+336), `.rodata` 7,620,692 -> 7,623,304 B (+2,612: six rows of the catalog, six icons, the slider table). `make -C gba test` (all targets, test-talk included) and `test-creator` (idle 30.0, rows 29.9, value step 27.6 drawn, grid scroll 28.0 drawn) and the new `test-creator-sliders` (11 sliders, 16 bodies) pass |
-| 50 | S3-1: the sim's resident pass spread over 15 game minutes, the halfword edge move (docs: "Speed wave 3: S3-1" below) | `f91bd3e4` | 15,460 B | **15,460 B** | 0 B | 6,308 B | measured on `f91bd3e4` (origin) and that tree + S3-1 (`make -C gba sizes`, both built clean): .bss 245,788 B, .iwram 11,256 B, .iwram_bss 4,084 B before and after (the resident pass's credit is a `uint16_t` in the padding of `SimState` before `edge_credit`; the halfword move `edges_open_gap` is ROM code, no IWRAM); ROM code +136 B (.text 1,403,584 -> 1,403,720 B). PS1: code -12 B, the EXE ends at 0x801ef580 before and after (68,224 B below the stack top with the FMV). Dreamcast: see docs/DREAMCAST.md. |
+| 50 | S3-1: the sim's resident pass spread over 15 game minutes, the halfword edge move (docs: "Speed wave 3: S3-1" below) | after S2-9 (`cb7d48d9`) | 12,324 B | **12,324 B** | 0 B | 6,288 B | measured on `cb7d48d9` (origin) and that tree + S3-1 (`make -C gba sizes`, both built clean): `.bss` 248,924 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B before and after (the resident pass's credit is a `uint16_t` in the padding of `SimState` before `edge_credit`; the halfword move `edges_open_gap` is ROM code, no IWRAM); ROM code +136 B (`.text` 1,481,736 -> 1,481,872 B). PS1: code -12 B, the EXE ends 16 B lower (`_end` 0x801ee570 -> 0x801ee560: 72,336 -> 72,352 B below the stack top with the FMV). Dreamcast: see docs/DREAMCAST.md. |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1786,7 +1786,7 @@ workshop's entry 22.7 ms on `4c0f369`, 23.9 ms before); the Dreamcast composes i
 * the 176 B of new statics (`Ws` 100 B, the panel keys and plans) could move into the arena (`plat_scene_scratch`, as on
   the PS1); they take room CR5a freed (ledger row 48).
 
-### Speed wave 3: S3-1, the sim's 15-minute pass (2026-11-13)
+### Speed wave 3: S3-1, the sim's 15-minute pass (built 2026-11-13, landed 2026-11-15)
 
 Speed audit 3's miss 5 / row 24: every 1,125 ticks (37.5 s at the default clock) about 17 drawn frames of 50-67 ms in a row
 on every free-play screen (shop gifts tab 21.5 fps, citizen picker 22.9, apartments 25.7, Options Accessibility 23.7 / 28.2,
@@ -1841,36 +1841,40 @@ pins the edge to 6 bytes, three halfwords). New speed2 group `sim`
 every window; `expect-gap 51` (no frame of 4 vblanks or more: the check that sees the pass burst) and `expect-fps` floors of
 29.8 (hub) and 29.5 (shop, picker, pet), which fail on the tree before S3-1).
 
-| window (libmgba, seed 1, before = origin `f91bd3e4`) | before: drawn fps, frames over 33 / 50 ms, worst | after |
+| window (libmgba, seed 1, before = origin `cb7d48d9`) | before: drawn fps, frames over 33 / 50 ms, worst | after |
 |---|---:|---:|
-| `speed2_life`: shop gifts tab | 21.5, 17 / 14, 100 ms | **30.0**, 0 / 0, 34 ms |
-| `speed2_life`: citizen picker | 22.9, 21 / 14, 100 ms | 29.5, 3 / 0, 50 ms |
+| `speed2_life`: shop gifts tab | 21.2, 16 / 15, 100 ms | 29.5, 2 / 0, 50 ms |
+| `speed2_life`: citizen picker | 23.1, 20 / 15, 100 ms | 29.5, 3 / 0, 50 ms |
 | `speed2_life`: options page turn to Accessibility / Accessibility | 23.7 (5 / 2, 67 ms) / 28.2 (9 / 0) | **30.0** / **30.0**, 0, 34 ms |
 | `life_speed`: apartments | 25.2, 22 / 15, 84 ms | **30.0**, 0 / 0, 34 ms |
 | `sp4_tour`: pet boss | 28.6, 7 / 5, 67 ms | **30.0**, 0 / 0, 34 ms |
 | `speed_tour`: pet | 28.5, 5 / 5, 84 ms | 29.8, 2 / 0, 50 ms |
-| `sp4_tour`: roster cursor | 19.4, 22 / 15, 117 ms | 24.1, 15 / 7, 100 ms (the move's own portrait render) |
-| frames over 33 ms in the four tours (`speed2_life`, `life_speed`, `sp4_tour`, `speed_tour`) | 182 + 34 + 43 + 315 = 574 | 137 + 10 + 27 + 302 = 476 |
-| frames over 50 ms in the four tours | 268 | 203 |
-| `sim` group: hub / shop gifts / picker / pet, one interval each | 12 / 17 / 22 / 41 frames over 33 ms (worst 84 / 84 / 84 / 100 ms; 4 / 15 / 14 / 22 over 50 ms) | **0** / 3 / 6 / 13 (worst 34 / 50 / 50 / 50 ms; none over 50 ms) |
-| `sim`, the same ROMs with the resident updates switched off (the floor) | | 0 / 0 / 1 / 5 frames over 33 ms; mean work 14.2 / 28.9 / 29.8 / 28.1 ms |
+| `sp4_tour`: roster cursor | 19.0, 22 / 15, 117 ms | 22.8, 17 / 9, 100 ms (the move's own portrait render) |
+| frames over 33 ms in the four tours (`speed2_life`, `life_speed`, `sp4_tour`, `speed_tour`) | 181 + 36 + 41 + 304 = 562 | 155 + 11 + 29 + 314 = 509 |
+| frames over 50 ms in the four tours | 278 | 213 |
+| `sim` group: hub / shop gifts / picker / pet, one interval each | 12 / 17 / 27 / 42 frames over 33 ms (worst 84 / 100 / 84 / 100 ms; 4 / 14 / 14 / 24 over 50 ms) | **0** / **0** / 7 / 16 (worst 34 / 34 / 50 / 50 ms; none over 50 ms) |
+| `sim`, the same tree with the resident updates switched off (the floor) | | 0 / 0 / 4 / 6 frames over 33 ms; mean work 14.2 / 29.1 / 30.0 / 28.2 ms (after: 14.9 / 29.5 / 30.6 / 29.5) |
 | `sim`, graph full (the harness's turbo play for 4,500 ticks, then default clock), hub (measured on `698f4eee`) | 21 frames over 33 ms (worst 67 ms) | 1 frame (50 ms) |
 
-Windows that lost frames (single 50 ms frames, all within ~3 ms of the budget; frames over 33 ms before -> after, work
-average before -> after): Black Market 2 -> 7 (29.7 -> 28.8 fps; 32.5 -> 33.0 ms), the news third tab 1 -> 2, "invaded"
-2 -> 3 (29.9 -> 29.5 fps), the overworld pause 1 -> 2, add-member role 12 -> 13, the cafe counter 2 -> 2 (29.7 -> 29.5 fps).
-Their own work is 32-33 ms; the sim's work used to arrive in 32 ticks and now arrives in every tick.
+(First measured on `f91bd3e4` on 2026-11-13; the table is the tree it landed on, both ROMs built clean on 2026-11-15.)
+Windows that lost frames (single 50 ms frames, all within ~3 ms of the budget; frames over 33 ms before -> after, drawn fps):
+the news third tab 0 -> 10 (30.0 -> 28.3; it also shows other headlines now, the sim's random path changed: 8 lines of
+text instead of 7; work 32.9 -> 33.5 ms), the island town hall menu 9 -> 19 (27.1 -> 25.7: nine new 3-vblank frames;
+the 4-7 vblank frames are the map parts it builds under the menu, S3-14), Black Market 4 -> 9 (29.3 -> 28.5), the shop's
+cursor move 2 -> 4 (29.0 -> 28.0), "invaded" 3 -> 5, add-member role 12 -> 13, the cafe counter 1 -> 2. Their own work is
+31-33 ms; the sim's work used to arrive in 32 ticks every 1,125 and now arrives in every tick.
 
 **Still short of "no frame over 33 ms from the sim":** the pass no longer produces a run of long frames anywhere (no
-4-vblank frame in the group, the worst is a single 50 ms frame), but its work now arrives as a steady 0.3-1.2 ms in every
-tick instead of 11-15 ms in 32 of them (the same ~1 s of work over a 1,125-tick interval: the hub window's mean is 15.1 ms
-before, 15.0 after, 14.2 with the pass off). Against the floor ROM the average work of a tick is +0.8 ms in the hub window,
-+0.4 shop, +0.6 picker, +1.2 pet, and +0.4 ms (median +0.3) over the 50 windows of `speed2_life` and `life_speed`. A window
-within ~3 ms of the budget still loses a frame now and then. Frames over 33 ms, floor -> after: shop 0 -> 3, picker 1 -> 6,
-pet 5 -> 13 (the pass's own share: 3, 5 and 8 frames), Black Market 3 -> 7, the news third tab 0 -> 2: S3-13's "menu
-headroom" list. Two ways to close the rest were not taken. A cheaper `update_resident_ex` (a venue meeting or a problem
-check is 2-3 ms) is a package of its own. Skipping the pass on a tick that ran long would tie the sim's results to frame
-timing: a seed would no longer give the same town on every platform, and the tests and harness scripts depend on that.
+4-vblank frame in the group, the worst is a single 50 ms frame), but its work now arrives as a steady 0.4-1.3 ms in every
+tick instead of 11-15 ms in 32 of them (the same work over a 1,125-tick interval: the hub window's mean is 15.0 ms
+before, 14.9 after, 14.2 with the pass off). Against the floor the average work of a tick is +0.7 ms in the hub window,
++0.4 shop, +0.6 picker, +1.3 pet, and +0.3 ms median (+0.7 mean: some pages show other headlines) over the 54 windows of
+`speed2_life` and `life_speed`. A window within ~3 ms of the budget still loses a frame now and then. Frames over 33 ms,
+floor -> after: picker 4 -> 7, pet 6 -> 16 (the pass's own share: 3 and 10 frames), Black Market 3 -> 9, the news third
+tab 0 -> 10, the shop's cursor move 0 -> 4: S3-13's "menu headroom" list. Two ways to close the rest were not taken. A
+cheaper `update_resident_ex` (a venue meeting or a problem check is 2-3 ms) is a package of its own. Skipping the pass on
+a tick that ran long would tie the sim's results to frame timing: a seed would no longer give the same town on every
+platform, and the tests and harness scripts depend on that.
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 

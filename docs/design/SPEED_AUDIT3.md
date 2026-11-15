@@ -1212,18 +1212,18 @@ entries of 100-330 ms (3.4).
 | **S3-14** | **Island hub leftovers.** A tip card is a modal: hold the hub under it (S2-1). Do not build map parts under the town hall menu, or finish them first. The second after a new island's load: 39 frames of 67-117 ms of map parts (after S2-10's fade) | tip card up 19.0 fps, logic 23.8 -> 30. Town hall menu's first seconds 26.2 -> 30 (with S3-2). New island: 39 slow frames -> under the fade | `core/src/fp_island.c`, `fp_island_gfx.c`, `tips.c` (SPEED, after S2-10) | S/M | exact but the hold under the card | 0 B |
 | **S3-15** | **PS1: scene-change reads.** Every scene change reads one or two overlay groups: 98-502 ms each, about 150 ms of it waiting for the drive. Read the group a menu is about to open while its cursor rests on the entry (the slot is free until the change), or keep the last group so going back costs nothing | scene changes 260-680 ms -> the fade alone when the guess was right | `ps1/src/overlay.c`, `core/src/scene.c` hook (SPEED) | M | exact | must fit the existing slot and the 72 KB gate: no new resident buffer |
 
-**Landed:** **S3-1** (2026-11-13, `docs/GBA.md` "Speed wave 3: S3-1"). The resident pass is one resident a tick over the whole
-15 game minutes (a credit-driven cursor, not staggered stamps: `sim_init`, a load and a fast-forward may still set every
-stamp to "now", the pass cannot burst), and a new bond in the sorted edge table is made room for with a halfword move on
-the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA (origin `f91bd3e4` before and after): shop gifts tab 21.5 ->
-30.0, apartments 25.2 -> 30.0, Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, citizen picker 22.9 ->
-29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 574 -> 476, over 50 ms 268 -> 203; no run of long frames anywhere
-any more. **Not met:** "no frame over 33 ms from the sim". The work now arrives as 0.3-1.2 ms in every tick (+0.4 ms mean over
-50 windows, against a floor ROM with the resident updates off), so windows within ~3 ms of the budget still lose a frame now
-and then: sim group frames over 33 ms 0 / 3 / 6 / 13 (hub / shop / picker / pet; floor 0 / 0 / 1 / 5), Black Market 2 -> 7,
-the news third tab 1 -> 2: S3-13's list. PS1: the island hub window had 4 frames of 50 ms, now none (resident code -12 B, the
-EXE ends where it did); Dreamcast: no long tick from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick
-windows, GBA gates).
+**Landed:** **S3-1** (built 2026-11-13, landed 2026-11-15, `docs/GBA.md` "Speed wave 3: S3-1"). The resident pass is one
+resident a tick over the whole 15 game minutes (a credit-driven cursor, not staggered stamps: `sim_init`, a load and a
+fast-forward may still set every stamp to "now", the pass cannot burst), and a new bond in the sorted edge table is made
+room for with a halfword move on the GBA (the byte-wise libc `memmove` was the 3-7 ms tail). GBA (origin `cb7d48d9` before
+and after): apartments 25.2 -> 30.0, Options Accessibility 23.7 / 28.2 -> 30.0, pet-care boss 28.6 -> 30.0, shop gifts tab
+21.2 -> 29.5, citizen picker 23.1 -> 29.5, pet 28.5 -> 29.8; frames over 33 ms in the four tours 562 -> 509, over 50 ms
+278 -> 213; no run of long frames anywhere any more. **Not met:** "no frame over 33 ms from the sim". The work now arrives
+as 0.4-1.3 ms in every tick (+0.3 ms median over 54 windows, against a floor build with the resident updates off), so
+windows within ~3 ms of the budget still lose a frame now and then: sim group frames over 33 ms 0 / 0 / 7 / 16 (hub / shop
+/ picker / pet; floor 0 / 0 / 4 / 6), the news third tab 0 -> 10, the town hall menu 9 -> 19, Black Market 4 -> 9: S3-13's
+and S3-14's lists. PS1: the island hub window had 4 frames of 50 ms, now none (resident -16 B); Dreamcast: no long tick
+from the pass before or after. New group `speed2_sim.txt` (four 1,200-tick windows, GBA gates).
 
 ## 5. Suggested order
 

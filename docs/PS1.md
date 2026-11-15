@@ -1614,17 +1614,17 @@ before and after (64 KB below the stack top with the boot FMV; the 72 KB gate is
 **S3-1 (the sim's 15-minute pass).** The core change (docs/GBA.md "Speed wave 3: S3-1": the resident pass is one resident a
 tick over the 15 game minutes, not 32 residents in 32 ticks every 15 minutes) is shared by the PS1. The R3000 hid most of
 the old pass: in the new `sim` group (`speed2_sim.txt`, four 1,200-tick windows with a pass inside each; PCSX-Redux, the
-disc before and after on `f91bd3e4`) the shop gifts tab, the citizen picker and the pet already held 30.0 with no frame over
+disc before and after on `cb7d48d9`) the shop gifts tab, the citizen picker and the pet already held 30.0 with no frame over
 33 ms; the island hub had 4 frames of 50 ms (29.96 fps), now **30.00 with none over 33 ms**. The `life` group on the first cut
 of the package: every window 30.0 but the new island load, the save freeze (S2-10) and the care reaction (2 frames of
-50 ms). `game_smoke` passes. **PS1 resident: 12 B less.** The base's text ended exactly on the 16-byte boundary where
-`.rodata` starts, so the first cut's +4 B of text cost 16 B of image. The package's code is now -12 B (`.text` 0xaea80 ->
-0xaea74, the disc's `size` text 2,829,360 -> 2,829,348 B): `minute_step` reads the event-rate option once, the activity is
-stored without the compare, `sim_edge_remove` was a copy of `town.c`'s `remove_edge` and is `rel_remove_at` now, and
-`update_resident_ex` takes the fewest game minutes an update may cover (`SIM_PASS_MIN` for the pass, `SIM_MIN_ELAPSED` for a
-fast-forward chunk, which also chooses the routine again) instead of a flag and a conditional line (-16 B). The EXE with the
-boot FMV ends at `0x801ef580` before and after: 68,224 B below the stack top (the 72 KB gate is the PS1-RAM package's; this
-package adds nothing to the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
+50 ms). `game_smoke` passes. **PS1 resident: 16 B less.** The first cut's +4 B of text cost 16 B of image (the base's text
+ended on the 16-byte boundary where `.rodata` starts). The package's code is now -12 B (`.text` 711,332 -> 711,320 B on
+`cb7d48d9`): `minute_step` reads the event-rate option once, the activity is stored without the compare, `sim_edge_remove`
+was a copy of `town.c`'s `remove_edge` and is `rel_remove_at` now, and `update_resident_ex` takes the fewest game minutes an
+update may cover (`SIM_PASS_MIN` for the pass, `SIM_MIN_ELAPSED` for a fast-forward chunk, which also chooses the routine
+again) instead of a flag and a conditional line (-16 B). The EXE with the boot FMV ends at `0x801ee560` instead of
+`0x801ee570`: 72,336 -> **72,352 B** below the stack top (the 72 KB gate, 73,728 B, is the PS1-RAM package's; this package
+takes 16 B off the shortfall). The halfword edge move is GBA-only (`DOOMO_PLATFORM_GBA`); the PS1 keeps `memmove`.
 
 ## 13. Notes for the core
 
