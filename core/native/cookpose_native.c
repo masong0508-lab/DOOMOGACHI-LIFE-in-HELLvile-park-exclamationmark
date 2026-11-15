@@ -10,8 +10,9 @@
  * test_cook_kept compares the very images the GBA uses with Granny drawn in full. Off by default:
  * screenshots never depend on it.
  *
- * File: "GRN1", u32 n, n x { u32 key, u32 offset, i16 cx, i16 cy, i16 x0, i16 y0, u16 w, u16 h }
- * sorted by key, then the pictures (w * h bytes each, 4-aligned). Little endian. */
+ * File: "GRN1", u32 n, n x { u32 key, u32 offset, i16 cx, i16 cy, i16 clip, i16 x0, i16 y0, u16 w,
+ * u16 h, u16 pad } (24 B) sorted by key, then the pictures (w * h bytes each, 4-aligned; offset 0:
+ * none). Little endian. */
 #include "native.h"
 #include "../src/fishcook_int.h"
 #include <stdio.h>
@@ -20,13 +21,13 @@
 
 typedef struct {
     uint32_t key;
-    int16_t cx, cy, x0, y0;
+    int16_t cx, cy, clip, x0, y0;
     uint16_t w, h;
     uint8_t *pix;
 } NPose;
 
-/* granny_draw(cx, cy, s, t, mood) as an image; 0 when it paints index 0 or nothing */
-static int pose_render(int cx, int cy, int s, int t, int mood, NPose *p)
+/* granny_draw(cx, cy, s, t, mood) above row clip as an image; 0 when it paints index 0 or nothing */
+static int pose_render(int cx, int cy, int clip, int s, int t, int mood, NPose *p)
 {
     static uint8_t save[NAT_MAX_W * NAT_MAX_H], a[NAT_MAX_W * NAT_MAX_H];
     size_t n = (size_t)nat_w * (size_t)nat_h;
@@ -38,7 +39,7 @@ static int pose_render(int cx, int cy, int s, int t, int mood, NPose *p)
     memset(nat_fb, 1, n);
     granny_draw(cx, cy, s, t, mood);
     for (i = 0; i < (int)n; i++) {
-        if (a[i] != nat_fb[i]) { a[i] = 0; continue; }          /* not painted */
+        if (a[i] != nat_fb[i] || i / nat_w >= clip) { a[i] = 0; continue; }   /* not painted, or covered */
         if (!a[i]) bad = 1;                                      /* painted with index 0 */
         x = i % nat_w; y = i / nat_w;
         x0 = DOOMO_MIN(x0, x); x1 = DOOMO_MAX(x1, x);
@@ -47,7 +48,7 @@ static int pose_render(int cx, int cy, int s, int t, int mood, NPose *p)
     memcpy(nat_fb, save, n);
     if (bad || x1 < x0) return 0;
     p->key = granny_key(s, t, mood);
-    p->cx = (int16_t)cx; p->cy = (int16_t)cy;
+    p->cx = (int16_t)cx; p->cy = (int16_t)cy; p->clip = (int16_t)clip;
     p->x0 = (int16_t)x0; p->y0 = (int16_t)y0;
     p->w = (uint16_t)(x1 - x0 + 1); p->h = (uint16_t)(y1 - y0 + 1);
     p->pix = (uint8_t *)malloc((size_t)p->w * p->h);
@@ -62,7 +63,7 @@ static NPose np[NP_CAP];
 static uint8_t np_ok[NP_CAP];             /* 1 an image, 2 cannot be one */
 static int np_n, np_w, np_h;
 
-int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood)
+int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
 {
     int i;
     DoomoImage img;
@@ -73,15 +74,19 @@ int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood)
         np_w = nat_w; np_h = nat_h;
     }
     for (i = 0; i < np_n; i++)
-        if (np[i].key == key && np[i].cx == cx && np[i].cy == cy) break;
+        if (np[i].key == key && np[i].cx == cx && np[i].cy == cy && np[i].clip == clip) break;
     if (i == np_n) {
         if (np_n >= NP_CAP) return 0;
         memset(&np[i], 0, sizeof(np[i]));
-        np_ok[i] = pose_render(cx, cy, s, t, mood, &np[i]) ? 1 : 2;
-        np[i].key = key; np[i].cx = (int16_t)cx; np[i].cy = (int16_t)cy;
+        np_ok[i] = pose_render(cx, cy, clip, s, t, mood, &np[i]) ? 1 : 2;
+        np[i].key = key; np[i].cx = (int16_t)cx; np[i].cy = (int16_t)cy; np[i].clip = (int16_t)clip;
         np_n++;
     }
     if (np_ok[i] != 1) return 0;
+    if (box) {
+        box[0] = np[i].x0; box[1] = np[i].y0; box[2] = np[i].w; box[3] = np[i].h;
+        return 1;
+    }
     img.w = np[i].w; img.h = np[i].h; img.pix = np[i].pix; img.uid = 0xC00C0000u + (uint32_t)i;
     plat_image(np[i].x0, np[i].y0, &img, 1, 0, 0);
     return 1;
@@ -90,13 +95,13 @@ int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood)
 /* (tests) every pose asked for since the screen size last changed that cook_poses() does not
  * list (the GBA ROM would not hold it: drawn in full there); and how many were asked for */
 static int miss_n;
-static void miss_one(void *ctx, int cx, int cy, int s, int t, int mood)
+static void miss_one(void *ctx, int cx, int cy, int clip, int s, int t, int mood)
 {
     int i;
     uint32_t key = granny_key(s, t, mood);
     (void)ctx;
     for (i = 0; i < np_n; i++)
-        if (np[i].key == key && np[i].cx == cx && np[i].cy == cy && np_ok[i] == 1) np_ok[i] = 3;
+        if (np[i].key == key && np[i].cx == cx && np[i].cy == cy && np[i].clip == clip && np_ok[i] == 1) np_ok[i] = 3;
 }
 int nat_cook_pose_unlisted(int *asked)
 {
@@ -115,13 +120,13 @@ int nat_cook_pose_unlisted(int *asked)
 static NPose *bk;
 static int bk_n, bk_cap, bk_skipped;
 
-static void bake_one(void *ctx, int cx, int cy, int s, int t, int mood)
+static void bake_one(void *ctx, int cx, int cy, int clip, int s, int t, int mood)
 {
     uint32_t key = granny_key(s, t, mood);
     int i;
     (void)ctx;
     for (i = 0; i < bk_n; i++)
-        if (bk[i].key == key && bk[i].cx == cx && bk[i].cy == cy) return;
+        if (bk[i].key == key && bk[i].cx == cx && bk[i].cy == cy && bk[i].clip == clip) return;
     if (bk_n >= bk_cap) {
         int cap = bk_cap ? bk_cap * 2 : 512;
         NPose *m = (NPose *)realloc(bk, sizeof(*bk) * (size_t)cap);
@@ -130,9 +135,9 @@ static void bake_one(void *ctx, int cx, int cy, int s, int t, int mood)
         bk_cap = cap;
     }
     memset(&bk[bk_n], 0, sizeof(bk[0]));
-    if (!pose_render(cx, cy, s, t, mood, &bk[bk_n])) {
-        /* (kept as a hole-free entry with no picture: the lookup then says "cannot") */
-        bk[bk_n].key = key; bk[bk_n].cx = (int16_t)cx; bk[bk_n].cy = (int16_t)cy;
+    if (!pose_render(cx, cy, clip, s, t, mood, &bk[bk_n])) {
+        /* (kept as an entry with no picture: the lookup then says "cannot") */
+        bk[bk_n].key = key; bk[bk_n].cx = (int16_t)cx; bk[bk_n].cy = (int16_t)cy; bk[bk_n].clip = (int16_t)clip;
         bk_skipped++;
     }
     bk_n++;
@@ -146,7 +151,8 @@ static int cmp_pose(const void *a, const void *b)
     const NPose *x = (const NPose *)a, *y = (const NPose *)b;
     if (x->key != y->key) return x->key < y->key ? -1 : 1;
     if (x->cx != y->cx) return x->cx - y->cx;
-    return x->cy - y->cy;
+    if (x->cy != y->cy) return x->cy - y->cy;
+    return x->clip - y->clip;
 }
 
 int nat_bake_poses(const char *path)
@@ -162,14 +168,14 @@ int nat_bake_poses(const char *path)
     if (!f) { fprintf(stderr, "bake: cannot write %s\n", path); return 0; }
     fwrite("GRN1", 1, 4, f);
     put32(f, (uint32_t)n);
-    off = 8u + 20u * (uint32_t)n;
+    off = 8u + 24u * (uint32_t)n;
     for (i = 0; i < n; i++) {
         uint32_t sz = (uint32_t)bk[i].w * bk[i].h;
         put32(f, bk[i].key);
         put32(f, bk[i].pix ? off : 0u);
-        put16(f, (uint16_t)bk[i].cx); put16(f, (uint16_t)bk[i].cy);
+        put16(f, (uint16_t)bk[i].cx); put16(f, (uint16_t)bk[i].cy); put16(f, (uint16_t)bk[i].clip);
         put16(f, (uint16_t)bk[i].x0); put16(f, (uint16_t)bk[i].y0);
-        put16(f, bk[i].pix ? bk[i].w : 0u); put16(f, bk[i].pix ? bk[i].h : 0u);
+        put16(f, bk[i].pix ? bk[i].w : 0u); put16(f, bk[i].pix ? bk[i].h : 0u); put16(f, 0u);
         if (bk[i].pix) off += (sz + 3u) & ~3u;
     }
     for (i = 0; i < n; i++) {

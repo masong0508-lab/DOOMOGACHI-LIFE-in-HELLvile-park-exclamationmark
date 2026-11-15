@@ -114,6 +114,25 @@ void kitchen_window_box(int b[4])
     b[0] = wx - 5; b[1] = wy - 4; b[2] = ww + 10; b[3] = wh + 9;
 }
 
+/* (S2-4c) the window's parts that move: the cloud and the flower (rows in *y0.. : the lowest row
+ * any of them reaches is not asked), and at night the twinkle by the moon (its box and size) */
+int kitchen_window_motion_top(void)
+{
+    int wx, wy, ww, wh;
+    window_geom(&wx, &wy, &ww, &wh);
+    (void)wx; (void)ww;
+    return DOOMO_MIN(wy + 8, wy + wh - 13);     /* the cloud's top row, the flower's (at its highest) */
+}
+
+void kitchen_window_twinkle(uint32_t tt, int b[4])
+{
+    int wx, wy, ww, wh;
+    window_geom(&wx, &wy, &ww, &wh);
+    (void)ww; (void)wh;
+    b[0] = wx + 3; b[1] = wy + 3; b[2] = 7; b[3] = 7;
+    if (!plat_draw_skipped() && tt != 0xFFFFFFFFu) ui_sparkle(wx + 6, wy + 6, ((int)tt / 3) & 15, PAL_WHITE);
+}
+
 uint32_t kitchen_window_key(uint32_t tt, int night)
 {
     int t = (int)tt;
@@ -382,9 +401,9 @@ uint32_t granny_key(int s, int t, int mood)
 
 /* (S2-4c) a weak default: no baked poses (the GBA keeps them in the ROM, gba/src/cookpose.c;
  * native tests render them on demand, core/native/cookpose_native.c) */
-__attribute__((weak)) int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood)
+__attribute__((weak)) int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4])
 {
-    (void)key; (void)cx; (void)cy; (void)s; (void)t; (void)mood;
+    (void)key; (void)cx; (void)cy; (void)clip; (void)s; (void)t; (void)mood; (void)box;
     return 0;
 }
 #endif
@@ -713,8 +732,10 @@ void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4])
     if (g->kind == ING_ITEM) {
         for (r = 0; r < RECIPE_COUNT; r++)
             if (cook_recipes[r].item == g->id) { dish_box(r, cx, cy, rw, 0, b); return; }
-        b[0] = cx - rw - 4; b[1] = cy - rw - 3 - (g->id == ITEM_COFFEE ? 22 : 0);
-        b[2] = 2 * rw + 9; b[3] = cy + rw + 6 - b[1];
+        /* (measured: every item's art stays within rw of its centre, a row more below; the
+         * coffee's steam rises 18 px above it) */
+        b[0] = cx - rw - 1 - (g->id == ITEM_COFFEE ? 4 : 0); b[1] = cy - rw - 1 - (g->id == ITEM_COFFEE ? 18 : 0);
+        b[2] = cx + rw + 1 - b[0]; b[3] = cy + rw + 2 - b[1];
         return;
     }
     r = rw + 2;                    /* a fish (half length r): its fins, tail, bubbles and smoke */
@@ -727,7 +748,13 @@ uint32_t ingredient_key(const CookIng *g, int t)
     if (!g || g->kind == ING_NONE) return 0;
     if (g->kind != ING_ITEM) return (uint32_t)t + 1u;
     for (r = 0; r < RECIPE_COUNT; r++)
-        if (cook_recipes[r].item == g->id) return (uint32_t)t + 1u;
+        if (cook_recipes[r].item == g->id) {
+            /* a cupcake, rolls, balls, a salad and a bagel stand still; the others steam,
+             * wobble or drip */
+            int art = cook_recipes[r].art;
+            return art == DISH_CUPCAKE || art == DISH_ROLL || art == DISH_BALLS || art == DISH_SALAD || art == DISH_BAGEL
+                   ? 1u : (uint32_t)t + 1u;
+        }
     switch (g->id) {
     case ITEM_PIXIE_SUGAR: return (uint32_t)ui_sparkle_size((t / 3) & 15) + 1u;
     case ITEM_BLOOD_ORANGE: return (uint32_t)((t / 8) % 3) + 1u;

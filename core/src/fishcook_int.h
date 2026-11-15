@@ -328,6 +328,8 @@ void kitchen_back_still(void);                      /* the wall and the jars    
 void kitchen_window(uint32_t t, int night);
 void kitchen_window_box(int b[4]);
 uint32_t kitchen_window_key(uint32_t t, int night);
+int  kitchen_window_motion_top(void);               /* the highest row the cloud and flower reach */
+void kitchen_window_twinkle(uint32_t t, int b[4]);  /* the night twinkle alone (t ~0: only its box) */
 void kitchen_pans_box(int b[4]);
 void kitchen_counter_still(int y);                  /* the counter without its logo   */
 void kitchen_counter_logo(int y, uint32_t t);
@@ -335,17 +337,21 @@ void kitchen_logo_box(int y, int b[4]);
 uint32_t kitchen_logo_key(uint32_t t);
 void fc_fx_box(int b[4], uint32_t *key);            /* fishcook.c: the particles, now */
 void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4]);
+int  fc_bubble_boxes(int x, int y, int w, const char *s, int tx, int ty, int body[4], int tail[4]);
+void fc_bubble_part(int x, int y, int w, const char *s, int tx, int ty, int chars, int part);
 void granny_box(int cx, int cy, int s, int b[4]);
 uint32_t granny_key(int s, int t, int mood);
-/* (S2-4c) Granny's poses baked ahead of time: plat_cook_pose draws the pose granny_key(s, t,
- * mood) of granny_draw(cx, cy, s, t, mood) from a picture the platform holds and returns 1, or
- * returns 0 (the weak default) and the caller draws her. The GBA bakes every pose cook_poses()
- * lists at 240x160 into the ROM (runner --bake-poses). */
+/* (S2-4c) Granny's poses baked ahead of time: the pose granny_key(s, t, mood) of
+ * granny_draw(cx, cy, s, t, mood) as a picture the platform holds, cut off at row `clip` (what
+ * a still part drawn after her covers: the counter). plat_cook_pose with box == NULL draws it
+ * and returns 1; with a box it only fills in the picture's box (x, y, w, h) and returns 1; it
+ * returns 0 (the weak default) when it holds no such picture: the caller draws her. The GBA
+ * bakes every pose cook_poses() lists at 240x160 into the ROM (runner --bake-poses). */
 #define GRANNY_POSE_CYCLE 2520                      /* lcm of her animation periods */
-int plat_cook_pose(uint32_t key, int cx, int cy, int s, int t, int mood);
-/* every (cx, cy, s, mood) the kept kitchen draws Granny at on this screen, with every t of a
- * cycle: fn(ctx, cx, cy, s, t, mood) (cook_scene.c) */
-void cook_poses(void (*fn)(void *ctx, int cx, int cy, int s, int t, int mood), void *ctx);
+int plat_cook_pose(uint32_t key, int cx, int cy, int clip, int s, int t, int mood, int box[4]);
+/* every (cx, cy, clip, s, mood) the kept kitchen draws Granny at on this screen, with every t
+ * of a cycle: fn(ctx, cx, cy, clip, s, t, mood) (cook_scene.c) */
+void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx);
 void dish_box(int r, int cx, int cy, int rw, int burnt, int b[4]);
 void ingredient_box(const CookIng *g, int cx, int cy, int rw, int b[4]);
 uint32_t ingredient_key(const CookIng *g, int t);

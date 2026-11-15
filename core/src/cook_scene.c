@@ -625,7 +625,7 @@ static void cook_update(void)
  * (the picture holds it); test_cook_kept plays every screen with the stage on and off and
  * compares every frame. */
 enum { KS_COOKING = 1, KS_RESULT, KS_COUNTER, KS_BOOK };
-enum { KV_COUNTER = 0, KV_BOOK = 1 };          /* the pictures: the counter at counter_y(), the book */
+enum { KV_COUNTER = 0, KV_BOOK = 1, KV_BOOK_NIGHT = 2 };   /* the pictures: the counter at counter_y(), the book */
 
 #if COOK_KEPT
 static uint32_t kh(uint32_t h, uint32_t v)
@@ -681,12 +681,17 @@ static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_
 {
     int b[4];
     if (!K.lpass) { granny_draw(cx, cy, s, t, mood); return; }
-    granny_box(cx, cy, s, b);
-    if (L(id, b, granny_key(s, t, mood))) {
-        /* (a baked pose where the platform has one: the GBA's ROM) */
-        if (!plat_cook_pose(granny_key(s, t, mood), cx, cy, s, t, mood)) granny_draw(cx, cy, s, t, mood);
-        put_back_rows(b, cy_counter, fc_h());
+    /* a baked pose where the platform has one (the GBA's ROM): its own box, cut off where the
+     * counter starts, so nothing needs putting back */
+    if (!plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, s, t, mood, b)) {
+        granny_box(cx, cy, s, b);
+        if (L(id, b, granny_key(s, t, mood))) {
+            granny_draw(cx, cy, s, t, mood);
+            put_back_rows(b, cy_counter, fc_h());
+        }
+        return;
     }
+    if (L(id, b, granny_key(s, t, mood))) plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, s, t, mood, NULL);
 }
 
 /* the book's Granny: where and how big */
@@ -698,14 +703,14 @@ static void book_granny(int *gx, int *gy, int *s)
     *s = big ? 12 : 9;
 }
 
-void cook_poses(void (*fn)(void *ctx, int cx, int cy, int s, int t, int mood), void *ctx)
+void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx)
 {
     int t, mood, gx, gy, gs;
     book_granny(&gx, &gy, &gs);
     for (t = 0; t < GRANNY_POSE_CYCLE; t++) {
         for (mood = GRAN_CALM; mood <= GRAN_DISMAY; mood++)      /* the cooking steps, the result */
-            fn(ctx, gran_x(), counter_y() + 4, fc_big() ? 18 : 14, t, mood);
-        fn(ctx, gx, gy, gs, t, GRAN_TALK);                     /* the recipe book */
+            fn(ctx, gran_x(), counter_y() + 4, counter_y(), fc_big() ? 18 : 14, t, mood);
+        fn(ctx, gx, gy, H(), gs, t, GRAN_TALK);                /* the recipe book */
     }
 }
 
@@ -747,14 +752,24 @@ static void hint_layer(int id, const char *s, int style)
     if (L(id, b, kh_str((uint32_t)style, s))) ui_hint(s, style);
 }
 
+/* a speech bubble: two layers, id (the tail's last rows) and id + 1 (the body), where it splits
+ * (fc_bubble_boxes), else one (id + 1 then draws nothing) */
 static void bubble_layer(int id, int x, int y, int w, const char *s, int tx, int ty, int chars)
 {
-    int b[4], n;
+    int body[4], tail[4], n;
+    uint32_t key;
     if (!K.lpass) { fc_bubble(x, y, w, s, tx, ty, chars); return; }
     n = (int)strlen(s);
-    fc_bubble_box(x, y, w, s, tx, ty, b);
-    if (L(id, b, kh_str((uint32_t)DOOMO_CLAMP(chars, 0, n + 1) << 8 ^ (uint32_t)(tx & 0xFF) << 16 ^ (uint32_t)ty, s)))
-        fc_bubble(x, y, w, s, tx, ty, chars);
+    key = kh_str((uint32_t)DOOMO_CLAMP(chars, 0, n + 1) << 8 ^ (uint32_t)(tx & 0xFF) << 16 ^ (uint32_t)ty, s);
+    if (!fc_bubble_boxes(x, y, w, s, tx, ty, body, tail)) {
+        fc_bubble_box(x, y, w, s, tx, ty, body);
+        if (L(id, body, key)) fc_bubble(x, y, w, s, tx, ty, chars);
+        tail[0] = tail[1] = tail[2] = tail[3] = 0;
+        L(id + 1, tail, 0);
+        return;
+    }
+    if (L(id, tail, kh((uint32_t)tx << 16 ^ (uint32_t)ty, 0x7A11u))) fc_bubble_part(x, y, w, s, tx, ty, chars, 1);
+    if (L(id + 1, body, key)) fc_bubble_part(x, y, w, s, tx, ty, chars, 2);
 }
 #else
 /* (the PS1: one pass, everything drawn, as before S2-4c) */
@@ -868,12 +883,30 @@ static int book_hides_pans(void)
     kitchen_pans_box(p);
     return p[0] >= bx + 4 && p[0] + p[2] <= bx + bw - 4 && p[1] >= by + 4 && p[1] + p[3] <= by + bh;
 }
+
+/* the book's picture also holds the window and the doily: the cover hides the window's cloud and
+ * flower where the book is drawn kept (the small screen; the big book's cloud shows above it) */
+static int book_kept_ok(void)
+{
+    int bx, by, bw, bh;
+    book_geom(&bx, &by, &bw, &bh);
+    (void)bx; (void)bw; (void)bh;
+    return book_hides_pans() && kitchen_window_motion_top() >= by - 2;
+}
+
+/* the doily under the left page's dish (the book's picture holds it) */
+static void book_doily_geom(int *cx, int *cy, int *r)
+{
+    int bx, by, bw, bh;
+    book_geom(&bx, &by, &bw, &bh);
+    *cx = bx + 6 + (bw / 2 - 10) / 2; *cy = by + (fc_big() ? 44 : 28); *r = fc_big() ? 28 : 17;
+}
 #endif
 
 static void draw_book(void)
 {
     enum { LB_WINDOW, LB_LOGO, LB_TITLE, LB_MONEY, LB_RIBBON, LB_FLIP, LB_TOP, LB_DISH, LB_NAME, LB_ING, LB_INGT = LB_ING + 3,
-           LB_BOTTOM = LB_INGT + 3, LB_GRANNY, LB_BUBBLE, LB_HINT, LB_FX };
+           LB_BOTTOM = LB_INGT + 3, LB_GRANNY, LB_BUBBLE, LB_HINT = LB_BUBBLE + 2, LB_FX };
     const Recipe *rc = RC();
     int w = W(), h = H(), t = K.t, big = fc_big(), ok = cook_recipe_ok(K.recipe);
     int bx, by, bw, bh, lp, lw, rp, rw;
@@ -887,9 +920,13 @@ static void draw_book(void)
     }
 #if COOK_KEPT
     else {
-        kitchen_window_box(b);
-        if (L(LB_WINDOW, b, kitchen_window_key((uint32_t)t, town_is_night()))) {
-            kitchen_window((uint32_t)t, town_is_night());
+        /* the picture holds the window (its cloud and flower hang behind the cover); at night
+         * its twinkle is a layer */
+        int night = town_is_night();
+        kitchen_window_twinkle(0xFFFFFFFFu, b);
+        if (!night) b[2] = 0;
+        if (L(LB_WINDOW, b, night ? (uint32_t)ui_sparkle_size((t / 3) & 15) + 1u : 0u) && night) {
+            kitchen_window_twinkle((uint32_t)t, b);
             put_back_cover(b);
         }
         kitchen_logo_box(counter_y() + 10, b);         /* (the big book's cover hides the flames' tops) */
@@ -939,6 +976,13 @@ static void draw_book(void)
         int a = px < bx + bw / 2 ? px : bx + bw / 2, e = px < bx + bw / 2 ? bx + bw / 2 : px;
         b[0] = bx; b[1] = by + 2; b[2] = bw + 1; b[3] = bh - 4;
         if (L(LB_FLIP, b, (uint32_t)fl << 2 | (uint32_t)(K.flip_dir > 0))) {
+            if (K.lpass) {
+                /* (the picture's doily is not there while a page turns: the left page and the
+                 * spine over it again, as book_frame paints them) */
+                ui_round_rect(bx + 2, by + 1, bw / 2 - 2, bh - 2, 3, PAL_RAMP(RAMP_CANDY, 7));
+                plat_rect(bx + bw / 2 - 1, by + 1, 2, bh - 2, PAL_RAMP(RAMP_PEACH, 4));
+                plat_rect(bx + bw / 2 - 3, by + 1, 1, bh - 2, PAL_RAMP(RAMP_PEACH, 6));
+            }
             plat_rect(a, by + 2, e - a, bh - 4, PAL_WHITE);
             plat_rect(px, by + 2, 1, bh - 4, PAL_RAMP(RAMP_PEACH, 4));
         }
@@ -958,7 +1002,8 @@ static void draw_book(void)
 #if COOK_KEPT
             if (K.lpass) {
                 int d[4];
-                b[0] = cx - r - 12; b[1] = cy - r - 6; b[2] = 2 * r + 25; b[3] = 2 * r + 12;
+                /* the sparkles circling the (kept) doily */
+                b[0] = cx - r - 12; b[1] = cy - r / 2 - 10; b[2] = 2 * r + 25; b[3] = r + 21;
                 if (ok) {
                     dish_box(K.recipe, cx, cy - 1, r, 0, d); box_join(b, d);
                     dish_box(K.recipe, cx, cy + 1, r, 0, d); box_join(b, d);
@@ -968,7 +1013,7 @@ static void draw_book(void)
             }
 #endif
             if (L(LB_DISH, b, (uint32_t)t + 1u)) {
-                ui_fill_circle(cx, cy, r + 5, PAL_RAMP(RAMP_PASTEL_PINK, 7));
+                if (!K.lpass) ui_fill_circle(cx, cy, r + 5, PAL_RAMP(RAMP_PASTEL_PINK, 7));
                 for (i = 0; i < 6; i++) {
                     int a = (t * 8 + i * 683) & DOOMO_ANG_MASK;
                     ui_sparkle(cx + FIX2INT(fx_cos(a) * (r + 8)), cy + FIX2INT(fx_sin(a) * (r / 2 + 6)), (t / 2 + i * 3) & 15,
@@ -1360,7 +1405,7 @@ static void app_box(int b[4])
 
 static void draw_cooking(void)
 {
-    enum { LC_WINDOW, LC_GRANNY, LC_LOGO, LC_TITLE, LC_MONEY, LC_APP, LC_PIPS, LC_BANNER, LC_BUBBLE, LC_FX, LC_HINT };
+    enum { LC_WINDOW, LC_GRANNY, LC_LOGO, LC_TITLE, LC_MONEY, LC_APP, LC_PIPS, LC_BANNER, LC_BUBBLE, LC_FX = LC_BUBBLE + 2, LC_HINT };
     int t = K.t, mood = GRAN_TALK, b[4] = { 0, 0, 0, 0 };
     char buf[48];
     back_layer(LC_WINDOW, t, 1);
@@ -1419,7 +1464,7 @@ static void draw_cooking(void)
 
 static void draw_result(void)
 {
-    enum { LR_WINDOW, LR_GRANNY, LR_LOGO, LR_TITLE, LR_MONEY, LR_PLATE, LR_STAMP, LR_TEXT, LR_BUBBLE, LR_FX,
+    enum { LR_WINDOW, LR_GRANNY, LR_LOGO, LR_TITLE, LR_MONEY, LR_PLATE, LR_STAMP, LR_TEXT, LR_BUBBLE, LR_FX = LR_BUBBLE + 2,
            LR_BUTTONS, LR_HINT };
     int t = K.t, w = W(), h = H(), big = fc_big(), cx = w * 64 / 100, cy = h * 47 / 100;
     int it = cook_result_item(K.recipe, K.grade), b[4] = { 0, 0, 0, 0 };
@@ -1490,7 +1535,7 @@ static void draw_result(void)
 static void draw_counter(void)
 {
     enum { LK_WINDOW, LK_CUST, LK_LOGO = LK_CUST + 2 * FC_CUSTOMERS, LK_PLATE, LK_TITLE = LK_PLATE + FC_CUSTOMERS, LK_MONEY,
-           LK_EMPTY, LK_FX, LK_REACT, LK_HINT };
+           LK_EMPTY, LK_FX = LK_EMPTY + 2, LK_REACT, LK_HINT = LK_REACT + 2 };
     int t = K.t, w = W(), cy = counter_y(), i, big = fc_big(), n = 0, b[4] = { 0, 0, 0, 0 };
     char buf[64];
     back_layer(LK_WINDOW, t, 1);
@@ -1527,19 +1572,23 @@ static void draw_counter(void)
             K.cimg[i] = img;
             K.cbub[i][0] = (int16_t)bw; K.cbub[i][1] = (int16_t)bh; K.cbub[i][2] = (int16_t)by; K.cbub[i][3] = (int16_t)bx0;
         }
-        /* the customer on a stool, behind the counter like Granny (the counter puts itself back
-         * over the face's bottom rows) */
-        b[0] = x - PORTRAIT_W / 2; b[1] = cy - PORTRAIT_H + 6; b[2] = PORTRAIT_W; b[3] = PORTRAIT_H + 4;
+        /* the customer on a stool, behind the counter: the kept kitchen draws only the rows
+         * of the face above it */
+        b[0] = x - PORTRAIT_W / 2; b[1] = cy - PORTRAIT_H + 7; b[2] = PORTRAIT_W; b[3] = PORTRAIT_H - 7;
 #if COOK_KEPT
         if (L(LK_CUST + 2 * i, b, kh(kh((uint32_t)(uintptr_t)(img ? img->pix : NULL), img ? img->uid : 0u), (uint32_t)(bob + 2))))
 #endif
         {
+            int fy = cy - PORTRAIT_H + 8 - bob;
             /* stool */
             plat_rect(x - 10, cy - 8, 20, 4, PAL_PAINT(PAINT_CHERRY, 1));
-            if (img) plat_image(x - PORTRAIT_W / 2, cy - PORTRAIT_H + 8 - bob, img, 1, 0, 0);
-#if COOK_KEPT
-            put_back_rows(b, cy, fc_h());
-#endif
+            if (K.lpass && img && fy + img->h > cy) {
+                DoomoImage top = *img;
+                top.h = (uint16_t)DOOMO_MAX(0, cy - fy);
+                plat_image(x - PORTRAIT_W / 2, fy, &top, 1, 0, 0);
+            } else if (img) {                  /* (S3-2: NULL while a job draws the face) */
+                plat_image(x - PORTRAIT_W / 2, fy, img, 1, 0, 0);
+            }
         }
         /* the order bubble or, served, a floating heart */
         if (!served) {                         /* (the corner heart reaches 2 px out) */
@@ -1640,9 +1689,15 @@ static void draw_counter(void)
 static void kitchen_pic(uint32_t key)
 {
     kitchen_back_still();
-    if (key == KV_BOOK) {
+    if (key == KV_BOOK || key == KV_BOOK_NIGHT) {
+        /* the book's: the window too (the cover hides its moving parts but the twinkle), the
+         * counter, the book and the doily */
+        int cx, cy, r;
+        kitchen_window(0, key == KV_BOOK_NIGHT);
         kitchen_counter_still(counter_y() + 10);
         book_frame();
+        book_doily_geom(&cx, &cy, &r);
+        ui_fill_circle(cx, cy, r + 5, PAL_RAMP(RAMP_PASTEL_PINK, 7));
     } else {
         kitchen_counter_still(counter_y());
     }
@@ -1650,8 +1705,8 @@ static void kitchen_pic(uint32_t key)
 
 static int kitchen_pic_keys(uint32_t *out, int cap)
 {
-    if (cap >= 2) { out[0] = KV_COUNTER; out[1] = KV_BOOK; }
-    return 2;
+    if (cap >= 3) { out[0] = KV_COUNTER; out[1] = KV_BOOK; out[2] = KV_BOOK_NIGHT; }
+    return 3;
 }
 const DoomoBackdrop cook_backdrop_family = { .id = DOOMO_BACKDROP_KITCHEN, .draw = kitchen_pic, .keys = kitchen_pic_keys };
 
@@ -1680,7 +1735,7 @@ static void cook_draw(void)
     switch (K.st) {
     case CS_BOOK:
 #if COOK_KEPT
-        if (book_hides_pans() && kept_draw(draw_book_kept, KS_BOOK, KV_BOOK)) break;
+        if (book_kept_ok() && kept_draw(draw_book_kept, KS_BOOK, town_is_night() ? KV_BOOK_NIGHT : KV_BOOK)) break;
 #endif
         draw_book();
         fc_fx_draw(0, 0);

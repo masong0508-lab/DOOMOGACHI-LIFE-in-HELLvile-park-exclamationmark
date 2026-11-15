@@ -425,20 +425,64 @@ void fc_fx_box(int b[4], uint32_t *key)
     *key = k | 1u;
 }
 
-/* (S2-4c) every pixel fc_bubble(x, y, w, s, tx, ty, ...) paints: the bubble and its tail */
-void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4])
+/* (S2-4c) every pixel fc_bubble(x, y, w, s, tx, ty, ...) paints, in two parts: the body (its
+ * round rects and text) and the tail's rows 1-5, which lie outside the body; the tail's row 0
+ * lies on the body's edge row, which covers it. Returns 1 when the body's edge row covers that
+ * first row (any bubble wider than 22 px): then fc_bubble_part draws the two parts as layers
+ * of their own, and a tail that touches something else does not drag the whole bubble along. */
+static int bubble_h(int w, const char *s)
 {
-    int lines = ui_text_wrap(0, 0, w - 10, s, 0, 0), h = lines * FONT_LINE + 7, k;
-    int x0 = x - 2, y0 = y, x1 = x + w + 2, y1;
-    if (lines < 1) h = FONT_LINE + 7;
-    y1 = y + h;
-    for (k = 0; k < 6; k++) {
+    int lines = ui_text_wrap(0, 0, w - 10, s, 0, 0);
+    return (lines < 1 ? 1 : lines) * FONT_LINE + 7;
+}
+
+int fc_bubble_boxes(int x, int y, int w, const char *s, int tx, int ty, int body[4], int tail[4])
+{
+    int h = bubble_h(w, s), k, x0 = 0x7FFF, y0 = 0x7FFF, x1 = -0x7FFF, y1 = -0x7FFF;
+    int in = ui_round_rect_inset(w, h, 4, 0);
+    body[0] = x; body[1] = y; body[2] = w; body[3] = h;
+    for (k = 1; k < 6; k++) {
         int px = x + w / 2 + (tx - (x + w / 2)) * k / 6;
         int py = (ty > y + h ? y + h - 1 : y) + (ty > y + h ? k : -k);
-        x0 = DOOMO_MIN(x0, px - 5); x1 = DOOMO_MAX(x1, px + 6);
+        int hw = 3 - k / 2;
+        x0 = DOOMO_MIN(x0, px - hw - 1); x1 = DOOMO_MAX(x1, px + hw + 2);
         y0 = DOOMO_MIN(y0, py); y1 = DOOMO_MAX(y1, py + 1);
     }
-    b[0] = x0; b[1] = y0; b[2] = x1 - x0; b[3] = y1 - y0;
+    tail[0] = x0; tail[1] = y0; tail[2] = x1 - x0; tail[3] = y1 - y0;
+    /* the first tail row, [x + w/2 - 4, x + w/2 + 5), under the body's top or bottom row */
+    return in >= 0 && x + w / 2 - 4 >= x + in && x + w / 2 + 5 <= x + w - in;
+}
+
+void fc_bubble_box(int x, int y, int w, const char *s, int tx, int ty, int b[4])
+{
+    int body[4], tail[4];
+    fc_bubble_boxes(x, y, w, s, tx, ty, body, tail);
+    b[0] = DOOMO_MIN(body[0], tail[0]); b[1] = DOOMO_MIN(body[1], tail[1]);
+    b[2] = DOOMO_MAX(body[0] + body[2], tail[0] + tail[2]) - b[0];
+    b[3] = DOOMO_MAX(body[1] + body[3], tail[1] + tail[3]) - b[1];
+}
+
+/* part 1: the tail's rows 1-5; part 2: the body (fc_bubble_boxes said the two may be split) */
+void fc_bubble_part(int x, int y, int w, const char *s, int tx, int ty, int chars, int part)
+{
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int h = bubble_h(w, s), k;
+    uint8_t fill = PAL_WHITE, edge = PAL_RAMP(RAMP_PASTEL_PINK, 3);
+    if (plat_draw_skipped()) return;
+    if (part == 1) {
+        for (k = 1; k < 6; k++) {
+            int px = x + w / 2 + (tx - (x + w / 2)) * k / 6;
+            int py = (ty > y + h ? y + h - 1 : y) + (ty > y + h ? k : -k);
+            int hw = 3 - k / 2;
+            plat_rect(px - hw - 1, py, hw * 2 + 3, 1, edge);
+            if (hw > 0) plat_rect(px - hw, py, hw * 2 + 1, 1, fill);
+        }
+        return;
+    }
+    ui_round_rect(x, y, w, h, 4, edge);
+    ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, fill);
+    plat_rect(x + 4, y + h - 2, w - 8, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
+    ui_text_wrap_n(x + 5, y + 4, w - 10, s, st->text, chars);
 }
 #endif
 
