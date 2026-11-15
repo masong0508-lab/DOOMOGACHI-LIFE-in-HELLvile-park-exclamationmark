@@ -1,0 +1,140 @@
+# speed2_studio_tabs.txt - speed tour 2 (STUDIO-30): every studio tab and mode that speed2_studio.txt and
+# speed2_studio_play.txt do not time: SONG idle / playing, NOTES idle / playing, ORDER, LYRICS, CHOIR, the PERFORM show
+# (the lead alone, then the full choir), and on the empty song (arg -2) the Start card, the control card, the song
+# Make it! made playing on SONG, and the FILE list top and end. Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+
+# ---- SONG ---------------------------------------------------------------
+wait 130
+fps start
+wait 90
+fps studio tabs: song idle
+press START
+wait 45
+fps start
+wait 90
+fps studio tabs: song playing
+press START
+wait 10
+
+# ---- NOTES --------------------------------------------------------------
+press R
+wait 20
+fps start
+wait 90
+fps studio tabs: notes idle
+press START
+wait 40
+fps start
+wait 90
+fps studio tabs: notes playing
+press START
+wait 10
+
+# ---- ORDER, LYRICS, CHOIR (PLAY is between NOTES and ORDER: speed2_studio_play) ----------
+down SELECT
+press R
+release
+wait 20
+down SELECT
+press R
+release
+wait 20
+fps start
+wait 90
+fps studio tabs: order
+down SELECT
+press R
+release
+wait 20
+press DOWN
+wait 10
+fps start
+wait 90
+fps studio tabs: lyrics
+down SELECT
+press R
+release
+wait 20
+fps start
+wait 90
+fps studio tabs: choir
+
+# ---- PERFORM (the show) -------------------------------------------------
+press R
+wait 20
+press A
+wait 60
+fps start
+wait 20
+fps studio tabs: perform early
+fps start
+wait 90
+fps studio tabs: perform later
+
+# ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+scene TITLE
+wait 20
+push STUDIO -2
+wait 100
+expect-scene STUDIO
+wait 130
+fps start
+wait 90
+fps studio tabs: start card
+down SELECT
+press UP
+release
+wait 30
+fps start
+wait 60
+fps studio tabs: control card
+press B
+wait 10
+press A
+wait 45
+fps start
+wait 90
+fps studio tabs: made song playing
+press START
+wait 10
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 20
+fps start
+wait 90
+fps studio tabs: file top
+press UP
+wait 20
+fps start
+wait 90
+fps studio tabs: file end
