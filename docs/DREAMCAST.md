@@ -367,7 +367,7 @@ border waves a frame, the sky's covered rows skipped, the rim's band rows not fi
 drawing only the bump rows its rects leave showing, the bedroom left out under the bubble's full disc) run here too,
 `plat_hshapes` and `plat_tile_rows` are the weak defaults (the core's own fills), and the GBA-only changes are not
 built. `speed2.sh dream` (its windows now over every vignette of three dreams, 2,102 ticks) on the landing tip
-`366ee6c1` + S2-4d against the tip `5aa25cd1` (the commits between touch no dream drawing): every window 30.0, 0 ticks
+`249ae551` + S2-4d against that tip (the same numbers on `5aa25cd1`): every window 30.0, 0 ticks
 over 33.3 ms on both; work mean 6,558 -> 6,207 us, worst tick 14.4 -> 13.9 ms (the nightmare), 2D prims max 1,455 ->
 1,415, texture uploads 493 -> 491; the 13 shots are byte for byte the tip's.
 
