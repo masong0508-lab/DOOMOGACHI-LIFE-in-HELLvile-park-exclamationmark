@@ -1610,6 +1610,7 @@ quoted and lower case, once a talk), **ask** or **ask without an echo**. Every l
 The fences, in `talk_gen_unk_word`, checked on the bubble text (`shown`, S1-masked) and never on the raw input:
 E1 the parser's token is unknown, not masked, not leet, not a typo of a known word; E3 3 to 16 ASCII letters and
 at most one apostrophe or hyphen, no digit, not shouted; E4 not a hate word (`talk_safe_hate_word`, fuzzy), not
+(**Review fix, landing:** the one-edit fence missed misspelt slurs, sexual, fetish and self-harm words. `unk_stem_bad` in `talk_gen.c` now folds the word (k/c, z/s, y/i, repeats) and searches it for about 190 folded stems; a hit means no echo and no guess, a plain ask. 38 probe words (nigguh, darkie, gypsy, twatwaffle, cunty, tittyz, xvideos, vore, zoophile, anorexic, bulimic, abo and more) are in `echo_en.tsv` as `no` for both rooms. The net is wide on purpose: a harmless nonsense word with a stem inside, such as `snig...`, is only asked about. **TM2d is partial:** Q8a 123 of 562, Q8b 3.2%, Q8e 5 of 20,000 are above the spec 7.2 budgets (0, 0.5%, 0); `test_talk_census.c` holds a temporary ratchet (Q8b 5%, Q8e 0.1%) to tighten in TM2e.)
 within one edit of a register, sexual, hate, minor, distress or real-world word, and no such word inside it
 ("hitlerish"); E5 no safety bit, not a K-7 room, not in the care window; E6 the word and the whole line pass the
 S3 probe (a refusal there falls back to the ask); E7 once a talk. A kid room (a minor speaks, is addressed or
