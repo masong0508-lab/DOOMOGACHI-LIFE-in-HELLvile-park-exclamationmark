@@ -1001,8 +1001,17 @@ row only (no other pixel). Also fixed: the closing toast said "Chat over. Bond %
 **Frame time of SCENE_TALK, native** (`frame-time`, CPU time of the runner process per frame: update, draw, framebuffer end;
 `ev/T8-SCRIPTS/frame_time_native.txt`): the main page 0.05-0.07 ms on average, 0.24 ms worst of 600 frames; Options 0.04 ms;
 an answer box 0.04 ms. The frame that says a line runs the drama manager and the generator at once: 0.24-0.36 ms (six
-samples, two residents). All far below 33.3 ms: a steady 30 fps on native. **Not measured:** the same screen on the GBA,
-PS1 and Dreamcast (the generator runs in one frame there; a console build of the Talk scene has no speed script yet).
+samples, two residents). All far below 33.3 ms: a steady 30 fps on native.
+
+**Frame time on the GBA ROM** (`make -C gba test-talk`, mGBA, emulated time; `ev/T8-SCRIPTS/gba_talk_fps.txt`): the list
+idle runs 30.4 logic ticks/s but draws **24.3 frames/s** (work avg 35 ms, worst 38 ms); an answer (the quick reply and its
+four boxes with the portrait) **17.6 drawn frames/s** (work avg 47 ms) with a **408 ms hitch** on the frame that says a line
+(the drama manager and the generator run in that one frame; the first box after the opener reached 511 ms). **This is
+below the steady-30 target on the GBA**; the cost is the box and portrait drawing and the one-frame generation, not the
+list. It is listed for the SPEED stream and the Talk owner (draw the portrait box cheaper; spread the generation over a few
+frames behind the typing animation). PS1 and Dreamcast: Talk is not built there yet (`DOOMO_HAS_TALK` is native and GBA).
+`gba/harness/scripts/talk.txt` was stale (it failed on origin since the owner's opener and quick replies): it now plays the
+greeting, a quick reply and the goodbye boxes with the seeded counts, and prints the windows above.
 
 **Gap list against design T8** (what the owner's screen does not have; none of it is a defect of the screen):
 in-room mode (gathering and seats, camera shots, bubbles at the speakers' heads, the portrait inset on the room); emotes and
