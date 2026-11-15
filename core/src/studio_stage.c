@@ -832,6 +832,7 @@ void stage_draw_full(void)
  * Four bulbs are one 32x5 picture (two phases, the bulbs alternate), so a row is 7 plat_image calls. The pictures are
  * what ui_fill_circle(.., 2, ..) paints (test_studio.c studio_bulbs_equal_the_circles). Returns how many bulbs it drew
  * (a multiple of 4; the rest are drawn as circles). */
+#if !defined(DOOMO_PLATFORM_PS1)           /* the PS1 keeps the circles (no resident bytes for it: PS1.md) */
 #define BL_ON PAL_PAINT(PAINT_LEMON, 2)
 #define BL_OFF PAL_PAINT(PAINT_HONEY, 0)
 #define BL_E(c) 0, c, c, c, 0, 0, 0, 0
@@ -850,6 +851,9 @@ int st_bulbs(int rx, int ry, int rw, int rh, int phase)
     }
     return n;
 }
+#else
+int st_bulbs(int rx, int ry, int rw, int rh, int phase) { (void)rx; (void)ry; (void)rw; (void)rh; (void)phase; return 0; }
+#endif
 
 /* ---- the poster ----------------------------------------------------------- */
 void tab_stage_draw(StRect r)
@@ -902,6 +906,7 @@ void tab_stage_draw(StRect r)
             bx[k] = x - BODYSPR_W / 2;
             by[k] = y - BODYSPR_H - (((t / 10) + k) % 8 == 0);
         }
+#if !defined(DOOMO_PLATFORM_PS1)                          /* the PS1 has no sprites: no code there */
         if (n > 0 && !studio.pop_n && !studio.msg_t && !studio.picking && !studio.help && !ui_toast_pending() &&
             !tip_active() && plat_stage_obj_begin()) {
             for (k = n - 1; k >= 0; k--) {
@@ -913,12 +918,17 @@ void tab_stage_draw(StRect r)
                 spr[k] = (uint8_t)!hit;
             }
         }
+#else
+        (void)bt; (void)sx1; (void)spr;
+#endif
         for (k = 0; k < n; k++) {
             int id = song_singer_id(SS, slots[k]);
+#if !defined(DOOMO_PLATFORM_PS1)
             if (spr[k]) {
                 const DoomoImage *img = bodyspr_image(id, 0, 0);
                 if (img && plat_stage_obj(slots[k], bx[k], by[k], img, 0, NULL, 0)) continue;
             }
+#endif
             st_chibi(id, bx[k], by[k], 0, 0, 0, 0);
         }
     }

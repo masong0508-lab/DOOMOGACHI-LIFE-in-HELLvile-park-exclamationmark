@@ -68,7 +68,7 @@ press R
 wait 20
 fps start
 wait 130
-fps studio: stage tab
+expect-fps 29 studio: stage tab
 shot studio_stage
 press R
 wait 20

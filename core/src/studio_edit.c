@@ -289,7 +289,9 @@ static void draw_record(int cx, int cy, int r, int t, int playing)
 {
     int a = playing ? t * 3 : t / 2, g[2];
     g[0] = r; g[1] = SS->genre & 3;
+#if ST_BAKE
     if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
+#endif
         record_rects(cx - r - 3, cy - r - 3, g);
     /* the shine sweeps around */
     {

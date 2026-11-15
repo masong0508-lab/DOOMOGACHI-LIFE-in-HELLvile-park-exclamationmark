@@ -343,20 +343,17 @@ int ed_undo(void)
         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
         int join = (ln & JOIN) != 0;
         ln &= ~JOIN;
+        int big = 0;
         if (off == BIG_OFF && enc == 0) {
             /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
-            if (ez && ez->before_ok) {
-                if (keep && !redo_push(ez, 0, (int)sizeof(DoomoSong), !first)) keep = 0;
-                first = 0;
-                memcpy(&studio.song, ez->before, sizeof(DoomoSong));
-            } else {
-                keep = 0;
-            }
-        } else if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+            if (ez && ez->before_ok) { off = 0; big = 1; } else { off = 0xFFFFu; keep = 0; }
+        }
+        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
             first = 0;
-            rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+            if (big) memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+            else rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
         }
         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
         if (!join || studio.undo_used < 6) break;
