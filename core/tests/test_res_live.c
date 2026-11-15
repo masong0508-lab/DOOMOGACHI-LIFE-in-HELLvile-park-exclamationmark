@@ -165,7 +165,7 @@ static uint8_t *read_fixture(uint32_t *size)
     FILE *f;
     uint8_t *buf;
     long n;
-    snprintf(path, sizeof path, "%s/../fixtures/gba500_old_1000.sav", test_golden_dir);
+    snprintf(path, sizeof path, "%s/../fixtures/gba500_old_1000.dmoo", test_golden_dir);
     f = fopen(path, "rb");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);

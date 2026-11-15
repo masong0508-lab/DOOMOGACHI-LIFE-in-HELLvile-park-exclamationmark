@@ -1,4 +1,4 @@
-/* gba500_old_save.c - makes core/tests/fixtures/gba500_old_1000.sav (GBA-500): a Hellvile
+/* gba500_old_save.c - makes core/tests/fixtures/gba500_old_1000.dmoo (GBA-500): a Hellvile
  * Park Classic free play island with all 1000 residents, saved by the build from before
  * GBA-500 (origin ae1bd94d, which the GBA ran too: the bytes of a save are the same on every
  * platform). core/tests/test_res_live.c loads it: with 500 live residents the island keeps
@@ -10,7 +10,7 @@
  *      -DNAT_TALK_DIR='"core/build/talk"' core/tests/fixtures/gba500_old_save.c \
  *      $(ls core/build/obj/src/*.o core/build/obj/gen/*.o) \
  *      $(ls core/build/obj/native/*.o | grep -v runner_main) -o /tmp/oldsave
- *   /tmp/oldsave core/tests/fixtures/gba500_old_1000.sav
+ *   /tmp/oldsave core/tests/fixtures/gba500_old_1000.dmoo
  *
  * The ids below are all outside the GBA's default 500 (res_live.h), so only the closeness
  * rule keeps them; the test lists the same ids. */
