@@ -1053,11 +1053,10 @@ TEST(studio_start_card_opens_on_an_empty_song_and_makes_a_playing_song)
         CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
         CHECK_EQ(studio.song.bpm, studio_pick_bpm(1, STEMPO_FAST));
         CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
-        CHECK(ed_undo());                                   /* Make it! again: the same song (same seed) */
-        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
-        CHECK(ed_redo_steps() == 1 || st_easy()->redo_lost);
-        CHECK(ed_undo());                                   /* the shuffle: the blank page */
+        CHECK(ed_undo());                                   /* takes replace each other: one undo = the blank page */
         CHECK_STR(studio.song.title, "New Song");
+        CHECK(ed_redo());                                   /* and one redo = the very same song again */
+        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
     }
     /* START stops it (second press) */
     CHECK(!strcmp(st_play_verb(), "Stop"));
@@ -1182,6 +1181,49 @@ TEST(studio_undo_redo_round_trip)
         if (ed_redo_steps() == 0) { CHECK(st_easy()->redo_lost); CHECK(!ed_redo()); }
         else CHECK(ed_redo());
     }
+    test_reset();
+}
+
+TEST(studio_make_it_undoes_and_redoes_whole)
+{
+    DoomoSong before, made, shuffled;
+    open_blank_studio();                                    /* an empty song: the Start card is open */
+    CHECK(studio.card);
+    before = studio.song;
+    ed_reset();
+    press(BTN_A);                                           /* Make it! (the card's default row) */
+    CHECK(!studio.card);
+    made = studio.song;
+    CHECK(memcmp(&made, &before, sizeof made) != 0);
+    CHECK(ed_undo());                                       /* one undo: the blank song back */
+    CHECK(memcmp(&studio.song, &before, sizeof before) == 0);
+    CHECK_EQ(ed_redo_steps(), 1);
+    CHECK(ed_redo());                                       /* and one redo: the very same made song */
+    CHECK(memcmp(&studio.song, &made, sizeof made) == 0);
+    CHECK_EQ(ed_redo_steps(), 0);
+    CHECK(ed_undo());                                       /* it can go round again */
+    CHECK(ed_redo());
+    CHECK(memcmp(&studio.song, &made, sizeof made) == 0);
+    /* Shuffle twice, then Make it!: each take replaces the last, so one undo still reaches the song before the card
+     * and one redo brings the last take back */
+    open_blank_studio();
+    before = studio.song;
+    ed_reset();
+    press(BTN_UP);                                          /* Make it! -> Shuffle */
+    press(BTN_A);
+    shuffled = studio.song;
+    press(BTN_A);                                           /* a second take */
+    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) != 0);
+    shuffled = studio.song;
+    press(BTN_DOWN);
+    press(BTN_A);                                           /* Make it!: keeps what Shuffle played */
+    CHECK(!studio.card);
+    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) == 0);
+    CHECK_EQ(ed_undo_steps(), 1);
+    CHECK(ed_undo());
+    CHECK(memcmp(&studio.song, &before, sizeof before) == 0);
+    CHECK(ed_redo());
+    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) == 0);
     test_reset();
 }
 

@@ -81,8 +81,10 @@ for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothi
   ("Change section", it was also START).
 * **Redo.** An undo keeps the bytes it overwrites in a second journal in the scene scratch (the same record format,
   `STUDIO_REDO_BYTES` 384); a redo replays it and puts the step back on the undo journal. Any new edit empties it.
-  A step too big for the redo journal (a whole composed song) can be undone but says "Too big to redo" instead of
-  redoing half. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
+  A step too big for the redo journal says "Too big to redo" instead of redoing half. The Start card's Make it! and
+  Shuffle are the exception: they remember their picks and seed (a 14 byte recipe record in the same journal) and a redo
+  recomposes the very same song. Shuffle and Make it! also take the previous take back first, so the card adds one small
+  undo step whatever the number of takes, and one undo returns to the song before the card. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
 * **The cursor's cell on NOTES**, one line under the grid: "Bar 2, beat 3, Lead: E4 (3rd of C)", "... Harmony: F#4
   (off the scale)", "... Bass: hold", "... Drums: Snare". It falls back to shorter forms until it fits; the text is
   cached and rebuilt only when the cell, the key or the scale change.
@@ -278,7 +280,7 @@ what tests it. Keys are GBA names; the pads' names are on the control card. "Jou
 | Start card: Mood | Mood | Happy / Sweet / Sad / Spooky / Fierce: key mode, key, chord family | value, blip | nothing changed | the same, `studio_make_song_is_deterministic...` (scale per mood) |
 | Start card: Tempo | Tempo | Slow / Medium / Fast / Frantic: bpm of the style's range | value and the bpm | nothing changed | `studio_make_song...` (four tempos rise, in range) |
 | Start card: Length | Length | 8 / 12 / 16 order passes | value and the bars | nothing changed | `studio_make_song...` (passes, order ends on a chorus) |
-| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the history restarts if the song before was too big to remember) | `studio_start_card_opens...` |
+| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the first take must have a small song before it; later takes replace the previous take. A song of 768 B or more compressed cannot be remembered, so the history restarts) | `studio_start_card_opens...` |
 | Start card: Make it! | Make it! | composes with the current seed, plays, closes the card | sparkle, toast "Made it! START stops the song" | journal | the same (same notes as the last Shuffle; undo twice reaches the blank page) |
 | Start card: Inspire me! | Inspire me! | the FILE citizen picker, then an Inspire song | picker, toast "A Jazz song about ...!" | journal; B in the picker cancels | `studio_start_card_inspire_templates_and_skip...` |
 | Start card: Templates... | Templates... | FILE tab, template list | the list | B goes back to the FILE list | the same |

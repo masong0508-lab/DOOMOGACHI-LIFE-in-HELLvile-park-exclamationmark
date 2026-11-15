@@ -155,6 +155,10 @@ typedef struct StEasy {
     uint8_t  level;             /* 0 Easy, 1 Advanced (mirrors studio_stats.lines bit 15) */
     uint8_t  edited;            /* an edit was made this session: the one-line help stops */
     uint8_t  redo_lost;         /* the last undo was too big to keep for a redo (say so) */
+    uint8_t  mk_valid;          /* the top undo step is the Start card's make: recompose it on redo (no big image) */
+    uint8_t  mk_style, mk_mood, mk_tempo, mk_length;
+    uint16_t mk_mark;           /* studio.undo_used right after that step */
+    uint32_t mk_seed;
     uint8_t  csel, style, mood, tempo, length;   /* the Start card */
     uint16_t help_t;            /* ticks of the one-line help left on the bar */
     uint32_t seed;              /* the Start card's seed */
@@ -247,6 +251,8 @@ enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };
 typedef struct StartPick { uint8_t style, mood, tempo, length; uint32_t seed; } StartPick;
 /* A whole working song from four picks and a seed: a pure function of (picks, the song's choir and words). */
 void studio_make_song(DoomoSong *s, const StartPick *p);
+void ed_mark_make(const StartPick *p);          /* the step just committed was studio_make_song(p): redo recomposes it */
+int  ed_undo_make(void);                        /* take back the top step if it is that make (no redo kept); 1 = done */
 int  studio_pick_bpm(int style, int tempo);
 int  studio_pick_passes(int length);            /* order passes (2 bars each) */
 const char *studio_style_name(int style);        /* the friendly short name */

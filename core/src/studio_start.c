@@ -101,9 +101,12 @@ static void make(StEasy *ez, int shuffle)
     if (shuffle) ez->seed = doomo_hash32(ez->seed * 2246822519u + 0x9E3779B9u) | 1u;
     pick_of(ez, &p);
     song_stop();
+    ed_undo_make();                            /* Shuffle again / Make it! after a Shuffle: replace that take, so the
+                                                * one step this card adds always has the small before-image */
     ed_touch(SS, (int)sizeof(DoomoSong));
     studio_make_song(SS, &p);
     ed_commit();
+    ed_mark_make(&p);
     studio.slot = -1;
     song_play_at(SS, -1, 0, 0);
     audio_sfx(SFX_SPARKLE);

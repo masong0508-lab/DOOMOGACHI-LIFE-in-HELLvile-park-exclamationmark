@@ -164,7 +164,9 @@ static void recount(void)
 static int evict_oldest(void)
 {
     int pos = studio.undo_used, first = 0;
+    StEasy *ez0 = st_easy();
     if (!pos) return 0;
+    if (ez0) ez0->mk_valid = 0;            /* the journal shifts: the make mark would point at the wrong place */
     do {
         while (pos > 0) {
             int start = pos - 6 - (int)rd16(studio.undo + pos - 6 + 4);
@@ -198,6 +200,8 @@ static void redo_clear(void)
 
 void ed_reset(void)
 {
+    StEasy *ez = st_easy();
+    if (ez) ez->mk_valid = 0;
     studio.undo_used = 0;
     studio.undo_open = 0;
     studio.undo_steps = 0;
@@ -234,6 +238,25 @@ static void touch_rec(const void *field, int len, int keep_redo)
 }
 
 void ed_touch(const void *field, int len) { touch_rec(field, len, 0); }
+
+void ed_mark_make(const StartPick *p)
+{
+    StEasy *ez = st_easy();
+    if (!ez) return;
+    ez->mk_valid = studio.undo_used >= 6 && !studio.undo_open;
+    ez->mk_style = p->style; ez->mk_mood = p->mood; ez->mk_tempo = p->tempo; ez->mk_length = p->length;
+    ez->mk_seed = p->seed;
+    ez->mk_mark = studio.undo_used;
+}
+
+int ed_undo_make(void)
+{
+    StEasy *ez = st_easy();
+    if (!ez || !ez->mk_valid || studio.undo_open || studio.undo_used != ez->mk_mark) return 0;
+    if (!ed_undo()) return 0;
+    redo_clear();                          /* it is being replaced, not taken back */
+    return 1;
+}
 
 void ed_commit(void)
 {
@@ -286,11 +309,13 @@ static int redo_push(StEasy *ez, int off, int len, int join)
 int ed_undo(void)
 {
     StEasy *ez;
-    int first = 1, keep;
+    int first = 1, keep, is_make, base;
     if (studio.undo_open) ed_commit();
     if (studio.undo_used < 6) return 0;
     ez = st_easy();
     keep = ez != NULL;
+    is_make = ez && ez->mk_valid && studio.undo_used == ez->mk_mark;
+    base = ez ? ez->redo_used : 0;
     coal_key = -1;
     for (;;) {
         uint8_t *tr = studio.undo + studio.undo_used - 6;
@@ -306,7 +331,17 @@ int ed_undo(void)
         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
         if (!join || studio.undo_used < 6) break;
     }
-    if (ez) {
+    if (is_make) ez->mk_valid = 0;         /* the journal no longer ends on that step */
+    if (is_make && !keep && base + 14 <= STUDIO_REDO_BYTES) {
+        /* the made song is too big to keep as an image: keep the recipe (picks + seed) and recompose on redo */
+        uint8_t *q = ez->redo + base;
+        q[0] = ez->mk_style; q[1] = ez->mk_mood; q[2] = ez->mk_tempo; q[3] = ez->mk_length;
+        wr16(q + 4, ez->mk_seed & 0xFFFFu); wr16(q + 6, ez->mk_seed >> 16);
+        wr16(q + 8, 0xFFFFu); wr16(q + 10, 8u); wr16(q + 12, 8u);
+        ez->redo_used = (uint16_t)(base + 14);
+        if (ez->redo_steps < 255) ez->redo_steps++;
+        ez->redo_lost = 0;
+    } else if (ez) {
         if (keep && !first) { if (ez->redo_steps < 255) ez->redo_steps++; ez->redo_lost = 0; }
         else { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 1; }   /* it did not fit: no redo (never half a step) */
     }
@@ -334,6 +369,21 @@ int ed_redo(void)
         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
         int join = (ln & JOIN) != 0;
         ln &= ~JOIN;
+        if (off == 0xFFFFu && ln == 8 && enc == 8 && ez->redo_used >= 14) {
+            /* a recipe record: recompose the song the undo took back (same picks, seed and starting song) */
+            StartPick pk;
+            const uint8_t *q = tr - 8;
+            pk.style = q[0]; pk.mood = q[1]; pk.tempo = q[2]; pk.length = q[3];
+            pk.seed = rd16(q + 4) | (rd16(q + 6) << 16);
+            ez->redo_used = (uint16_t)(ez->redo_used - 14);
+            touch_rec(&studio.song, (int)sizeof(DoomoSong), 1);   /* keep_redo: older redo steps stay */
+            studio_make_song(&studio.song, &pk);
+            ed_commit();
+            ed_mark_make(&pk);
+            if (ez->redo_steps) ez->redo_steps--;
+            ez->redo_lost = 0;
+            return 1;
+        }
         if (off + ln <= sizeof(DoomoSong) && enc + 6 <= ez->redo_used) {
             touch_rec((const uint8_t *)&studio.song + off, (int)ln, 1);
             rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
@@ -1093,6 +1143,7 @@ static void global_input(void)
 {
     /* SELECT: chords while held, the tab's tools on a clean tap */
     if (btn_pressed(BTN_SELECT)) { studio.sel_held = 1; studio.sel_used = 0; }
+    else if (studio.sel_held && !btn_down(BTN_SELECT) && !btn_released(BTN_SELECT)) studio.sel_held = 0;   /* released while the card was up */
     if (studio.sel_held) {
         if (btn_pressed(BTN_L)) { st_set_tab(studio.tab - 1); studio.sel_used = 1; }
         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); studio.sel_used = 1; }
