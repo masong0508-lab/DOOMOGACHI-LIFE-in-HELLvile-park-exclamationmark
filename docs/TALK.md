@@ -1773,7 +1773,13 @@ taker and call tables; a child at night asked to the beach, the vape shop alone 
 around, the partner never called into a child's room and called in an adult room), `action_sim_effects` (the nudge
 sets the venue's activity, a gift moves exactly one item, an ask raises one `PROB_WANTS_ITEM` and never over an open
 problem, a call-over introduces strangers), `action_sim_nudge`, `action_p2_p3_p7_random` (1,500 random sessions with
-traits and actions on, 1,046 with a minor in the room: no couple made, no unsafe invitation or gift).
+traits and actions on, 1,046 with a minor in the room: no couple made, no unsafe invitation or gift),
+`action_not_after_hostile` (review fix: after an insult, threat, complaint, blame, mock, dismiss, comfort or sympathy
+from the player there is no gift, ask or call-over line; 400 sessions, 0 lines; fails without the fix).
+Review fixes also: the 8:00 to 18:00 limit with a minor holds for the park, cafe and church too (not only the beach), and
+`sim_nudge_ok` refuses a resident with hunger under 28 (`decide_activity` would send them to eat at once). Known: the
+nudge is best effort and lasts to the next re-decision; the call-over is refused by the plan when the room is full, but no
+scripted scene test plays one end to end.
 
 ---------------------------------------------------------------------------
 
