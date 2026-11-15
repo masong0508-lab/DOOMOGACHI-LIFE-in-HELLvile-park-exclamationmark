@@ -580,8 +580,8 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   cache sees a run), `test_creator.c` (the creator offers and saves a deep choice, undo / reset, a full pool refuses the commit and leaves
   the town and the pool unchanged), runner script `creator_deep.txt`. GBA `test-coresave` now fills the pool in its worst case and
   `town_crc` covers it; PS1: harness `game_smoke`, `creator` pass (the `creator_deep` script is for builds with `LOOK_POOL_SAVED`).
-* **Memory (measured on the origin tip `3d9905df` and that tree + CR5):** GBA `.bss` 248,924 -> 254,684 B (+5,760 B, the pool), EWRAM free
-  12,324 -> 6,564 B (the room CR5a made); IWRAM unchanged (`.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816); `.text` +2,400 B, `.rodata` +5,008 B.
+* **Memory (measured on the origin tip `1297e931` and that tree + CR5):** GBA `.bss` 249,084 -> 254,844 B (+5,760 B, the pool), EWRAM free
+  12,164 -> 6,404 B (the room CR5a made); IWRAM unchanged (`.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816); `.text` +2,400 B, `.rodata` +5,008 B.
   **PS1: +0 B resident.** The tip is under the 72 KB rule (70 KB left, `_end` 0x801ee570) and a first build of this package took it to
   0x801ee960 (+992 B of put / raw / load / save glue), so the PS1 does not get the pool code yet: `LOOK_POOL_SAVED` is 0 there
   (`look_pool.h`), the nickname chunk is written and read as before (version 2, no pool section), the Eye makeup rows are not offered,
