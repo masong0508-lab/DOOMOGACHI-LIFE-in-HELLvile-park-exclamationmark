@@ -1,0 +1,1379 @@
+From 8cc150e91080377bb0734496a37a5616e2c0d2f7 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 14:14:04 +0000
+Subject: [PATCH 1/4] TM3-TRAITS-DRIVE: trait voice lines, what a resident
+ brings up, preview trace, census trait share
+
+trait_voice.tlk: 216 trait= guarded alternatives (greeting, refusal of an invite and a favour, opinion
+answers) plus reason clauses and idle remarks; edgy traits adults-only and kid-free. talk_trait_bring_up
+picks a topic of a liked (65%) or disliked (35%) root for the idle chatter; talk_preview_trace and
+talk_trace_trait_voice; census --traits and talk_census_traits; tests test_talk_tm3.c and
+talk_census_traits_share.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63czJHmFDCnjA8mf9GoY
+---
+ core/data/talk/grammar/en/trait_voice.tlk | 556 ++++++++++++++++++++++
+ core/include/doomo/talk_traits.h          |  14 +
+ core/src/talk_dm.c                        |   4 +
+ core/src/talk_traits.c                    |  78 ++-
+ core/tests/test_talk_census.c             |  29 ++
+ core/tests/test_talk_tm3.c                | 411 ++++++++++++++++
+ core/tools/talk_census.c                  | 107 ++++-
+ core/tools/talk_census.h                  |  17 +
+ 8 files changed, 1210 insertions(+), 6 deletions(-)
+ create mode 100644 core/data/talk/grammar/en/trait_voice.tlk
+ create mode 100644 core/tests/test_talk_tm3.c
+
+diff --git a/core/data/talk/grammar/en/trait_voice.tlk b/core/data/talk/grammar/en/trait_voice.tlk
+new file mode 100644
+index 00000000..c785bce0
+--- /dev/null
++++ b/core/data/talk/grammar/en/trait_voice.tlk
+@@ -0,0 +1,556 @@
++# core/data/talk/grammar/en/trait_voice.tlk - the trait voice (TM3-TRAITS-DRIVE, docs/TALK.md 6q).
++# What a resident's traits do to the colour of the reply: a greeting, a no to an invitation or a favour, an
++# opinion they like and one they do not. Each line is guarded by `trait=` (talk_traits.h TT_*: the speaker's
++# effective set, so an edgy trait is already gone in a kid room or for a minor) and a heavier weight than the
++# plain lines, so a person with the trait says its line most of the time. Edgy traits (hot-headed, romantic,
++# snob, jealous, mean) also carry `adults_only&!kid_present` (lint L9). Nothing here is romance, a tease of a
++# person or a joke about grief; a refusal stays a plain no. The greeting is for people without their own voice (!cast: the
++# 17 cast greet in their own words, test_talk_voice). Rule names start with t_. Syntax: talkc_gen.py.
++
++
++# ---- hotheaded ----------------------------------------------------------------------------------
++@rule core.greet.t_hotheaded guard: trait=hotheaded&adults_only&!kid_present&!cast act: greet
++  "What? Oh, it's you, {you}. Keep it quick." w=14
++  "Hello! Sorry, I'm mid-grudge. Not at you, mostly." w=14
++@rule core.invite.t_hotheaded_no guard: trait=hotheaded&adults_only&!kid_present act: no
++  "No! I mean, no. I'm in no mood for people today, so ask me later." w=16
++  "Absolutely not. Ask me when I've stopped steaming." w=16
++  "No. Too many people, too little patience. Ask me tomorrow." w=16
++@rule core.ask_favor.t_hotheaded_no guard: trait=hotheaded&adults_only&!kid_present act: no
++  "No. Not today. Ask me when my blood has stopped doing this." w=16
++  "No. Ask someone else before I say something I'll regret." w=16
++@rule core.ask_opinion.t_hotheaded_pos guard: trait=hotheaded&adults_only&!kid_present&!stance=con act: opine_pos
++  "{x:cap}? Love it! Don't make me say it twice." w=10
++@rule core.ask_opinion.t_hotheaded_neg guard: trait=hotheaded&adults_only&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Don't get me started. Too late, I started." w=10
++
++# ---- romantic ----------------------------------------------------------------------------------
++@rule core.greet.t_romantic guard: trait=romantic&adults_only&!kid_present&!cast act: greet
++  "Oh, hello, {you}. The light is doing something lovely today." w=14
++  "Hello, {you}! Everything feels a bit like a film today." w=14
++@rule core.invite.t_romantic_no guard: trait=romantic&adults_only&!kid_present act: no
++  "Oh, I'd love to, but not tonight. The evening has other plans." w=16
++  "Alas, no. I shall mourn it beautifully, but ask me again." w=16
++  "I'd love to, but the evening wants me alone. Ask me soon?" w=16
++@rule core.ask_favor.t_romantic_no guard: trait=romantic&adults_only&!kid_present act: no
++  "I can't, I'm afraid. It's a tragedy, and I'll write it down." w=16
++  "I can't, but I'll sigh about it dramatically instead." w=16
++@rule core.ask_opinion.t_romantic_pos guard: trait=romantic&adults_only&!kid_present&!stance=con act: opine_pos
++  "{x:cap}! It makes my heart do a little skip." w=10
++@rule core.ask_opinion.t_romantic_neg guard: trait=romantic&adults_only&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Oh no. There's no poetry in it at all." w=10
++
++# ---- goofball ----------------------------------------------------------------------------------
++@rule core.greet.t_goofball guard: trait=goofball&!cast act: greet
++  "Hey, {you}! I practised a cool greeting. This is not it." w=14
++  "Hello! Quick, say something funny so I can steal it." w=14
++@rule core.invite.t_goofball_no guard: trait=goofball act: no
++  "Can't! I've got a very important nap-shaped hole in my day." w=16
++  "No can do. My calendar is full of nonsense, but ask me again!" w=16
++  "Can't! I'm busy teaching my socks to dance. Maybe next week?" w=16
++@rule core.ask_favor.t_goofball_no guard: trait=goofball act: no
++  "Nope! My to-do list is just a drawing of a duck, but ask tomorrow." w=16
++  "I can't! I'm too busy, but I can do a silly dance instead." w=16
++@rule core.ask_opinion.t_goofball_pos guard: trait=goofball&!stance=con act: opine_pos
++  "{x:cap}? Love it! Ten out of ten ducks." w=10
++@rule core.ask_opinion.t_goofball_neg guard: trait=goofball&!stance=pro act: opine_neg
++  "{x:cap}? Oh no. Zero ducks, would not duck again." w=10
++
++# ---- snob ----------------------------------------------------------------------------------
++@rule core.greet.t_snob guard: trait=snob&adults_only&!kid_present&!cast act: greet
++  "Oh, hello, {you}. Do come in. Mind the good rug." w=14
++  "Good day, {you}. I'd offer tea, but mine is rather particular." w=14
++@rule core.invite.t_snob_no guard: trait=snob&adults_only&!kid_present act: no
++  "I'll pass. I do have standards, but thank you for asking." w=16
++  "No, thank you. It's a touch beneath my calendar, but do ask again." w=16
++  "I'd rather not, but do ask again when it's somewhere nicer." w=16
++@rule core.ask_favor.t_snob_no guard: trait=snob&adults_only&!kid_present act: no
++  "I don't think so. I prefer my favours curated. Try someone less picky?" w=16
++  "I really couldn't. It's a bit below my usual favours, but thank you." w=16
++@rule core.ask_opinion.t_snob_pos guard: trait=snob&adults_only&!kid_present&!stance=con act: opine_pos
++  "{x:cap}? Yes. Rare good taste, and I'm glad you asked." w=10
++@rule core.ask_opinion.t_snob_neg guard: trait=snob&adults_only&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Hardly my taste. I have a refined palate for things." w=10
++
++# ---- neat ----------------------------------------------------------------------------------
++@rule core.greet.t_neat guard: trait=neat&!cast act: greet
++  "Hello, {you}! Please wipe your feet. I'm joking, mostly." w=14
++  "Hi, {you}. Come in. Everything's in its place, including you now." w=14
++@rule core.invite.t_neat_no guard: trait=neat act: no
++  "I can't, I've got to alphabetise the spice rack." w=16
++  "No, sorry. It would throw my whole schedule into chaos, but thank you." w=16
++  "Sorry, no. The house isn't ready for me to leave it. Ask me later?" w=16
++@rule core.ask_favor.t_neat_no guard: trait=neat act: no
++  "Sorry, no. It'd mess up my list. Ask me next week, when it's tidy?" w=16
++  "No, sorry. I only have a gap on Thursday. Ask me then?" w=16
++@rule core.ask_opinion.t_neat_pos guard: trait=neat&!stance=con act: opine_pos
++  "{x:cap}? Yes, tidy and tasteful and labelled. Love it." w=10
++@rule core.ask_opinion.t_neat_neg guard: trait=neat&!stance=pro act: opine_neg
++  "{x:cap}? Messy. It doesn't fit on any of my shelves." w=10
++
++# ---- slob ----------------------------------------------------------------------------------
++@rule core.greet.t_slob guard: trait=slob&!cast act: greet
++  "Hey, {you}. Excuse the mess. It's a lifestyle." w=14
++  "Oh, hi! Step over the pile. It's load-bearing." w=14
++@rule core.invite.t_slob_no guard: trait=slob act: no
++  "Nah, I'm already comfy. Moving would ruin it. Maybe tomorrow." w=16
++  "I'd have to get up. So, no. Lovely offer, though." w=16
++  "Can't. I'm in the middle of a very important lie-down. Maybe later." w=16
++@rule core.ask_favor.t_slob_no guard: trait=slob act: no
++  "Eh, can't. The sofa and I have an understanding." w=16
++  "I would, but it needs trousers. Maybe later." w=16
++@rule core.ask_opinion.t_slob_pos guard: trait=slob&!stance=con act: opine_pos
++  "{x:cap}? Great. Easy, comfy, no effort, perfect." w=10
++@rule core.ask_opinion.t_slob_neg guard: trait=slob&!stance=pro act: opine_neg
++  "{x:cap}? Too much fuss. Where's the snack in that?" w=10
++
++# ---- bookworm ----------------------------------------------------------------------------------
++@rule core.greet.t_bookworm guard: trait=bookworm&!cast act: greet
++  "Oh, hello, {you}. Sorry, I was at the good bit of chapter nine." w=14
++  "Hi, {you}. Give me a second, I'm marking my page." w=14
++@rule core.invite.t_bookworm_no guard: trait=bookworm act: no
++  "I'd love to, but I've promised this book an evening." w=16
++  "Not tonight. Chapter twelve is calling." w=16
++  "Sorry, I'm only half through a chapter. Ask me after the ending." w=16
++@rule core.ask_favor.t_bookworm_no guard: trait=bookworm act: no
++  "I can't, I'm sorry. I'm in the middle of a very long footnote." w=16
++  "I can't, but I can recommend a book on it instead." w=16
++@rule core.ask_opinion.t_bookworm_pos guard: trait=bookworm&!stance=con act: opine_pos
++  "{x:cap}? Fascinating. There's a whole shelf on that." w=10
++@rule core.ask_opinion.t_bookworm_neg guard: trait=bookworm&!stance=pro act: opine_neg
++  "{x:cap}? I've read about it twice. Still not convinced." w=10
++
++# ---- cheerful ----------------------------------------------------------------------------------
++@rule core.greet.t_cheerful guard: trait=cheerful&!cast act: greet
++  "Hello, {you}! What a day! Every day, really!" w=14
++  "Hi, {you}! You made my day, and it was already great!" w=14
++@rule core.invite.t_cheerful_no guard: trait=cheerful act: no
++  "Aw, I'd love to, but I can't! Rain check? I love a rain check!" w=16
++  "Oh, sorry, not this time! Ask me again soon, I'll be smiling!" w=16
++  "Aw, not today, but it sounds fun! Ask me next time!" w=16
++@rule core.ask_favor.t_cheerful_no guard: trait=cheerful act: no
++  "I'm so sorry, I can't! But I'm cheering for you!" w=16
++  "Not this time, but I'll cheer from the side!" w=16
++@rule core.ask_opinion.t_cheerful_pos guard: trait=cheerful&!stance=con act: opine_pos
++  "{x:cap}? Love it! It makes me so happy!" w=10
++@rule core.ask_opinion.t_cheerful_neg guard: trait=cheerful&!stance=pro act: opine_neg
++  "{x:cap}? Hm, not for me! But good luck to it!" w=10
++
++# ---- gloomy ----------------------------------------------------------------------------------
++@rule core.greet.t_gloomy guard: trait=gloomy&!cast act: greet
++  "Oh. Hello, {you}. Nice of you to come, though it won't last." w=14
++  "Hi, {you}. Lovely weather for being slightly damp inside." w=14
++@rule core.invite.t_gloomy_no guard: trait=gloomy act: no
++  "I can't. It would only go wrong. Everything does." w=16
++  "No. I'd only bring the mood down. Ask someone cheerful instead." w=16
++  "I'd rather not, but I appreciate it. It's rare." w=16
++@rule core.ask_favor.t_gloomy_no guard: trait=gloomy act: no
++  "I'd fail, and then we'd both be sad. Ask someone luckier." w=16
++  "I can't, but I'll feel bad about it. That counts, right?" w=16
++@rule core.ask_opinion.t_gloomy_pos guard: trait=gloomy&!stance=con act: opine_pos
++  "{x:cap}? It's fine, I suppose. That's high praise from me." w=10
++@rule core.ask_opinion.t_gloomy_neg guard: trait=gloomy&!stance=pro act: opine_neg
++  "{x:cap}? Doomed from the start. Like most things." w=10
++
++# ---- jealous ----------------------------------------------------------------------------------
++@rule core.greet.t_jealous guard: trait=jealous&adults_only&!kid_present&!cast act: greet
++  "Oh, it's you, {you}. Who've you been talking to? No reason." w=14
++  "Hello, {you}. I was just thinking of you. And who you're with." w=14
++@rule core.invite.t_jealous_no guard: trait=jealous&adults_only&!kid_present act: no
++  "No. I'd spend it watching who else is going. Try me later." w=16
++  "I can't, and I know exactly who is going. Pass." w=16
++  "No. I'd be too busy wondering who else is going. Ask me later." w=16
++@rule core.ask_favor.t_jealous_no guard: trait=jealous&adults_only&!kid_present act: no
++  "No. Ask someone else. You probably did." w=16
++  "No. I'd rather not, but ask someone else if you must." w=16
++@rule core.ask_opinion.t_jealous_pos guard: trait=jealous&adults_only&!kid_present&!stance=con act: opine_pos
++  "{x:cap}? I love it. Don't tell anyone, they'll want it too." w=10
++@rule core.ask_opinion.t_jealous_neg guard: trait=jealous&adults_only&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Everyone else gets it. I just don't, hmph." w=10
++
++# ---- loyal ----------------------------------------------------------------------------------
++@rule core.greet.t_loyal guard: trait=loyal&!cast act: greet
++  "Hello, {you}! I'll always keep a chair for you." w=14
++  "Hi, {you}. Good to see you. You know I've got your back." w=14
++@rule core.invite.t_loyal_no guard: trait=loyal act: no
++  "I can't, I gave my word to someone already. Loyal to a fault." w=16
++  "Sorry, I'm keeping a promise elsewhere. Ask me again, I swear." w=16
++  "I can't, I promised a friend first. But ask me again." w=16
++@rule core.ask_favor.t_loyal_no guard: trait=loyal act: no
++  "I can't, I've pledged my time already. Sorry, friend." w=16
++  "I can't, but I'll find you someone who can. Promise." w=16
++@rule core.ask_opinion.t_loyal_pos guard: trait=loyal&!stance=con act: opine_pos
++  "{x:cap}? Yes. And I'll back anyone who says so." w=10
++@rule core.ask_opinion.t_loyal_neg guard: trait=loyal&!stance=pro act: opine_neg
++  "{x:cap}? No. And I'd say so in front of anyone." w=10
++
++# ---- mean ----------------------------------------------------------------------------------
++@rule core.greet.t_mean guard: trait=mean&adults_only&!kid_present&!cast act: greet
++  "Oh. You. Hello, I guess, and try not to be boring." w=14
++  "Hello, {you}. Don't just stand there looking at things." w=14
++@rule core.invite.t_mean_no guard: trait=mean&adults_only&!kid_present act: no
++  "No. Not a chance. Go bother someone with patience, maybe." w=16
++  "Nope. I'd rather count the cracks in the ceiling." w=16
++  "No. Ask someone with more free time. Not me." w=16
++@rule core.ask_favor.t_mean_no guard: trait=mean&adults_only&!kid_present act: no
++  "No. Do it yourself. It builds character, or ask someone else." w=16
++  "No. Ask someone else, and don't make a face." w=16
++@rule core.ask_opinion.t_mean_pos guard: trait=mean&adults_only&!kid_present&!stance=con act: opine_pos
++  "{x:cap}? Fine. It's tolerable, and that's all you get." w=10
++@rule core.ask_opinion.t_mean_neg guard: trait=mean&adults_only&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Awful. I'd say more, but you'd want to sit down." w=10
++
++# ---- kind ----------------------------------------------------------------------------------
++@rule core.greet.t_kind guard: trait=kind&!cast act: greet
++  "Hello, {you}! It's so lovely to see you. Are you all right?" w=14
++  "Hi, {you}. Come in, sit down, I'll put the kettle on." w=14
++@rule core.invite.t_kind_no guard: trait=kind act: no
++  "Oh, I'm so sorry, I can't. I do hope you'll ask me again." w=16
++  "I'd love to, truly, but I just can't. Please don't feel bad." w=16
++  "Sorry, I can't this time, but thank you so much for asking!" w=16
++@rule core.ask_favor.t_kind_no guard: trait=kind act: no
++  "I'm so sorry, I can't manage that. I wish I could." w=16
++  "I wish I could, but I can't. Please ask me again soon." w=16
++@rule core.ask_opinion.t_kind_pos guard: trait=kind&!stance=con act: opine_pos
++  "{x:cap}? Oh, I do like that. Thank you for asking me." w=10
++@rule core.ask_opinion.t_kind_neg guard: trait=kind&!stance=pro act: opine_neg
++  "{x:cap}? Hm, not really for me. But I'm glad others like it." w=10
++
++# ---- lazy ----------------------------------------------------------------------------------
++@rule core.greet.t_lazy guard: trait=lazy&!cast act: greet
++  "Oh. Hi, {you}. I'd stand up, but I've just got comfy." w=14
++  "Hello, {you}. Sorry, I'm resting. It's a full-time job." w=14
++@rule core.invite.t_lazy_no guard: trait=lazy act: no
++  "Nah. I'd have to get dressed, and that's too much. Pass." w=16
++  "No, sorry. That sounds like effort. Maybe tomorrow?" w=16
++  "Maybe tomorrow. Or never. Not today." w=16
++@rule core.ask_favor.t_lazy_no guard: trait=lazy act: no
++  "Ugh, can't. Not today. Maybe tomorrow, or the day after." w=16
++  "Nope, too much effort. Maybe ask a friend?" w=16
++@rule core.ask_opinion.t_lazy_pos guard: trait=lazy&!stance=con act: opine_pos
++  "{x:cap}? Great, zero effort. Sign me up." w=10
++@rule core.ask_opinion.t_lazy_neg guard: trait=lazy&!stance=pro act: opine_neg
++  "{x:cap}? Too much work. Hard pass." w=10
++
++# ---- ambitious ----------------------------------------------------------------------------------
++@rule core.greet.t_ambitious guard: trait=ambitious&!cast act: greet
++  "Hello, {you}! Quick one, I've got goals in ten minutes." w=14
++  "Hi, {you}! Great timing. I'm between two big things." w=14
++@rule core.invite.t_ambitious_no guard: trait=ambitious act: no
++  "Can't, I've got a plan, and it's got a schedule." w=16
++  "No, sorry. I'm on a roll and I can't stop now." w=16
++  "I can't, I've got a pitch to rehearse. Ask me after the deal?" w=16
++@rule core.ask_favor.t_ambitious_no guard: trait=ambitious act: no
++  "Not now. I'm building something. It might involve you later." w=16
++  "I can't, but I could fit you in next quarter." w=16
++@rule core.ask_opinion.t_ambitious_pos guard: trait=ambitious&!stance=con act: opine_pos
++  "{x:cap}? Yes! That's got serious potential." w=10
++@rule core.ask_opinion.t_ambitious_neg guard: trait=ambitious&!stance=pro act: opine_neg
++  "{x:cap}? Dead end. There's no growth in it." w=10
++
++# ---- paranoid ----------------------------------------------------------------------------------
++@rule core.greet.t_paranoid guard: trait=paranoid&!cast act: greet
++  "Oh, it's you, {you}. Did anyone follow you?" w=14
++  "Hello, {you}. Come in, quick, and close the door behind you." w=14
++@rule core.invite.t_paranoid_no guard: trait=paranoid act: no
++  "No. It sounds like a trap. Sorry, but it's always a trap." w=16
++  "I can't. I've got a bad feeling. Pass." w=16
++  "I can't. Too many unknowns, and I don't like unknowns. Who's going?" w=16
++@rule core.ask_favor.t_paranoid_no guard: trait=paranoid act: no
++  "No. Who else knows about this? That's a no." w=16
++  "I can't. It's too risky, but ask someone else." w=16
++@rule core.ask_opinion.t_paranoid_pos guard: trait=paranoid&!stance=con act: opine_pos
++  "{x:cap}? It's all right. I've checked twice." w=10
++@rule core.ask_opinion.t_paranoid_neg guard: trait=paranoid&!stance=pro act: opine_neg
++  "{x:cap}? Suspicious. I've got my eye on it." w=10
++
++# ---- self_assured ----------------------------------------------------------------------------------
++@rule core.greet.t_self_assured guard: trait=self_assured&!cast act: greet
++  "Hello, {you}. Good call stopping by. I'm excellent today." w=14
++  "Hi, {you}! You're lucky, I'm at my best. Ask me anything." w=14
++@rule core.invite.t_self_assured_no guard: trait=self_assured act: no
++  "No, thanks. I know what I want, but it isn't that." w=16
++  "I'll pass. I'm sure of it, and I'm right. Ask me again if you like." w=16
++  "I'll pass, but you can thank me later for being honest." w=16
++@rule core.ask_favor.t_self_assured_no guard: trait=self_assured act: no
++  "No. I've decided. Ask someone else, it's a good decision." w=16
++  "I can't, but I'm sure you'll manage without me." w=16
++@rule core.ask_opinion.t_self_assured_pos guard: trait=self_assured&!stance=con act: opine_pos
++  "{x:cap}? Obviously. I called it ages ago." w=10
++@rule core.ask_opinion.t_self_assured_neg guard: trait=self_assured&!stance=pro act: opine_neg
++  "{x:cap}? No. I'm sure, I'm always sure." w=10
++
++# ---- shy ----------------------------------------------------------------------------------
++@rule core.greet.t_shy guard: trait=shy&!cast act: greet
++  "Oh! H-hello, {you}. Um, hi." w=14
++  "Hi, {you}. I was just, um, standing here. Hello." w=14
++@rule core.invite.t_shy_no guard: trait=shy act: no
++  "Um, sorry. I think I can't. Sorry again." w=16
++  "I would rather not, sorry. It sounds like a lot of people." w=16
++  "Um, maybe another time? Sorry, it's a bit much for me." w=16
++@rule core.ask_favor.t_shy_no guard: trait=shy act: no
++  "Um, I'm sorry, I can't. I'd mess it up. Sorry." w=16
++  "Sorry, I can't. But maybe someone braver can?" w=16
++@rule core.ask_opinion.t_shy_pos guard: trait=shy&!stance=con act: opine_pos
++  "Um, {x}? I like it, quietly. Please don't tell anyone." w=10
++@rule core.ask_opinion.t_shy_neg guard: trait=shy&!stance=pro act: opine_neg
++  "{x:cap}? Um, not really. Sorry." w=10
++
++# ---- outgoing ----------------------------------------------------------------------------------
++@rule core.greet.t_outgoing guard: trait=outgoing&!cast act: greet
++  "{you}! Hello! Come in, come in, meet everyone!" w=14
++  "Hey, {you}! Great to see you! Who else is coming?" w=14
++@rule core.invite.t_outgoing_no guard: trait=outgoing act: no
++  "Aw, I can't! But I'll be there in spirit! Loudly!" w=16
++  "No, sorry! I'm already at three things, but call me after!" w=16
++  "I can't, but ask me again! I'll bring ten friends!" w=16
++@rule core.ask_favor.t_outgoing_no guard: trait=outgoing act: no
++  "Can't, sorry! But I know someone who can. I know everyone!" w=16
++  "Can't! But ask around, everyone loves a favour!" w=16
++@rule core.ask_opinion.t_outgoing_pos guard: trait=outgoing&!stance=con act: opine_pos
++  "{x:cap}? Yes! Let's tell everyone!" w=10
++@rule core.ask_opinion.t_outgoing_neg guard: trait=outgoing&!stance=pro act: opine_neg
++  "{x:cap}? Nah! Not my scene, next topic!" w=10
++
++# ---- creative ----------------------------------------------------------------------------------
++@rule core.greet.t_creative guard: trait=creative&!cast act: greet
++  "Oh, hello, {you}! Hold still, you've got great shapes." w=14
++  "Hi, {you}! I was just about to make something. Join me?" w=14
++@rule core.invite.t_creative_no guard: trait=creative act: no
++  "I can't, I'm halfway through making something. Sorry." w=16
++  "Not now. The muse is here, but she's pushy. Maybe later?" w=16
++  "Not now, I'm in the middle of a masterpiece. Ask me later?" w=16
++@rule core.ask_favor.t_creative_no guard: trait=creative act: no
++  "Sorry, I can't. I've got three half-finished things yelling at me." w=16
++  "I can't, but I could draw you a picture instead." w=16
++@rule core.ask_opinion.t_creative_pos guard: trait=creative&!stance=con act: opine_pos
++  "{x:cap}? Love it. So many ideas, let me draw one." w=10
++@rule core.ask_opinion.t_creative_neg guard: trait=creative&!stance=pro act: opine_neg
++  "{x:cap}? Bland. I'd redesign it entirely." w=10
++
++# ---- glutton ----------------------------------------------------------------------------------
++@rule core.greet.t_glutton guard: trait=glutton&!cast act: greet
++  "Hello, {you}! Have you eaten? I have, twice." w=14
++  "Hi, {you}! Perfect timing, is that food?" w=14
++@rule core.invite.t_glutton_no guard: trait=glutton act: no
++  "Sorry, I can't, unless there's food. No food? Then no." w=16
++  "No, I'm in the middle of a snack. It's long, but ask me later." w=16
++  "Not now, but ask me after lunch. Or during." w=16
++@rule core.ask_favor.t_glutton_no guard: trait=glutton act: no
++  "Can't, my hands are full. Of snacks. Sorry." w=16
++  "I'd help, but only if there's cake. Is there cake?" w=16
++@rule core.ask_opinion.t_glutton_pos guard: trait=glutton&!stance=con act: opine_pos
++  "{x:cap}? Yes! Is there a snack involved, say yes." w=10
++@rule core.ask_opinion.t_glutton_neg guard: trait=glutton&!stance=pro act: opine_neg
++  "{x:cap}? Not edible, not interested." w=10
++
++# ---- morbid ----------------------------------------------------------------------------------
++@rule core.greet.t_morbid guard: trait=morbid&!kid_present&!cast act: greet
++  "Hello, {you}! The sky is so grey today. Gorgeous." w=14
++  "Hi, {you}. I found a lovely old tombstone. Free, if you want it." w=14
++@rule core.invite.t_morbid_no guard: trait=morbid&!kid_present act: no
++  "No, thanks. I'm busy being delightfully gloomy." w=16
++  "I'll pass, but thanks. A very dusty crypt is waiting." w=16
++  "No, but ask me again at midnight. I'm livelier then." w=16
++@rule core.ask_favor.t_morbid_no guard: trait=morbid&!kid_present act: no
++  "No. I've got a cobweb to admire, but maybe later." w=16
++  "I can't, but I can bring a very spooky candle instead." w=16
++@rule core.ask_opinion.t_morbid_pos guard: trait=morbid&!kid_present&!stance=con act: opine_pos
++  "{x:cap}? Ooh, deliciously grim. I'm into it." w=10
++@rule core.ask_opinion.t_morbid_neg guard: trait=morbid&!kid_present&!stance=pro act: opine_neg
++  "{x:cap}? Too cheerful. Not nearly spooky enough." w=10
++
++# ---- curious ----------------------------------------------------------------------------------
++@rule core.greet.t_curious guard: trait=curious&!cast act: greet
++  "Oh, hello, {you}! What's that, and where did you get it?" w=14
++  "Hi, {you}! I've got so many questions. First: hi." w=14
++@rule core.invite.t_curious_no guard: trait=curious act: no
++  "I can't, but who's going? Tell me all about it later!" w=16
++  "No, sorry! But I want to hear everything after. Everything." w=16
++  "Not this time, but why are you going? Ask me again!" w=16
++@rule core.ask_favor.t_curious_no guard: trait=curious act: no
++  "I can't, sorry. But what's it for, and how's it work?" w=16
++  "I can't, but I'd love to know why you need it." w=16
++@rule core.ask_opinion.t_curious_pos guard: trait=curious&!stance=con act: opine_pos
++  "{x:cap}? Yes! How does it work, tell me everything." w=10
++@rule core.ask_opinion.t_curious_neg guard: trait=curious&!stance=pro act: opine_neg
++  "{x:cap}? Hm, not for me. But why do people like it?" w=10
++
++# ---- honest ----------------------------------------------------------------------------------
++@rule core.greet.t_honest guard: trait=honest&!cast act: greet
++  "Hello, {you}. Honestly, I'm glad you came. That's the truth." w=14
++  "Hi, {you}. I'll be straight with you: I'm happy you're here." w=14
++@rule core.invite.t_honest_no guard: trait=honest act: no
++  "No. I'd rather tell you now than fake it later." w=16
++  "I'll be honest, I don't want to. Thanks for asking, though." w=16
++  "No, but thank you for asking. I'd rather say so now." w=16
++@rule core.ask_favor.t_honest_no guard: trait=honest act: no
++  "No, and I'm telling you straight so you can ask someone else." w=16
++  "I can't, and I'd rather say so than say yes." w=16
++@rule core.ask_opinion.t_honest_pos guard: trait=honest&!stance=con act: opine_pos
++  "{x:cap}? Honestly, yes. I really like it." w=10
++@rule core.ask_opinion.t_honest_neg guard: trait=honest&!stance=pro act: opine_neg
++  "{x:cap}? Honestly, no. Not for me." w=10
++
++# ---- what they bring up on their own (talk_trait_bring_up: a topic of a liked or a disliked root) ----------
++# An idle remark about a topic the speaker leans to or away from, to the room or to one person. The stance guard
++# keeps the remark on the speaker's side of the topic. No romance topic is ever picked, and nobody is the target.
++@rule idle.liked guard: topic&stance=pro act: tell
++  "I've been thinking about {x} all day. Don't mind me." w=6
++  "Funny, I just realised how much I like {x}." w=6
++  "You know what's underrated? {x:cap}. Just saying." w=6
++  "Somebody say {x} out loud. I just want to hear it." w=6
++@rule idle.disliked guard: topic&stance=con act: tell
++  "I'll say it: I'm not a fan of {x}. Carry on." w=6
++  "Is it just me, or is {x} a bit much?" w=6
++  "No offence to anyone, but {x:cap} is not for me." w=6
++  "{x:cap}. I tried. It's not my thing." w=6
++
++
++# ---- the reason they give (layer b: the clause after a stance answer, depth 1; talk_gen's reason part) ------
++# The same trait guards as above, the same fields as depth_reason.tlk ({x.adj}, {x.good}, {x.bad}, {x.assoc} add
++# their own needs). Short, no register word, no romance.
++@rule reason.t_hotheaded_pro guard: trait=hotheaded&adults_only&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.good}. Argue with me and see." w=5
++  "{x.assoc:cap} is involved. That ends the discussion." w=5
++@rule reason.t_hotheaded_con guard: trait=hotheaded&adults_only&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} so {x.bad}. It makes my teeth itch." w=5
++  "{x.assoc:cap} again? That's the last straw." w=5
++@rule reason.t_romantic_pro guard: trait=romantic&adults_only&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} so {x.adj}. It makes my heart flutter." w=5
++  "{x.assoc:cap} makes it a little bit dreamy." w=5
++@rule reason.t_romantic_con guard: trait=romantic&adults_only&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. There's no beauty in it." w=5
++  "{x.assoc:cap} breaks my heart a little. Not in a good way." w=5
++@rule reason.t_goofball_pro guard: trait=goofball&depth=1&stance=pro act: opine_pos
++  "Because {x.it} {x.is} {x.adj}. Also it's funny." w=5
++  "{x.assoc:cap}! I laughed just thinking of it." w=5
++@rule reason.t_goofball_con guard: trait=goofball&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. Not funny-bad, just bad." w=5
++  "{x.assoc:cap} makes me yawn. Hard." w=5
++@rule reason.t_snob_pro guard: trait=snob&adults_only&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.good}. Quality will out." w=5
++  "Finally, something {x.adj} done properly." w=5
++@rule reason.t_snob_con guard: trait=snob&adults_only&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. I'd expect better." w=5
++  "{x.assoc:cap} is rather common, I find." w=5
++@rule reason.t_neat_pro guard: trait=neat&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj} and tidy about it." w=5
++  "Everything about {x.it} has a place." w=5
++@rule reason.t_neat_con guard: trait=neat&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad} and messy." w=5
++  "{x.assoc:cap} leaves crumbs. Everywhere." w=5
++@rule reason.t_slob_pro guard: trait=slob&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and takes no effort." w=5
++  "{x.assoc:cap} is involved, and I can lie down for it." w=5
++@rule reason.t_slob_con guard: trait=slob&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. Too much fuss." w=5
++  "{x.assoc:cap} means getting up. Hard no." w=5
++@rule reason.t_bookworm_pro guard: trait=bookworm&depth=1&stance=pro act: opine_pos
++  "There are three good books on {x.assoc}. I've read them." w=5
++  "{x.it:cap} {x.is} {x.adj}, says every source I own." w=5
++@rule reason.t_bookworm_con guard: trait=bookworm&depth=1&stance=con act: opine_neg
++  "Every source I own says {x.it} {x.is} {x.bad}." w=5
++  "I read about {x.assoc}. I regret reading." w=5
++@rule reason.t_cheerful_pro guard: trait=cheerful&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} so {x.adj}! It makes my day!" w=5
++  "{x.assoc:cap} makes everything better!" w=5
++@rule reason.t_cheerful_con guard: trait=cheerful&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} a bit {x.bad}, but I'm sure it'll cheer up!" w=5
++  "{x.assoc:cap} isn't my thing, but I wish it well!" w=5
++@rule reason.t_gloomy_pro guard: trait=gloomy&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}. One of the few good things." w=5
++  "{x.assoc:cap} helps. A little. Sometimes." w=5
++@rule reason.t_gloomy_con guard: trait=gloomy&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. That's all I'll say." w=5
++  "{x.assoc:cap} makes it worse. It always does." w=5
++@rule reason.t_jealous_pro guard: trait=jealous&adults_only&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and I'd like to keep it." w=5
++  "I'd rather nobody else got {x.assoc}." w=5
++@rule reason.t_jealous_con guard: trait=jealous&adults_only&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}, and everyone else likes it anyway." w=5
++  "{x.assoc:cap} gets all the attention. Typical." w=5
++@rule reason.t_loyal_pro guard: trait=loyal&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and I'll stand by that." w=5
++  "My friends love {x.assoc}, so I do too." w=5
++@rule reason.t_loyal_con guard: trait=loyal&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}, and I'll say so to anyone." w=5
++  "My friends dislike {x.assoc}, and they have a point." w=5
++@rule reason.t_mean_pro guard: trait=mean&adults_only&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.good}. Don't let it go to your head." w=5
++  "It beats {x.assoc}. Barely." w=5
++@rule reason.t_mean_con guard: trait=mean&adults_only&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. Try to keep up." w=5
++  "{x.assoc:cap} ruins it. Obviously." w=5
++@rule reason.t_kind_pro guard: trait=kind&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and it makes people happy." w=5
++  "{x.assoc:cap} is lovely. Everyone should have some." w=5
++@rule reason.t_kind_con guard: trait=kind&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} a bit {x.bad}, I think. Sorry." w=5
++  "{x.assoc:cap} is hard for me, but I see why people like it." w=5
++@rule reason.t_lazy_pro guard: trait=lazy&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and takes no effort." w=5
++  "{x.assoc:cap} comes to you. That's the best kind." w=5
++@rule reason.t_lazy_con guard: trait=lazy&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}, and too much work." w=5
++  "{x.assoc:cap} sounds tiring. No." w=5
++@rule reason.t_ambitious_pro guard: trait=ambitious&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.good}. There's real potential." w=5
++  "{x.assoc:cap} pays off. I checked." w=5
++@rule reason.t_ambitious_con guard: trait=ambitious&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. There's no payoff." w=5
++  "{x.assoc:cap} is a dead end. I've mapped it." w=5
++@rule reason.t_paranoid_pro guard: trait=paranoid&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}. I checked it twice, to be safe." w=5
++  "Nothing suspicious about {x.assoc}. I looked." w=5
++@rule reason.t_paranoid_con guard: trait=paranoid&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. And it's watching." w=5
++  "{x.assoc:cap} is a red flag. A big one." w=5
++@rule reason.t_self_assured_pro guard: trait=self_assured&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.good}. I'm never wrong about these." w=5
++  "{x.assoc:cap} proves it. Obviously." w=5
++@rule reason.t_self_assured_con guard: trait=self_assured&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. I've thought it through." w=5
++  "{x.assoc:cap} doesn't work, and I'm never wrong." w=5
++@rule reason.t_shy_pro guard: trait=shy&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, um. I just like it." w=5
++  "Um, {x.assoc} is nice. Quietly nice." w=5
++@rule reason.t_shy_con guard: trait=shy&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}, um. Sorry." w=5
++  "Um, {x.assoc} is a bit much for me." w=5
++@rule reason.t_outgoing_pro guard: trait=outgoing&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}! Everyone should know!" w=5
++  "{x.assoc:cap} is better with a crowd!" w=5
++@rule reason.t_outgoing_con guard: trait=outgoing&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}! Not for the party!" w=5
++  "{x.assoc:cap} would clear a room!" w=5
++@rule reason.t_creative_pro guard: trait=creative&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and I want to make something of it." w=5
++  "{x.assoc:cap} gives me ideas. So many ideas." w=5
++@rule reason.t_creative_con guard: trait=creative&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. No imagination in it." w=5
++  "{x.assoc:cap} is so dull I'd redraw it." w=5
++@rule reason.t_glutton_pro guard: trait=glutton&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}. Is it edible? Even better." w=5
++  "{x.assoc:cap} comes with snacks, I hope." w=5
++@rule reason.t_glutton_con guard: trait=glutton&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. Not even a little tasty." w=5
++  "{x.assoc:cap} comes without snacks. Unforgivable." w=5
++@rule reason.t_morbid_pro guard: trait=morbid&!kid_present&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, in a deliciously grim way." w=5
++  "{x.assoc:cap} has a lovely haunted quality." w=5
++@rule reason.t_morbid_con guard: trait=morbid&!kid_present&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}, and not even spooky." w=5
++  "{x.assoc:cap} has no gloom to it at all." w=5
++@rule reason.t_curious_pro guard: trait=curious&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}, and there's so much to learn." w=5
++  "{x.assoc:cap} is a rabbit hole. I love rabbit holes." w=5
++@rule reason.t_curious_con guard: trait=curious&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. But why? I want to know." w=5
++  "{x.assoc:cap} confuses me. Can someone explain?" w=5
++@rule reason.t_honest_pro guard: trait=honest&depth=1&stance=pro act: opine_pos
++  "{x.it:cap} {x.is} {x.adj}. I'm not just saying that." w=5
++  "Plain truth: {x.it} {x.is} {x.good}." w=5
++@rule reason.t_honest_con guard: trait=honest&depth=1&stance=con act: opine_neg
++  "{x.it:cap} {x.is} {x.bad}. I'll say it plainly." w=5
++  "{x.assoc:cap}? No. Sorry, but no." w=5
+diff --git a/core/include/doomo/talk_traits.h b/core/include/doomo/talk_traits.h
+index 6b4c76b0..1670715b 100644
+--- a/core/include/doomo/talk_traits.h
++++ b/core/include/doomo/talk_traits.h
+@@ -140,6 +140,14 @@ void talk_trait_room(TalkTraitSet *ts, int stage, int minor_room);
+  * sliders the voice guards read; persona_type() still reads the stored ones. */
+ void talk_trait_slider_delta(const TalkTraitSet *ts, int8_t out[PERS_COUNT]);
+ 
++/* ---- what a person brings up on their own (TM3) --------------------------------------------- */
++/* A concept of one of the person's liked topic roots (about 65%) or of a disliked root (35%) that this room
++ * may hear and that their stance on it really leans that way, for an idle remark ("I keep thinking about
++ * soup" / "I'm not a fan of soup"). Never the romance or safety root, never a grief topic, nothing for a pet
++ * or for a person without a set. *dir (may be NULL): +1 liked, -1 disliked. 0 when there is nothing to say.
++ * Needs the Talk database; the same arguments give the same answer. */
++uint16_t talk_trait_bring_up(int id, const TalkAudience *aud, uint32_t seed, int *dir);
++
+ /* ---- the live preview ------------------------------------------------------------- */
+ enum { TP_GREETING = 0, TP_ANSWER, TP_REFUSAL, TP_KINDS };
+ /* A line from the REAL Talk engine (talk_gen_line) in the voice of a character that need not exist
+@@ -155,6 +163,12 @@ int  talk_preview(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint
+  * accepts, an answer agrees or denies by the stance, a refusal says no), so a refusal preview really is a
+  * "no" (line.act == TA_NO when the bank has one for this voice). Returns the text length, 0 on nothing. */
+ int  talk_preview_line(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, TalkLine *out);
++/* The same with the generator's trace (every alternative used: tests and the census read which came from a trait
++ * guard, see talk_trait_alt_guarded). tr may be NULL. */
++int  talk_preview_trace(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, TalkLine *out, TalkTrace *tr);
++/* The TT_* of the first `trait=` guard (TGP_TRAIT) of any alternative the trace used, 0 when none: the line carries
++ * that trait's voice. */
++int  talk_trace_trait_voice(const TalkTrace *tr);
+ 
+ /* ---- the save chunk's tail (talk_save.c; native only) ----------------------------------- */
+ uint32_t talk_trait_save_size(void);                       /* 0, or 1 + 6 x custom_count */
+diff --git a/core/src/talk_dm.c b/core/src/talk_dm.c
+index 19b92862..a92ac482 100644
+--- a/core/src/talk_dm.c
++++ b/core/src/talk_dm.c
+@@ -1492,6 +1492,10 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine
+         uint16_t t = 0;
+         rng_for(s, &r, 0x7C0Fu + (uint32_t)who);
+         if (arg < 3) t = talk_gen_like(s->part[who].id, arg);
++        if (!t || arg == 3) {                                      /* TM3: what their traits pull them to */
++            uint16_t b = talk_trait_bring_up(s->part[who].id, &c->aud, c->seed ^ (uint32_t)(s->idle_n * 0x9E3779B1u + (uint32_t)who), NULL);
++            if (b && (!t || rng_range(&r, 100) < 60)) t = b;
++        }
+         if (!t) t = s->topic_stack[0];
+         ok = talk_gen_entry(c, who, to, TGE_IDLE, TA_NONE, t, L, tr);
+         *hflags = THF_IDLE;
+diff --git a/core/src/talk_traits.c b/core/src/talk_traits.c
+index 842fcd23..3bcf3a33 100644
+--- a/core/src/talk_traits.c
++++ b/core/src/talk_traits.c
+@@ -699,7 +699,7 @@ int talk_trait_take(const TalkTraitBias *b) { return b->accept - b->deny; }
+ #define PV_SCAN 512
+ 
+ /* a concept of root `root` (0: any talkable root) that may be said in this room, scanned from a seeded start */
+-static uint16_t pv_topic(const TalkConv *c, int root, int stage, uint32_t seed)
++static uint16_t topic_in_root(const TalkAudience *aud, int root, int stage, uint32_t seed)
+ {
+     int n = talk_db_nconcepts(), i;
+     uint32_t start;
+@@ -715,12 +715,65 @@ static uint16_t pv_topic(const TalkConv *c, int root, int stage, uint32_t seed)
+         if (rt < 1 || rt > TALK_TRAIT_ROOT_MAX || !talk_trait_topic_ok(rt, stage)) continue;
+         if (root && rt != root) continue;
+         if (tc.flags & TCF_GRIEF) continue;
+-        if (talk_gen_concept_ok(id, &c->aud)) return id;
++        if (talk_gen_concept_ok(id, aud)) return id;
+     }
+     return 0;
+ }
+ 
+-int talk_preview_line(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uint32_t seed, TalkLine *out)
++static uint16_t pv_topic(const TalkConv *c, int root, int stage, uint32_t seed)
++{
++    return topic_in_root(&c->aud, root, stage, seed);
++}
++
++/* TM3: what a person brings up on their own. A concept of one of their liked roots (65%) or, when they have
++ * one, of a disliked root (35%), that this room may hear and that their stance on really leans the way the root
++ * does (a like or a hate of their own on a topic wins over the root, and then it is not the root's remark).
++ * Never romance (the root is refused for a minor, and the picker skips it for everyone), never a grief topic,
++ * never a pet or a person without a set. dir: +1 liked, -1 disliked. 0 when there is nothing to say. */
++uint16_t talk_trait_bring_up(int id, const TalkAudience *aud, uint32_t seed, int *dir)
++{
++    TalkTraitSet ts;
++    DoomoResident buf;
++    const DoomoResident *r;
++    int stage, i, n = 0, pick;
++    uint8_t cand[2 * TALK_TRAIT_TOPICS];
++    int8_t cdir[2 * TALK_TRAIT_TOPICS];
++    uint32_t h = doomo_hash32(seed ^ 0xB41D0A5Eu);
++    if (dir) *dir = 0;
++    if (!aud || id < 0 || id == TALK_PET_ID || !talk_gen_ready() || !talk_trait_get(id, &ts)) return 0;
++    r = res_of(id, &buf);
++    if (!r) return 0;
++    stage = stage_of(id, r);
++    for (i = 0; i < TALK_TRAIT_TOPICS; i++) {                  /* liked roots first: they are the speaker's own pull */
++        if (ts.like[i] && talk_trait_topic_ok(ts.like[i], stage) && ts.like[i] != TCR_ROMANCE) { cand[n] = ts.like[i]; cdir[n++] = 1; }
++    }
++    if (n > 0 && h % 100u >= 65u) n = 0;                       /* 35%: the disliked side, when there is one */
++    for (i = 0; i < TALK_TRAIT_TOPICS && n == 0; i++) {
++        if (ts.dislike[i] && talk_trait_topic_ok(ts.dislike[i], stage) && ts.dislike[i] != TCR_ROMANCE) { cand[n] = ts.dislike[i]; cdir[n++] = -1; }
++    }
++    if (n == 0) {                                              /* no disliked root: the liked ones after all */
++        for (i = 0; i < TALK_TRAIT_TOPICS; i++)
++            if (ts.like[i] && talk_trait_topic_ok(ts.like[i], stage) && ts.like[i] != TCR_ROMANCE) { cand[n] = ts.like[i]; cdir[n++] = 1; }
++    }
++    if (n == 0) return 0;
++    pick = (int)((h >> 8) % (uint32_t)n);
++    for (i = 0; i < n; i++) {
++        int k = (pick + i) % n, tries;
++        for (tries = 0; tries < 4; tries++) {
++            uint16_t t = topic_in_root(aud, cand[k], stage, h + (uint32_t)tries * 0x9E3779B1u + (uint32_t)k * 77u);
++            int st;
++            if (!t) break;
++            st = talk_gen_stance(id, t);
++            if ((cdir[k] > 0 && st == TST_PRO) || (cdir[k] < 0 && st == TST_CON)) {
++                if (dir) *dir = cdir[k];
++                return t;
++            }
++        }
++    }
++    return 0;
++}
++
++int talk_preview_trace(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uint32_t seed, TalkLine *out, TalkTrace *tr)
+ {
+     static const uint8_t asks[] = { TA_INVITE, TA_ASK_FAVOR, TA_GIVE };
+     TalkConv c;
+@@ -755,11 +808,28 @@ int talk_preview_line(const DoomoResident *r, const TalkTraitSet *tsin, int kind
+         if (root) topic = pv_topic(&c, root, stage, seed);
+         if (act == TA_GIVE) act = TA_INVITE;
+     }
+-    talk_gen_line(&c, 0, to, act, topic, out, NULL);
++    talk_gen_line(&c, 0, to, act, topic, out, tr);
+     pv_r = NULL;
+     return (int)strlen(out->text);
+ }
+ 
++int talk_trace_trait_voice(const TalkTrace *tr)
++{
++    int i, k;
++    if (!tr) return 0;
++    for (i = 0; i < tr->nalt; i++) {
++        TalkAltInfo ai;
++        if (!talk_gen_alt_info(tr->alt[i], &ai)) continue;
++        for (k = 0; k < ai.nterm; k++) if (ai.term[2 * k] == TGP_TRAIT) return ai.term[2 * k + 1];      /* a negated term has bit 7 set */
++    }
++    return 0;
++}
++
++int talk_preview_line(const DoomoResident *r, const TalkTraitSet *tsin, int kind, uint32_t seed, TalkLine *out)
++{
++    return talk_preview_trace(r, tsin, kind, seed, out, NULL);
++}
++
+ int talk_preview(const DoomoResident *r, const TalkTraitSet *ts, int kind, uint32_t seed, char *out, int cap)
+ {
+     TalkLine line;
+diff --git a/core/tests/test_talk_census.c b/core/tests/test_talk_census.c
+index 7b3a54b0..a9828d3e 100644
+--- a/core/tests/test_talk_census.c
++++ b/core/tests/test_talk_census.c
+@@ -673,3 +673,32 @@ TEST(talk_census_q8_checks)
+     }
+     talk_db_close();
+ }
++
++/* TM3 (docs/TALK.md 6q): how much of a reply is the traits'. 1,000 adults with different trait sets, the same context
++ * (resident, seed) under two sets, under none and under the first set again. The numbers before the trait voice lines
++ * (TM2F tip, same function): greeting 50.1%, answer 86.0%, refusal 48.4% of lines differ between two sets. */
++TEST(talk_census_traits_share)
++{
++    CensusCfg cfg;
++    CensusTraits r;
++    char err[256], gp[512];
++    int k;
++    memset(&cfg, 0, sizeof cfg);
++    cfg.grid = grid_path(gp, (int)sizeof gp);
++    test_reset();
++    CHECK_MSG(talk_census_traits(&cfg, 1000, &r, err, (int)sizeof err) == 0, "%s", err);
++    talk_census_traits_print(&r, stdout);
++    CHECK_EQ(r.n, 1000u);
++    for (k = 0; k < TP_KINDS; k++) CHECK_EQ(r.same[k], 1000u);              /* the same set says the same line */
++    CHECK_MSG(r.ab[TP_GREETING] >= 780, "greeting: %u of 1000 differ by trait", r.ab[TP_GREETING]);       /* was 501 */
++    CHECK_MSG(r.ab[TP_ANSWER] >= 930, "answer: %u of 1000 differ by trait", r.ab[TP_ANSWER]);             /* was 860 */
++    CHECK_MSG(r.ab[TP_REFUSAL] >= 870, "refusal: %u of 1000 differ by trait", r.ab[TP_REFUSAL]);          /* was 484 */
++    CHECK_MSG(r.a0[TP_GREETING] >= 780 && r.a0[TP_REFUSAL] >= 870, "a set against none: %u / %u", r.a0[TP_GREETING], r.a0[TP_REFUSAL]);
++    CHECK_MSG(r.voice[TP_GREETING] >= 480 && r.voice[TP_REFUSAL] >= 750 && r.voice[TP_ANSWER] >= 480,
++              "own trait voice: greeting %u, answer %u, refusal %u of 1000", r.voice[0], r.voice[1], r.voice[2]);
++    /* a hot-headed and a kind resident refuse in a different tone: always a different line, and mostly each from its
++     * own trait's bank */
++    CHECK_EQ(r.hk_n, 1000u);
++    CHECK_MSG(r.hk_differ >= 990, "hot-headed and kind refusals differ only %u of 1000", r.hk_differ);
++    CHECK_MSG(r.hk_own >= 400, "hot-headed and kind refusals both in their own voice only %u of 1000", r.hk_own);
++}
+diff --git a/core/tests/test_talk_tm3.c b/core/tests/test_talk_tm3.c
+new file mode 100644
+index 00000000..363945fc
+--- /dev/null
++++ b/core/tests/test_talk_tm3.c
+@@ -0,0 +1,411 @@
++/* test_talk_tm3.c - TM3-TRAITS-DRIVE: traits drive the whole reply (docs/TALK.md 6q).
++ * Owner: TALK. Spec docs/design/talk/TALK_MULTILEVEL.md 5.3 and 5.4.
++ *
++ *   tm3_edgy_inert_preview_table      edgy traits change nothing for a minor (stage x trait x kind x seed)
++ *   tm3_edgy_inert_kid_room           ... nor with a child in the room, and no edgy voice line is picked there
++ *   tm3_trait_lines_guarded           every alternative under a trait= guard: edgy ones are adults-only and
++ *                                     kid-free; none sits in a sincere bank (the lint says so too)
++ *   tm3_trait_voice_reaches_lines     a trait's own line is what the person says (greeting, answer, refusal)
++ *   tm3_bring_up_*                    what a resident brings up on their own: the liked root first, a disliked
++ *                                     root as a mild gripe, never romance, never a grief topic, never in a
++ *                                     room that may not hear it
++ *   tm3_idle_remarks_follow_traits    the drama manager's idle chatter takes the liked root
++ * The census-side share (1,000 people, the hot-headed against the kind) is in test_talk_census.c
++ * (talk_census_traits_share).
++ */
++#include "test.h"
++#include <string.h>
++#include <stdio.h>
++#include "doomo/doomo.h"
++#include "doomo/talk.h"
++#include "doomo/talk_traits.h"
++#include "doomo/lang.h"
++#include "doomo/sim.h"
++#include "doomo/resident_acc.h"
++
++static void premade_town(void)
++{
++    test_reset();
++    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
++}
++
++static int open_en(void) { return talk_db_open(lang_find("en")) == TALK_DB_OK && talk_gen_ready(); }
++
++static void sample(DoomoResident *r, int stage, int mov, int spe, int exp, int att, int quirk)
++{
++    resident_default(r);
++    RES_SET_STAGE(r, stage);
++    RES_SET_PERSONA(r, PERS_MOVEMENT, mov); RES_SET_PERSONA(r, PERS_SPEECH, spe);
++    RES_SET_PERSONA(r, PERS_EXPRESSION, exp); RES_SET_PERSONA(r, PERS_ATTITUDE, att);
++    RES_SET_PERSONA(r, PERS_QUIRK, quirk);
++}
++
++static const uint8_t edgy[5] = { TT_HOTHEADED, TT_ROMANTIC, TT_SNOB, TT_JEALOUS, TT_MEAN };
++
++static int is_edgy(int t)
++{
++    int i;
++    for (i = 0; i < 5; i++) if (edgy[i] == t) return 1;
++    return 0;
++}
++
++/* ---- the edgy traits are inert for a minor: the whole table ---------------------------------------------- */
++TEST(tm3_edgy_inert_preview_table)
++{
++    int e, stage, kind, seed, n = 0, live = 0, adult_n = 0;
++    TalkTraitSet none, ts;
++    premade_town();
++    CHECK(open_en());
++    talk_traitset_clear(&none);
++    for (e = 0; e < 5; e++) {
++        talk_traitset_clear(&ts);
++        talk_traitset_add(&ts, edgy[e]);
++        for (stage = 0; stage < LIFE_COUNT; stage++) {
++            DoomoResident r;
++            sample(&r, stage, 3 + e, 7 + stage, 9, 5 + e, 4 + stage);
++            for (kind = 0; kind < TP_KINDS; kind++) {
++                for (seed = 0; seed < 24; seed++) {
++                    TalkLine a, b;
++                    TalkTrace ta;
++                    uint32_t sd = 9000u + (uint32_t)(seed * 7 + kind);
++                    memset(&ta, 0, sizeof ta);
++                    CHECK(talk_preview_trace(&r, &ts, kind, sd, &a, &ta) > 0);
++                    CHECK(talk_preview_line(&r, &none, kind, sd, &b) > 0);
++                    if (LIFE_IS_MINOR(stage)) {
++                        CHECK_MSG(strcmp(a.text, b.text) == 0 && talk_trace_trait_voice(&ta) == 0,
++                                  "edgy trait %d moved a minor's line (stage %d kind %d seed %d): \"%s\" / \"%s\"", edgy[e], stage,
++                                  kind, seed, a.text, b.text);
++                        n++;
++                    } else if (stage == LIFE_ADULT) {
++                        adult_n++;
++                        live += talk_trace_trait_voice(&ta) == edgy[e];
++                    }
++                }
++            }
++        }
++    }
++    /* the sanity check of the check: for an adult the edgy trait does speak */
++    CHECK_MSG(live * 4 >= adult_n, "an adult's edgy trait spoke only %d of %d lines", live, adult_n);
++    printf("      %d minor lines (5 edgy traits x %d stages x 3 kinds x 24 seeds) are the same with and without the trait; an adult's edgy trait speaks %d of %d\n",
++           n, LIFE_COUNT, live, adult_n);
++    talk_db_close();
++}
++
++/* ---- ... and with a child in the room -------------------------------------------------------------------- */
++static int kids[8], nkid, adults[40], nadult;
++
++static void people(void)
++{
++    int id;
++    nadult = nkid = 0;
++    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++) {
++        if (town_res(id)->status != RES_ALIVE || (town_res(id)->flags & RF_CUSTOM)) continue;
++        if (talk_safe_minor(id)) { if (nkid < 8) kids[nkid++] = id; }
++        else if (id < DOOMO_PLAYER_ID && nadult < 40) adults[nadult++] = id;
++    }
++}
++
++static int say(int id, int other, int act, uint16_t topic, uint32_t seed, TalkLine *l, TalkTrace *tr)
++{
++    TalkConv c;
++    int ids[2], n = 1;
++    ids[0] = id;
++    if (other >= 0) ids[n++] = other;
++    talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, n, seed);
++    memset(tr, 0, sizeof *tr);
++    return talk_gen_line(&c, 0, -1, act, topic, l, tr);
++}
++
++TEST(tm3_edgy_inert_kid_room)
++{
++    static const uint8_t acts[] = { TA_GREET, TA_INVITE, TA_ASK_FAVOR, TA_ASK_OPINION, TA_ASK_ABOUT, TA_COMPLIMENT };
++    int e, a, i, who, other, same = 0, total = 0, adult_voice = 0, adult_total = 0;
++    TalkTraitSet ts, none;
++    premade_town();
++    CHECK(open_en());
++    people();
++    CHECK(nkid >= 1 && nadult >= 4);
++    talk_traitset_clear(&none);
++    for (e = 0; e < 5; e++) {
++        talk_traitset_clear(&ts);
++        talk_traitset_add(&ts, edgy[e]);
++        for (who = 0; who < 3; who++) {
++            int id = who == 0 ? kids[0] : adults[who];                /* a child, then two adults with a child beside them */
++            other = who == 0 ? -1 : kids[0];
++            for (a = 0; a < (int)sizeof acts; a++) {
++                for (i = 0; i < 12; i++) {
++                    TalkLine l, l0;
++                    TalkTrace tr, tr0;
++                    uint32_t seed = 5000u + (uint32_t)(i * 13 + a);
++                    talk_trait_set(id, &ts);
++                    say(id, other, acts[a], 0, seed, &l, &tr);
++                    talk_trait_set(id, &none);
++                    say(id, other, acts[a], 0, seed, &l0, &tr0);
++                    talk_trait_clear(id);
++                    CHECK_MSG(strcmp(l.text, l0.text) == 0 && talk_trace_trait_voice(&tr) == 0,
++                              "edgy trait %d showed in a kid room (act %d): \"%s\" / \"%s\"", edgy[e], acts[a], l.text, l0.text);
++                    total++;
++                    same += strcmp(l.text, l0.text) == 0;
++                }
++            }
++        }
++        /* the sanity check: an adult alone with the player does show it */
++        for (a = 0; a < (int)sizeof acts; a++) {
++            for (i = 0; i < 12; i++) {
++                TalkLine l;
++                TalkTrace tr;
++                talk_trait_set(adults[3], &ts);
++                say(adults[3], -1, acts[a], 0, 5000u + (uint32_t)(i * 13 + a), &l, &tr);
++                talk_trait_clear(adults[3]);
++                adult_total++;
++                adult_voice += talk_trace_trait_voice(&tr) == edgy[e];
++            }
++        }
++    }
++    CHECK_MSG(adult_voice >= 20, "an adult alone shows an edgy trait only %d of %d lines", adult_voice, adult_total);
++    printf("      %d kid-room lines: all the same with and without the edgy trait (%d); an adult alone shows it in %d of %d\n", total,
++           same, adult_voice, adult_total);
++    talk_db_close();
++}
++
++/* ---- every trait-guarded alternative is where it may be ------------------------------------------------- */
++TEST(tm3_trait_lines_guarded)
++{
++    int alt, found = 0, edgy_found = 0, per_trait[TT_COUNT] = { 0 }, t;
++    premade_town();
++    CHECK(open_en());
++    for (alt = 0; alt < 60000; alt++) {
++        TalkAltInfo ai;
++        int k, tt = 0, adults_only = 0, kid_free = 0;
++        if (!talk_gen_alt_info(alt, &ai)) break;
++        for (k = 0; k < ai.nterm; k++) {
++            int p = ai.term[2 * k] & 0x7F, neg = (ai.term[2 * k] & 0x80) != 0;
++            if (p == TGP_TRAIT && !neg) tt = ai.term[2 * k + 1];
++            if (p == TGP_ADULTS_ONLY && !neg) adults_only = 1;
++            if (p == TGP_KID_PRESENT && neg) kid_free = 1;
++        }
++        if (!tt) continue;
++        found++;
++        per_trait[tt]++;
++        CHECK(tt > 0 && tt < TT_COUNT);
++        if (is_edgy(tt)) {
++            edgy_found++;
++            CHECK_MSG(adults_only && kid_free, "alternative %d: edgy trait %d without adults_only&!kid_present", alt, tt);
++        }
++    }
++    CHECK_MSG(found >= 200, "only %d trait-guarded alternatives in the bank", found);
++    CHECK(edgy_found > 0);
++    for (t = 1; t < TT_COUNT; t++) CHECK_MSG(per_trait[t] >= 8, "trait %d has only %d voice lines", t, per_trait[t]);
++    printf("      %d alternatives under a trait= guard (%d edgy, all adults-only and kid-free), at least %d for each of the 24 traits\n",
++           found, edgy_found, per_trait[1]);
++    talk_db_close();
++}
++
++/* ---- a trait's own line is what the person says ---------------------------------------------------------- */
++TEST(tm3_trait_voice_reaches_lines)
++{
++    static const uint8_t traits[] = { TT_KIND, TT_SHY, TT_GOOFBALL, TT_LAZY, TT_BOOKWORM, TT_CHEERFUL, TT_GLOOMY, TT_HOTHEADED };
++    int t, kind, seed, own[TP_KINDS] = { 0 }, n[TP_KINDS] = { 0 };
++    DoomoResident r;
++    premade_town();
++    CHECK(open_en());
++    sample(&r, LIFE_ADULT, 8, 8, 8, 8, 8);
++    for (t = 0; t < (int)sizeof traits; t++) {
++        TalkTraitSet ts;
++        talk_traitset_clear(&ts);
++        talk_traitset_add(&ts, traits[t]);
++        talk_traitset_like(&ts, TCR_FOOD);
++        talk_traitset_dislike(&ts, TCR_WORK);
++        for (kind = 0; kind < TP_KINDS; kind++) {
++            for (seed = 0; seed < 40; seed++) {
++                TalkLine l;
++                TalkTrace tr;
++                memset(&tr, 0, sizeof tr);
++                CHECK(talk_preview_trace(&r, &ts, kind, 321u + (uint32_t)seed, &l, &tr) > 0);
++                n[kind]++;
++                own[kind] += talk_trace_trait_voice(&tr) == traits[t];
++            }
++        }
++    }
++    printf("      own trait line: greeting %d of %d, answer %d of %d, refusal %d of %d\n", own[0], n[0], own[1], n[1], own[2], n[2]);
++    CHECK_MSG(own[TP_GREETING] * 100 >= n[TP_GREETING] * 25, "greeting: %d of %d in the trait's voice", own[0], n[0]);
++    CHECK_MSG(own[TP_ANSWER] * 100 >= n[TP_ANSWER] * 12, "answer: %d of %d in the trait's voice", own[1], n[1]);
++    CHECK_MSG(own[TP_REFUSAL] * 100 >= n[TP_REFUSAL] * 55, "refusal: %d of %d in the trait's voice", own[2], n[2]);
++    talk_db_close();
++}
++
++TEST(tm3_preview_shows_the_difference_between_two_sets)
++{
++    TalkTraitSet hot, kind;
++    DoomoResident r;
++    int k, seed, differ[TP_KINDS] = { 0 };
++    premade_town();
++    CHECK(open_en());
++    sample(&r, LIFE_ADULT, 6, 7, 9, 6, 5);
++    talk_traitset_clear(&hot); talk_traitset_add(&hot, TT_HOTHEADED);
++    talk_traitset_clear(&kind); talk_traitset_add(&kind, TT_KIND);
++    for (k = 0; k < TP_KINDS; k++) {
++        for (seed = 0; seed < 60; seed++) {
++            char a[TALK_LINE_MAX], b[TALK_LINE_MAX];
++            talk_preview(&r, &hot, k, 1000u + (uint32_t)seed, a, sizeof a);
++            talk_preview(&r, &kind, k, 1000u + (uint32_t)seed, b, sizeof b);
++            differ[k] += strcmp(a, b) != 0;
++        }
++    }
++    printf("      hot-headed vs kind, 60 seeds each: greeting %d, answer %d, refusal %d lines differ\n", differ[0], differ[1], differ[2]);
++    CHECK_MSG(differ[TP_REFUSAL] >= 58, "refusal: only %d of 60 lines differ between hot-headed and kind", differ[TP_REFUSAL]);
++    CHECK_MSG(differ[TP_GREETING] >= 40, "greeting: only %d of 60 lines differ between hot-headed and kind", differ[TP_GREETING]);
++    CHECK_MSG(differ[TP_ANSWER] >= 30, "answer: only %d of 60 lines differ between hot-headed and kind", differ[TP_ANSWER]);
++    talk_db_close();
++}
++
++/* ---- what a resident brings up on their own -------------------------------------------------------------- */
++static int root_of(uint16_t topic)
++{
++    TalkConcept tc;
++    return topic && talk_db_concept(topic, &tc) ? talk_db_cat_root(tc.cat) : 0;
++}
++
++TEST(tm3_bring_up_liked_root_first)
++{
++    TalkTraitSet ts;
++    TalkAudience aud;
++    int i, id = 0, liked = 0, disliked = 0, none = 0, root;
++    premade_town();
++    CHECK(open_en());
++    people();
++    id = adults[1];
++    memset(&aud, 0, sizeof aud);
++    talk_traitset_clear(&ts);
++    talk_traitset_add(&ts, TT_KIND);
++    talk_traitset_like(&ts, TCR_FOOD);
++    talk_traitset_dislike(&ts, TCR_WORK);
++    CHECK_EQ(talk_trait_set(id, &ts), TTE_OK);
++    for (i = 0; i < 400; i++) {
++        int dir = 9;
++        uint16_t t = talk_trait_bring_up(id, &aud, 100u + (uint32_t)i, &dir);
++        if (!t) { none++; CHECK_EQ(dir, 0); continue; }
++        root = root_of(t);
++        CHECK(talk_gen_concept_ok(t, &aud));
++        if (dir > 0) { liked++; CHECK_EQ(root, TCR_FOOD); CHECK_EQ(talk_gen_stance(id, t), TST_PRO); }
++        else { disliked++; CHECK_EQ(dir, -1); CHECK_EQ(root, TCR_WORK); CHECK_EQ(talk_gen_stance(id, t), TST_CON); }
++    }
++    printf("      400 idle topics: %d from the liked root, %d from the disliked root, %d nothing\n", liked, disliked, none);
++    CHECK(liked > disliked && disliked > 40 && liked > 160);
++    CHECK(none < 100);
++    /* same arguments, same topic */
++    {
++        int d1, d2;
++        CHECK_EQ(talk_trait_bring_up(id, &aud, 77u, &d1), talk_trait_bring_up(id, &aud, 77u, &d2));
++        CHECK_EQ(d1, d2);
++    }
++    /* no liked and no disliked root: nothing to bring up */
++    talk_traitset_clear(&ts);
++    talk_traitset_add(&ts, TT_KIND);
++    CHECK_EQ(talk_trait_set(id, &ts), TTE_OK);
++    CHECK_EQ(talk_trait_bring_up(id, &aud, 5u, NULL), 0);
++    CHECK_EQ(talk_trait_bring_up(TALK_PET_ID, &aud, 5u, NULL), 0);
++    CHECK_EQ(talk_trait_bring_up(-1, &aud, 5u, NULL), 0);
++    talk_trait_clear(id);
++    talk_db_close();
++}
++
++TEST(tm3_bring_up_never_romance_nor_unsafe)
++{
++    TalkTraitSet ts;
++    TalkAudience adult_room, kid_room;
++    int id, i, n = 0, rom = 0, kid_n = 0;
++    premade_town();
++    CHECK(open_en());
++    memset(&adult_room, 0, sizeof adult_room);
++    memset(&kid_room, 0, sizeof kid_room);
++    kid_room.any_minor = kid_room.target_minor = 1;
++    /* every resident, the default set: whatever the topic, it is in the set's roots, never romance, never grief,
++     * and the room may hear it */
++    for (id = 0; id < DOOMO_PLAYER_ID; id++) {
++        TalkTraitSet d;
++        if (town_res(id)->status != RES_ALIVE) continue;
++        CHECK(talk_trait_get(id, &d));
++        for (i = 0; i < 6; i++) {
++            const TalkAudience *aud = i & 1 ? &kid_room : &adult_room;
++            int dir = 0;
++            uint16_t t = talk_trait_bring_up(id, aud, 900u + (uint32_t)i * 31u + (uint32_t)id, &dir);
++            TalkConcept tc;
++            int rt;
++            if (!t) continue;
++            n++;
++            kid_n += aud == &kid_room;
++            CHECK(talk_db_concept(t, &tc));
++            rt = root_of(t);
++            rom += rt == TCR_ROMANCE || rt == TCR_SAFETY;
++            CHECK(!(tc.flags & TCF_GRIEF));
++            CHECK(talk_gen_concept_ok(t, aud));
++            CHECK_MSG(dir > 0 ? (d.like[0] == rt || d.like[1] == rt) : (d.dislike[0] == rt || d.dislike[1] == rt),
++                      "resident %d: topic root %d is not in their set", id, rt);
++        }
++    }
++    CHECK_EQ(rom, 0);
++    CHECK(n > 300 && kid_n > 100);
++    /* an adult who likes romance does not bring it up; a minor cannot have it as a topic at all */
++    talk_traitset_clear(&ts);
++    talk_traitset_like(&ts, TCR_ROMANCE);
++    people();
++    CHECK_EQ(talk_trait_set(adults[2], &ts), TTE_OK);
++    for (i = 0; i < 60; i++) {
++        uint16_t t = talk_trait_bring_up(adults[2], &adult_room, 40u + (uint32_t)i, NULL);
++        CHECK_EQ(t, 0);
++    }
++    talk_trait_clear(adults[2]);
++    CHECK(!talk_trait_topic_ok(TCR_ROMANCE, LIFE_CHILD) && !talk_trait_topic_ok(TCR_ROMANCE, LIFE_TEEN));
++    for (i = 0; i < 60; i++) {
++        uint16_t t = talk_trait_bring_up(kids[0], &kid_room, 40u + (uint32_t)i, NULL);
++        CHECK(root_of(t) != TCR_ROMANCE);
++    }
++    printf("      %d idle topics over every resident (%d in a kid room): none romance, safety or grief, all in the speaker's own roots\n",
++           n, kid_n);
++    talk_trait_clear(kids[0]);
++    talk_db_close();
++}
++
++TEST(tm3_idle_remarks_follow_traits)
++{
++    TalkTraitSet likes_food, plain;
++    int ids[2], seed, with[2] = { 0, 0 }, total[2] = { 0, 0 }, pass, i;
++    premade_town();
++    CHECK(open_en());
++    people();
++    CHECK(nadult >= 4);
++    ids[0] = adults[0];
++    ids[1] = adults[1];
++    talk_traitset_clear(&likes_food);
++    talk_traitset_add(&likes_food, TT_CHEERFUL);
++    talk_traitset_like(&likes_food, TCR_FOOD);
++    talk_traitset_clear(&plain);
++    talk_traitset_add(&plain, TT_CHEERFUL);
++    for (pass = 0; pass < 2; pass++) {
++        talk_trait_set(ids[0], pass ? &likes_food : &plain);
++        talk_trait_set(ids[1], pass ? &likes_food : &plain);
++        for (seed = 0; seed < 80; seed++) {
++            TalkState s;
++            uint32_t h0 = talk_safe_lint_hits();
++            talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, 2, 7000u + (uint32_t)seed);
++            for (i = 0; i < 2; i++) {
++                if (!talk_dm_tick(&s, TALK_IDLE_FRAMES)) continue;
++                while (talk_dm_step(&s, NULL)) {
++                    if (s.line[0].to == -1 || !s.line[0].topic) continue;       /* the prod, or a line without a topic */
++                    total[pass]++;
++                    with[pass] += root_of(s.line[0].topic) == TCR_FOOD;
++                }
++            }
++            CHECK_EQ(talk_safe_lint_hits(), h0);
++        }
++    }
++    printf("      idle chatter about a topic, 80 chats: food in %d of %d when they like food, %d of %d when they have no liked root\n",
++           with[1], total[1], with[0], total[0]);
++    CHECK(total[1] >= 40 && total[0] >= 40);
++    CHECK_MSG(with[1] * 100 >= total[1] * 35, "a person who likes food brought it up in only %d of %d idle remarks", with[1], total[1]);
++    CHECK_MSG(with[1] > 2 * with[0], "liked food %d of %d against %d of %d", with[1], total[1], with[0], total[0]);
++    talk_trait_clear(ids[0]);
++    talk_trait_clear(ids[1]);
++    talk_db_close();
++}
+diff --git a/core/tools/talk_census.c b/core/tools/talk_census.c
+index 08cc124d..7157cf3c 100644
+--- a/core/tools/talk_census.c
++++ b/core/tools/talk_census.c
+@@ -14,6 +14,7 @@
+  *   build/talk_census --smoke         the unit tests' size (no targets)
+  *   build/talk_census --pick          print 32 residents and 400 topics for a
+  *                                     new grid (the committed grid was made so)
++ *   build/talk_census --traits [--contexts N]   TM3: the share of replies that differ by trait (N people, 1,000)
+  *   build/talk_census --sample F --every N   write every Nth exchange (context
+  *                                     and lines) for core/tools/talk_sample.py
+  *
+@@ -1120,6 +1121,101 @@ int talk_census_cool_kid(const CensusCfg *cfg, uint32_t rooms_per_act, CensusCoo
+     return 0;
+ }
+ 
++/* ---- TM3: how much of a reply is the traits' --------------------------------------------------------------- */
++static void tr_person(DoomoResident *r, uint32_t n)
++{
++    uint32_t h = doomo_hash32(n * 0x9E3779B1u + 17u);
++    resident_default(r);
++    RES_SET_STAGE(r, LIFE_ADULT);
++    RES_SET_PERSONA(r, PERS_MOVEMENT, (int)(h & 15)); RES_SET_PERSONA(r, PERS_SPEECH, (int)((h >> 4) & 15));
++    RES_SET_PERSONA(r, PERS_EXPRESSION, (int)((h >> 8) & 15)); RES_SET_PERSONA(r, PERS_ATTITUDE, (int)((h >> 12) & 15));
++    RES_SET_PERSONA(r, PERS_QUIRK, (int)((h >> 16) & 15));
++}
++
++static void tr_set(TalkTraitSet *ts, uint32_t n, int count, const TalkTraitSet *avoid)
++{
++    uint32_t h = doomo_hash32(n * 0x85EBCA6Bu + 99u);
++    int tries = 0;
++    talk_traitset_clear(ts);
++    while (talk_traitset_count(ts) < count && tries++ < 200) {
++        int t = 1 + (int)(h % (uint32_t)(TT_COUNT - 1));
++        h = doomo_hash32(h + 0x1234567u);
++        if (avoid && talk_traitset_has(avoid, t)) continue;
++        talk_traitset_add(ts, t);
++    }
++    talk_traitset_like(ts, 1 + (int)(h % 13u));
++    h = doomo_hash32(h + 7u);
++    talk_traitset_dislike(ts, 1 + (int)(h % 13u));
++}
++
++int talk_census_traits(const CensusCfg *cfg, uint32_t n, CensusTraits *res, char *err, int errcap)
++{
++    Grid g;
++    uint32_t i, base = cfg && cfg->seed ? cfg->seed : 20261115u;
++    memset(res, 0, sizeof *res);
++    if (talk_db_open(lang_find("en")) != TALK_DB_OK || !talk_gen_ready()) {
++        snprintf(err, (size_t)errcap, "no TALK_en.BIN with the generator banks (make -C core talk)");
++        return -1;
++    }
++    if (cfg && cfg->grid && load_grid(cfg->grid, &g, err, errcap) == 0) census_town(&g);
++    else { memset(&doomo_town, 0, sizeof doomo_town); opt_defaults(); town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE); }
++    res->n = n;
++    for (i = 0; i < n; i++) {
++        DoomoResident r;
++        TalkTraitSet a, b, none, hot, kind;
++        int k;
++        tr_person(&r, base + i);
++        tr_set(&a, base + i, 2, NULL);
++        tr_set(&b, base + i + 100000u, 2, &a);
++        talk_traitset_clear(&none);
++        for (k = 0; k < TP_KINDS; k++) {
++            TalkLine la, lb, l0, la2;
++            TalkTrace tr;
++            uint32_t seed = 40000u + i * 3u + (uint32_t)k;
++            memset(&tr, 0, sizeof tr);
++            if (!talk_preview_trace(&r, &a, k, seed, &la, &tr)) continue;
++            talk_preview_line(&r, &b, k, seed, &lb);
++            talk_preview_line(&r, &none, k, seed, &l0);
++            talk_preview_line(&r, &a, k, seed, &la2);
++            res->ab[k] += strcmp(la.text, lb.text) != 0;
++            res->a0[k] += strcmp(la.text, l0.text) != 0;
++            res->same[k] += strcmp(la.text, la2.text) == 0;
++            res->voice[k] += talk_trace_trait_voice(&tr) != 0;
++        }
++        talk_traitset_clear(&hot); talk_traitset_add(&hot, TT_HOTHEADED);
++        talk_traitset_clear(&kind); talk_traitset_add(&kind, TT_KIND);
++        {
++            TalkLine lh, lk;
++            TalkTrace th, tk;
++            uint32_t seed = 70000u + i;
++            memset(&th, 0, sizeof th); memset(&tk, 0, sizeof tk);
++            if (talk_preview_trace(&r, &hot, TP_REFUSAL, seed, &lh, &th) && talk_preview_trace(&r, &kind, TP_REFUSAL, seed, &lk, &tk)) {
++                res->hk_n++;
++                res->hk_differ += strcmp(lh.text, lk.text) != 0;
++                res->hk_own += talk_trace_trait_voice(&th) == TT_HOTHEADED && talk_trace_trait_voice(&tk) == TT_KIND;
++                if (cfg && cfg->sample && res->hk_n <= 40)                    /* the first pairs, for a read of the tone */
++                    fprintf(cfg->sample, "hot-headed [%d]: %s\n     kind [%d]: %s\n", talk_trace_trait_voice(&th), lh.text,
++                            talk_trace_trait_voice(&tk), lk.text);
++            }
++        }
++    }
++    talk_db_close();
++    return 0;
++}
++
++void talk_census_traits_print(const CensusTraits *r, FILE *f)
++{
++    static const char *const kn[TP_KINDS] = { "greeting", "answer", "refusal" };
++    int k;
++    fprintf(f, "  traits (%u people, same context under two different trait sets):\n", r->n);
++    for (k = 0; k < TP_KINDS; k++)
++        fprintf(f, "    %-9s differ by trait %5.1f%% (set vs none %5.1f%%), carry a trait's own voice %5.1f%%, repeat the same %u of %u\n",
++                kn[k], r->n ? 100.0 * r->ab[k] / r->n : 0.0, r->n ? 100.0 * r->a0[k] / r->n : 0.0,
++                r->n ? 100.0 * r->voice[k] / r->n : 0.0, r->same[k], r->n);
++    fprintf(f, "    hot-headed vs kind refusal: %u people, lines differ %.1f%%, both from their own trait's bank %.1f%%\n", r->hk_n,
++            r->hk_n ? 100.0 * r->hk_differ / r->hk_n : 0.0, r->hk_n ? 100.0 * r->hk_own / r->hk_n : 0.0);
++}
++
+ static void tier_line(FILE *f, const char *name, const CensusTier *t, uint64_t n, uint64_t target)
+ {
+     fprintf(f, "  %-9s %10llu distinct of %llu (%.1f%% unique), Chao1 %.0f, target %llu%s\n", name,
+@@ -1270,7 +1366,7 @@ int main(int argc, char **argv)
+     CensusResult r;
+     NatOptions o;
+     char err[256];
+-    int i, smoke = 0, do_pick = 0, full = 0, cool_kid = 0;
++    int i, smoke = 0, do_pick = 0, full = 0, cool_kid = 0, do_traits = 0;
+     const char *sample = NULL;
+     memset(&cfg, 0, sizeof cfg);
+     cfg.grid = "core/data/talk/census_en.tsv";
+@@ -1295,8 +1391,9 @@ int main(int argc, char **argv)
+         else if (strcmp(argv[i], "--pick") == 0) do_pick = 1;
+         else if (strcmp(argv[i], "--quiet") == 0) cfg.quiet = 1;
+         else if (strcmp(argv[i], "--cool-kid") == 0) cool_kid = 1;
++        else if (strcmp(argv[i], "--traits") == 0) do_traits = 1;
+         else { fprintf(stderr, "usage: talk_census [--grid F] [--full|--smoke] [--contexts N] [--conversations N] "
+-                               "[--seed N] [--sample F --every N] [--fails F] [--q8-fails F] [--pick] [--cool-kid [--contexts N-per-act]]\n"); return 2; }
++                               "[--seed N] [--sample F --every N] [--fails F] [--q8-fails F] [--pick] [--cool-kid [--contexts N-per-act]] [--traits [--contexts N]]\n"); return 2; }
+     }
+     memset(&o, 0, sizeof o);
+     o.w = 320; o.h = 240; o.seed = 1; o.quiet = getenv("DOOMO_TALK_LOG") ? 0 : 1; o.save_dir = "/tmp";
+@@ -1329,6 +1426,12 @@ int main(int argc, char **argv)
+             if (!cfg.conversations) cfg.conversations = g.conversations;
+         talk_db_close();
+     }
++    if (do_traits) {
++        CensusTraits ct;
++        if (talk_census_traits(&cfg, cfg.contexts ? cfg.contexts : 1000u, &ct, err, (int)sizeof err) < 0) { fprintf(stderr, "talk_census: %s\n", err); return 2; }
++        talk_census_traits_print(&ct, stdout);
++        return 0;
++    }
+     if (cool_kid) {
+         CensusCoolKid ck;
+         uint32_t a, per = cfg.contexts ? cfg.contexts : 20000u;
+diff --git a/core/tools/talk_census.h b/core/tools/talk_census.h
+index 8cd23745..6dff63ff 100644
+--- a/core/tools/talk_census.h
++++ b/core/tools/talk_census.h
+@@ -100,6 +100,23 @@ typedef struct CensusCoolKid { uint32_t rooms[CENSUS_COOL_N], replied[CENSUS_COO
+ extern const uint8_t talk_census_cool_acts[CENSUS_COOL_N];
+ int talk_census_cool_kid(const CensusCfg *cfg, uint32_t rooms_per_act, CensusCoolKid *res, char *err, int errcap);
+ 
++/* TM3 (docs/TALK.md 6q): how much of a reply is the traits'. n adults (sliders from a hash), each with two valid
++ * trait sets A and B that share no trait (two traits each, a liked and a disliked topic), through the creator's live
++ * preview (the real generator): for each preview kind (greeting, answer, refusal) the same context (resident, seed)
++ * is said under A, under B, under no traits, and under A again.
++ *   ab    A and B lines that differ        a0   A and the empty set differ       same  A said twice is the same line
++ *   voice A lines that came from an alternative under a trait= guard of one of A's own traits
++ * The hot-headed against the kind person, same sliders and seed, refusal only:
++ *   hk_n people, hk_differ the lines differ, hk_own both lines came from their own trait's bank
++ * Returns 0, or -1 (err) when the database is missing. */
++typedef struct CensusTraits {
++    uint32_t n;
++    uint32_t ab[TP_KINDS], a0[TP_KINDS], same[TP_KINDS], voice[TP_KINDS];
++    uint32_t hk_n, hk_differ, hk_own;
++} CensusTraits;
++int  talk_census_traits(const CensusCfg *cfg, uint32_t n, CensusTraits *res, char *err, int errcap);
++void talk_census_traits_print(const CensusTraits *r, FILE *f);
++
+ /* The quality checks of one exchange (Q1-Q4, Q6), for the census and the
+  * unit tests: the first failure (QF_*) or QF_NONE. u is the utterance
+  * after the gate. */
+-- 
+2.43.0
+
