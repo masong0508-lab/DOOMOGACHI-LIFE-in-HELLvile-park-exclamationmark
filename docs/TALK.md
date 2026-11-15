@@ -27,6 +27,7 @@ Contents:
 [6d The census and the review sheet (T7)](#6d-the-census-and-the-review-sheet-t7) ·
 [6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) ·
 [6i Traits and the personality API (TM1)](#6i-traits-and-the-personality-api-tm1-traits) ·
+[6k The pointer (T9)](#6k-the-pointer-t9) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -1031,6 +1032,45 @@ wanted by the comprehensibility rule). Four quick replies where the design says 
 3. The Romance page is listed for adult pairs the gate allows without the Mature option (the gate only needs
    `talk_safe_romance_ok`; Mature is for explicit scenes). `home_talk_safety` checks the child side and one adult's answer;
    the positive path with an avatar who is an adult pair is covered by `test_talk_safety.c` (`lovers`).
+
+## 6k. The pointer (T9)
+
+The Talk screen can be played with a mouse or a touch screen. **The pointer is never needed**: the pad and the
+keyboard do everything, and a click does exactly what the matching pad press does.
+
+**Core (add-only, `core/include/doomo/input.h`).** A platform with a pointer sets `PLATF_POINTER` in
+`plat_features()` and calls `input_set_pointer(present, x, y, down)` before `doomo_frame()` each tick (screen
+pixels; `down` is the primary button). `input_pointer(&x, &y)` says a pointer is there; `input_pointer_click(&x, &y)`
+is true the one tick the button went down (a held button is not a second click; `input_eat()` swallows it like a
+press; no pointer, never a click). `DOOMO_POINTER` is 0 on the GBA, the PS1 and the Dreamcast (none of them has a
+source yet), and then the three calls are constants and every piece of pointer code is `#if`-ed away: those builds
+link not one byte of it. The native runner is the only source today.
+
+**What a click does on the Talk screen** (`talk_scene.c`, `pointer_click`; the list part is `ui_list_click` in `ui.c`):
+
+| Click on | Same as the pad |
+| --- | --- |
+| a quick reply (top rows of the first page) | DOWN to the row, A: you say it |
+| a category, an act, a topic, `Type your own line...`, `Options`, `Invite someone`, a person on the invite page, `Say goodbye` | DOWN to the row, A |
+| a name in the people strip (more than one in the room) | SELECT until you speak to that person |
+| the panel's header line, on a lower page | B: back to the replies |
+| the panel's header line, on the first page | nothing (a stray click never says goodbye) |
+| the scroll bar (the right edge of the list), upper half / lower half | L / R: a page up / down |
+
+Rows that do not fit (the first page has 14, the panel shows 6) are reached with the scroll bar; the last three rows of
+the first page are always `Type your own line...`, `Options` and `Say goodbye`. A pointer that is present draws a
+small arrow on this screen only, and a lower page's header says `< Options` (click it to go back); every other screen, and a run without a pointer, is pixel for pixel what it was.
+Not done: clicking to page the dialogue box (A or the pad still does), a mouse wheel, and the pointer on the
+other screens (T9 is the Talk screen; the house's in-room Talk, T8, is not built).
+
+**Runner and tests.** `mouse X Y` moves the pointer, `mouse X Y click` also clicks, `mouse off` takes it away (a
+negative number counts from the right / bottom edge, so a script fits 240x160 and 320x240); `expect-talk PAGE [TO]`
+(replies / acts / topics / invite / options) and `expect-talk-row TEXT` read the Talk screen's state.
+`core/tests/scripts/talk_pointer.txt` reaches every target above with the pointer alone (the pad only pages the
+dialogue box); `core/tests/test_talk_pointer.c` checks the edge, the list hit test and scroll bar, every page and row,
+the people strip, and that a quick reply by pointer and by pad say the same line.
+
+---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
 

@@ -1003,12 +1003,19 @@ static const char *mood_word(void)
  * The people strip marks who you are speaking to with a '>' and keeps the engage bar. */
 static const char *panel_title(char *buf, int cap)
 {
+    const char *t = NULL;
     switch (T.page) {
-    case PG_TOPIC:  return "Talk about...";
-    case PG_INVITE: return "Who joins in?";
-    case PG_MORE:   return "Options";
-    case PG_ACTS:   return cats[T.cat].name;
+    case PG_TOPIC:  t = "Talk about..."; break;
+    case PG_INVITE: t = "Who joins in?"; break;
+    case PG_MORE:   t = "Options"; break;
+    case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
+    }
+    if (t) {
+#if DOOMO_POINTER
+        if (input_pointer(NULL, NULL)) { doomo_snprintf(buf, (size_t)cap, "< %s", t); return buf; }   /* T9: click = back */
+#endif
+        return t;
     }
     if (T.you[0]) { doomo_snprintf(buf, (size_t)cap, "You: %s", T.you); return buf; }
     return "Say something";
