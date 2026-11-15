@@ -1,0 +1,2910 @@
+From c61ea9f9055b04071886d9b646d100db526fec48 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:43:35 +0000
+Subject: [PATCH 1/6] STUDIO ST-PLAY: the PLAY tab (jam pads, live recording
+ with quantize, range loop, drum pads)
+
+core/src/studio_play.c: pads play the song's scale (A B L R, X Y L2 R2) and chords (d-pad, from the song's bass
+line), SELECT+START records a take (count-in of four clicks, the loop, quantize off / 1/4 / 1/8 / 1/16 decided from
+song_pos_ticks, ties for held pads, Overdub / Replace, one undo step per take), the drum pads record the drum
+track, a tools menu names every setting. NOTES > "Loop this bar" loops a bar while editing.
+song_player.c: song_jam_on / song_jam_off / song_play_range / song_pos_note; the player struct is repacked
+(GBA .bss identical). studio.c: the tab, and st_tab_state (64 B of the scene scratch, inside the bake block on
+the GBA, whose pixel pool shrinks by 64 B). 24 new tests; scripts that walk the tabs get one more step.
+GBA (libmgba): every PLAY window 30.0 fps; PS1 / Dreamcast toolchains not installed on this machine: core
+tests, SAN and the cross-compile check only.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/include/doomo/song.h                  |  11 +
+ core/src/song_player.c                     |  96 ++-
+ core/src/studio.c                          |  67 +-
+ core/src/studio_edit.c                     |  14 +-
+ core/src/studio_int.h                      |  12 +-
+ core/src/studio_play.c                     | 643 +++++++++++++++++
+ core/tests/scripts/studio.txt              |   5 +
+ core/tests/scripts/studio_play.txt         |  71 ++
+ core/tests/test_studio.c                   |   4 +-
+ core/tests/test_studio_play.c              | 782 +++++++++++++++++++++
+ gba/harness/scripts/sp4_tour.txt           |   4 +
+ gba/harness/scripts/speed2_studio.txt      |   6 +-
+ gba/harness/scripts/speed2_studio_play.txt |  92 +++
+ gba/harness/scripts/studio_profile.txt     |  20 +-
+ ps1/tools/ovl_plan.py                      |   1 +
+ 15 files changed, 1796 insertions(+), 32 deletions(-)
+ create mode 100644 core/src/studio_play.c
+ create mode 100644 core/tests/scripts/studio_play.txt
+ create mode 100644 core/tests/test_studio_play.c
+ create mode 100644 gba/harness/scripts/speed2_studio_play.txt
+
+diff --git a/core/include/doomo/song.h b/core/include/doomo/song.h
+index d257f44..c16c861 100644
+--- a/core/include/doomo/song.h
++++ b/core/include/doomo/song.h
+@@ -157,6 +157,17 @@ void song_play_pattern(const DoomoSong *s, int pattern, int step);
+  * (keyboard feedback). Needs song_tick() calls to end; ignored while a
+  * song plays. */
+ void song_preview(const DoomoSong *s, int track, int cell);
++/* Editor (ST-PLAY): loop steps `from`..`to`-1 of one pattern (a bar, a selection); song_play_pattern is the
++ * whole pattern, 0..32. The loop reads the song live, so edits are heard on the next pass. */
++void song_play_range(const DoomoSong *s, int pattern, int from, int to);
++/* Editor (ST-PLAY) jam: hold MIDI note `cell` on tone channel `ch` 0..2 (the track's own instrument), or hit drum
++ * `cell` on ch 3, over the song if one plays; song_jam_off(ch) lets go (-1 = all). song_jam_note(ch) is the held
++ * note (0 = none). Needs song_tick() calls. */
++void song_jam_on(const DoomoSong *s, int ch, int cell);
++void song_jam_off(int ch);
++int  song_jam_note(int ch);
++/* The note the song itself sounds on tone channel ch 0..2 now (0 = none or not playing): what the pads and the tests see. */
++int  song_pos_note(int ch);
+ /* Choir index (0..24) of the rotating lead voice of the syllable sounding
+  * now, -1 if none. */
+ int  song_pos_lead(void);
+diff --git a/core/src/song_player.c b/core/src/song_player.c
+index 93a31fc..056c944 100644
+--- a/core/src/song_player.c
++++ b/core/src/song_player.c
+@@ -508,25 +508,28 @@ static const DrumDef kits[SONG_KIT_COUNT][SONG_DRUM_COUNT] = {
+ /* player state                                                             */
+ typedef struct { uint16_t freq; uint8_t vol, wave, valid; } Sent;
+ 
++/* (field order packs the struct: the GBA's EWRAM is full, ST-PLAY added the range and jam fields at no cost) */
+ static struct {
+     const DoomoSong *s;
+     int16_t  over;            /* singer override (resident id) or -1        */
+     int16_t  prev_music;      /* background song to restore                  */
+-    uint8_t  on, solo, solo_pat, paused_music;
++    uint8_t  on, solo, solo_pat;
+     uint8_t  ord, step;
++    uint8_t  rfrom, rto;      /* range loop (song_play_range): steps rfrom..rto-1 of the solo pattern */
++    uint8_t  beat_age;
+     uint32_t acc;             /* units into the current step                 */
+     uint32_t ticks;
+-    uint8_t  beat_age;
+     /* tone channels 0..2: sounding note (0 = off), age, onset volume */
+     uint8_t  note[3], age[3], base[3], wave[3];
+     /* drum channel */
+-    uint8_t  drum, dkit, dage;
+     int16_t  dlevel;
++    uint8_t  drum, dkit, dage;
+     /* lyrics */
+     int8_t   line;            /* lyric line of this pass, -1 = none          */
+     int8_t   syl;             /* syllable sounding (index), -1 = none yet    */
+     uint8_t  nsyl, next;
+     uint8_t  starts[SONG_LYRIC_LEN];
++    uint8_t  jam[3];          /* song_jam_on / off: a held note per tone channel 0..2 over the song */
+     uint32_t mask;            /* singers of the line                         */
+     uint8_t  rot;
+     int8_t   lead;            /* choir slot of the lead voice                */
+@@ -825,13 +828,29 @@ static void do_step(void)
+     if (v > 0 && v < SONG_DRUM_COUNT) drum_on(v);
+ }
+ 
++/* a loop (or a start) in the middle of a pass: the lyric line of the pass, and its syllables skipped for the onsets
++ * before P.step */
++static void seek_lyrics(void)
++{
++    begin_line();
++    if (P.line >= 0) {
++        int i, p = cur_pattern();
++        for (i = 0; i < P.step; i++) if (P.s->notes[p][0][i] >= 2 && P.next < P.nsyl) P.next++;
++    }
++}
++
+ /* advance to the next step; 0 = the song ended */
+ static int advance(void)
+ {
+     P.step++;
++    if (P.solo) {
++        if (P.step < P.rto) return 1;
++        P.step = P.rfrom;
++        if (P.rfrom) seek_lyrics();
++        return 1;
++    }
+     if (P.step < SONG_STEPS) return 1;
+     P.step = 0;
+-    if (P.solo) return 1;
+     P.ord++;
+     if (P.ord < order_len()) return 1;
+     if (!(P.s->flags & SONGF_LOOP)) return 0;
+@@ -852,7 +871,11 @@ static void render_tones(void)
+     int t;
+     for (t = 0; t < 3; t++) {
+         int f = 0, v = 0, w = P.wave[t];
+-        if (t == 1 && P.harm && P.singing) {
++        if (P.jam[t]) {
++            f = song_note_hz(P.jam[t]);
++            v = DOOMO_MAX(P.s->vol[t], 6);                       /* held at full level */
++            w = P.s->wave[t] < SONG_WAVES ? P.s->wave[t] : WAVE_PULSE50;
++        } else if (t == 1 && P.harm && P.singing) {
+             int n = popcount32(P.mask);
+             f = song_note_hz(P.harm);
+             /* chorus: a wobble that widens with the number of singers */
+@@ -924,12 +947,9 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int
+     P.ord = (uint8_t)DOOMO_CLAMP(ord, 0, order_len() - 1);
+     P.step = (uint8_t)DOOMO_CLAMP(step, 0, SONG_STEPS - 1);
+     silence_all();
+-    if (P.step) begin_line();             /* do_step only does it at step 0 */
+-    if (P.step && P.line >= 0) {
+-        /* skip the syllables of the onsets before the start step */
+-        int i, p = cur_pattern();
+-        for (i = 0; i < P.step; i++) if (s->notes[p][0][i] >= 2 && P.next < P.nsyl) P.next++;
+-    }
++    P.rfrom = 0;
++    P.rto = SONG_STEPS;
++    if (P.step) seek_lyrics();            /* do_step only does begin_line at step 0 */
+     do_step();
+     render_tones();
+ }
+@@ -949,9 +969,19 @@ void song_play_pattern(const DoomoSong *s, int pattern, int step)
+     start(s, -1, 1, pattern, 0, step);
+ }
+ 
++void song_play_range(const DoomoSong *s, int pattern, int from, int to)
++{
++    from = DOOMO_CLAMP(from, 0, SONG_STEPS - 1);
++    to = DOOMO_CLAMP(to, from + 1, SONG_STEPS);
++    start(s, -1, 1, pattern, 0, from);
++    P.rfrom = (uint8_t)from;
++    P.rto = (uint8_t)to;
++}
++
+ void song_stop(void)
+ {
+-    int was = P.on || P.pv_ticks;
++    int was = P.on || P.pv_ticks || (P.jam[0] | P.jam[1] | P.jam[2]);
++    P.jam[0] = P.jam[1] = P.jam[2] = 0;
+     P.on = 0;
+     P.pv_ticks = 0;
+     P.singing = 0;
+@@ -972,13 +1002,15 @@ void song_tick(void)
+ {
+     int guard = 0;
+     if (!P.on) {
+-        if (P.pv_ticks) {
++        int jam = P.jam[0] | P.jam[1] | P.jam[2];
++        if (P.pv_ticks || jam) {
+             P.ticks++;
+-            if (--P.pv_ticks == 0) {
++            if (P.pv_ticks && --P.pv_ticks == 0) {
+                 P.note[0] = P.note[1] = P.note[2] = 0;
+                 P.drum = 0;
+                 P.sent[P.pv_ch].valid = 0;
+                 send(P.pv_ch, 0, 0, P.pv_ch == 3 ? WAVE_NOISE : WAVE_PULSE50);
++                if (jam) render_tones();
+             } else {
+                 render_tones();
+             }
+@@ -1023,6 +1055,42 @@ void song_preview(const DoomoSong *s, int track, int cell)
+     if (P.pv_ticks) render_tones();
+ }
+ 
++/* Jam: channel ch 0..2 holds MIDI note `cell` over whatever else plays (the song, a preview) until song_jam_off;
++ * ch 3 hits drum `cell` (SONG_DRUM_*). Needs song_tick() calls; with no song playing the held notes sound by
++ * themselves. The tone channel and the instrument are the track's own (lead = channel 0 with the lead wave). */
++void song_jam_on(const DoomoSong *s, int ch, int cell)
++{
++    if (!s || ch < 0 || ch >= SONG_TRACKS) return;
++    if (!P.on) {
++        P.s = s;
++        P.over = -1;
++        P.singing = 0;
++        P.harm = 0;
++    }
++    if (ch == 3) {
++        if (cell <= 0 || cell >= SONG_DRUM_COUNT) return;
++        drum_on(cell);
++        if (!P.on) { P.pv_ch = 3; P.pv_ticks = 10; render_tones(); }
++        return;
++    }
++    if (cell < 2 || cell > 127) return;
++    P.jam[ch] = (uint8_t)cell;
++    retrigger(ch, song_note_hz(cell), DOOMO_MAX(s->vol[ch], 6), s->wave[ch] < SONG_WAVES ? s->wave[ch] : WAVE_PULSE50);
++    if (!P.on) render_tones();
++}
++
++/* Release the jam note of channel ch (0..2); -1 = all of them. */
++void song_jam_off(int ch)
++{
++    int t, was = 0;
++    for (t = 0; t < 3; t++)
++        if (ch < 0 || ch == t) { was |= P.jam[t]; P.jam[t] = 0; }
++    if (was && !P.on) render_tones();
++}
++
++int song_jam_note(int ch) { return (ch >= 0 && ch < 3) ? P.jam[ch] : 0; }
++
++int song_pos_note(int ch) { return (P.on && ch >= 0 && ch < 3) ? P.note[ch] : 0; }
+ int song_pos_order(void) { return P.on ? P.ord : -1; }
+ int song_pos_step(void) { return P.on ? P.step : -1; }
+ int song_pos_line(void) { return P.on ? P.line : -1; }
+diff --git a/core/src/studio.c b/core/src/studio.c
+index c37432c..f5a831b 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -36,7 +36,7 @@ __attribute__((weak)) int concert_stage_song(const DoomoSong *s)
+ }
+ 
+ static const char *const tab_names[STAB_COUNT] = {
+-    "Song", "Notes", "Order", "Lyrics", "Choir", "Stage", "File"
++    "Song", "Notes", "Play", "Order", "Lyrics", "Choir", "Stage", "File"
+ };
+ 
+ /* ====================================================================== */
+@@ -90,6 +90,7 @@ void st_set_tab(int tab)
+     tab = (tab + STAB_COUNT) % STAB_COUNT;
+     if (tab == studio.tab) return;
+     if (studio.tab == STAB_STAGE) stage_leave();
++    if (studio.tab == STAB_PLAY) tab_play_leave();
+     studio.tab = (uint8_t)tab;
+     studio.tab_t = 0;
+     studio.a_edit = 0;
+@@ -570,6 +571,10 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
+         plat_rect(cx - 3, cy - 3, 2, 2, c); plat_rect(cx + 1, cy - 3, 2, 2, c);
+         plat_rect(cx - 3, cy + 1, 2, 2, c); plat_rect(cx + 1, cy + 1, 2, 2, c);
+         break;
++    case STAB_PLAY:
++        ui_fill_circle(cx, cy, 4, c);                                   /* the record dot */
++        plat_rect(cx - 1, cy - 1, 3, 3, PAL_WHITE);
++        break;
+     case STAB_ORDER:
+         plat_rect(cx - 3, cy - 3, 7, 2, c); plat_rect(cx - 3, cy, 5, 2, c);
+         plat_rect(cx - 3, cy + 3, 6, 1, c);
+@@ -603,9 +608,10 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
+ #if ST_BAKE
+ #define BAKE_TAG   0x53424B45u          /* 'SBKE' */
+ #define BAKE_ENTS  40
+-#define BAKE_POOL  10752                /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
++#define BAKE_POOL  (10752 - STUDIO_TABSTATE)  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+ typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
+-typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; } BakeSt;
++/* xs: the open tab's own small state (st_tab_state, the PLAY tab's pads); xs[0] is 0 on a fresh claim */
++typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t xs[STUDIO_TABSTATE]; uint8_t pix[BAKE_POOL]; } BakeSt;
+ DOOMO_STATIC_ASSERT(sizeof(BakeSt) <= DOOMO_SCENE_SCRATCH, studio_bake_fits_scratch);
+ static BakeSt *bake_st;
+ 
+@@ -613,10 +619,24 @@ static BakeSt *bake_get(void)
+ {
+     if (bake_st && scene_scratch_mine(BAKE_TAG)) return bake_st;
+     bake_st = (BakeSt *)scene_scratch(BAKE_TAG, (uint32_t)sizeof(BakeSt));
+-    if (bake_st) { bake_st->top = 0; bake_st->n = 0; }
++    if (bake_st) { bake_st->top = 0; bake_st->n = 0; bake_st->xs[0] = 0; }
+     return bake_st;
+ }
+ 
++void st_tab_state_drop(void)
++{
++    if (bake_st && scene_scratch_mine(BAKE_TAG)) bake_st->xs[0] = 0;
++}
++
++void *st_tab_state(int *fresh)
++{
++    BakeSt *b = bake_get();
++    if (!b) return NULL;
++    *fresh = b->xs[0] == 0;
++    if (*fresh) { memset(b->xs, 0, sizeof(b->xs)); b->xs[0] = 1; }
++    return b->xs;
++}
++
+ typedef StBakeFn BakeFn;
+ 
+ /* Draws fn(x, y, a) as one image of at most maxpix pixels; returns 0 (nothing drawn) when it cannot be baked, and the
+@@ -664,6 +684,22 @@ int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, i
+     (void)k0; (void)k1; (void)x; (void)y; (void)fn; (void)a; (void)maxpix;
+     return 0;
+ }
++
++/* no baking here: the tab state is a claim of the scene scratch of its own (nothing else of the studio uses it) */
++#define TABST_TAG 0x53545053u                                      /* 'STPS' */
++void st_tab_state_drop(void)
++{
++    if (scene_scratch_mine(TABST_TAG)) ((uint8_t *)scene_scratch_block())[0] = 0;
++}
++
++void *st_tab_state(int *fresh)
++{
++    uint8_t *b;
++    *fresh = !scene_scratch_mine(TABST_TAG) || ((uint8_t *)scene_scratch_block())[0] == 0;
++    b = (uint8_t *)scene_scratch(TABST_TAG, STUDIO_TABSTATE);
++    if (b && *fresh) { memset(b, 0, STUDIO_TABSTATE); b[0] = 1; }
++    return b;
++}
+ #endif
+ 
+ 
+@@ -758,7 +794,7 @@ static void backdrop_hole(StRect r, int *x0, int *y0, int *x1, int *y1)
+     case STAB_SONG: ww = st_wide() ? 182 : 146; break;
+     case STAB_LYRICS: wh = 8 * (st_wide() ? 13 : 10) + 8; break;
+     case STAB_FILE: if (studio.fmode == 1) return; break;
+-    case STAB_NOTES: case STAB_ORDER: case STAB_CHOIR: case STAB_STAGE: break;
++    case STAB_NOTES: case STAB_PLAY: case STAB_ORDER: case STAB_CHOIR: case STAB_STAGE: break;
+     default: return;
+     }
+     *x0 = wx + 4; *y0 = wy + 4; *x1 = wx + ww - 4; *y1 = wy + wh - 4;
+@@ -865,6 +901,7 @@ static void new_song(void)
+ 
+ static void studio_enter(int arg)
+ {
++    st_tab_state_drop();                    /* a new visit: the PLAY tab's pads start from their defaults */
+     studio_part_memo_reset();
+     studio.active = 1;
+     studio.t = 0;
+@@ -921,6 +958,7 @@ static void studio_enter(int arg)
+ 
+ static void studio_leave(void)
+ {
++    if (studio.tab == STAB_PLAY) tab_play_leave();
+     song_stop();
+     stage_leave();
+     studio.active = 0;
+@@ -955,12 +993,14 @@ static void global_input(void)
+         if (btn_pressed(BTN_B | BTN_Y | BTN_A | BTN_X | BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT))
+             studio.sel_used = 1;
+     }
+-    if (btn_pressed(BTN_Y) || (studio.sel_held && btn_pressed(BTN_B))) {
++    if ((btn_pressed(BTN_Y) && studio.tab != STAB_PLAY) || (studio.sel_held && btn_pressed(BTN_B))) {
+         if (ed_undo()) { st_msg("Undo! (%d left)", ed_undo_steps()); audio_sfx(SFX_CANCEL); }
+         else { st_msg("Nothing to undo"); audio_sfx(SFX_ERROR); }
+     }
+-    if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
+-    if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
++    if (studio.tab != STAB_PLAY) {                      /* PLAY: Y, L2 and R2 are pads */
++        if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
++        if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
++    }
+ }
+ 
+ int studio_sel_tap;
+@@ -982,21 +1022,25 @@ static void studio_update(void)
+         if (!studio.sel_used) studio_sel_tap = 1;
+     }
+     if (!btn_down(BTN_SELECT)) studio.sel_held = 0;
+-    if (studio.sel_held) return;                /* chords only while SELECT is down */
+-    if (studio.tab != STAB_NOTES) {
++    if (studio.sel_held) {                      /* chords only while SELECT is down */
++        if (studio.tab == STAB_PLAY) tab_play_shift();
++        return;
++    }
++    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY) {
+         if (btn_pressed(BTN_L)) { st_set_tab(studio.tab - 1); return; }
+         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); return; }
+     }
+     switch (studio.tab) {
+     case STAB_SONG: tab_song_update(); break;
+     case STAB_NOTES: tab_notes_update(); break;
++    case STAB_PLAY: tab_play_update(); break;
+     case STAB_ORDER: tab_order_update(); break;
+     case STAB_LYRICS: tab_lyrics_update(); break;
+     case STAB_CHOIR: tab_choir_update(); break;
+     case STAB_STAGE: tab_stage_update(); break;
+     default: tab_file_update(); break;
+     }
+-    if (studio.tab != STAB_NOTES && !studio.pop_n && !studio.picking && btn_pressed(BTN_B) &&
++    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY && !studio.pop_n && !studio.picking && btn_pressed(BTN_B) &&
+         !(studio.tab == STAB_STAGE && stage_fullscreen()) && scene_top() == &SCENE_STUDIO)
+         studio_try_leave();
+ }
+@@ -1039,6 +1083,7 @@ static void studio_draw(void)
+     switch (studio.tab) {
+     case STAB_SONG: tab_song_draw(r); break;
+     case STAB_NOTES: tab_notes_draw(r); break;
++    case STAB_PLAY: tab_play_draw(r); break;
+     case STAB_ORDER: tab_order_draw(r); break;
+     case STAB_LYRICS: tab_lyrics_draw(r); break;
+     case STAB_CHOIR: tab_choir_draw(r); break;
+diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+index e11f4a1..bac3208 100644
+--- a/core/src/studio_edit.c
++++ b/core/src/studio_edit.c
+@@ -45,6 +45,9 @@ int tab_prompts(int tab, UiPrompt *p)
+         PR(BTN_START, 3, "Play");
+         PR(BTN_Y, 4, "Undo");
+         break;
++    case STAB_PLAY:
++        n = play_prompts(p);
++        break;
+     case STAB_ORDER:
+         PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
+         PR(BTN_A, 0, "Insert");
+@@ -425,6 +428,11 @@ static void notes_tools(int c)
+                 s->notes[p][t][i] = (uint8_t)song_scale_shift(s, s->notes[p][t][i], c == 5 ? 1 : -1);
+         ed_commit();
+         break;
++    case 7: {                                   /* ST-PLAY: hear what you change: the bar under the cursor loops */
++        int from = studio.stp >= 16 ? 16 : 0;
++        song_play_range(s, p, from, from + 16);
++        st_msg("Looping bar %d of %c", from / 16 + 1, 'A' + p);
++        break; }
+     default: break;
+     }
+ }
+@@ -497,10 +505,10 @@ void tab_notes_update(void)
+             else song_play_pattern(s, studio.pat, studio.stp);
+         }
+         if (studio_sel_tap) {
+-            static const char *const items[7] = { "Copy pattern", "Paste pattern", "Copy track",
++            static const char *const items[8] = { "Copy pattern", "Paste pattern", "Copy track",
+                                                   "Paste track", "Clear track", "Track up a step",
+-                                                  "Track down a step" };
+-            st_popup("Pattern tools", items, 7, 0, notes_tools);
++                                                  "Track down a step", "Loop this bar" };
++            st_popup("Pattern tools", items, 8, 0, notes_tools);
+         }
+     }
+     if (studio.stp < studio.ntop) studio.ntop = studio.stp;
+diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+index 941734e..a3a51d9 100644
+--- a/core/src/studio_int.h
++++ b/core/src/studio_int.h
+@@ -28,7 +28,7 @@
+ #define STUDIO_ARG_DEMO(t) (-100 - (t))
+ 
+ /* ---- tabs ------------------------------------------------------------------ */
+-enum { STAB_SONG, STAB_NOTES, STAB_ORDER, STAB_LYRICS, STAB_CHOIR, STAB_STAGE,
++enum { STAB_SONG, STAB_NOTES, STAB_PLAY, STAB_ORDER, STAB_LYRICS, STAB_CHOIR, STAB_STAGE,
+        STAB_FILE, STAB_COUNT };
+ 
+ /* ---- stats kept in the SONG chunk -------------------------------------------- */
+@@ -177,6 +177,12 @@ int  st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a,
+ void st_drum_icon(int d, int cx, int cy, int t);
+ void st_note_glyph(int x, int y, uint8_t c);  /* a little eighth note */
+ int  st_wide(void);                           /* 1 at 320 px and wider */
++/* The open tab's own small state (ST-PLAY: the pads): STUDIO_TABSTATE bytes of the shared scene scratch (never a static:
++ * the GBA's EWRAM is full), zero-filled when claimed anew (*fresh = 1: set your defaults); gone when another scene takes
++ * the scratch, so keep nothing in it that cannot be rebuilt. NULL when the scratch is not available. */
++#define STUDIO_TABSTATE 64
++void *st_tab_state(int *fresh);
++void st_tab_state_drop(void);                  /* forget it (studio_enter): the next st_tab_state is fresh */
+ /* the content rectangle of a tab */
+ typedef struct { int x, y, w, h; } StRect;
+ StRect st_content(void);
+@@ -192,6 +198,10 @@ int  st_alive(int id);
+ /* ---- tabs ------------------------------------------------------------------- */
+ void tab_song_update(void);    void tab_song_draw(StRect r);
+ void tab_notes_update(void);   void tab_notes_draw(StRect r);
++void tab_play_update(void);    void tab_play_draw(StRect r);   /* studio_play.c (ST-PLAY) */
++void tab_play_shift(void);     /* the PLAY tab while SELECT is held: octave, chord set, record */
++void tab_play_leave(void);     /* a take ends, the jam lets go, the loop stops (tab change, leaving the studio) */
++int  play_prompts(UiPrompt *p);
+ void tab_order_update(void);   void tab_order_draw(StRect r);
+ void tab_lyrics_update(void);  void tab_lyrics_draw(StRect r);
+ void tab_choir_update(void);   void tab_choir_draw(StRect r);
+diff --git a/core/src/studio_play.c b/core/src/studio_play.c
+new file mode 100644
+index 0000000..d783155
+--- /dev/null
++++ b/core/src/studio_play.c
+@@ -0,0 +1,643 @@
++/* studio_play.c - the PLAY tab of the Music Studio (ST-PLAY, docs/design/STUDIO_PLAN.md 2.4; owner: studio).
++ *
++ * JAM       the pads play the song's own scale and chords: no wrong notes. Notes: A B L R (GBA: four of the eight
++ *           scale degrees at a time) and, on the PS1 / Dreamcast / PC pads, X Y L2 R2 for degrees 5..8. Chords:
++ *           the d-pad (Left Down Right Up) from the song's own bass line (or I IV V vi). A held pad holds its
++ *           note (song_jam_on / song_jam_off: the track's own channel and instrument).
++ * RECORD    SELECT+START: a count-in of four clicks, then the chosen part of the pattern loops
++ *           (song_play_range) and the pads write into the lead / harmony / bass (or drum) track, quantized to
++ *           off / 1/4 / 1/8 / 1/16 (default 1/16). The step is decided from the player's tick position
++ *           (song_pos_ticks), a held pad writes tie cells, and the whole take is ONE undo step (the
++ *           journal's ed_touch once at the start of the take, ed_commit at its end). Overdub keeps the old
++ *           notes; Replace clears the looped part when the take starts.
++ * DRUMS     the same pads play the kit (kick, snare, hat, open hat, clap, tom, crash, cowbell) and record
++ *           into the drum track with the same quantize.
++ * SELECT    held: UP / DOWN octave, A chord set (the song's / I IV V vi), LEFT / RIGHT the high or low four
++ *           notes (GBA), START record. A clean tap of SELECT opens the tools menu (every setting by name).
++ *
++ * The pads' state is 64 bytes of the shared scene scratch (st_tab_state), never a static: EWRAM / IWRAM are full.
++ */
++#include "studio_int.h"
++
++enum { Q_OFF, Q_4, Q_8, Q_16, Q_COUNT };
++enum { REC_IDLE, REC_COUNT, REC_ON };
++enum { RANGE_WHOLE, RANGE_BAR1, RANGE_BAR2, RANGE_COUNT };
++
++#if defined(DOOMO_PLATFORM_GBA)
++#define PLAY_KEYS 4                  /* the GBA has A B L R; the other pads add X Y L2 R2 */
++#else
++#define PLAY_KEYS 8
++#endif
++
++typedef struct PlayState {
++    uint8_t  init;                   /* [0]: managed by st_tab_state */
++    uint8_t  mode;                   /* 0 notes, 1 drums */
++    int8_t   oct;                    /* -2..+2 octaves */
++    uint8_t  row;                    /* GBA: 0 = degrees 1..4, 1 = 5..8 */
++    uint8_t  chords;                 /* 0 the song's chords, 1 I IV V vi */
++    uint8_t  quant;                  /* Q_* */
++    uint8_t  trk;                    /* 0..2 the melodic track a take writes to */
++    uint8_t  replace;                /* 0 overdub, 1 replace */
++    uint8_t  range;                  /* RANGE_* */
++    uint8_t  rec;                    /* REC_* */
++    uint8_t  beats;                  /* count-in clicks sounded */
++    uint8_t  take_open, take_n, take_cleared;
++    uint8_t  last_k;                 /* the melody pad pressed last, +1 (it wins when several are held) */
++    uint8_t  hold_step, hold_trk;
++    uint16_t hold_btn, hold_t;       /* the pad that holds the latest recorded note, ticks held */
++    uint16_t cacc;                   /* count-in beat accumulator */
++    uint8_t  roots[4];               /* the song's chord roots (pitch classes) */
++} PlayState;
++DOOMO_STATIC_ASSERT(sizeof(PlayState) <= STUDIO_TABSTATE, play_state_fits_tab_state);
++
++static const char *const trk_names[3] = { "Lead", "Harmony", "Bass" };
++static const char *const q_names[Q_COUNT] = { "off", "1/4", "1/8", "1/16" };
++static const char *const range_names[RANGE_COUNT] = { "whole pattern", "bar 1", "bar 2" };
++static const int8_t trk_center[3] = { 72, 62, 48 };
++static const uint16_t melody_keys[8] = { BTN_A, BTN_B, BTN_L, BTN_R, BTN_X, BTN_Y, BTN_L2, BTN_R2 };
++static const uint16_t chord_keys[4] = { BTN_LEFT, BTN_DOWN, BTN_RIGHT, BTN_UP };
++static const uint16_t drum_keys[8] = { BTN_A, BTN_B, BTN_L, BTN_R, BTN_LEFT, BTN_DOWN, BTN_RIGHT, BTN_UP };
++static const uint8_t drum_of_key[8] = { SONG_DRUM_KICK, SONG_DRUM_SNARE, SONG_DRUM_HAT, SONG_DRUM_OPEN_HAT,
++                                        SONG_DRUM_CLAP, SONG_DRUM_TOM, SONG_DRUM_CRASH, SONG_DRUM_COWBELL };
++
++/* ====================================================================== */
++/* pure helpers (unit tested: core/tests/test_studio_play.c)                */
++
++/* The nearest MIDI note with pitch class pc to `center` (within -6..+5). */
++static int near_pc(int pc, int center)
++{
++    int lo = center - 6;
++    return lo + (((pc - lo) % 12) + 12) % 12;
++}
++
++/* n folded by octaves into the editor's note range (the pitch class stays: a clamp would leave the scale) */
++static int fold_octaves(int n)
++{
++    while (n < SONG_NOTE_MIN) n += 12;
++    while (n > SONG_NOTE_MAX) n -= 12;
++    return n;
++}
++
++/* Scale degree `degree` (0 = the tonic) of the song's key / scale on track trk (0..2), `oct` octaves up. Always in
++ * the scale (song_scale_snap(s, n) == n). */
++int play_degree_note(const DoomoSong *s, int trk, int oct, int degree)
++{
++    int tonic = near_pc(s->key % 12, trk_center[DOOMO_CLAMP(trk, 0, 2)]) + 12 * oct;
++    tonic = song_scale_snap(s, fold_octaves(tonic));
++    return fold_octaves(song_scale_shift(s, tonic, degree));
++}
++
++/* The triad of the chord whose root has pitch class pc: out[0] root (low), out[1] third, out[2] fifth (the thirds are
++ * stacked in scale steps, so every note is in the scale). */
++void play_chord_notes(const DoomoSong *s, int pc, int oct, int out[3])
++{
++    int up = song_scale_snap(s, fold_octaves(near_pc(pc, 62) + 12 * oct));
++    out[0] = song_scale_snap(s, fold_octaves(near_pc(pc, 48) + 12 * oct));
++    out[1] = fold_octaves(song_scale_shift(s, up, 2));
++    out[2] = fold_octaves(song_scale_shift(s, up, 4));
++}
++
++/* The four chord roots (pitch classes) the d-pad plays: the first notes of the bars of the song's bass track in
++ * the order they come (snapped into the scale), filled up with I IV V vi. basic != 0: just I IV V vi. */
++void play_song_roots(const DoomoSong *s, int basic, uint8_t out[4])
++{
++    static const uint8_t deg[4] = { 0, 3, 4, 5 };
++    int n = 0, i, o, b, k, j;
++    if (!basic)
++        for (o = 0; o < s->order_len && n < 4; o++) {
++            int p = s->order[o] % SONG_PATTERNS;
++            for (b = 0; b < 2 && n < 4; b++)
++                for (k = b * 16; k < b * 16 + 16; k++) {
++                    int v = s->notes[p][2][k], pc, dup = 0;
++                    if (v < 2) continue;
++                    pc = song_scale_snap(s, v) % 12;
++                    for (j = 0; j < n; j++) if (out[j] == pc) dup = 1;
++                    if (!dup) out[n++] = (uint8_t)pc;
++                    break;                        /* the first note of the bar only */
++                }
++        }
++    for (i = 0; i < 4 && n < 4; i++) {
++        int pc = song_scale_shift(s, song_scale_snap(s, 60 + s->key % 12), deg[i]) % 12, dup = 0;
++        for (j = 0; j < n; j++) if (out[j] == pc) dup = 1;
++        if (!dup) out[n++] = (uint8_t)pc;
++    }
++    for (i = 0; n < 4; i++)                       /* a scale so small that the defaults repeat */
++        out[n++] = (uint8_t)((s->key + i * 7) % 12);
++}
++
++/* Where in the looped steps from..to-1 the player is `ticks` after song_play_range() (song_pos_ticks): the step, and
++ * how far into it, 0..255. Exact with swing: the loop is periodic, so the ticks are reduced to one period first. */
++int play_loop_pos(const DoomoSong *s, int from, int to, uint32_t ticks, int *frac)
++{
++    uint32_t g = 16u * (uint32_t)DOOMO_CLAMP(s->bpm, 60, 220), sw = (uint32_t)DOOMO_MIN(s->swing, 8) * 450u;
++    uint32_t len = 0, a, b, u;
++    int i;
++    for (i = from; i < to; i++) len += (i & 1) ? 7200u - sw : 7200u + sw;
++    a = len; b = g;
++    while (b) { uint32_t t = a % b; a = b; b = t; }                       /* gcd */
++    u = ((ticks % (len / a)) * g) % len;
++    for (i = from; i < to; i++) {
++        uint32_t su = (i & 1) ? 7200u - sw : 7200u + sw;
++        if (u < su) { if (frac) *frac = (int)(u * 256u / su); return i; }
++        u -= su;
++    }
++    if (frac) *frac = 0;
++    return from;
++}
++
++/* The step a note pressed at (step, frac/256 into it) is written to: Q_OFF the step you were in; 1/16 the nearest step;
++ * 1/8 the nearest even step; 1/4 the nearest beat. Rounding up past the end of the loop wraps to its start. */
++int play_quantize_step(int step, int frac, int q, int from, int to)
++{
++    int r = step, unit, cnt = to - from;
++    if (q != Q_OFF) {
++        unit = q == Q_4 ? 1024 : q == Q_8 ? 512 : 256;
++        r = ((step * 256 + frac + unit / 2) / unit) * (unit / 256);
++    }
++    if (r < from) r = from;
++    if (r >= to) r = from + (r - from) % cnt;
++    return r;
++}
++
++/* ====================================================================== */
++/* state                                                                    */
++static PlayState *ps(void)
++{
++    int fresh = 0;
++    PlayState *p = (PlayState *)st_tab_state(&fresh);
++    if (p && fresh) {
++        p->quant = Q_16;
++    }
++    return p;
++}
++
++static void range_steps(const PlayState *p, int *from, int *to)
++{
++    *from = p->range == RANGE_BAR2 ? 16 : 0;
++    *to = p->range == RANGE_BAR1 ? 16 : SONG_STEPS;
++}
++
++static uint8_t *take_row(const PlayState *p)
++{
++    return SS->notes[studio.pat & 3][p->mode ? 3 : p->trk];
++}
++
++/* the chord roots follow the song as it is edited (a scan of at most 16 x 32 bass cells) */
++static void refresh_roots(PlayState *p)
++{
++    play_song_roots(SS, p->chords, p->roots);
++}
++
++/* ====================================================================== */
++/* the jam: pads -> held notes                                              */
++static int pad_note(const PlayState *p, int k)
++{
++    int deg = k;
++#if defined(DOOMO_PLATFORM_GBA)
++    deg = p->row * 4 + k;
++#endif
++    return play_degree_note(SS, p->trk, p->oct, deg);
++}
++
++static int chord_root_note(const PlayState *p, int c)
++{
++    return fold_octaves(near_pc(p->roots[c & 3], trk_center[p->trk]) + 12 * p->oct);
++}
++
++/* make the held notes follow the pads held now */
++static void jam_sync(PlayState *p)
++{
++    uint8_t want[3] = { 0, 0, 0 };
++    int c, k, ch;
++    if (p->mode) return;
++    for (c = 0; c < 4; c++)
++        if (btn_down(chord_keys[c])) {
++            int n[3];
++            play_chord_notes(SS, p->roots[c], p->oct, n);
++            want[0] = (uint8_t)n[2]; want[1] = (uint8_t)n[1]; want[2] = (uint8_t)n[0];
++        }
++    for (k = 0; k < PLAY_KEYS; k++)
++        if (btn_down(melody_keys[k])) want[p->trk] = (uint8_t)pad_note(p, k);
++    if (p->last_k && p->last_k <= PLAY_KEYS && btn_down(melody_keys[p->last_k - 1]))
++        want[p->trk] = (uint8_t)pad_note(p, p->last_k - 1);
++    for (ch = 0; ch < 3; ch++) {
++        int cur = song_jam_note(ch);
++        if (want[ch] == cur) continue;
++        if (want[ch]) song_jam_on(SS, ch, want[ch]);
++        else song_jam_off(ch);
++    }
++}
++
++/* ====================================================================== */
++/* recording                                                                */
++static void take_begin(PlayState *p)
++{
++    if (p->take_open) return;
++    ed_touch(take_row(p), SONG_STEPS);
++    p->take_open = 1;
++    p->take_n = 0;
++}
++
++static void hold_release(PlayState *p)
++{
++    int n, i, from, to;
++    uint8_t *row;
++    uint32_t units = (uint32_t)p->hold_t * 16u * (uint32_t)DOOMO_CLAMP(SS->bpm, 60, 220);
++    p->hold_btn = 0;
++    if (!p->take_open || p->rec != REC_ON) return;
++    range_steps(p, &from, &to);
++    n = (int)(p->quant == Q_OFF ? units / 7200u : (units + 3600u) / 7200u);
++    row = SS->notes[studio.pat & 3][p->hold_trk];
++    for (i = 1; i < n; i++) {                         /* the note and n - 1 tie cells */
++        int st = p->hold_step + i;
++        if (st >= to || row[st] != SONG_REST) break;
++        row[st] = SONG_HOLD;
++    }
++}
++
++static void rec_event(PlayState *p, int cell, uint16_t key)
++{
++    int from, to, frac, step, trk = p->mode ? 3 : p->trk;
++    uint8_t *row;
++    range_steps(p, &from, &to);
++    step = play_loop_pos(SS, from, to, song_pos_ticks(), &frac);
++    step = play_quantize_step(step, frac, p->quant, from, to);
++    if (p->hold_btn) hold_release(p);                 /* a new note ends the held one */
++    take_begin(p);
++    row = take_row(p);
++    row[step] = (uint8_t)cell;
++    p->take_n++;
++    if (trk < 3) {
++        studio.last[trk] = (uint8_t)cell;
++        p->hold_btn = key;
++        p->hold_step = (uint8_t)step;
++        p->hold_trk = (uint8_t)trk;
++        p->hold_t = 0;
++    }
++}
++
++static void count_click(PlayState *p)
++{
++    song_jam_on(SS, 3, p->beats == 0 ? SONG_DRUM_KICK : SONG_DRUM_HAT);
++}
++
++static void rec_begin_loop(PlayState *p)
++{
++    int from, to;
++    range_steps(p, &from, &to);
++    p->rec = REC_ON;
++    p->take_cleared = 0;
++    if (p->replace) {
++        uint8_t *row;
++        take_begin(p);
++        row = take_row(p);
++        memset(row + from, 0, (size_t)(to - from));
++        p->take_cleared = 1;
++    }
++    song_play_range(SS, studio.pat, from, to);
++    audio_sfx(SFX_SELECT);
++}
++
++/* finish the take: its notes are one undo step */
++static void take_end(PlayState *p)
++{
++    if (p->hold_btn) hold_release(p);
++    if (p->rec == REC_COUNT) {
++        st_msg("Count-in stopped");
++    } else if (p->rec == REC_ON) {
++        if (p->take_open && p->take_n == 0 && p->take_cleared) {
++            ed_commit();
++            ed_undo();                                /* a Replace that recorded nothing: as it was */
++            st_msg("No notes: nothing changed");
++        } else if (p->take_open) {
++            ed_commit();
++            st_msg("Take saved: %d notes", p->take_n);
++            audio_sfx(SFX_SELECT);
++        } else {
++            st_msg("No notes: nothing changed");
++        }
++    }
++    p->take_open = 0;
++    p->take_n = 0;
++    p->take_cleared = 0;
++    p->rec = REC_IDLE;
++    p->beats = 0;
++    song_stop();
++}
++
++static void rec_start(PlayState *p)
++{
++    if (song_playing()) song_stop();
++    song_jam_off(-1);
++    p->rec = REC_COUNT;
++    p->beats = 0;
++    p->cacc = 0;
++    count_click(p);
++    p->beats = 1;
++    st_msg("Recording %s: count-in", p->mode ? "Drums" : trk_names[p->trk]);
++}
++
++static void loop_toggle(PlayState *p)
++{
++    int from, to;
++    if (p->rec) { take_end(p); return; }
++    if (song_playing()) { song_stop(); st_msg("Stopped"); return; }
++    range_steps(p, &from, &to);
++    song_play_range(SS, studio.pat, from, to);
++    st_msg("Looping %s of %c", range_names[p->range], 'A' + studio.pat);
++}
++
++/* a tick of the recorder: count-in beats, the loop, a held pad */
++static void service(PlayState *p)
++{
++    if (p->take_open && !studio.undo_open) {          /* an undo took the open take away */
++        p->take_open = 0;
++        p->take_n = 0;
++        p->take_cleared = 0;
++    }
++    if (p->rec == REC_COUNT) {
++        p->cacc = (uint16_t)(p->cacc + 16 * DOOMO_CLAMP(SS->bpm, 60, 220));
++        if (p->cacc >= 28800u) {                      /* a beat: 4 steps of 7200 units */
++            p->cacc = (uint16_t)(p->cacc - 28800u);
++            if (p->beats < 4) { count_click(p); p->beats++; }
++            else rec_begin_loop(p);
++        }
++    } else if (p->rec == REC_ON && !song_playing()) {
++        take_end(p);                                  /* the loop ended under us */
++    }
++    if (p->hold_btn) {
++        if (btn_down(p->hold_btn)) { if (p->hold_t < 60000) p->hold_t++; }
++        else hold_release(p);
++    }
++}
++
++/* ====================================================================== */
++/* tools menu                                                               */
++static void say_row(const PlayState *p)
++{
++    st_msg(p->row ? "Pads A B L R: notes 5-8" : "Pads A B L R: notes 1-4");
++}
++
++static void play_menu_done(int c)
++{
++    PlayState *p = ps();
++    if (!p || c < 0) return;
++    switch (c) {
++    case 0:
++        p->mode ^= 1;
++        st_msg(p->mode ? "Drum pads: A B L R + d-pad" : "Note pads: your song's scale");
++        break;
++    case 1:
++        if (p->mode) { st_msg("Drum pads record into Drums"); break; }
++        p->trk = (uint8_t)((p->trk + 1) % 3);
++        st_msg("Pads play and record %s", trk_names[p->trk]);
++        break;
++    case 2:
++        p->quant = (uint8_t)((p->quant + 1) % Q_COUNT);
++        st_msg("Quantize: %s", q_names[p->quant]);
++        break;
++    case 3:
++        p->replace ^= 1;
++        st_msg(p->replace ? "Replace: a take clears the loop" : "Overdub: keeps the old notes");
++        break;
++    case 4:
++        p->range = (uint8_t)((p->range + 1) % RANGE_COUNT);
++        st_msg("Loop: %s", range_names[p->range]);
++        break;
++    case 5:
++        studio.pat = (uint8_t)((studio.pat + 1) % SONG_PATTERNS);
++        st_msg("Pattern %c", 'A' + studio.pat);
++        break;
++    case 6:
++        p->chords ^= 1;
++        refresh_roots(p);
++        st_msg(p->chords ? "Chords: I IV V vi" : "Chords: from your song");
++        break;
++    case 7:
++        p->row ^= 1;
++        say_row(p);
++        break;
++    default: break;
++    }
++}
++
++static void open_menu(PlayState *p)
++{
++    static const char *const items[8] = { "Notes / Drums", "Next track", "Quantize", "Overdub / Replace",
++                                          "Loop part", "Next pattern", "Chord set", "Notes 1-4 / 5-8" };
++    if (p->rec) take_end(p);
++    song_jam_off(-1);
++    refresh_roots(p);
++    st_popup("Play tools", items, PLAY_KEYS == 4 ? 8 : 7, 0, play_menu_done);   /* the last item is for the 4-pad GBA only */
++}
++
++/* ====================================================================== */
++/* input                                                                    */
++void tab_play_leave(void)
++{
++    PlayState *p = ps();
++    if (p && p->rec) take_end(p);
++    song_jam_off(-1);
++    song_stop();
++}
++
++void tab_play_shift(void)
++{
++    PlayState *p = ps();
++    if (!p) return;
++    service(p);
++    if (btn_pressed(BTN_UP) || btn_pressed(BTN_DOWN)) {
++        int d = btn_pressed(BTN_UP) ? 1 : -1;
++        if (p->mode) {
++            st_msg("Drums have no octave");
++        } else if (p->oct + d < -2 || p->oct + d > 2) {
++            st_msg(d > 0 ? "Highest octave" : "Lowest octave");
++            audio_sfx(SFX_ERROR);
++        } else {
++            p->oct = (int8_t)(p->oct + d);
++            st_msg("Octave %s%d", p->oct > 0 ? "+" : "", p->oct);
++            audio_sfx(SFX_CURSOR);
++        }
++    }
++#if defined(DOOMO_PLATFORM_GBA)
++    if (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT)) {
++        p->row = (uint8_t)(btn_pressed(BTN_RIGHT) ? 1 : 0);           /* RIGHT: the high four, LEFT: the low four */
++        say_row(p);
++        audio_sfx(SFX_CURSOR);
++    }
++#endif
++    if (btn_pressed(BTN_A)) {
++        play_menu_done(6);
++        audio_sfx(SFX_CURSOR);
++    }
++    if (btn_pressed(BTN_START)) {
++        studio.sel_used = 1;
++        if (p->rec) take_end(p);
++        else rec_start(p);
++    }
++    /* pads let go of while SELECT is held: no stuck notes */
++    jam_sync(p);
++}
++
++void tab_play_update(void)
++{
++    PlayState *p = ps();
++    int k;
++    if (!p) return;
++    service(p);
++    if (studio_sel_tap) { open_menu(p); return; }
++    if (btn_pressed(BTN_START)) loop_toggle(p);
++    if (p->mode) {
++        for (k = 0; k < 8; k++)
++            if (btn_pressed(drum_keys[k])) {
++                song_jam_on(SS, 3, drum_of_key[k]);
++                if (p->rec == REC_ON) rec_event(p, drum_of_key[k], drum_keys[k]);
++            }
++        return;
++    }
++    refresh_roots(p);
++    for (k = 0; k < PLAY_KEYS; k++)
++        if (btn_pressed(melody_keys[k])) {
++            p->last_k = (uint8_t)(k + 1);
++            if (p->rec == REC_ON) rec_event(p, pad_note(p, k), melody_keys[k]);
++        }
++    for (k = 0; k < 4; k++)
++        if (btn_pressed(chord_keys[k]) && p->rec == REC_ON)
++            rec_event(p, chord_root_note(p, k), chord_keys[k]);       /* a chord records its root */
++    jam_sync(p);
++}
++
++int play_prompts(UiPrompt *pr)
++{
++    PlayState *p = ps();
++    int n = 0;
++#define PR(b, pri, v) do { pr[n].btn = (uint16_t)(b); pr[n].prio = (uint8_t)(pri); pr[n].verb = (v); n++; } while (0)
++    if (studio.sel_held) {                              /* SELECT is down: the shift keys */
++        if (!p || !p->mode) PR(BTN_UP | BTN_DOWN, 0, "Octave");
++        PR(BTN_START, 1, p && p->rec ? "Stop" : "Record");
++        if (!p || !p->mode) PR(BTN_A, 2, "Chords");
++#if defined(DOOMO_PLATFORM_GBA)
++        if (!p || !p->mode) PR(BTN_LEFT | BTN_RIGHT, 3, "Notes");
++#endif
++        return n;
++    }
++    if (p && p->rec) {
++        PR(BTN_START, 0, "Stop");
++        PR(BTN_A, 1, "Note");
++        PR(BTN_SELECT | BTN_B, 3, "Undo");
++        return n;
++    }
++    PR(BTN_A, 0, "Note");
++    PR(BTN_START, 1, "Play");
++    PR(BTN_SELECT | BTN_START, 2, "Record");
++    PR(BTN_SELECT, 3, "Tools");
++#undef PR
++    return n;
++}
++
++/* ====================================================================== */
++/* drawing                                                                  */
++static void pad_cell(int x, int y, int w, int h, uint8_t base, int down, const char *key, const char *label)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
++    ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, down ? PAL_PAINT(PAINT_ROSE, 1) : base);
++    if (key && key[0] && ui_text_width(key) < w / 2) ui_text(x + 3, y + 2, key, down ? PAL_WHITE : st->text_dim);
++    if (label && label[0])
++        ui_text(x + (w - ui_text_width(label)) / 2, y + h / 2 - 2, label, down ? PAL_WHITE : st->text);
++}
++
++static const char *pad_key_name(uint16_t b)
++{
++    const char *n = btn_name(b);
++    return n ? n : "";
++}
++
++void tab_play_draw(StRect r)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    PlayState *p = ps();
++    int wide = st_wide(), gap = 3, cw, ch, x0, y, rows, i, k, trk, from, to, rx;
++    char buf[44], nm[6];
++    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
++    if (!p) return;
++    trk = p->mode ? 3 : p->trk;
++    range_steps(p, &from, &to);
++    /* header: what the pads play, where it goes, the state of the recorder */
++    {
++        const char *tn = p->mode ? "Drums" : trk_names[p->trk];
++        int tw = ui_text_width(tn) + 10;
++        ui_round_rect(r.x + 6, r.y + 4, tw, 11, 4, st_track_color(trk, 1));
++        ui_text(r.x + 11, r.y + 6, tn, PAL_WHITE);
++        ui_round_rect(r.x + 10 + tw, r.y + 4, 16, 11, 4, st_pattern_color(studio.pat, 1));
++        nm[0] = (char)('A' + studio.pat); nm[1] = 0;
++        ui_text(r.x + 15 + tw, r.y + 6, nm, PAL_WHITE);
++        doomo_snprintf(buf, sizeof(buf), wide ? "Quantize %s" : "Q %s", q_names[p->quant]);
++        ui_text(r.x + 34 + tw, r.y + 6, buf, st->text);
++    }
++    rx = r.x + r.w - 6;
++    if (p->rec == REC_COUNT) {
++        doomo_snprintf(buf, sizeof(buf), "Count %d", p->beats);
++        rx -= ui_text_width(buf);
++        ui_text(rx, r.y + 6, buf, PAL_PAINT(PAINT_ROSE, 0));
++    } else if (p->rec == REC_ON) {
++        rx -= ui_text_width("REC");
++        ui_text(rx, r.y + 6, "REC", PAL_PAINT(PAINT_CHERRY, 0));
++        if (ui_wave((int)studio.t, 16, 1) > 0) ui_fill_circle(rx - 6, r.y + 10, 3, PAL_PAINT(PAINT_CHERRY, 1));
++    } else if (song_playing()) {
++        rx -= ui_text_width("Loop");
++        ui_text(rx, r.y + 6, "Loop", PAL_PAINT(PAINT_MINT, 0));
++    }
++    if (p->mode) doomo_snprintf(buf, sizeof(buf), "%s  Loop %s", p->replace ? "Replace" : "Overdub", range_names[p->range]);
++    else doomo_snprintf(buf, sizeof(buf), "Oct %s%d  %s%s  Loop %s", p->oct > 0 ? "+" : "", p->oct,
++                        PLAY_KEYS == 4 ? (p->row ? "Notes 5-8  " : "Notes 1-4  ") : "",
++                        p->replace ? "Replace" : "Overdub", range_names[p->range]);
++    ui_text(r.x + 8, r.y + 18, buf, st->text_dim);
++    /* the pads */
++    rows = p->mode ? 2 : (PLAY_KEYS == 8 ? 3 : 2);
++    cw = (r.w - 16 - 3 * gap) / 4;
++    ch = (r.h - 30 - 20 - (rows - 1) * gap) / rows;
++    if (ch > (wide ? 34 : 26)) ch = wide ? 34 : 26;
++    x0 = r.x + 8;
++    y = r.y + 30;
++    if (p->mode) {
++        for (i = 0; i < 8; i++) {
++            int px = x0 + (i & 3) * (cw + gap), py = y + (i >> 2) * (ch + gap), d = drum_of_key[i];
++            pad_cell(px, py, cw, ch, st_track_color(3, 2), btn_down(drum_keys[i]), pad_key_name(drum_keys[i]), "");
++            st_drum_icon(d, px + cw / 2, py + ch / 2 - 1, (int)studio.t);
++            if (cw >= 40) ui_text(px + cw - 4 - ui_text_width(doomo_song_drum_names[d]), py + ch - 9,
++                                  doomo_song_drum_names[d], st->text_dim);
++        }
++    } else {
++        refresh_roots(p);
++        for (i = 0; i < PLAY_KEYS; i++) {
++            int px = x0 + (i & 3) * (cw + gap), py = y + (i >> 2) * (ch + gap);
++            song_note_name(pad_note(p, i), nm);
++            pad_cell(px, py, cw, ch, st_track_color(p->trk, 2), btn_down(melody_keys[i]), pad_key_name(melody_keys[i]), nm);
++        }
++        y += ((PLAY_KEYS + 3) / 4) * (ch + gap);
++        for (i = 0; i < 4; i++) {
++            int px = x0 + i * (cw + gap), tri[3], third;
++            play_chord_notes(SS, p->roots[i], p->oct, tri);
++            third = (tri[1] - tri[0]) % 12;
++            doomo_snprintf(buf, sizeof(buf), "%s%s", doomo_song_key_names[p->roots[i] % 12],
++                           third == 3 ? "m" : (third == 6 ? "o" : ""));
++            pad_cell(px, y, cw, ch, PAL_PAINT(PAINT_SKY, 2), btn_down(chord_keys[i]), pad_key_name(chord_keys[i]), buf);
++        }
++    }
++    /* the 32 steps of the pattern for the track the pads write to: the loop, the playhead and what is there */
++    {
++        int sw = r.w - 16, cs = sw / SONG_STEPS, gx = r.x + 8 + (sw - cs * SONG_STEPS) / 2, gy = r.y + r.h - 16;
++        const uint8_t *row = SS->notes[studio.pat & 3][trk];
++        int head = song_playing() ? song_pos_step() : -1;
++        plat_rect(gx, gy, cs * SONG_STEPS, 11, st->fill_lo);
++        plat_rect(gx + from * cs, gy - 2, (to - from) * cs, 1, st_track_color(trk, 0));
++        for (k = 0; k < SONG_STEPS; k++) {
++            int v = row[k];
++            if (v == SONG_REST) continue;
++            plat_rect(gx + k * cs, gy + 1, cs - 1, 9, st_track_color(trk, v == SONG_HOLD ? 2 : 0));
++        }
++        if (head >= 0) plat_rect(gx + head * cs, gy, cs, 11, PAL_PAINT(PAINT_LEMON, 1));
++        for (k = 0; k < SONG_STEPS; k += 4) plat_rect(gx + k * cs, gy + 11, 1, 2, st->text_dim);
++    }
++}
+diff --git a/core/tests/scripts/studio.txt b/core/tests/scripts/studio.txt
+index 95c2f62..2bbccd9 100644
+--- a/core/tests/scripts/studio.txt
++++ b/core/tests/scripts/studio.txt
+@@ -33,6 +33,11 @@ down SELECT
+ press R
+ release
+ wait 12
++shot play
++down SELECT
++press R
++release
++wait 12
+ shot order
+ down SELECT
+ press R
+diff --git a/core/tests/scripts/studio_play.txt b/core/tests/scripts/studio_play.txt
+new file mode 100644
+index 0000000..6aa494b
+--- /dev/null
++++ b/core/tests/scripts/studio_play.txt
+@@ -0,0 +1,71 @@
++# SCENE_STUDIO, the PLAY tab (ST-PLAY): jam pads (notes of the song's scale, chords on the d-pad), the tools menu,
++# live recording with the count-in, the take on the step ruler, the drum pads. STUDIO -107: the "Park United!" template.
++scene TITLE
++wait 2
++push STUDIO -107
++wait 20
++expect-scene STUDIO
++press R
++wait 4
++down SELECT
++press R
++release
++wait 12
++shot play
++down A
++wait 4
++shot play_jam
++release
++wait 2
++down LEFT
++wait 4
++shot play_chord
++release
++wait 2
++press SELECT
++wait 16
++shot play_menu
++press B
++wait 4
++# SELECT + START: record. The count-in is four beats; the loop starts; two notes
++down SELECT
++wait 2
++press START
++release
++wait 20
++shot play_countin
++wait 70
++down A
++wait 6
++shot play_rec
++release
++wait 20
++down R
++wait 4
++release
++wait 20
++shot play_rec2
++press START
++wait 10
++shot play_taken
++# the drum pads
++press SELECT
++wait 16
++press A
++wait 6
++down A
++wait 4
++shot play_drums
++release
++wait 2
++down SELECT
++press START
++release
++wait 90
++down B
++wait 4
++release
++wait 20
++press START
++wait 10
++shot play_drums_taken
+diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+index f75ac5e..2600c56 100644
+--- a/core/tests/test_studio.c
++++ b/core/tests/test_studio.c
+@@ -834,7 +834,9 @@ TEST(studio_editor_writes_saves_and_reloads_a_song)
+     CHECK_EQ(studio.pat, 1);
+     press(BTN_L);
+     CHECK_EQ(studio.pat, 0);
+-    /* LYRICS (NOTES -> ORDER -> LYRICS with SELECT + R) */
++    /* LYRICS (NOTES -> PLAY -> ORDER -> LYRICS with SELECT + R) */
++    chord_tab();
++    CHECK_EQ(studio.tab, STAB_PLAY);
+     chord_tab();
+     CHECK_EQ(studio.tab, STAB_ORDER);
+     chord_tab();
+diff --git a/core/tests/test_studio_play.c b/core/tests/test_studio_play.c
+new file mode 100644
+index 0000000..e636afd
+--- /dev/null
++++ b/core/tests/test_studio_play.c
+@@ -0,0 +1,782 @@
++/* test_studio_play.c - the PLAY tab of the Music Studio (ST-PLAY; owner: studio): quantize, where in a looped
++ * range the player is, the jam stays in the song's scale, live recording (a take is one undo step, ties, overdub
++ * and replace, drums) and the recorded take playing back. The recorder is driven with scripted buttons through the
++ * studio scene, like the player does it. */
++#include "test.h"
++#include "../src/studio_int.h"
++
++/* studio_play.c (not in studio_int.h: pure helpers, here for the tests) */
++int  play_degree_note(const DoomoSong *s, int trk, int oct, int degree);
++void play_chord_notes(const DoomoSong *s, int pc, int oct, int out[3]);
++void play_song_roots(const DoomoSong *s, int basic, uint8_t out[4]);
++int  play_loop_pos(const DoomoSong *s, int from, int to, uint32_t ticks, int *frac);
++int  play_quantize_step(int step, int frac, int q, int from, int to);
++
++static void frames(int n, uint32_t b)
++{
++    while (n-- > 0) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
++}
++
++static void press(uint32_t b)
++{
++    frames(1, b);
++    frames(1, 0);
++}
++
++static const DoomoScene base_scene = { "TESTBASE", NULL, NULL, NULL, NULL, 0 };
++
++static void open_play(void)
++{
++    int i;
++    test_reset();
++    scene_set(&base_scene, 0);
++    scene_push(&SCENE_STUDIO, -2);                  /* a new song on the FILE tab */
++    for (i = 0; i < 12; i++) frames(1, 0);
++    studio.song.bpm = 120;
++    studio.song.swing = 0;
++    studio.song.key = 0;
++    studio.song.scale = SONG_SCALE_MAJOR;
++    studio.pat = 0;
++    st_set_tab(STAB_PLAY);
++    frames(2, 0);
++}
++
++static int in_scale(const DoomoSong *s, int m) { return song_scale_snap(s, m) == m; }
++
++/* a menu choice by its place in the PLAY tools menu */
++static void menu_pick(int item)
++{
++    int i;
++    frames(1, BTN_SELECT);
++    frames(1, 0);                                  /* a clean tap of SELECT: the tools menu */
++    CHECK_EQ(st_popup_open(), 1);
++    for (i = 0; i < item; i++) press(BTN_DOWN);
++    press(BTN_A);
++    CHECK_EQ(st_popup_open(), 0);
++}
++
++static void rec_start_keys(void)
++{
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_START);
++    frames(1, 0);
++}
++
++/* run to the start of the loop after the count-in; returns the frames it took */
++static int run_count_in(void)
++{
++    int n = 0;
++    while (!song_playing() && n < 200) { frames(1, 0); n++; }
++    return n;
++}
++
++/* the player's tick of the loop is `t` after this returns (the next frame makes it t + 1) */
++static void run_to_tick(uint32_t t)
++{
++    while (song_pos_ticks() < t) frames(1, 0);
++}
++
++/* hit pad(s) on tick T of the loop: the frame that makes it tick T carries the press */
++static void hit_at(uint32_t T, uint32_t b)
++{
++    run_to_tick(T - 1);
++    frames(1, b);
++}
++
++/* ====================================================================== */
++TEST(studio_play_quantize_table)
++{
++    /* steps are 16ths; frac is 0..255 into the step */
++    CHECK_EQ(play_quantize_step(5, 17, 3, 0, 32), 5);       /* 1/16: just after step 5: step 5 */
++    CHECK_EQ(play_quantize_step(5, 127, 3, 0, 32), 5);
++    CHECK_EQ(play_quantize_step(5, 128, 3, 0, 32), 6);      /* half way: the next step */
++    CHECK_EQ(play_quantize_step(5, 250, 3, 0, 32), 6);
++    CHECK_EQ(play_quantize_step(5, 200, 0, 0, 32), 5);      /* off: the step you were in, never later */
++    CHECK_EQ(play_quantize_step(5, 255, 0, 0, 32), 5);
++    CHECK_EQ(play_quantize_step(5, 0, 2, 0, 32), 6);        /* 1/8: the nearest even step: 5 is a tie, goes up */
++    CHECK_EQ(play_quantize_step(4, 100, 2, 0, 32), 4);
++    CHECK_EQ(play_quantize_step(6, 200, 2, 0, 32), 6);
++    CHECK_EQ(play_quantize_step(7, 100, 2, 0, 32), 8);
++    CHECK_EQ(play_quantize_step(2, 0, 1, 0, 32), 4);        /* 1/4: the nearest beat (2 is a tie: up) */
++    CHECK_EQ(play_quantize_step(1, 255, 1, 0, 32), 0);      /* 1.99 is nearer the beat at 0 than the one at 4 */
++    CHECK_EQ(play_quantize_step(5, 100, 1, 0, 32), 4);
++    CHECK_EQ(play_quantize_step(6, 200, 1, 0, 32), 8);
++    /* the end of the loop wraps to its start */
++    CHECK_EQ(play_quantize_step(31, 200, 3, 0, 32), 0);
++    CHECK_EQ(play_quantize_step(15, 200, 3, 0, 16), 0);
++    CHECK_EQ(play_quantize_step(31, 200, 3, 16, 32), 16);
++    CHECK_EQ(play_quantize_step(30, 200, 1, 0, 32), 0);     /* 1/4 rounds 30.8 to 32 = the start */
++    /* never before the loop's first step */
++    CHECK_EQ(play_quantize_step(17, 0, 1, 16, 32), 16);
++    CHECK_EQ(play_quantize_step(17, 10, 2, 16, 32), 18);      /* 17.04 is nearer 18 than 16 */
++}
++
++TEST(studio_play_loop_position_matches_the_player)
++{
++    static const int bpms[] = { 60, 97, 120, 150, 220 };
++    static const int ranges[][2] = { { 0, 32 }, { 0, 16 }, { 16, 32 }, { 5, 12 }, { 31, 32 }, { 7, 8 } };
++    static DoomoSong s;
++    int b, r, sw;
++    test_reset();
++    for (b = 0; b < 5; b++)
++        for (sw = 0; sw <= 8; sw += 4)
++            for (r = 0; r < 6; r++) {
++                int from = ranges[r][0], to = ranges[r][1], k, bad = 0;
++                song_clear(&s);
++                s.bpm = (uint8_t)bpms[b];
++                s.swing = (uint8_t)sw;
++                song_play_range(&s, 1, from, to);
++                CHECK_EQ(song_pos_step(), from);
++                for (k = 0; k < 700 && !bad; k++) {
++                    int frac = -1, st;
++                    st = play_loop_pos(&s, from, to, song_pos_ticks(), &frac);
++                    if (st != song_pos_step() || frac < 0 || frac > 255) bad = 1;
++                    CHECK_MSG(!bad, "bpm %d swing %d range %d..%d tick %d: pos %d, player at %d", bpms[b], sw, from,
++                              to, k, st, song_pos_step());
++                    song_tick();
++                    CHECK_MSG(song_playing(), "a range loop stopped by itself");
++                    CHECK_MSG(song_pos_step() >= from && song_pos_step() < to, "left the range: step %d",
++                              song_pos_step());
++                }
++                song_stop();
++            }
++}
++
++TEST(studio_play_range_loops_only_its_steps_and_the_whole_pattern_is_unchanged)
++{
++    static DoomoSong s;
++    int k, seen_lo = 99, seen_hi = -1, wraps = 0, last = -1;
++    test_reset();
++    song_clear(&s);
++    s.bpm = 220;
++    song_play_range(&s, 2, 8, 12);
++    for (k = 0; k < 300; k++) {
++        int st;
++        song_tick();
++        st = song_pos_step();
++        if (st < seen_lo) seen_lo = st;
++        if (st > seen_hi) seen_hi = st;
++        if (st < last) wraps++;
++        last = st;
++    }
++    CHECK_EQ(seen_lo, 8);
++    CHECK_EQ(seen_hi, 11);
++    CHECK(wraps >= 5);
++    song_stop();
++    /* song_play_pattern is still the whole pattern: 0..31 then back to 0 */
++    song_play_pattern(&s, 1, 0);
++    seen_lo = 99; seen_hi = -1; wraps = 0; last = -1;
++    for (k = 0; k < 400; k++) {
++        int st;
++        song_tick();
++        st = song_pos_step();
++        if (st < seen_lo) seen_lo = st;
++        if (st > seen_hi) seen_hi = st;
++        if (st < last) wraps++;
++        last = st;
++    }
++    CHECK_EQ(seen_lo, 0);
++    CHECK_EQ(seen_hi, 31);
++    CHECK(wraps >= 1);
++    song_stop();
++}
++
++TEST(studio_play_jam_holds_and_releases_a_note)
++{
++    static DoomoSong s;
++    int k;
++    test_reset();
++    song_clear(&s);
++    song_jam_on(&s, 0, 72);
++    CHECK_EQ(song_jam_note(0), 72);
++    for (k = 0; k < 5; k++) song_tick();
++    CHECK_EQ(song_jam_note(0), 72);                       /* held for as long as the pad is */
++    song_jam_off(0);
++    CHECK_EQ(song_jam_note(0), 0);
++    song_jam_on(&s, 1, 60); song_jam_on(&s, 2, 48);
++    song_jam_off(-1);
++    CHECK_EQ(song_jam_note(1) + song_jam_note(2), 0);
++    song_jam_on(&s, 0, 1);                                /* a tie or a rest is no note */
++    song_jam_on(&s, 0, 0);
++    CHECK_EQ(song_jam_note(0), 0);
++    song_stop();
++}
++
++TEST(studio_play_jam_stays_in_the_scale)
++{
++    static DoomoSong s;
++    int sc, key, trk, oct, d, pc;
++    test_reset();
++    song_clear(&s);
++    for (sc = 0; sc < SONG_SCALE_COUNT; sc++)
++        for (key = 0; key < 12; key++) {
++            s.scale = (uint8_t)sc;
++            s.key = (uint8_t)key;
++            for (trk = 0; trk < 3; trk++)
++                for (oct = -2; oct <= 2; oct++) {
++                    for (d = 0; d < 8; d++) {
++                        int n = play_degree_note(&s, trk, oct, d);
++                        CHECK_MSG(in_scale(&s, n), "scale %d key %d track %d oct %d degree %d: note %d is out of key",
++                                  sc, key, trk, oct, d, n);
++                        CHECK(n >= SONG_NOTE_MIN && n <= SONG_NOTE_MAX);
++                    }
++                    CHECK_MSG(play_degree_note(&s, trk, oct, 0) % 12 == key || sc == SONG_SCALE_COUNT,
++                              "degree 1 is not the key (scale %d key %d)", sc, key);
++                    for (pc = 0; pc < 12; pc++) {
++                        int c[3], i;
++                        if (!in_scale(&s, 60 + pc)) continue;
++                        play_chord_notes(&s, pc, oct, c);
++                        for (i = 0; i < 3; i++)
++                            CHECK_MSG(in_scale(&s, c[i]), "scale %d key %d chord root %d: note %d out of key", sc, key,
++                                      pc, c[i]);
++                        CHECK_EQ(c[0] % 12, pc);
++                    }
++                }
++        }
++}
++
++TEST(studio_play_chords_come_from_the_songs_bass)
++{
++    static DoomoSong s;
++    uint8_t r[4];
++    int i, j;
++    test_reset();
++    song_clear(&s);
++    s.order_len = 2;
++    s.order[0] = 0; s.order[1] = 1;
++    /* bass: A, F in pattern 0 (bar starts); C, G in pattern 1 */
++    s.notes[0][2][0] = 45; s.notes[0][2][16] = 41;
++    s.notes[1][2][0] = 48; s.notes[1][2][17] = 43;      /* the first note of the bar, not its start */
++    play_song_roots(&s, 0, r);
++    CHECK_EQ(r[0], 9); CHECK_EQ(r[1], 5); CHECK_EQ(r[2], 0); CHECK_EQ(r[3], 7);
++    /* the plain set is I IV V vi of the key */
++    s.key = 0;
++    play_song_roots(&s, 1, r);
++    CHECK_EQ(r[0], 0); CHECK_EQ(r[1], 5); CHECK_EQ(r[2], 7); CHECK_EQ(r[3], 9);
++    /* a song with no bass gets the plain set too; every root is in the scale, none repeats in a 7-note scale */
++    memset(s.notes, 0, sizeof(s.notes));
++    play_song_roots(&s, 0, r);
++    CHECK_EQ(r[0], 0); CHECK_EQ(r[1], 5); CHECK_EQ(r[2], 7); CHECK_EQ(r[3], 9);
++    s.key = 2; s.scale = SONG_SCALE_MINOR;
++    play_song_roots(&s, 1, r);
++    for (i = 0; i < 4; i++) {
++        CHECK(in_scale(&s, 60 + r[i]));
++        for (j = i + 1; j < 4; j++) CHECK(r[i] != r[j]);
++    }
++}
++
++TEST(studio_play_pads_sound_the_songs_notes_and_chords)
++{
++    int i, n[3];
++    open_play();
++    studio.song.key = 7;                                  /* G */
++    studio.song.scale = SONG_SCALE_MINOR;
++    frames(1, 0);
++    CHECK_EQ(studio.tab, STAB_PLAY);
++    frames(1, BTN_A);                                     /* the first pad: degree 1 on the lead channel */
++    CHECK_EQ(song_jam_note(0), play_degree_note(&studio.song, 0, 0, 0));
++    CHECK_EQ(song_jam_note(0) % 12, 7);
++    frames(1, 0);
++    CHECK_EQ(song_jam_note(0), 0);                        /* let go: silence */
++    frames(1, BTN_B);
++    CHECK_EQ(song_jam_note(0), play_degree_note(&studio.song, 0, 0, 1));
++    frames(1, 0);
++    frames(1, BTN_R);                                     /* the fourth pad */
++    CHECK_EQ(song_jam_note(0), play_degree_note(&studio.song, 0, 0, 3));
++    CHECK(in_scale(&studio.song, song_jam_note(0)));
++    frames(1, 0);
++    /* a chord: three channels, all in the scale */
++    frames(1, BTN_LEFT);
++    for (i = 0; i < 3; i++) {
++        CHECK(song_jam_note(i) > 0);
++        CHECK(in_scale(&studio.song, song_jam_note(i)));
++    }
++    play_chord_notes(&studio.song, song_jam_note(2) % 12, 0, n);
++    CHECK_EQ(song_jam_note(2), n[0]);
++    frames(1, 0);
++    CHECK_EQ(song_jam_note(0) + song_jam_note(1) + song_jam_note(2), 0);
++    /* the octave: SELECT + UP */
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_UP);
++    frames(1, 0);
++    frames(1, BTN_A);
++    CHECK_EQ(song_jam_note(0), play_degree_note(&studio.song, 0, 1, 0));
++    CHECK_EQ(play_degree_note(&studio.song, 0, 1, 0), play_degree_note(&studio.song, 0, 0, 0) + 12);
++    frames(1, 0);
++}
++
++TEST(studio_play_drum_pads_hit_the_kit)
++{
++    open_play();
++    menu_pick(0);                                         /* Notes / Drums */
++    frames(1, BTN_A);
++    CHECK_EQ(studio.song.notes[0][3][0], 0);              /* not recording: nothing is written */
++    frames(1, 0);
++    frames(1, BTN_RIGHT);
++    frames(1, 0);
++    CHECK_EQ(song_jam_note(0) + song_jam_note(1) + song_jam_note(2), 0);
++    menu_pick(0);                                         /* back to notes */
++    frames(1, BTN_A);
++    CHECK(song_jam_note(0) > 0);
++    frames(1, 0);
++}
++
++TEST(studio_play_record_quantizes_and_a_take_is_one_undo_step)
++{
++    int steps0, i;
++    uint8_t row0[SONG_STEPS];
++    open_play();
++    studio.song.notes[0][0][20] = 60;                     /* an old note: overdub keeps it */
++    memcpy(row0, studio.song.notes[0][0], SONG_STEPS);
++    ed_reset();
++    steps0 = ed_undo_steps();
++    rec_start_keys();
++    CHECK(!song_playing());                               /* the count-in first */
++    CHECK(run_count_in() >= 55);                          /* four beats at 120 bpm: 15 ticks each */
++    CHECK(song_playing());
++    CHECK_EQ(song_pos_ticks(), 0u);
++    /* tick 19: step 5 + 17/256 -> step 5.  tick 21: step 6 - 4320/7200 into 5 -> 1/16 rounds up to step 6 */
++    hit_at(19, BTN_A);
++    frames(1, 0);
++    hit_at(21, BTN_B);
++    frames(1, 0);
++    hit_at(40, BTN_R);
++    frames(1, 0);
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++    CHECK_EQ(studio.song.notes[0][0][6], play_degree_note(&studio.song, 0, 0, 1));
++    /* tick 40: units 76800 = step 10 + 4800 -> 10 + 0.67 -> step 11 */
++    CHECK_EQ(studio.song.notes[0][0][11], play_degree_note(&studio.song, 0, 0, 3));
++    CHECK_EQ(studio.song.notes[0][0][20], 60);            /* overdub: the old note stays */
++    /* nothing was written outside the take's three notes (and the held cells) */
++    press(BTN_START);                                     /* stop: the take ends */
++    CHECK(!song_playing());
++    CHECK_EQ(ed_undo_steps() - steps0, 1);                /* ONE step for the whole take */
++    CHECK_EQ(studio.dirty, 1);
++    CHECK(ed_undo());
++    CHECK_EQ(ed_undo_steps(), steps0);
++    for (i = 0; i < SONG_STEPS; i++)
++        CHECK_MSG(studio.song.notes[0][0][i] == row0[i], "undo left step %d at %d", i, studio.song.notes[0][0][i]);
++}
++
++TEST(studio_play_quantize_off_and_eighths_change_where_a_note_lands)
++{
++    int i;
++    open_play();
++    menu_pick(2);                                         /* quantize: 1/16 -> off */
++    rec_start_keys();
++    run_count_in();
++    hit_at(21, BTN_A);                                    /* step 5 + 153/256: off keeps step 5 */
++    frames(1, 0);
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++    CHECK_EQ(studio.song.notes[0][0][6], 0);
++    press(BTN_START);
++    menu_pick(2);                                         /* quantize: 1/4 */
++    menu_pick(2);                                         /* 1/8 */
++    menu_pick(2);                                         /* 1/16 again: so the menu cycles through all four */
++    menu_pick(2);                                         /* off */
++    menu_pick(2);                                         /* 1/4 */
++    menu_pick(2);                                         /* 1/8 */
++    memset(studio.song.notes, 0, sizeof(studio.song.notes));
++    rec_start_keys();
++    run_count_in();
++    hit_at(21, BTN_B);                                    /* step 6 - ish (6.0 - 0.4 = 5.6): 1/8 -> step 6 */
++    frames(1, 0);
++    hit_at(33, BTN_R);                                    /* 33 * 1920 = 63360 = step 8 + 5760 -> 8.8 -> step 8 */
++    frames(1, 0);
++    press(BTN_START);
++    CHECK_EQ(studio.song.notes[0][0][6], play_degree_note(&studio.song, 0, 0, 1));
++    CHECK_EQ(studio.song.notes[0][0][8], play_degree_note(&studio.song, 0, 0, 3));
++    for (i = 0; i < SONG_STEPS; i++)
++        if (i != 6 && i != 8 && i != 9 && i != 10) CHECK_EQ(studio.song.notes[0][0][i], 0);
++}
++
++TEST(studio_play_a_held_pad_writes_tie_cells)
++{
++    int n, i, lead = 0;
++    open_play();
++    rec_start_keys();
++    run_count_in();
++    hit_at(4, BTN_A);                                     /* 4 * 1920 = 7680: step 1 + a bit */
++    for (i = 0; i < 7; i++) frames(1, BTN_A);             /* held 8 ticks in all: about two steps */
++    frames(1, 0);
++    lead = play_degree_note(&studio.song, 0, 0, 0);
++    CHECK_EQ(studio.song.notes[0][0][1], lead);
++    n = studio.song.notes[0][0][2] == SONG_HOLD;
++    CHECK(n);                                             /* the note and one tie: two steps */
++    CHECK_EQ(studio.song.notes[0][0][3], 0);
++    press(BTN_START);
++}
++
++TEST(studio_play_record_then_play_back_gives_the_recorded_notes)
++{
++    int exp[SONG_STEPS], k, last_step = -1, cur = 0;
++    open_play();
++    rec_start_keys();
++    run_count_in();
++    hit_at(2, BTN_A);                                     /* step 0.5 -> 1/16 half up: step 1 */
++    frames(1, 0);
++    hit_at(19, BTN_B);                                    /* step 5 */
++    frames(1, 0);
++    hit_at(41, BTN_L);                                    /* 41 * 1920 = 78720 = step 10 + 6720 -> 10.93 -> 11 */
++    frames(1, 0);
++    press(BTN_START);
++    CHECK(!song_playing());
++    memset(exp, 0, sizeof(exp));
++    exp[1] = play_degree_note(&studio.song, 0, 0, 0);
++    exp[5] = play_degree_note(&studio.song, 0, 0, 1);
++    exp[11] = play_degree_note(&studio.song, 0, 0, 2);
++    for (k = 0; k < SONG_STEPS; k++)
++        CHECK_MSG(studio.song.notes[0][0][k] == exp[k], "cell %d is %d, expected %d", k, studio.song.notes[0][0][k],
++                  exp[k]);
++    /* and the player plays exactly those notes, one onset per step, over the whole pattern */
++    {
++        int onsets = 0;
++        song_play_pattern(&studio.song, 0, 0);
++        for (k = 0; k < 140; k++) {
++            int st = song_pos_step();
++            if (st != last_step) {
++                last_step = st;
++                cur = exp[st];
++                if (cur) { CHECK_EQ(song_pos_note(0), cur); onsets++; }
++                else CHECK_EQ(song_pos_note(0), 0);
++            }
++            song_tick();
++            if (song_pos_step() == 0 && last_step == 31) break;
++        }
++        CHECK_EQ(onsets, 3);
++        song_stop();
++    }
++}
++
++TEST(studio_play_chords_and_other_tracks_record)
++{
++    open_play();
++    menu_pick(1);                                         /* Next track: Harmony */
++    rec_start_keys();
++    run_count_in();
++    hit_at(4, BTN_LEFT);                                  /* a chord records its root */
++    frames(1, 0);
++    press(BTN_START);
++    CHECK_EQ(studio.song.notes[0][0][1], 0);              /* not the lead */
++    CHECK(studio.song.notes[0][1][1] >= SONG_NOTE_MIN);
++    CHECK(in_scale(&studio.song, studio.song.notes[0][1][1]));
++    {
++        uint8_t r[4];
++        play_song_roots(&studio.song, 0, r);
++        CHECK_EQ(studio.song.notes[0][1][1] % 12, r[0]);
++    }
++}
++
++TEST(studio_play_drums_record_into_the_drum_track)
++{
++    int steps0;
++    open_play();
++    menu_pick(0);                                         /* drums */
++    ed_reset();
++    steps0 = ed_undo_steps();
++    rec_start_keys();
++    run_count_in();
++    hit_at(2, BTN_A);                                     /* kick, step 1 */
++    frames(1, 0);
++    hit_at(19, BTN_B);                                    /* snare, step 5 */
++    frames(1, 0);
++    hit_at(27, BTN_RIGHT);                                /* crash on the d-pad: 27 * 1920 = 51840 = step 7 + 1440 -> 7 */
++    frames(1, 0);
++    press(BTN_START);
++    CHECK_EQ(studio.song.notes[0][3][1], SONG_DRUM_KICK);
++    CHECK_EQ(studio.song.notes[0][3][5], SONG_DRUM_SNARE);
++    CHECK_EQ(studio.song.notes[0][3][7], SONG_DRUM_CRASH);
++    CHECK_EQ(studio.song.notes[0][0][1], 0);              /* the melody tracks are untouched */
++    CHECK_EQ(ed_undo_steps() - steps0, 1);
++    CHECK(ed_undo());
++    CHECK_EQ(studio.song.notes[0][3][5], 0);
++}
++
++TEST(studio_play_replace_clears_the_loop_and_an_empty_take_changes_nothing)
++{
++    int i, steps0;
++    open_play();
++    for (i = 0; i < SONG_STEPS; i += 4) studio.song.notes[0][0][i] = 64;
++    menu_pick(3);                                         /* Replace */
++    ed_reset();
++    steps0 = ed_undo_steps();
++    rec_start_keys();
++    run_count_in();
++    frames(2, 0);
++    for (i = 0; i < SONG_STEPS; i += 4) CHECK_EQ(studio.song.notes[0][0][i], 0);     /* cleared when the loop starts */
++    press(BTN_START);                                     /* ... and nothing recorded: as it was */
++    for (i = 0; i < SONG_STEPS; i += 4) CHECK_EQ(studio.song.notes[0][0][i], 64);
++    CHECK_EQ(ed_undo_steps(), steps0);
++    /* a real take replaces */
++    rec_start_keys();
++    run_count_in();
++    hit_at(19, BTN_A);
++    frames(1, 0);
++    press(BTN_START);
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++    CHECK_EQ(studio.song.notes[0][0][0], 0);
++    CHECK_EQ(studio.song.notes[0][0][8], 0);
++    CHECK_EQ(ed_undo_steps() - steps0, 1);
++    CHECK(ed_undo());
++    for (i = 0; i < SONG_STEPS; i += 4) CHECK_EQ(studio.song.notes[0][0][i], 64);
++    CHECK_EQ(studio.song.notes[0][0][5], 0);
++}
++
++TEST(studio_play_loop_part_limits_the_take_to_a_bar)
++{
++    int i;
++    open_play();
++    menu_pick(4);                                         /* Loop part: bar 1 */
++    rec_start_keys();
++    run_count_in();
++    for (i = 0; i < 40; i++) {
++        CHECK(song_pos_step() >= 0 && song_pos_step() < 16);
++        frames(1, 0);
++    }
++    hit_at(19 + 0, BTN_A);                                /* within bar 1's loop: wraps, still a step < 16 */
++    frames(1, 0);
++    press(BTN_START);
++    for (i = 16; i < SONG_STEPS; i++) CHECK_EQ(studio.song.notes[0][0][i], 0);
++    menu_pick(4);                                         /* bar 2 */
++    rec_start_keys();
++    run_count_in();
++    CHECK_EQ(song_pos_step(), 16);
++    frames(1, 0);
++    CHECK(song_pos_step() >= 16);
++    press(BTN_START);
++}
++
++TEST(studio_play_leaving_the_tab_ends_the_take_and_stops_the_sound)
++{
++    int steps0;
++    open_play();
++    ed_reset();
++    steps0 = ed_undo_steps();
++    rec_start_keys();
++    run_count_in();
++    hit_at(19, BTN_A);
++    frames(1, 0);
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_R);                        /* SELECT + R: the next tab */
++    frames(1, 0);
++    CHECK(studio.tab != STAB_PLAY);
++    CHECK(!song_playing());
++    CHECK_EQ(song_jam_note(0), 0);
++    CHECK_EQ(ed_undo_steps() - steps0, 1);
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++}
++
++TEST(studio_play_count_in_can_be_stopped_and_start_loops_the_part)
++{
++    open_play();
++    rec_start_keys();
++    frames(20, 0);
++    CHECK(!song_playing());
++    press(BTN_START);                                     /* stop the count-in */
++    frames(80, 0);
++    CHECK(!song_playing());                               /* it did not start the loop later */
++    press(BTN_START);                                     /* START: listen to the loop */
++    CHECK(song_playing());
++    frames(50, 0);
++    CHECK(song_playing());
++    CHECK_EQ(studio.song.notes[0][0][0] + studio.song.notes[0][0][5], 0);
++    press(BTN_START);
++    CHECK(!song_playing());
++}
++
++TEST(studio_play_the_tab_state_is_scratch_and_the_other_tabs_still_work)
++{
++    int fresh = 0;
++    uint8_t *a, *b;
++    open_play();
++    a = (uint8_t *)st_tab_state(&fresh);
++    CHECK(a != NULL);
++    CHECK_EQ(fresh, 0);                                   /* the tab claimed it already */
++    b = (uint8_t *)st_tab_state(&fresh);
++    CHECK(a == b);
++    /* the other tabs are as before */
++    st_set_tab(STAB_NOTES);
++    frames(1, 0);
++    press(BTN_A);
++    CHECK_EQ(studio.song.notes[0][0][0], 72);
++    st_set_tab(STAB_ORDER);
++    frames(2, 0);
++    st_set_tab(STAB_PLAY);
++    frames(2, 0);
++    frames(1, BTN_A);
++    CHECK(song_jam_note(0) > 0);
++    frames(1, 0);
++}
++
++TEST(studio_play_menu_items_do_what_they_say)
++{
++    int i;
++    uint8_t basic[4], r[4];
++    open_play();
++    /* Next pattern: the take, the loop and the ruler follow studio.pat */
++    CHECK_EQ(studio.pat, 0);
++    menu_pick(5);
++    CHECK_EQ(studio.pat, 1);
++    CHECK_STR(studio.msg, "Pattern B");
++    menu_pick(5); menu_pick(5); menu_pick(5);
++    CHECK_EQ(studio.pat, 0);                              /* A..D and round again */
++    /* Next track: the pads play and record on that track's channel */
++    menu_pick(1);
++    CHECK_STR(studio.msg, "Pads play and record Harmony");
++    frames(1, BTN_A);
++    CHECK_EQ(song_jam_note(0), 0);
++    CHECK_EQ(song_jam_note(1), play_degree_note(&studio.song, 1, 0, 0));
++    frames(1, 0);
++    menu_pick(1);
++    CHECK_STR(studio.msg, "Pads play and record Bass");
++    frames(1, BTN_A);
++    CHECK_EQ(song_jam_note(2), play_degree_note(&studio.song, 2, 0, 0));
++    CHECK(song_jam_note(2) < song_jam_note(1) || song_jam_note(2) < 60);
++    frames(1, 0);
++    menu_pick(1);
++    CHECK_STR(studio.msg, "Pads play and record Lead");
++    /* Quantize cycles through all four settings and says which */
++    menu_pick(2); CHECK_STR(studio.msg, "Quantize: off");
++    menu_pick(2); CHECK_STR(studio.msg, "Quantize: 1/4");
++    menu_pick(2); CHECK_STR(studio.msg, "Quantize: 1/8");
++    menu_pick(2); CHECK_STR(studio.msg, "Quantize: 1/16");
++    /* Overdub / Replace and the loop part say what they are now */
++    menu_pick(3); CHECK_STR(studio.msg, "Replace: a take clears the loop");
++    menu_pick(3); CHECK_STR(studio.msg, "Overdub: keeps the old notes");
++    menu_pick(4); CHECK_STR(studio.msg, "Loop: bar 1");
++    menu_pick(4); CHECK_STR(studio.msg, "Loop: bar 2");
++    menu_pick(4); CHECK_STR(studio.msg, "Loop: whole pattern");
++    /* Chord set: the song's own chords, then I IV V vi */
++    memset(studio.song.notes, 0, sizeof(studio.song.notes));
++    studio.song.notes[0][2][0] = 45;                      /* the bass starts on A: the d-pad's first chord is A */
++    frames(1, BTN_LEFT);
++    CHECK_EQ(song_jam_note(2) % 12, 9);
++    frames(1, 0);
++    menu_pick(6);
++    CHECK_STR(studio.msg, "Chords: I IV V vi");
++    play_song_roots(&studio.song, 1, basic);
++    frames(1, BTN_LEFT);
++    CHECK_EQ(song_jam_note(2) % 12, basic[0]);
++    frames(1, 0);
++    menu_pick(6);
++    CHECK_STR(studio.msg, "Chords: from your song");
++    play_song_roots(&studio.song, 0, r);
++    CHECK_EQ(r[0], 9);
++    /* B closes the menu and changes nothing */
++    frames(1, BTN_SELECT);
++    frames(1, 0);
++    CHECK_EQ(st_popup_open(), 1);
++    press(BTN_B);
++    CHECK_EQ(st_popup_open(), 0);
++    for (i = 0; i < 3; i++) CHECK_EQ(studio.pat, 0);
++}
++
++TEST(studio_play_select_shift_octave_chords_and_limits)
++{
++    int i, base;
++    open_play();
++    base = play_degree_note(&studio.song, 0, 0, 0);
++    /* octave: up to +2, then it says so and stays */
++    for (i = 0; i < 2; i++) {
++        frames(1, BTN_SELECT);
++        frames(1, BTN_SELECT | BTN_UP);
++        frames(1, 0);
++        CHECK_EQ(st_popup_open(), 0);                     /* a chord with SELECT is not a menu tap */
++    }
++    CHECK_STR(studio.msg, "Octave +2");
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_UP);
++    frames(1, 0);
++    CHECK_STR(studio.msg, "Highest octave");
++    frames(1, BTN_A);
++    CHECK_EQ(song_jam_note(0), base + 24);
++    frames(1, 0);
++    for (i = 0; i < 4; i++) {
++        frames(1, BTN_SELECT);
++        frames(1, BTN_SELECT | BTN_DOWN);
++        frames(1, 0);
++    }
++    CHECK_STR(studio.msg, "Octave -2");
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_DOWN);
++    frames(1, 0);
++    CHECK_STR(studio.msg, "Lowest octave");
++    frames(1, BTN_A);
++    CHECK_EQ(song_jam_note(0), base - 24);
++    frames(1, 0);
++    /* SELECT + A: the chord set */
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_A);
++    frames(1, 0);
++    CHECK_STR(studio.msg, "Chords: I IV V vi");
++    CHECK_EQ(st_popup_open(), 0);
++}
++
++TEST(studio_play_undo_during_a_take_takes_back_what_was_recorded_so_far)
++{
++    int steps0;
++    open_play();
++    ed_reset();
++    steps0 = ed_undo_steps();
++    rec_start_keys();
++    run_count_in();
++    hit_at(19, BTN_A);
++    frames(1, 0);
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_B);                        /* SELECT + B: undo, with the take still running */
++    frames(1, 0);
++    CHECK_EQ(studio.song.notes[0][0][5], 0);
++    CHECK_EQ(ed_undo_steps(), steps0);
++    CHECK(song_playing());                                /* the loop goes on */
++    hit_at(song_pos_ticks() + 25, BTN_B);                 /* a new note starts a new take step */
++    frames(1, 0);
++    press(BTN_START);
++    CHECK_EQ(ed_undo_steps() - steps0, 1);
++    CHECK(studio.song.notes[0][0][5] == 0);
++}
++
++TEST(studio_play_prompt_bar_names_the_pad_buttons)
++{
++    UiPrompt pr[UI_PROMPTS_MAX];
++    int n, i, has_record = 0;
++    open_play();
++    n = tab_prompts(STAB_PLAY, pr);
++    CHECK(n >= 3);
++    for (i = 0; i < n; i++) if (pr[i].btn == (BTN_SELECT | BTN_START)) has_record = 1;
++    CHECK(has_record);
++    rec_start_keys();
++    n = tab_prompts(STAB_PLAY, pr);
++    CHECK_EQ(pr[0].btn, BTN_START);
++    CHECK_STR(pr[0].verb, "Stop");
++    press(BTN_START);
++}
++
++TEST(studio_notes_loop_this_bar_loops_the_bar_under_the_cursor_and_hears_edits)
++{
++    int i, heard = 0;
++    open_play();
++    st_set_tab(STAB_NOTES);
++    frames(2, 0);
++    studio.stp = 20;                                      /* the cursor is in bar 2 */
++    frames(1, BTN_SELECT);
++    frames(1, 0);
++    CHECK_EQ(st_popup_open(), 1);
++    for (i = 0; i < 7; i++) press(BTN_DOWN);              /* "Loop this bar" is the last item of the pattern tools */
++    press(BTN_A);
++    CHECK(song_playing());
++    CHECK_STR(studio.msg, "Looping bar 2 of A");
++    for (i = 0; i < 200; i++) {
++        CHECK(song_pos_step() >= 16 && song_pos_step() < 32);
++        frames(1, 0);
++    }
++    /* a note placed while it loops is heard on the next pass */
++    studio.song.notes[0][0][18] = 67;
++    for (i = 0; i < 100; i++) {
++        frames(1, 0);
++        if (song_pos_step() == 18 && song_pos_note(0) == 67) heard = 1;
++    }
++    CHECK(heard);
++    press(BTN_START);                                     /* START stops it as before */
++    CHECK(!song_playing());
++}
+diff --git a/gba/harness/scripts/sp4_tour.txt b/gba/harness/scripts/sp4_tour.txt
+index 87b4976..c147878 100644
+--- a/gba/harness/scripts/sp4_tour.txt
++++ b/gba/harness/scripts/sp4_tour.txt
+@@ -176,6 +176,10 @@ down SELECT
+ press R
+ release
+ wait 20
++down SELECT
++press R
++release
++wait 20
+ press DOWN
+ wait 10
+ fps start
+diff --git a/gba/harness/scripts/speed2_studio.txt b/gba/harness/scripts/speed2_studio.txt
+index 209062b..84c6c59 100644
+--- a/gba/harness/scripts/speed2_studio.txt
++++ b/gba/harness/scripts/speed2_studio.txt
+@@ -12,7 +12,7 @@ wait 20
+ push STUDIO -107
+ wait 100
+ expect-scene STUDIO
+-# SONG -> NOTES -> ORDER -> LYRICS -> CHOIR (profile-studio's keys)
++# SONG -> NOTES -> PLAY -> ORDER -> LYRICS -> CHOIR (profile-studio's keys)
+ press R
+ wait 20
+ down SELECT
+@@ -26,6 +26,10 @@ wait 20
+ down SELECT
+ press R
+ release
++wait 20
++down SELECT
++press R
++release
+ wait 30
+ 
+ # ---- CHOIR: quick fill, a member, the citizen picker ----------------------------------
+diff --git a/gba/harness/scripts/speed2_studio_play.txt b/gba/harness/scripts/speed2_studio_play.txt
+new file mode 100644
+index 0000000..c73245f
+--- /dev/null
++++ b/gba/harness/scripts/speed2_studio_play.txt
+@@ -0,0 +1,92 @@
++# speed2_studio_play.txt - speed tour 2 (SA2) for the PLAY tab of the Music Studio (ST-PLAY): the pads at rest, a held
++# pad (the jam note), the loop playing, a recording take (count-in, the loop, pads pressed) and the drum pads.
++# STUDIO -107: the premade citizens and the "Park United!" template (core/tests/scripts/studio.txt). Window rules:
++# speed2_fair.txt. The PLAY tab must hold what the NOTES tab holds (profile-studio: NOTES idle 27.8 ms).
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene TITLE
++wait 20
++push STUDIO -107
++wait 100
++expect-scene STUDIO
++press R
++wait 20
++down SELECT
++press R
++release
++wait 30
++
++fps start
++wait 120
++expect-fps 29 studio play: pads at rest
++shot play_idle
++down A
++wait 10
++fps start
++wait 90
++expect-fps 29 studio play: a held pad
++shot play_held
++release
++wait 4
++press START
++wait 20
++fps start
++wait 120
++expect-fps 29 studio play: the loop
++shot play_loop
++press START
++wait 10
++
++# a take: SELECT + START, the count-in (four beats), then the loop with pads pressed
++down SELECT
++wait 2
++press START
++release
++wait 30
++fps start
++wait 60
++expect-fps 29 studio play: count-in
++wait 30
++fps start
++press A
++wait 20
++press B
++wait 20
++press R
++wait 20
++press L
++wait 20
++press A
++wait 20
++press B
++wait 20
++press R
++wait 20
++expect-fps 29 studio play: recording
++shot play_recording
++press START
++wait 10
++
++# the drum pads
++press SELECT
++wait 16
++press A
++wait 8
++fps start
++wait 60
++expect-fps 29 studio play: tools menu closed, drum pads
++press A
++wait 4
++press B
++wait 4
++press LEFT
++wait 4
++shot play_drums
++press START
++wait 20
++fps start
++wait 90
++expect-fps 29 studio play: drum loop
++press START
+diff --git a/gba/harness/scripts/studio_profile.txt b/gba/harness/scripts/studio_profile.txt
+index 8b147a8..9867be7 100644
+--- a/gba/harness/scripts/studio_profile.txt
++++ b/gba/harness/scripts/studio_profile.txt
+@@ -10,7 +10,7 @@
+ #
+ # The studio opens on the 25-voice "Park United!" choir (demo arg -107), the
+ # same as core/tests/scripts/studio.txt. Windows: SONG idle and playing, NOTES
+-# idle and playing, ORDER, LYRICS, CHOIR, then the PERFORM show (two windows:
++# idle and playing, PLAY idle and looping, ORDER, LYRICS, CHOIR, then the PERFORM show (two windows:
+ # the lead alone, then the full choir). Numbers belong to this script.
+ wait 40
+ expect-log doomo: init
+@@ -52,6 +52,24 @@ profile 8000000
+ press START
+ wait 10
+ 
++# ---- PLAY (ST-PLAY: the jam pads) ------------------------------------------
++down SELECT
++press R
++release
++wait 20
++fps settle (ignore)
++wait 130
++fps play idle
++profile 8000000
++press START
++wait 40
++fps settle (ignore)
++wait 130
++fps play looping
++profile 8000000
++press START
++wait 10
++
+ # ---- ORDER, LYRICS, CHOIR -----------------------------------------------
+ down SELECT
+ press R
+diff --git a/ps1/tools/ovl_plan.py b/ps1/tools/ovl_plan.py
+index 438f796..b617b1b 100644
+--- a/ps1/tools/ovl_plan.py
++++ b/ps1/tools/ovl_plan.py
+@@ -262,6 +262,7 @@ MODAL_CALLBACKS = {
+     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done"),
+     "studio_file": ("confirm_delete", "confirm_load", "confirm_overwrite", "do_new",
+                     "do_template", "slot_menu", "muse_done"),
++    "studio_play": ("play_menu_done",),
+     "studio_words": ("fill_menu", "lyric_tools", "member_menu", "lyric_done", "pick_done"),
+     "ui_gallery": ("on_choice", "on_confirm", "on_hell_done", "on_name"),
+     "workshop": ("scrap_done", "weld_go"),
+-- 
+2.43.0
+
+
+From 719f66431a0b1e6f7b3dcf7d379053e5e5f5a557 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:43:35 +0000
+Subject: [PATCH 2/6] STUDIO ST-PLAY docs: PLAY tab, function ledger, GBA
+ ledger row 64, ROADMAP, status
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ ROADMAP.md                        |  1 +
+ docs/GBA.md                       |  1 +
+ docs/STUDIO.md                    | 69 ++++++++++++++++++++++++++++++-
+ docs/design/held/status/STUDIO.md |  1 +
+ 4 files changed, 70 insertions(+), 2 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 29a6675..8972383 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Studio ST-PLAY (2026-11-15, STUDIO round 1; docs/STUDIO.md "PLAY" and its function ledger, docs/design/STUDIO_PLAN.md 2.4, GBA ledger row 64):** a PLAY tab after NOTES (`core/src/studio_play.c`): jam pads (A B L R and, on the PS1 / Dreamcast / PC pads, X Y L2 R2 play the song's scale; the d-pad plays the song's own chords: no wrong notes), live recording (SELECT+START: a count-in of four clicks, the loop, quantize off / 1/4 / 1/8 / 1/16 decided from `song_pos_ticks`, held pads write ties, Overdub or Replace, one undo step per take), the drum pads on the drum track, a loop over a range of steps (`song_play_range`; NOTES > "Loop this bar"), a tools menu with every setting by name. Player: `song_jam_on` / `song_jam_off` / `song_play_range` / `song_pos_note` (the only changes). 24 new tests (`test_studio_play.c`), runner tour `studio_play.txt`. GBA (libmgba, `speed2_studio_play`): every PLAY window 30.0 drawn fps and 30.0 logic ticks/s (pads at rest 28.3 ms, the loop 29.8, count-in 30.5, recording 28.6; NOTES idle 27.7 ms), the other studio tabs within 0.9 ms of before, EWRAM / IWRAM net zero (`.bss` 254,820 B, 6,428 B free; the player's state repacked, the pad state is 64 B of the scene scratch), PS1 resident 0 (scene scratch). **Left:** the Advanced switch (Replace is always offered), per-track velocity, PS1 / Dreamcast measurements (toolchains not on the build machine).
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+ - **Creator CR-BODY, body types and better sliders (2026-11-13; docs/CREATOR.md "CR-BODY", GBA ledger row 49, docs/PS1.md "CR-BODY"):** 6 new body types (gene `body` 10..15: Athletic, Gangly, Bean, Brick, Willowy, Bobble) as table rows (no new painter), one table for every slider's range (`CR_SLIDERS`, ready for the x1..x4 cheat of CR-SLIDERX), A resets a slider (own undo step), the bar shows the distance from the default, the horn size without horns and the turkey's six face sliders (they changed nothing) are not offered, and the test that moves EVERY build slider across its range (`test_cr_body.c`: each slider on every species and body, every step on the bench, canary bytes; `creator_sliders.txt` + `tools/slider_shots_check.py` on the native runner, GBA `make -C gba test-creator-sliders`, PS1 harness and Dreamcast `ui-compare`). PS1 `_end` -16 B (72,336 B below the stack top on the landed tree; the 72 KB gate is 1,392 B short, inherited from the tip), GBA EWRAM / IWRAM identical, ROM +2.9 KB; Head size repeats its last steps on the stepped bodies (Bobble 4 of 16; pinned by a test); old saves and Classic premades unchanged. Left for CR-SLIDERX: the cheat itself.
+diff --git a/docs/GBA.md b/docs/GBA.md
+index a902aa4..02fdfc6 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -454,6 +454,7 @@ against the LAST row, not against a figure from an older base.
+ | 61 | LV11: content notes (the card's note page, the select's badge, two bit options; docs/LEVELS.md "LV11") | after S2-10 (row 60) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on the tip (`9dc5e39a`) and the tip + LV11 (`make -C gba`, `make -C gba sizes`, `make -C gba test` clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the four overlay groups identical; ROM `.text` +1,384 B, `.rodata` +1,828 B. The two options are bits in the byte the Stick option already uses. |
+ | 62 | LV7a: 7 shared textures, 3 skies, the texture bank format (docs/LEVELS.md "LV7a") | origin tip `fe410024` | 6,420 B | **6,436 B** | -16 B | 6,288 B | measured on `fe410024` and the same + LV7a (clean `make -C gba`, `make -C gba sizes`): `.bss` 254,828 -> 254,812 B (the overworld's `frame_tex_ok[TEX_COUNT]` flag array is gone, a NULL pointer means "not looked up yet"; it paid for the 7 new `frame_tex` pointers), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the four overlay slots identical; `.text` 1,524,016 -> 1,524,080 B (+64), `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels and tables). The texture bank reader (`texbank.c`) and the sample bank are compiled out on the GBA (`DOOMO_TEXBANK_ACTIVE` 0): no byte. `make -C gba test` passes. |
+ | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
++| 64 | ST-PLAY: the Music Studio's PLAY tab (docs/STUDIO.md "PLAY"): jam pads, live recording, range loop | origin tip `d979c93` | 6,428 B | **6,428 B** | 0 B | 6,288 B | measured 2026-11-15 on the clean tip and the same + ST-PLAY (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlays identical. The player gained a range loop (2 B) and a held-note per channel (3 B) in its `P` struct, which was repacked (its padding and the unused `paused_music` byte): `P` 120 B before and after. The PLAY tab's state is 64 B of the scene scratch, taken from the studio's bake block (`BAKE_POOL` -64 B, `BakeSt` unchanged in size). ROM +7,720 B (`studio_play.o`) |
+ | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-10 (`8fe2134f`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `8fe2134f` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,823,708 -> 9,830,056 B (+6,348: `.text` +6,328, `.rodata` +44, the overlay's copy -24; 48 B of it the cross-stream fix to S2-10's hold below). PS1: `_end` 0x801e0610 -> 0x801e05f0 (32 B less code; 129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV) |
+ | G2-EX | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after LV7a (`cf5e9f27`) | 6,428 B | **6,420 B** | -8 B | 6,272 B | measured on the tip `cf5e9f27` and the tip + G2-EX, both built clean (`make -C gba sizes`, `gba/tools/memreport.py`): `.bss` 254,820 -> 254,828 B (the aura's pointer, 4 B, and the clip box's fifth halfword: `stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding), `.data` 816 B unchanged. **IWRAM resident +16 B** (`plat_rect`'s mode-7 dispatch in `video_loops.s`, `.iwram` 11,272 -> 11,288 B: the main stack's room 6,288 -> 6,272 B, gate 6,144 B; 5,124 B beside the flash routines while saving); the overlay's room group 9,800 -> 9,952 B (+152 B, `stage_clip_rect`; 400 B of the 10,352 B slot left). Not net zero (+8 B EWRAM, +16 B IWRAM): left for the lead to accept (the EWRAM bytes could go if the aura's pointer were derived from the scene's own pointer behind a call; the two bytes made into one elsewhere landed in padding). The exorcism's scene-scratch claim grows 1,672 -> 6,000 B of the 12 KB block (the aura's five lists 3,924 B, the stage's memory 1,240 -> 1,644 B: the pieces and the clip mask), so while the exorcism owns the scratch the arena has 4.3 KB less for the save window; the kitchen's claim grows by the same 404 B of stage memory (its static assert allows 2,048 B). ROM 9,929,752 -> 8,399,980 B (**-1.53 MB**: the wall drips' hold, 19 church pictures baked instead of 59; `.text` +6,696 B). First measured on `0cb159e` (built 2026-11-13: 15,460 -> 15,452 B free). PS1: no resident byte (`_end` 0x801e0610 on the tip and with G2-EX: 129,504 B below the stack top with the boot FMV); the aura's list is not built there, `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group (46 -> 51 KB) |
+ | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index ee94623..e9a6fbb 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -17,12 +17,14 @@ Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_R
+ | `core/src/song_book.c` | `doomo_song_book[6]` and the `'SONG'` save extension chunk |
+ | `core/src/studio.c` | the scene: tabs, input, undo journal, popups, citizen picker, unlock rules |
+ | `core/src/studio_edit.c` | SONG, NOTES (tracker) and ORDER tabs |
++| `core/src/studio_play.c` | PLAY: jam pads, live recording with quantize, range loop, drum pads (ST-PLAY) |
+ | `core/src/studio_words.c` | LYRICS and CHOIR tabs |
+ | `core/src/studio_stage.c` | PERFORM: the choir show |
+ | `core/src/studio_file.c` | FILE: song book, templates, Inspire me, undo |
+ | `core/src/studio_gen.c` | composer, lyric writer, 14 templates, choir fills, parts, auto-fit, word filter |
+ | `core/src/unlocks_studio.c` | unlock ids 240..255 and the activities |
+ | `core/tests/test_studio.c`, `core/tests/scripts/studio.txt` | tests and the runner tour |
++| `core/tests/test_studio_play.c`, `core/tests/scripts/studio_play.txt` | the PLAY tab: tests and the runner tour |
+ 
+ You find it in the **Concert Hall** (activities table `doomo_activities_studio`,
+ free play and story from chapter 1). (CL5, clarity C9: it is no longer a second
+@@ -40,7 +42,7 @@ pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
+ 
+ | Anywhere | |
+ |---|---|
+-| L / R | previous / next tab (in NOTES: previous / next pattern) |
++| L / R | previous / next tab (in NOTES: previous / next pattern; in PLAY they are pads: use SELECT + L / R) |
+ | SELECT + L / R | previous / next tab from any tab [L2 / R2] |
+ | SELECT (tap) | the tab's tools menu |
+ | SELECT + B | undo [Triangle] |
+@@ -72,10 +74,44 @@ notes of the key/scale with mint dots.
+ | B | erase; on a rest right after a note: a tie (hold) |
+ | L / R | pattern A..D |
+ | START | loop the pattern from the cursor |
+-| SELECT | copy / paste pattern or track, clear track, nudge a track a scale step |
++| SELECT | copy / paste pattern or track, clear track, nudge a track a scale step, loop this bar (ST-PLAY) |
+ 
+ Every placed note is previewed on its own channel (`song_preview`).
+ 
++### PLAY - jam, record, drum pads (ST-PLAY)
++
++`docs/design/STUDIO_PLAN.md` 2.4. The tab after NOTES. The pads play the song's own scale and chords, so there are no wrong
++notes; a take is written into the song with the count-in and quantize; the drum pads play and record the kit.
++
++| Pad | Notes mode (default) | Drum mode |
++|---|---|---|
++| A B L R | scale degrees 1..4 of the song's key and scale, on the lead (or the chosen track), in the octave shown | kick, snare, hat, open hat |
++| X Y L2 R2 (PS1, Dreamcast, PC) | degrees 5..8 (the GBA has no such keys: SELECT + LEFT / RIGHT swaps the four pads between notes 1-4 and 5-8) | |
++| d-pad Left Down Right Up | the song's four chords (a triad stacked in scale steps on three channels; the roots are the first bass note of each bar of the song, in order, filled up with I IV V vi) | clap, tom, crash, cowbell |
++| SELECT + UP / DOWN | octave up / down (-2..+2) | |
++| SELECT + A | chord set: the song's / I IV V vi | |
++| SELECT + START | record: a count-in of four clicks, then the loop and the take; again (or START) ends the take | the same |
++| START | listen: loop the chosen part; again stops | the same |
++| SELECT (tap) | Play tools: Notes / Drums, Next track (lead, harmony, bass), Quantize (off, 1/4, 1/8, 1/16), Overdub / Replace, Loop part (whole pattern, bar 1, bar 2), Next pattern, Chord set, and on the GBA Notes 1-4 / 5-8 | |
++
++* **Jam.** A held pad holds its note (`song_jam_on` / `song_jam_off`): the track's own channel and instrument, over the
++  song if it plays (tone channel 0 with the lead instrument by default). Several pads: the last one pressed wins, a
++  chord uses channels 0, 1 and 2. Drum pads hit once.
++* **Record.** The loop is `song_play_range(pattern, from, to)`; the step of a pad press is decided from the player's tick position
++  (`song_pos_ticks`, exact with swing: `play_loop_pos`) and the quantize (`play_quantize_step`): off keeps the step you were in,
++  1/16 rounds to the nearest step, 1/8 to the nearest even step, 1/4 to the nearest beat; rounding past the end of the loop wraps to its
++  start. A pad held for more than a step writes tie cells after the note (not over other notes). Chords record their root.
++  **A take is one undo step**: the track row is touched once (`ed_touch`) when the take starts and committed when it ends, however
++  many loops it ran. SELECT + B during a take takes back what was recorded so far and the take goes on. Overdub keeps the old
++  notes; Replace clears the looped part when the loop starts, and a Replace take that recorded nothing is undone again.
++* **Where the state lives.** 64 bytes of the shared scene scratch (`st_tab_state`; on the GBA inside the studio's bake block, whose
++  pixel pool is 64 bytes smaller), reset at every visit; nothing is `.bss`. Leaving the tab (or the studio) ends the take, lets
++  go of the pads and stops the loop.
++* **Pads vs. global keys.** On the PLAY tab L / R, B and (PS1 / Dreamcast / PC) Y, L2, R2 are pads: tabs are SELECT + L / R, undo is
++  SELECT + B, leaving the studio is the FILE tab.
++* **Loop while editing.** NOTES > SELECT tools > "Loop this bar" loops the bar under the cursor (`song_play_range`); edits are
++  heard on the next pass; START stops it as before.
++
+ ### ORDER - arrange
+ The order list (1..16 passes of patterns A..D), each row showing the lyric line
+ sung over it, and a timeline of coloured blocks with a walking playhead plus
+@@ -138,6 +174,35 @@ confirmations), a blank song, **templates**, **Inspire me!**, undo (with the
+ number of steps left) and leave. Saving into the book is kept in memory and
+ written with the game save (the `'SONG'` chunk).
+ 
++## Function ledger (ST-PLAY: the PLAY tab and its tools)
++
++One row per control: what it says, what it does, the feedback, whether it can be undone, the test. "Pad" rows are the
++PS1 / Dreamcast / PC layout; the GBA has the first four pads only.
++
++| Control | What it does | Feedback | Undo | Tested by |
++|---|---|---|---|---|
++| A B L R (X Y L2 R2) | hold scale degree 1..4 (5..8) of the track in the octave shown | the note sounds while held; the pad lights; its name is on the pad | (nothing is written) | `studio_play_pads_sound_the_songs_notes_and_chords`, `studio_play_jam_stays_in_the_scale` |
++| d-pad (notes mode) | hold the chord (triad on 3 channels) | the chord sounds; the chord's name on the pad | (nothing is written) | `studio_play_pads_sound_the_songs_notes_and_chords`, `studio_play_chords_come_from_the_songs_bass` |
++| pads (drum mode) | hit kick, snare, hat, open hat, clap, tom, crash, cowbell | the drum sounds; the pad's icon and name | (nothing is written) | `studio_play_drum_pads_hit_the_kit` |
++| SELECT + UP / DOWN | octave +1 / -1, from -2 to +2 | "Octave +1"; the pad names change; at the end "Highest / Lowest octave" and a buzz | not a song edit | `studio_play_select_shift_octave_chords_and_limits` |
++| SELECT + A | chord set: the song's / I IV V vi | "Chords: I IV V vi"; the chord names change | not a song edit | `studio_play_select_shift_octave_chords_and_limits`, `studio_play_menu_items_do_what_they_say` |
++| SELECT + LEFT / RIGHT (GBA) | pads A B L R play notes 1-4 / 5-8 | "Pads A B L R: notes 5-8"; the pad names change; the header says "Notes 5-8" | not a song edit | the same code as menu item 7 (a 4-pad build only: the host has 8 pads) |
++| START | loop the chosen part (the pattern or a bar); again: stop | "Looping bar 1 of A" / "Stopped"; the playhead runs on the ruler | not a song edit | `studio_play_count_in_can_be_stopped_and_start_loops_the_part` |
++| SELECT + START | record a take: count-in of four clicks, then the loop; again: end the take | "Recording Lead: count-in"; "Count n"; the red REC; at the end "Take saved: n notes" / "No notes: nothing changed" | **one undo step per take** (SELECT + B) | `studio_play_record_quantizes_and_a_take_is_one_undo_step`, `studio_play_record_then_play_back_gives_the_recorded_notes`, `studio_play_a_held_pad_writes_tie_cells`, `studio_play_drums_record_into_the_drum_track` |
++| Quantize (menu) | off / 1/4 / 1/8 / 1/16: where a note lands | "Quantize: 1/8"; the header shows it | not a song edit | `studio_play_quantize_table`, `studio_play_quantize_off_and_eighths_change_where_a_note_lands` |
++| Overdub / Replace (menu) | a take keeps the old notes / clears the looped part when it starts | "Overdub: keeps the old notes" / "Replace: a take clears the loop" | the take is one undo step; an empty Replace take is undone at once | `studio_play_replace_clears_the_loop_and_an_empty_take_changes_nothing` |
++| Notes / Drums (menu) | the pads play and record the kit instead of the scale | "Drum pads: A B L R + d-pad"; the pads become drum icons; the header says "Drums" | not a song edit | `studio_play_drum_pads_hit_the_kit` |
++| Next track (menu) | lead -> harmony -> bass: where the pads sound and a take is written | "Pads play and record Harmony"; the header pill changes colour | not a song edit | `studio_play_menu_items_do_what_they_say`, `studio_play_chords_and_other_tracks_record` |
++| Loop part (menu) | whole pattern -> bar 1 -> bar 2: what START and a take loop | "Loop: bar 1"; the ruler marks the range | not a song edit | `studio_play_loop_part_limits_the_take_to_a_bar` |
++| Next pattern (menu) | pattern A -> D: which pattern is played and written (shared with NOTES) | "Pattern B"; the pattern pill | not a song edit | `studio_play_menu_items_do_what_they_say` |
++| Chord set (menu) | the same as SELECT + A | as above | | as above |
++| SELECT + B during a take | undo (global) | "Undo! (n left)"; the take goes on | it is the undo | `studio_play_undo_during_a_take_takes_back_what_was_recorded_so_far` |
++| SELECT + L / R, leaving the tab | the take ends, the pads let go, the loop stops | "Take saved" | the take is one undo step | `studio_play_leaving_the_tab_ends_the_take_and_stops_the_sound` |
++| NOTES > "Loop this bar" | loop the bar under the cursor while editing | "Looping bar 2 of A" | not a song edit | `studio_notes_loop_this_bar_loops_the_bar_under_the_cursor_and_hears_edits` |
++
++Not in this package (ST-EASY / ST-TOOLS own them): the "Advanced" level switch (so Replace is always offered), the cursor line,
++the redo, the note grid, per-track velocity.
++
+ ## Templates
+ 
+ | # | Template | Genre | Notes |
+diff --git a/docs/design/held/status/STUDIO.md b/docs/design/held/status/STUDIO.md
+index e756378..16cc7c9 100644
+--- a/docs/design/held/status/STUDIO.md
++++ b/docs/design/held/status/STUDIO.md
+@@ -4,6 +4,7 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ 
+ - **Last update:** 2026-11-15 (coordinator): the stream is defined; its lead session starts now.
+ - **Lead:** `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, from 2026-11-15)
++- **ST-PLAY (2026-11-15, built on branch fut-st-play, not yet landed):** PLAY tab (`studio_play.c`: jam pads, live recording with quantize and count-in, one undo step per take, range loop, drum pads), player `song_jam_on/off`, `song_play_range`, `song_pos_note`; function ledger in `docs/STUDIO.md`; GBA all PLAY windows 30.0 fps, EWRAM net zero. Rebase notes for ST-EASY: the tab enum gained `STAB_PLAY` after `STAB_NOTES` (tests and the three GBA scripts that walk the tabs by SELECT+R got one more step); `studio.c` has small hooks (tab name / icon / routing, `st_tab_state`, the global Y / L2 / R2 / B / L / R exceptions for PLAY); the PLAY state is `st_tab_state()` (64 B of the scene scratch: a good home for ST-EASY's own small per-tab state too).
+ - **Landed:** ST-0: `docs/design/STUDIO_PLAN.md` (flow, screens, controls, format, memory), defaults in OWNER_DECISIONS.
+ - **In flight:** machine setup (PS1 and Dreamcast toolchains building), ST-EASY.
+ - **Next up:** ST-EASY (in flight), ST-PLAY, ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`).
+-- 
+2.43.0
+
+
+From e6afec11f28d2f41c014ec8aeaf4edb391993f84 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:06:15 +0000
+Subject: [PATCH 3/6] STUDIO ST-PLAY: PLAY tab costs 24 ms on the GBA (pad
+ notes cached, one round rect per pad)
+
+The pad notes and chord triads are computed when a setting changes, when the tab opens, on a chord press and eight
+times a second, not every frame (a scale shift costs divisions: about 4 ms a frame on the GBA). GBA speed2 studio_play:
+every window 30.0 fps (rest 24.1 ms, loop 25.6, recording 24.5; before: 29.0 / 30.5 / 29.4 with hitches).
+Docs: the PLAY section with the measurements, ROM and ledger figures.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ ROADMAP.md             |  2 +-
+ core/src/studio_play.c | 59 ++++++++++++++++++++++++++++--------------
+ docs/GBA.md            |  2 +-
+ docs/STUDIO.md         | 20 ++++++++++++++
+ 4 files changed, 62 insertions(+), 21 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 8972383..ef11a7b 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,7 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
+-- **Studio ST-PLAY (2026-11-15, STUDIO round 1; docs/STUDIO.md "PLAY" and its function ledger, docs/design/STUDIO_PLAN.md 2.4, GBA ledger row 64):** a PLAY tab after NOTES (`core/src/studio_play.c`): jam pads (A B L R and, on the PS1 / Dreamcast / PC pads, X Y L2 R2 play the song's scale; the d-pad plays the song's own chords: no wrong notes), live recording (SELECT+START: a count-in of four clicks, the loop, quantize off / 1/4 / 1/8 / 1/16 decided from `song_pos_ticks`, held pads write ties, Overdub or Replace, one undo step per take), the drum pads on the drum track, a loop over a range of steps (`song_play_range`; NOTES > "Loop this bar"), a tools menu with every setting by name. Player: `song_jam_on` / `song_jam_off` / `song_play_range` / `song_pos_note` (the only changes). 24 new tests (`test_studio_play.c`), runner tour `studio_play.txt`. GBA (libmgba, `speed2_studio_play`): every PLAY window 30.0 drawn fps and 30.0 logic ticks/s (pads at rest 28.3 ms, the loop 29.8, count-in 30.5, recording 28.6; NOTES idle 27.7 ms), the other studio tabs within 0.9 ms of before, EWRAM / IWRAM net zero (`.bss` 254,820 B, 6,428 B free; the player's state repacked, the pad state is 64 B of the scene scratch), PS1 resident 0 (scene scratch). **Left:** the Advanced switch (Replace is always offered), per-track velocity, PS1 / Dreamcast measurements (toolchains not on the build machine).
++- **Studio ST-PLAY (2026-11-15, STUDIO round 1; docs/STUDIO.md "PLAY" and its function ledger, docs/design/STUDIO_PLAN.md 2.4, GBA ledger row 64):** a PLAY tab after NOTES (`core/src/studio_play.c`): jam pads (A B L R and, on the PS1 / Dreamcast / PC pads, X Y L2 R2 play the song's scale; the d-pad plays the song's own chords: no wrong notes), live recording (SELECT+START: a count-in of four clicks, the loop, quantize off / 1/4 / 1/8 / 1/16 decided from `song_pos_ticks`, held pads write ties, Overdub or Replace, one undo step per take), the drum pads on the drum track, a loop over a range of steps (`song_play_range`; NOTES > "Loop this bar"), a tools menu with every setting by name. Player: `song_jam_on` / `song_jam_off` / `song_play_range` / `song_pos_note` (the only changes). 24 new tests (`test_studio_play.c`), runner tour `studio_play.txt`. GBA (libmgba, `speed2_studio_play`): every PLAY window 30.0 drawn fps and 30.0 logic ticks/s (work avg: pads at rest 24.1 ms, the loop 25.6, count-in 26.4, recording 24.5, drum loop 27.3; NOTES idle 27.7 ms), the other studio tabs within 0.5 ms of before (the tab strip has one more pill), EWRAM / IWRAM net zero (`.bss` 254,820 B, 6,428 B free; the player's state repacked, the pad state is 64 B of the scene scratch), PS1 resident 0 (scene scratch). **Left:** the Advanced switch (Replace is always offered), per-track velocity, PS1 / Dreamcast measurements (toolchains not on the build machine).
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+ - **Creator CR-BODY, body types and better sliders (2026-11-13; docs/CREATOR.md "CR-BODY", GBA ledger row 49, docs/PS1.md "CR-BODY"):** 6 new body types (gene `body` 10..15: Athletic, Gangly, Bean, Brick, Willowy, Bobble) as table rows (no new painter), one table for every slider's range (`CR_SLIDERS`, ready for the x1..x4 cheat of CR-SLIDERX), A resets a slider (own undo step), the bar shows the distance from the default, the horn size without horns and the turkey's six face sliders (they changed nothing) are not offered, and the test that moves EVERY build slider across its range (`test_cr_body.c`: each slider on every species and body, every step on the bench, canary bytes; `creator_sliders.txt` + `tools/slider_shots_check.py` on the native runner, GBA `make -C gba test-creator-sliders`, PS1 harness and Dreamcast `ui-compare`). PS1 `_end` -16 B (72,336 B below the stack top on the landed tree; the 72 KB gate is 1,392 B short, inherited from the tip), GBA EWRAM / IWRAM identical, ROM +2.9 KB; Head size repeats its last steps on the stepped bodies (Bobble 4 of 16; pinned by a test); old saves and Classic premades unchanged. Left for CR-SLIDERX: the cheat itself.
+diff --git a/core/src/studio_play.c b/core/src/studio_play.c
+index d783155..f87a596 100644
+--- a/core/src/studio_play.c
++++ b/core/src/studio_play.c
+@@ -46,7 +46,10 @@ typedef struct PlayState {
+     uint8_t  hold_step, hold_trk;
+     uint16_t hold_btn, hold_t;       /* the pad that holds the latest recorded note, ticks held */
+     uint16_t cacc;                   /* count-in beat accumulator */
++    uint8_t  stale;                  /* a setting changed: recompute the notes below at the next tick */
+     uint8_t  roots[4];               /* the song's chord roots (pitch classes) */
++    uint8_t  notes[8];               /* the notes the melody pads play now (a few divisions each: kept, not redone per frame) */
++    uint8_t  ctri[4][3];             /* the chords' notes: root (low), third, fifth */
+ } PlayState;
+ DOOMO_STATIC_ASSERT(sizeof(PlayState) <= STUDIO_TABSTATE, play_state_fits_tab_state);
+ 
+@@ -161,12 +164,15 @@ int play_quantize_step(int step, int frac, int q, int from, int to)
+ 
+ /* ====================================================================== */
+ /* state                                                                    */
++static void refresh(PlayState *p);
++
+ static PlayState *ps(void)
+ {
+     int fresh = 0;
+     PlayState *p = (PlayState *)st_tab_state(&fresh);
+     if (p && fresh) {
+         p->quant = Q_16;
++        refresh(p);
+     }
+     return p;
+ }
+@@ -182,21 +188,36 @@ static uint8_t *take_row(const PlayState *p)
+     return SS->notes[studio.pat & 3][p->mode ? 3 : p->trk];
+ }
+ 
+-/* the chord roots follow the song as it is edited (a scan of at most 16 x 32 bass cells) */
+-static void refresh_roots(PlayState *p)
++/* One answer to "what do the pads play": the chord roots follow the song as it is edited (a scan of at most 16 x 32
++ * bass cells), and the notes cost a few divisions each. Redone when a setting changes, when the tab opens and eight
++ * times a second; never per frame. */
++static int pad_note_calc(const PlayState *p, int k)
+ {
++    int deg = k;
++#if defined(DOOMO_PLATFORM_GBA)
++    deg = p->row * 4 + k;
++#endif
++    return play_degree_note(SS, p->trk, p->oct, deg);
++}
++
++static void refresh(PlayState *p)
++{
++    int k, c;
++    p->stale = 0;
+     play_song_roots(SS, p->chords, p->roots);
++    for (k = 0; k < PLAY_KEYS; k++) p->notes[k] = (uint8_t)pad_note_calc(p, k);
++    for (c = 0; c < 4; c++) {
++        int t[3];
++        play_chord_notes(SS, p->roots[c], p->oct, t);
++        p->ctri[c][0] = (uint8_t)t[0]; p->ctri[c][1] = (uint8_t)t[1]; p->ctri[c][2] = (uint8_t)t[2];
++    }
+ }
+ 
+ /* ====================================================================== */
+ /* the jam: pads -> held notes                                              */
+ static int pad_note(const PlayState *p, int k)
+ {
+-    int deg = k;
+-#if defined(DOOMO_PLATFORM_GBA)
+-    deg = p->row * 4 + k;
+-#endif
+-    return play_degree_note(SS, p->trk, p->oct, deg);
++    return p->notes[k & 7];
+ }
+ 
+ static int chord_root_note(const PlayState *p, int c)
+@@ -212,9 +233,7 @@ static void jam_sync(PlayState *p)
+     if (p->mode) return;
+     for (c = 0; c < 4; c++)
+         if (btn_down(chord_keys[c])) {
+-            int n[3];
+-            play_chord_notes(SS, p->roots[c], p->oct, n);
+-            want[0] = (uint8_t)n[2]; want[1] = (uint8_t)n[1]; want[2] = (uint8_t)n[0];
++            want[0] = p->ctri[c][2]; want[1] = p->ctri[c][1]; want[2] = p->ctri[c][0];
+         }
+     for (k = 0; k < PLAY_KEYS; k++)
+         if (btn_down(melody_keys[k])) want[p->trk] = (uint8_t)pad_note(p, k);
+@@ -350,6 +369,7 @@ static void loop_toggle(PlayState *p)
+ /* a tick of the recorder: count-in beats, the loop, a held pad */
+ static void service(PlayState *p)
+ {
++    if (p->stale || studio.tab_t < 2 || (studio.t & 7) == 0) refresh(p);
+     if (p->take_open && !studio.undo_open) {          /* an undo took the open take away */
+         p->take_open = 0;
+         p->take_n = 0;
+@@ -390,6 +410,7 @@ static void play_menu_done(int c)
+     case 1:
+         if (p->mode) { st_msg("Drum pads record into Drums"); break; }
+         p->trk = (uint8_t)((p->trk + 1) % 3);
++        p->stale = 1;
+         st_msg("Pads play and record %s", trk_names[p->trk]);
+         break;
+     case 2:
+@@ -410,11 +431,12 @@ static void play_menu_done(int c)
+         break;
+     case 6:
+         p->chords ^= 1;
+-        refresh_roots(p);
++        p->stale = 1;
+         st_msg(p->chords ? "Chords: I IV V vi" : "Chords: from your song");
+         break;
+     case 7:
+         p->row ^= 1;
++        p->stale = 1;
+         say_row(p);
+         break;
+     default: break;
+@@ -427,7 +449,6 @@ static void open_menu(PlayState *p)
+                                           "Loop part", "Next pattern", "Chord set", "Notes 1-4 / 5-8" };
+     if (p->rec) take_end(p);
+     song_jam_off(-1);
+-    refresh_roots(p);
+     st_popup("Play tools", items, PLAY_KEYS == 4 ? 8 : 7, 0, play_menu_done);   /* the last item is for the 4-pad GBA only */
+ }
+ 
+@@ -455,6 +476,7 @@ void tab_play_shift(void)
+             audio_sfx(SFX_ERROR);
+         } else {
+             p->oct = (int8_t)(p->oct + d);
++            p->stale = 1;
+             st_msg("Octave %s%d", p->oct > 0 ? "+" : "", p->oct);
+             audio_sfx(SFX_CURSOR);
+         }
+@@ -462,6 +484,7 @@ void tab_play_shift(void)
+ #if defined(DOOMO_PLATFORM_GBA)
+     if (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT)) {
+         p->row = (uint8_t)(btn_pressed(BTN_RIGHT) ? 1 : 0);           /* RIGHT: the high four, LEFT: the low four */
++        p->stale = 1;
+         say_row(p);
+         audio_sfx(SFX_CURSOR);
+     }
+@@ -495,7 +518,7 @@ void tab_play_update(void)
+             }
+         return;
+     }
+-    refresh_roots(p);
++    if (btn_pressed(BTN_LEFT | BTN_DOWN | BTN_RIGHT | BTN_UP)) refresh(p);       /* a chord: the song as it is now */
+     for (k = 0; k < PLAY_KEYS; k++)
+         if (btn_pressed(melody_keys[k])) {
+             p->last_k = (uint8_t)(k + 1);
+@@ -540,8 +563,8 @@ int play_prompts(UiPrompt *pr)
+ static void pad_cell(int x, int y, int w, int h, uint8_t base, int down, const char *key, const char *label)
+ {
+     const UiStyle *st = ui_style(WIN_CREAM);
+-    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
+-    ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, down ? PAL_PAINT(PAINT_ROSE, 1) : base);
++    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 1) : base);        /* one round rect and a shadow line */
++    plat_rect(x + 3, y + h, w - 6, 1, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
+     if (key && key[0] && ui_text_width(key) < w / 2) ui_text(x + 3, y + 2, key, down ? PAL_WHITE : st->text_dim);
+     if (label && label[0])
+         ui_text(x + (w - ui_text_width(label)) / 2, y + h / 2 - 2, label, down ? PAL_WHITE : st->text);
+@@ -609,7 +632,6 @@ void tab_play_draw(StRect r)
+                                   doomo_song_drum_names[d], st->text_dim);
+         }
+     } else {
+-        refresh_roots(p);
+         for (i = 0; i < PLAY_KEYS; i++) {
+             int px = x0 + (i & 3) * (cw + gap), py = y + (i >> 2) * (ch + gap);
+             song_note_name(pad_note(p, i), nm);
+@@ -617,9 +639,8 @@ void tab_play_draw(StRect r)
+         }
+         y += ((PLAY_KEYS + 3) / 4) * (ch + gap);
+         for (i = 0; i < 4; i++) {
+-            int px = x0 + i * (cw + gap), tri[3], third;
+-            play_chord_notes(SS, p->roots[i], p->oct, tri);
+-            third = (tri[1] - tri[0]) % 12;
++            int px = x0 + i * (cw + gap), third;
++            third = (p->ctri[i][1] % 12 + 12 - p->ctri[i][0] % 12) % 12;
+             doomo_snprintf(buf, sizeof(buf), "%s%s", doomo_song_key_names[p->roots[i] % 12],
+                            third == 3 ? "m" : (third == 6 ? "o" : ""));
+             pad_cell(px, y, cw, ch, PAL_PAINT(PAINT_SKY, 2), btn_down(chord_keys[i]), pad_key_name(chord_keys[i]), buf);
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 02fdfc6..6fa6553 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -454,7 +454,7 @@ against the LAST row, not against a figure from an older base.
+ | 61 | LV11: content notes (the card's note page, the select's badge, two bit options; docs/LEVELS.md "LV11") | after S2-10 (row 60) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on the tip (`9dc5e39a`) and the tip + LV11 (`make -C gba`, `make -C gba sizes`, `make -C gba test` clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the four overlay groups identical; ROM `.text` +1,384 B, `.rodata` +1,828 B. The two options are bits in the byte the Stick option already uses. |
+ | 62 | LV7a: 7 shared textures, 3 skies, the texture bank format (docs/LEVELS.md "LV7a") | origin tip `fe410024` | 6,420 B | **6,436 B** | -16 B | 6,288 B | measured on `fe410024` and the same + LV7a (clean `make -C gba`, `make -C gba sizes`): `.bss` 254,828 -> 254,812 B (the overworld's `frame_tex_ok[TEX_COUNT]` flag array is gone, a NULL pointer means "not looked up yet"; it paid for the 7 new `frame_tex` pointers), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the four overlay slots identical; `.text` 1,524,016 -> 1,524,080 B (+64), `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels and tables). The texture bank reader (`texbank.c`) and the sample bank are compiled out on the GBA (`DOOMO_TEXBANK_ACTIVE` 0): no byte. `make -C gba test` passes. |
+ | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
+-| 64 | ST-PLAY: the Music Studio's PLAY tab (docs/STUDIO.md "PLAY"): jam pads, live recording, range loop | origin tip `d979c93` | 6,428 B | **6,428 B** | 0 B | 6,288 B | measured 2026-11-15 on the clean tip and the same + ST-PLAY (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlays identical. The player gained a range loop (2 B) and a held-note per channel (3 B) in its `P` struct, which was repacked (its padding and the unused `paused_music` byte): `P` 120 B before and after. The PLAY tab's state is 64 B of the scene scratch, taken from the studio's bake block (`BAKE_POOL` -64 B, `BakeSt` unchanged in size). ROM +7,720 B (`studio_play.o`) |
++| 64 | ST-PLAY: the Music Studio's PLAY tab (docs/STUDIO.md "PLAY"): jam pads, live recording, range loop | origin tip `d979c93` | 6,428 B | **6,428 B** | 0 B | 6,288 B | measured 2026-11-15 on the clean tip and the same + ST-PLAY (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, overlays identical. The player gained a range loop (2 B) and a held-note per channel (3 B) in its `P` struct, which was repacked (its padding and the unused `paused_music` byte): `P` 120 B before and after. The PLAY tab's state is 64 B of the scene scratch, taken from the studio's bake block (`BAKE_POOL` -64 B, `BakeSt` unchanged in size). ROM +8,260 B (`.text` +7,248, `.rodata` +1,012: `studio_play.o`, the player's jam / range code) |
+ | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-10 (`8fe2134f`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `8fe2134f` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,823,708 -> 9,830,056 B (+6,348: `.text` +6,328, `.rodata` +44, the overlay's copy -24; 48 B of it the cross-stream fix to S2-10's hold below). PS1: `_end` 0x801e0610 -> 0x801e05f0 (32 B less code; 129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV) |
+ | G2-EX | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after LV7a (`cf5e9f27`) | 6,428 B | **6,420 B** | -8 B | 6,272 B | measured on the tip `cf5e9f27` and the tip + G2-EX, both built clean (`make -C gba sizes`, `gba/tools/memreport.py`): `.bss` 254,820 -> 254,828 B (the aura's pointer, 4 B, and the clip box's fifth halfword: `stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding), `.data` 816 B unchanged. **IWRAM resident +16 B** (`plat_rect`'s mode-7 dispatch in `video_loops.s`, `.iwram` 11,272 -> 11,288 B: the main stack's room 6,288 -> 6,272 B, gate 6,144 B; 5,124 B beside the flash routines while saving); the overlay's room group 9,800 -> 9,952 B (+152 B, `stage_clip_rect`; 400 B of the 10,352 B slot left). Not net zero (+8 B EWRAM, +16 B IWRAM): left for the lead to accept (the EWRAM bytes could go if the aura's pointer were derived from the scene's own pointer behind a call; the two bytes made into one elsewhere landed in padding). The exorcism's scene-scratch claim grows 1,672 -> 6,000 B of the 12 KB block (the aura's five lists 3,924 B, the stage's memory 1,240 -> 1,644 B: the pieces and the clip mask), so while the exorcism owns the scratch the arena has 4.3 KB less for the save window; the kitchen's claim grows by the same 404 B of stage memory (its static assert allows 2,048 B). ROM 9,929,752 -> 8,399,980 B (**-1.53 MB**: the wall drips' hold, 19 church pictures baked instead of 59; `.text` +6,696 B). First measured on `0cb159e` (built 2026-11-13: 15,460 -> 15,452 B free). PS1: no resident byte (`_end` 0x801e0610 on the tip and with G2-EX: 129,504 B below the stack top with the boot FMV); the aura's list is not built there, `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group (46 -> 51 KB) |
+ | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index e9a6fbb..e92f9f0 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -284,6 +284,26 @@ Boom 808 (2 shows), Hell Forge (songs in 4 genres), the shanty / disco /
+ jazz / synthwave / industrial templates (3 songs, 3 shows, 3 inspirations,
+ an encore, a full 25 choir), the choir pyramid (10+ singers).
+ 
++## PLAY on the GBA (ST-PLAY, measured 2026-11-15, libmgba, `make -C gba test-speed2 SPEED2="studio_play"`)
++Base: the clean tip `d979c93`. `gba/harness/scripts/speed2_studio_play.txt` (STUDIO -107, the "Park United!" choir; the pads at
++rest, a held pad, the loop, the count-in, a take with pads pressed, the drum pads). Every window: 30.0 drawn fps, 30.0 logic ticks/s.
++
++| window | work avg ms | work max ms |
++|---|---:|---:|
++| pads at rest | 24.1 | 26.6 |
++| a held pad | 23.5 | 26.4 |
++| the loop (START) | 25.6 | 33.3 |
++| count-in | 26.4 | 31.2 |
++| recording (pads pressed) | 24.5 | 30.3 |
++| drum pads (menu closed / loop) | 27.7 / 27.3 | 30.3 / 32.2 |
++
++`make -C gba profile-studio`, before -> after: SONG idle 31.6 -> 32.0, NOTES idle 27.8 -> 27.7, ORDER 25.5 -> 26.3, LYRICS 32.4 -> 32.3, CHOIR 30.5 -> 30.0
++(noise and the eighth tab pill); new: PLAY idle 23.6, PLAY looping 24.8. What it took: the pad notes (a scale shift is a few divisions each, ~4 ms
++a frame when redone per frame) are computed when a setting changes, when the tab opens and eight times a second, never per frame; a pad is one
++round rect and a shadow line. RAM: GBA `.bss` / IWRAM identical (the player's struct is repacked, the pad state is 64 B of the scene scratch,
++taken from the bake block's pixel pool); PS1 resident 0 (scene scratch). The PS1 and Dreamcast were not measured: their toolchains were
++not installed on the build machine.
++
+ ## Budgets
+ `.bss`: the book 6 x 892 B + stats 12 B = 5364 B; everything else 2002 B (the
+ working song, a 768-byte undo journal - run-length coded byte ranges, 16+
+-- 
+2.43.0
+
+
+From b3f53f158f49e3943174c496b829840c811ee39f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:31:07 +0000
+Subject: [PATCH 4/6] STUDIO ST-PLAY docs: PS1 (resident +256 B, margin 110,352
+ B) and Dreamcast numbers
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ docs/DREAMCAST.md |  7 +++++++
+ docs/PS1.md       | 11 +++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 53d2a05..d3d58e2 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2670,3 +2670,10 @@ reader.
+   and the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
+   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
+   has the same layout): TD2 owns that layout.
++
++## Music Studio PLAY tab (ST-PLAY)
++
++`make -C dc` builds with the PLAY tab (shared core code only; no `dc/` file changed). Flycast speed tour
++(`sh dc/harness/speed2.sh OUT studio_play studio`, 2026-11-15): every PLAY window 30.0 logic ticks/s, work mean 3.5-4.8 ms (worst 7.3 ms), the
++other studio windows 3.5-9.6 ms, no tick over 33.3 ms. The pad layout is the two-row one (A B L R / X Y L2 R2, d-pad chords); on this pad Y, L2 and
++R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). `make dc-host-test` PASS.
+diff --git a/docs/PS1.md b/docs/PS1.md
+index 26b87b7..1828f37 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2461,3 +2461,14 @@ Measured 2026-11-15 on `fe410024` and the same + LV7a (clean builds, boot FMV, `
+ (`DOOMO_TEXBANK_ACTIVE` 0). The new art and the bank blobs reach the PS1 as pack data on the disc with the level packs (LV8). The LEVELS
+ share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
+ 
++
++## ST-PLAY (the Music Studio's PLAY tab): resident +256 B, margin 110,352 B
++
++Measured 2026-11-15 on the clean tip `d979c93` and the same + ST-PLAY (clean builds, boot FMV, `-DDOOMO_INTRO_REQUIRED=ON`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`):
++`elf2exe` says 110,608 B below the stack top before and **110,352 B** after (`_end` 0x801e4fe0 -> 0x801e50e0, +256 B resident; the 72 KB gate has
++36 KB to spare). All of it is in `song_player.c` (shared, resident): `song_jam_on` / `song_jam_off` / `song_play_range` and the range loop in
++`advance` (the plan asked for share 0: this is the number to ask the coordinator for). The PLAY tab itself (`studio_play.c`, about 7 KB of
++code) is in the studio overlay group (`OVL.BIN` 1,114 -> 1,122 KB, the studio group still far under the slot; its entry load 283 -> 310 ms), its
++callback `play_menu_done` is in `MODAL_CALLBACKS` (`tools/ovl_plan.py`), and its state is 64 B of the scene scratch, not `.bss`. PCSX-Redux speed
++tour (`sh ps1/harness/speed2.sh OUT studio_play studio`): every PLAY window 30.13-30.25 fps (the take 32.20 with the loop start), every other studio
++window as before (30.00-30.51); `game_smoke` PASS.
+-- 
+2.43.0
+
+
+From 7bc60df3c68423b5c27e14ff9864c2cbdfb2b1cf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:54:40 +0000
+Subject: [PATCH 5/6] STUDIO ST-PLAY: record from the Play tools menu
+ (Dreamcast pad cannot make SELECT+START), Undo in the prompts
+
+The review found SELECT+START unreachable on the Dreamcast pad (START+Y is SELECT with START cleared).
+Non-GBA builds get a 'Record a take' menu item; the Dreamcast prompt bar names SELECT, Tools. The SELECT-held
+prompts name Undo (SELECT+B). A tab state rebuilt mid-take closes the open undo step. New test records from the
+menu alone.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio_play.c        | 23 +++++++++++++++++++++--
+ core/tests/test_studio_play.c | 26 ++++++++++++++++++++++++++
+ docs/DREAMCAST.md             |  2 +-
+ docs/STUDIO.md                |  4 ++--
+ 4 files changed, 50 insertions(+), 5 deletions(-)
+
+diff --git a/core/src/studio_play.c b/core/src/studio_play.c
+index f87a596..da3d9fb 100644
+--- a/core/src/studio_play.c
++++ b/core/src/studio_play.c
+@@ -171,6 +171,7 @@ static PlayState *ps(void)
+     int fresh = 0;
+     PlayState *p = (PlayState *)st_tab_state(&fresh);
+     if (p && fresh) {
++        if (studio.undo_open) ed_commit();               /* the scratch was taken by another scene mid-take: close its step */
+         p->quant = Q_16;
+         refresh(p);
+     }
+@@ -393,10 +394,12 @@ static void service(PlayState *p)
+ 
+ /* ====================================================================== */
+ /* tools menu                                                               */
++#if defined(DOOMO_PLATFORM_GBA)
+ static void say_row(const PlayState *p)
+ {
+     st_msg(p->row ? "Pads A B L R: notes 5-8" : "Pads A B L R: notes 1-4");
+ }
++#endif
+ 
+ static void play_menu_done(int c)
+ {
+@@ -435,9 +438,13 @@ static void play_menu_done(int c)
+         st_msg(p->chords ? "Chords: I IV V vi" : "Chords: from your song");
+         break;
+     case 7:
++#if defined(DOOMO_PLATFORM_GBA)
+         p->row ^= 1;
+         p->stale = 1;
+         say_row(p);
++#else
++        rec_start(p);                       /* the route for a pad that cannot make SELECT+START (Dreamcast) */
++#endif
+         break;
+     default: break;
+     }
+@@ -446,10 +453,15 @@ static void play_menu_done(int c)
+ static void open_menu(PlayState *p)
+ {
+     static const char *const items[8] = { "Notes / Drums", "Next track", "Quantize", "Overdub / Replace",
+-                                          "Loop part", "Next pattern", "Chord set", "Notes 1-4 / 5-8" };
++                                          "Loop part", "Next pattern", "Chord set",
++#if defined(DOOMO_PLATFORM_GBA)
++                                          "Notes 1-4 / 5-8" };
++#else
++                                          "Record a take" };            /* a menu already open while recording stops the take */
++#endif
+     if (p->rec) take_end(p);
+     song_jam_off(-1);
+-    st_popup("Play tools", items, PLAY_KEYS == 4 ? 8 : 7, 0, play_menu_done);   /* the last item is for the 4-pad GBA only */
++    st_popup("Play tools", items, 8, 0, play_menu_done);
+ }
+ 
+ /* ====================================================================== */
+@@ -537,11 +549,14 @@ int play_prompts(UiPrompt *pr)
+ #define PR(b, pri, v) do { pr[n].btn = (uint16_t)(b); pr[n].prio = (uint8_t)(pri); pr[n].verb = (v); n++; } while (0)
+     if (studio.sel_held) {                              /* SELECT is down: the shift keys */
+         if (!p || !p->mode) PR(BTN_UP | BTN_DOWN, 0, "Octave");
++#if !defined(DOOMO_PLATFORM_DC)                       /* the Dreamcast pad makes SELECT from START: record is in the menu */
+         PR(BTN_START, 1, p && p->rec ? "Stop" : "Record");
++#endif
+         if (!p || !p->mode) PR(BTN_A, 2, "Chords");
+ #if defined(DOOMO_PLATFORM_GBA)
+         if (!p || !p->mode) PR(BTN_LEFT | BTN_RIGHT, 3, "Notes");
+ #endif
++        PR(BTN_B, 4, "Undo");
+         return n;
+     }
+     if (p && p->rec) {
+@@ -552,8 +567,12 @@ int play_prompts(UiPrompt *pr)
+     }
+     PR(BTN_A, 0, "Note");
+     PR(BTN_START, 1, "Play");
++#if defined(DOOMO_PLATFORM_DC)
++    PR(BTN_SELECT, 2, "Tools, record");
++#else
+     PR(BTN_SELECT | BTN_START, 2, "Record");
+     PR(BTN_SELECT, 3, "Tools");
++#endif
+ #undef PR
+     return n;
+ }
+diff --git a/core/tests/test_studio_play.c b/core/tests/test_studio_play.c
+index e636afd..d3ed99d 100644
+--- a/core/tests/test_studio_play.c
++++ b/core/tests/test_studio_play.c
+@@ -736,6 +736,32 @@ TEST(studio_play_undo_during_a_take_takes_back_what_was_recorded_so_far)
+     CHECK(studio.song.notes[0][0][5] == 0);
+ }
+ 
++TEST(studio_play_record_from_the_menu_alone_for_a_pad_without_select_start)
++{
++    /* the Dreamcast pad makes SELECT from START+Y, so SELECT+START cannot be pressed there: the menu starts the take */
++    int steps0;
++    open_play();
++    ed_reset();
++    steps0 = ed_undo_steps();
++    menu_pick(7);                                         /* Record a take */
++    CHECK(!song_playing());                               /* the count-in */
++    CHECK(run_count_in() >= 55);
++    hit_at(19, BTN_A);                                    /* step 5 */
++    frames(1, 0);
++    press(BTN_START);                                     /* START alone stops it: no chord needed */
++    CHECK(!song_playing());
++    CHECK_EQ(studio.song.notes[0][0][5], play_degree_note(&studio.song, 0, 0, 0));
++    CHECK_EQ(ed_undo_steps() - steps0, 1);
++    frames(1, BTN_SELECT);                                /* undo is named in the shift prompts */
++    {
++        UiPrompt pr[UI_PROMPTS_MAX];
++        int n = tab_prompts(STAB_PLAY, pr), i, has = 0;
++        for (i = 0; i < n; i++) if (pr[i].btn == BTN_B && !strcmp(pr[i].verb, "Undo")) has = 1;
++        CHECK(has);
++    }
++    frames(1, 0);
++}
++
+ TEST(studio_play_prompt_bar_names_the_pad_buttons)
+ {
+     UiPrompt pr[UI_PROMPTS_MAX];
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index d3d58e2..d71698c 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2676,4 +2676,4 @@ reader.
+ `make -C dc` builds with the PLAY tab (shared core code only; no `dc/` file changed). Flycast speed tour
+ (`sh dc/harness/speed2.sh OUT studio_play studio`, 2026-11-15): every PLAY window 30.0 logic ticks/s, work mean 3.5-4.8 ms (worst 7.3 ms), the
+ other studio windows 3.5-9.6 ms, no tick over 33.3 ms. The pad layout is the two-row one (A B L R / X Y L2 R2, d-pad chords); on this pad Y, L2 and
+-R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). `make dc-host-test` PASS.
++R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). SELECT+START cannot be pressed on the pad (START+Y gives SELECT with START cleared), so on the Dreamcast build a take starts from SELECT, Tools, "Record a take"; START alone stops it, and the prompt bar names that route. `make dc-host-test` PASS.
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index e92f9f0..a40ace2 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -92,7 +92,7 @@ notes; a take is written into the song with the count-in and quantize; the drum
+ | SELECT + A | chord set: the song's / I IV V vi | |
+ | SELECT + START | record: a count-in of four clicks, then the loop and the take; again (or START) ends the take | the same |
+ | START | listen: loop the chosen part; again stops | the same |
+-| SELECT (tap) | Play tools: Notes / Drums, Next track (lead, harmony, bass), Quantize (off, 1/4, 1/8, 1/16), Overdub / Replace, Loop part (whole pattern, bar 1, bar 2), Next pattern, Chord set, and on the GBA Notes 1-4 / 5-8 | |
++| SELECT (tap) | Play tools: Notes / Drums, Next track (lead, harmony, bass), Quantize (off, 1/4, 1/8, 1/16), Overdub / Replace, Loop part (whole pattern, bar 1, bar 2), Next pattern, Chord set, and Record a take (on the GBA: Notes 1-4 / 5-8 instead; there SELECT+START records) | |
+ 
+ * **Jam.** A held pad holds its note (`song_jam_on` / `song_jam_off`): the track's own channel and instrument, over the
+   song if it plays (tone channel 0 with the lead instrument by default). Several pads: the last one pressed wins, a
+@@ -188,7 +188,7 @@ PS1 / Dreamcast / PC layout; the GBA has the first four pads only.
+ | SELECT + A | chord set: the song's / I IV V vi | "Chords: I IV V vi"; the chord names change | not a song edit | `studio_play_select_shift_octave_chords_and_limits`, `studio_play_menu_items_do_what_they_say` |
+ | SELECT + LEFT / RIGHT (GBA) | pads A B L R play notes 1-4 / 5-8 | "Pads A B L R: notes 5-8"; the pad names change; the header says "Notes 5-8" | not a song edit | the same code as menu item 7 (a 4-pad build only: the host has 8 pads) |
+ | START | loop the chosen part (the pattern or a bar); again: stop | "Looping bar 1 of A" / "Stopped"; the playhead runs on the ruler | not a song edit | `studio_play_count_in_can_be_stopped_and_start_loops_the_part` |
+-| SELECT + START | record a take: count-in of four clicks, then the loop; again: end the take | "Recording Lead: count-in"; "Count n"; the red REC; at the end "Take saved: n notes" / "No notes: nothing changed" | **one undo step per take** (SELECT + B) | `studio_play_record_quantizes_and_a_take_is_one_undo_step`, `studio_play_record_then_play_back_gives_the_recorded_notes`, `studio_play_a_held_pad_writes_tie_cells`, `studio_play_drums_record_into_the_drum_track` |
++| SELECT + START (Dreamcast: SELECT, Tools, "Record a take", because the pad makes SELECT from START+Y) | record a take: count-in of four clicks, then the loop; again: end the take | "Recording Lead: count-in"; "Count n"; the red REC; at the end "Take saved: n notes" / "No notes: nothing changed" | **one undo step per take** (SELECT + B) | `studio_play_record_quantizes_and_a_take_is_one_undo_step`, `studio_play_record_then_play_back_gives_the_recorded_notes`, `studio_play_record_from_the_menu_alone_for_a_pad_without_select_start`, `studio_play_a_held_pad_writes_tie_cells`, `studio_play_drums_record_into_the_drum_track` |
+ | Quantize (menu) | off / 1/4 / 1/8 / 1/16: where a note lands | "Quantize: 1/8"; the header shows it | not a song edit | `studio_play_quantize_table`, `studio_play_quantize_off_and_eighths_change_where_a_note_lands` |
+ | Overdub / Replace (menu) | a take keeps the old notes / clears the looped part when it starts | "Overdub: keeps the old notes" / "Replace: a take clears the loop" | the take is one undo step; an empty Replace take is undone at once | `studio_play_replace_clears_the_loop_and_an_empty_take_changes_nothing` |
+ | Notes / Drums (menu) | the pads play and record the kit instead of the scale | "Drum pads: A B L R + d-pad"; the pads become drum icons; the header says "Drums" | not a song edit | `studio_play_drum_pads_hit_the_kit` |
+-- 
+2.43.0
+
+
+From ab5fba3042199d78d4936b2b39c45dfa68730b8b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:27:08 +0000
+Subject: [PATCH 6/6] STUDIO ST-PLAY: status, landing numbers (PS1 margin
+ 110,352 B, GBA sizes, speed2)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ docs/design/held/status/STUDIO.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/docs/design/held/status/STUDIO.md b/docs/design/held/status/STUDIO.md
+index 16cc7c9..5fd8813 100644
+--- a/docs/design/held/status/STUDIO.md
++++ b/docs/design/held/status/STUDIO.md
+@@ -4,7 +4,7 @@ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it wit
+ 
+ - **Last update:** 2026-11-15 (coordinator): the stream is defined; its lead session starts now.
+ - **Lead:** `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, from 2026-11-15)
+-- **ST-PLAY (2026-11-15, built on branch fut-st-play, not yet landed):** PLAY tab (`studio_play.c`: jam pads, live recording with quantize and count-in, one undo step per take, range loop, drum pads), player `song_jam_on/off`, `song_play_range`, `song_pos_note`; function ledger in `docs/STUDIO.md`; GBA all PLAY windows 30.0 fps, EWRAM net zero. Rebase notes for ST-EASY: the tab enum gained `STAB_PLAY` after `STAB_NOTES` (tests and the three GBA scripts that walk the tabs by SELECT+R got one more step); `studio.c` has small hooks (tab name / icon / routing, `st_tab_state`, the global Y / L2 / R2 / B / L / R exceptions for PLAY); the PLAY state is `st_tab_state()` (64 B of the scene scratch: a good home for ST-EASY's own small per-tab state too).
++- **ST-PLAY (2026-11-15, landed by the commits of this push, 1492 core tests pass):** PLAY tab (`studio_play.c`: jam pads, live recording with quantize and count-in, one undo step per take, range loop, drum pads), player `song_jam_on/off`, `song_play_range`, `song_pos_note`; function ledger in `docs/STUDIO.md`; GBA all PLAY windows 30.0 fps (work 23.5-27.7 ms avg, the loop peaks 33.4 ms: add no per-frame work to PLAY), EWRAM net zero (the 64 B state lives in the bake block's pixel pool). PS1: 110,352 B below the stack top with the boot FMV (gate 72 KB); resident +256 B in `song_player.c` (jam / range code), still to be granted by the coordinator or trimmed (merge `song_jam_off` into `song_jam_on`). GBA IWRAM 25,728 / 32,768, 6,272 B main stack left; EWRAM 50,740 B free. PS1 PLAY windows 30.13-30.25 fps. The Dreamcast pad cannot make SELECT+START (START+Y is SELECT): a take starts from SELECT, Tools, "Record a take" there. The Dreamcast build was not rebuilt on the landing tree (KallistiOS absent on the land machine; `make dc-host-test` passes). Open: the GBA 4-pad row toggle has no scripted test; ST-EASY may gate Replace. Rebase notes for ST-EASY: the tab enum gained `STAB_PLAY` after `STAB_NOTES` (tests and the three GBA scripts that walk the tabs by SELECT+R got one more step); `studio.c` has small hooks (tab name / icon / routing, `st_tab_state`, the global Y / L2 / R2 / B / L / R exceptions for PLAY); the PLAY state is `st_tab_state()` (64 B of the scene scratch: a good home for ST-EASY's own small per-tab state too).
+ - **Landed:** ST-0: `docs/design/STUDIO_PLAN.md` (flow, screens, controls, format, memory), defaults in OWNER_DECISIONS.
+ - **In flight:** machine setup (PS1 and Dreamcast toolchains building), ST-EASY.
+ - **Next up:** ST-EASY (in flight), ST-PLAY, ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`).
+-- 
+2.43.0
+

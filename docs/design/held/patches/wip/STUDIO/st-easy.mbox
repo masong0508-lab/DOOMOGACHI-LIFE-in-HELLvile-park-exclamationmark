@@ -1,0 +1,3309 @@
+From 6db55fcb6ae7b4450e738f4363c422e7a0f159f2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:24:52 +0000
+Subject: [PATCH 01/10] STUDIO ST-EASY: Start a song card, one-line help +
+ control card, redo, START always plays, cursor line, tab labels, Studio level
+
+- studio_start.c: the Start card (style, mood, tempo, length, Shuffle, Make it!, Inspire me!, Templates) and
+  studio_make_song (pure function of picks + seed); studio_compose_scale for the mood's key mode
+- studio_help.c: tab_help one-liners on the bar, the SELECT+UP control card, tab labels, Studio level (bit 15 of
+  studio_stats.lines, no new save tag)
+- studio_play.c: START plays on every tab with its target named (Play song / Play from here / Stop); NOTES cursor line
+- studio.c: redo journal in the scene scratch (GBA: tail of BakeSt, .bss unchanged), SELECT+A redo
+- FILE: Redo and Studio level rows, scrolling list; LYRICS START moved to the tools (Fit this line), CHOIR START dropped
+- tests: compose determinism, undo/redo round trip, START targets, help fits, cursor line, level; runner script studio_easy
+Not run: PS1 and Dreamcast toolchains (core tests + GBA only so far).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio.c                  | 175 +++++++++--
+ core/src/studio_edit.c             |  31 +-
+ core/src/studio_file.c             |  68 ++++-
+ core/src/studio_gen.c              |  19 +-
+ core/src/studio_help.c             | 191 ++++++++++++
+ core/src/studio_int.h              |  75 ++++-
+ core/src/studio_play.c             | 124 ++++++++
+ core/src/studio_start.c            | 208 +++++++++++++
+ core/src/studio_words.c            |  23 +-
+ core/tests/scripts/studio_easy.txt | 110 +++++++
+ core/tests/test_studio.c           | 466 ++++++++++++++++++++++++++++-
+ 11 files changed, 1426 insertions(+), 64 deletions(-)
+ create mode 100644 core/src/studio_help.c
+ create mode 100644 core/src/studio_play.c
+ create mode 100644 core/src/studio_start.c
+ create mode 100644 core/tests/scripts/studio_easy.txt
+
+diff --git a/core/src/studio.c b/core/src/studio.c
+index c37432c..67f5454 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -7,13 +7,19 @@
+  *   SELECT + L / R   previous / next tab from anywhere            [L2 / R2]
+  *   SELECT (tap)     the tab's tools menu (copy / paste, quick fills ...)
+  *   SELECT + B       undo                                          [Triangle]
+- *   START            play / stop
++ *   SELECT + A       redo                                          [Square]
++ *   SELECT + UP      the control card ("?") of the tab
++ *   START            play / stop (the prompt bar names what: "Play from here" / "Play song")
+  *   B                back (leave the studio; in NOTES: erase / tie)
+  *
+  * UNDO keeps a byte journal of the working song: before an edit the
+  * changed bytes are run-length coded into a STUDIO_UNDO_BYTES ring
+  * (oldest steps fall out first), so 16+ ordinary edits (a note, a lyric
+  * line, a setting) always fit and even whole-song changes usually do.
++ * REDO (ST-EASY): an undo saves the bytes it overwrites, in the same record
++ * format, into a second journal in the scene scratch (st_easy()); a redo
++ * replays it and puts the step back on the undo journal. Any new edit
++ * empties the redo journal.
+  */
+ #include "studio_int.h"
+ #include <stdarg.h>
+@@ -35,9 +41,6 @@ __attribute__((weak)) int concert_stage_song(const DoomoSong *s)
+     return 0;
+ }
+ 
+-static const char *const tab_names[STAB_COUNT] = {
+-    "Song", "Notes", "Order", "Lyrics", "Choir", "Stage", "File"
+-};
+ 
+ /* ====================================================================== */
+ /* small services                                                           */
+@@ -93,6 +96,7 @@ void st_set_tab(int tab)
+     studio.tab = (uint8_t)tab;
+     studio.tab_t = 0;
+     studio.a_edit = 0;
++    st_help_arm();
+     audio_sfx(SFX_CURSOR);
+ }
+ 
+@@ -186,18 +190,28 @@ static int evict_oldest(void)
+     return 1;
+ }
+ 
++static void redo_clear(void)
++{
++    StEasy *ez = st_easy();
++    if (ez) { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 0; }
++}
++
+ void ed_reset(void)
+ {
+     studio.undo_used = 0;
+     studio.undo_open = 0;
+     studio.undo_steps = 0;
++    redo_clear();
+ }
+ 
+-void ed_touch(const void *field, int len)
++/* the journal's record writer. keep_redo = 1 from ed_redo (it is consuming the redo journal), else a step's first
++ * record (a fresh edit) empties it. */
++static void touch_rec(const void *field, int len, int keep_redo)
+ {
+     const uint8_t *base = (const uint8_t *)&studio.song, *p = (const uint8_t *)field;
+     int off, enc;
+     if (p < base || len <= 0 || p + len > base + sizeof(DoomoSong)) return;
++    if (!keep_redo && !studio.undo_open) redo_clear();
+     off = (int)(p - base);
+     enc = rle_encode(p, len, NULL, 0);
+     if (enc + 6 > STUDIO_UNDO_BYTES) {
+@@ -219,11 +233,16 @@ void ed_touch(const void *field, int len)
+     studio.undo_open = 1;
+ }
+ 
++void ed_touch(const void *field, int len) { touch_rec(field, len, 0); }
++
+ void ed_commit(void)
+ {
++    StEasy *ez;
+     if (studio.undo_open == 1) recount();
+     studio.undo_open = 0;
+     studio.dirty = 1;
++    ez = st_easy();
++    if (ez) ez->edited = 1;                /* the one-line help has done its job */
+ }
+ 
+ int ed_undo_steps(void) { return studio.undo_steps; }
+@@ -247,25 +266,87 @@ void ed_commit_key(int key)
+     coal_used = studio.undo_used;
+ }
+ 
++/* ST-EASY: save the bytes [off, off + len) of the working song as one redo record (join: it belongs to the step the
++ * previous record started). 0 = no room. */
++static int redo_push(StEasy *ez, int off, int len, int join)
++{
++    const uint8_t *src = (const uint8_t *)&studio.song + off;
++    int enc = rle_encode(src, len, NULL, 0);
++    uint8_t *tr;
++    if (ez->redo_used + enc + 6 > STUDIO_REDO_BYTES) return 0;
++    rle_encode(src, len, ez->redo + ez->redo_used, STUDIO_REDO_BYTES - ez->redo_used);
++    tr = ez->redo + ez->redo_used + enc;
++    wr16(tr, (uint32_t)off);
++    wr16(tr + 2, (uint32_t)len | (join ? JOIN : 0));
++    wr16(tr + 4, (uint32_t)enc);
++    ez->redo_used = (uint16_t)(ez->redo_used + enc + 6);
++    return 1;
++}
++
+ int ed_undo(void)
+ {
++    StEasy *ez;
++    int first = 1, keep;
+     if (studio.undo_open) ed_commit();
+     if (studio.undo_used < 6) return 0;
++    ez = st_easy();
++    keep = ez != NULL;
++    coal_key = -1;
+     for (;;) {
+         uint8_t *tr = studio.undo + studio.undo_used - 6;
+         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+         int join = (ln & JOIN) != 0;
+         ln &= ~JOIN;
+-        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used)
++        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
++            /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
++            if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
++            first = 0;
+             rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
++        }
+         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
+         if (!join || studio.undo_used < 6) break;
+     }
++    if (ez) {
++        if (keep && !first) { if (ez->redo_steps < 255) ez->redo_steps++; ez->redo_lost = 0; }
++        else { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 1; }   /* it did not fit: no redo (never half a step) */
++    }
+     recount();
+     studio.dirty = 1;
+     return 1;
+ }
+ 
++int ed_redo_steps(void)
++{
++    StEasy *ez = st_easy();
++    return ez ? ez->redo_steps : 0;
++}
++
++/* The step the last undo took back. Each redo record is the "after" image of a range; replaying it first puts the
++ * range's current bytes on the undo journal as one step (touch_rec, keep_redo). */
++int ed_redo(void)
++{
++    StEasy *ez = st_easy();
++    if (!ez || ez->redo_used < 6) return 0;
++    if (studio.undo_open) ed_commit();
++    coal_key = -1;
++    for (;;) {
++        uint8_t *tr = ez->redo + ez->redo_used - 6;
++        uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
++        int join = (ln & JOIN) != 0;
++        ln &= ~JOIN;
++        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= ez->redo_used) {
++            touch_rec((const uint8_t *)&studio.song + off, (int)ln, 1);
++            rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
++        }
++        ez->redo_used = (uint16_t)(ez->redo_used - 6 - (int)enc);
++        if (!join || ez->redo_used < 6) break;
++    }
++    if (ez->redo_steps) ez->redo_steps--;
++    ez->redo_lost = 0;
++    ed_commit();
++    return 1;
++}
++
+ /* ====================================================================== */
+ /* popups                                                                   */
+ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
+@@ -602,10 +683,15 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
+ 
+ #if ST_BAKE
+ #define BAKE_TAG   0x53424B45u          /* 'SBKE' */
++static void ez_init(StEasy *e)
++{
++    memset(e, 0, sizeof(*e));
++    e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
++}
+ #define BAKE_ENTS  40
+ #define BAKE_POOL  10752                /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+ typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
+-typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; } BakeSt;
++typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */
+ DOOMO_STATIC_ASSERT(sizeof(BakeSt) <= DOOMO_SCENE_SCRATCH, studio_bake_fits_scratch);
+ static BakeSt *bake_st;
+ 
+@@ -613,10 +699,16 @@ static BakeSt *bake_get(void)
+ {
+     if (bake_st && scene_scratch_mine(BAKE_TAG)) return bake_st;
+     bake_st = (BakeSt *)scene_scratch(BAKE_TAG, (uint32_t)sizeof(BakeSt));
+-    if (bake_st) { bake_st->top = 0; bake_st->n = 0; }
++    if (bake_st) { bake_st->top = 0; bake_st->n = 0; ez_init(&bake_st->ez); }
+     return bake_st;
+ }
+ 
++StEasy *st_easy(void)
++{
++    BakeSt *b = bake_get();
++    return b ? &b->ez : NULL;
++}
++
+ typedef StBakeFn BakeFn;
+ 
+ /* Draws fn(x, y, a) as one image of at most maxpix pixels; returns 0 (nothing drawn) when it cannot be baked, and the
+@@ -664,6 +756,20 @@ int st_bake(uint32_t k0, uint32_t k1, int x, int y, StBakeFn fn, const int *a, i
+     (void)k0; (void)k1; (void)x; (void)y; (void)fn; (void)a; (void)maxpix;
+     return 0;
+ }
++
++/* no baked images here: ST-EASY's state has the scratch to itself (no static pointer: scene_scratch_block()) */
++#define EZ_TAG 0x53455A59u              /* 'SEZY' */
++StEasy *st_easy(void)
++{
++    StEasy *e;
++    if (scene_scratch_mine(EZ_TAG)) return (StEasy *)scene_scratch_block();
++    e = (StEasy *)scene_scratch(EZ_TAG, (uint32_t)sizeof(StEasy));
++    if (e) {
++        memset(e, 0, sizeof(*e));
++        e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
++    }
++    return e;
++}
+ #endif
+ 
+ 
+@@ -712,11 +818,11 @@ static void draw_tabs(void)
+ {
+     const UiStyle *st = ui_style(WIN_CUTE);
+     int i, x = 4, y = 3, wide = 1, b = ui_wave((int)studio.t, 20, 1) > 0, total = 0;
+-    for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(tab_names[i]) + 22;
++    for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(st_tab_label(i)) + 22;
+     if (total > plat_screen_w() - 40) wide = 0;     /* names only on the current tab */
+     for (i = 0; i < STAB_COUNT; i++) {
+         int sel = i == studio.tab, w;
+-        const char *nm = tab_names[i];
++        const char *nm = st_tab_label(i);
+         w = (sel || wide) ? ui_text_width(nm) + 20 : 17;
+         if (sel) {
+             tab_pill_sel(x, y - 1 - b, w, st);
+@@ -724,8 +830,17 @@ static void draw_tabs(void)
+             ui_text_shadow(x + 15, y + 2 - b, nm, PAL_WHITE, ui_darker(st->accent));
+         } else {
+             tab_pill(x, y + 1, w, st);
+-            tab_icon(i, x + 8, y + 7, st->text_dim);
+-            if (wide) ui_text(x + 15, y + 3, nm, st->text_dim);
++            if (wide) {
++                tab_icon(i, x + 8, y + 7, st->text_dim);
++                ui_text(x + 15, y + 3, nm, st->text_dim);
++            } else {
++                /* ST-EASY: a short pill says where it is: L / R beside the current tab, else its number (one glyph:
++                 * cheaper than the icon, and it names the order) */
++                char hint[2] = { 0, 0 };
++                int d = (i - studio.tab + STAB_COUNT) % STAB_COUNT;
++                hint[0] = d == STAB_COUNT - 1 ? 'L' : d == 1 ? 'R' : (char)('1' + i);
++                ui_text(x + 6, y + 3, hint, st->text_dim);
++            }
+         }
+         x += w + 2;
+     }
+@@ -837,7 +952,7 @@ void studio_check_unlocks(void)
+     if (s->performed >= 3) unlock_grant(UL_STUDIO_TPL_DISCO);
+     if (s->inspired >= 1) unlock_grant(UL_STUDIO_KIT_BONES);
+     if (s->inspired >= 3) unlock_grant(UL_STUDIO_TPL_JAZZ);
+-    if (s->lines >= 20) unlock_grant(UL_STUDIO_WAVE_STATIC);
++    if (STUDIO_LINES(s) >= 20) unlock_grant(UL_STUDIO_WAVE_STATIC);
+     if (s->encores >= 1) unlock_grant(UL_STUDIO_TPL_SYNTH);
+     if (popcount16(s->genres) >= 4) unlock_grant(UL_STUDIO_KIT_FORGE);
+     if (s->best_choir >= 10) unlock_grant(UL_STUDIO_LAYOUT_PYRAMID);
+@@ -873,6 +988,8 @@ static void studio_enter(int arg)
+     studio.pop_n = 0;
+     studio.picking = 0;
+     studio.show = 0;
++    studio.help = 0;
++    if (arg != -1) studio.card = 0;        /* (-1: back from a pushed scene: the card stays as it was) */
+     studio.sel_held = studio.sel_used = 0;
+     studio.prev_music = (int16_t)audio_music_current();
+     audio_music(SONG_NONE);
+@@ -897,7 +1014,8 @@ static void studio_enter(int arg)
+         studio.tab = STAB_SONG;
+     } else if (arg == -2 || !(studio.song.flags & SONGF_VALID)) {
+         new_song();
+-        studio.tab = STAB_FILE;
++        studio.tab = STAB_SONG;
++        st_card_open();                    /* ST-EASY: an empty song opens on "Start a song" */
+     }
+     song_sanitize(SS);
+     if (arg != -1) {
+@@ -917,6 +1035,7 @@ static void studio_enter(int arg)
+     studio.muse = -1;
+     studio.sing_pos = -1;
+     studio.fmode = 0;
++    st_help_arm();
+ }
+ 
+ static void studio_leave(void)
+@@ -959,6 +1078,13 @@ static void global_input(void)
+         if (ed_undo()) { st_msg("Undo! (%d left)", ed_undo_steps()); audio_sfx(SFX_CANCEL); }
+         else { st_msg("Nothing to undo"); audio_sfx(SFX_ERROR); }
+     }
++    /* ST-EASY: redo (SELECT+A reads as X on a GBA), the "?" control card, START = play */
++    if (btn_pressed(BTN_X) || (studio.sel_held && btn_pressed(BTN_A))) {
++        if (ed_redo()) { st_msg("Redo! (%d more)", ed_redo_steps()); audio_sfx(SFX_SELECT); }
++        else { st_msg(st_easy() && st_easy()->redo_lost ? "Too big to redo" : "Nothing to redo"); audio_sfx(SFX_ERROR); }
++    }
++    if (studio.sel_held && btn_pressed(BTN_UP)) { st_help_open(); return; }
++    if (btn_pressed(BTN_START)) st_start();
+     if (btn_pressed(BTN_L2)) st_set_tab(studio.tab - 1);
+     if (btn_pressed(BTN_R2)) st_set_tab(studio.tab + 1);
+ }
+@@ -970,10 +1096,12 @@ static void studio_update(void)
+     studio.t++;
+     if (studio.tab_t < 60000) studio.tab_t++;
+     if (studio.msg_t) studio.msg_t--;
++    { StEasy *ez = st_easy(); if (ez && ez->help_t) ez->help_t--; }
+     song_tick();
+     studio_sel_tap = 0;
+     if (studio.picking) { st_picker_update(); return; }
+     if (studio.pop_n) { popup_update(); return; }
++    if (studio.help) { st_help_update(); return; }
+     if (studio.tab == STAB_STAGE && stage_fullscreen()) { tab_stage_update(); return; }
+     if (studio.t > 8 && tip_once(TIP_STUDIO)) return;               /* CL4: the tabs, once */
+     global_input();
+@@ -988,7 +1116,7 @@ static void studio_update(void)
+         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); return; }
+     }
+     switch (studio.tab) {
+-    case STAB_SONG: tab_song_update(); break;
++    case STAB_SONG: if (studio.card) st_card_update(); else tab_song_update(); break;
+     case STAB_NOTES: tab_notes_update(); break;
+     case STAB_ORDER: tab_order_update(); break;
+     case STAB_LYRICS: tab_lyrics_update(); break;
+@@ -1009,10 +1137,18 @@ static int modal_rect(int *x, int *y, int *w, int *h)
+     *x = *y = *w = *h = 0;
+     if ((studio.tab == STAB_STAGE && stage_fullscreen()) || studio.msg_t || (studio.pop_n && studio.picking)) return 0;
+     if (studio.pop_n && studio.pop_t >= 12) { popup_rect(x, y, w, h); return 1; }
++    if (studio.help && studio.pop_t >= 12) return st_help_rect(x, y, w, h);
+     if (studio.picking && pk.t >= 12) { picker_rect(x, y, w, h); return 1; }
+     return 0;
+ }
+ 
++/* ST-EASY: the control card, dimmed over the tab like a popup (not again over a held frame) */
++static void help_draw(void)
++{
++    if (!ST_HELD) plat_shade_rect(0, 0, plat_screen_w(), plat_screen_h(), 9);
++    st_help_draw();
++}
++
+ static void studio_draw(void)
+ {
+     StRect r;
+@@ -1021,6 +1157,7 @@ static void studio_draw(void)
+     if (ui_modal_hold(&studio, hold_ok, hx, hy, hw, hh)) {
+         st_held = 1;
+         if (studio.pop_n) popup_draw();
++        else if (studio.help) help_draw();
+         else st_picker_draw();
+         st_held = 0;
+         ui_modal_hold_end();
+@@ -1037,7 +1174,7 @@ static void studio_draw(void)
+     draw_backdrop(r);
+     draw_tabs();
+     switch (studio.tab) {
+-    case STAB_SONG: tab_song_draw(r); break;
++    case STAB_SONG: if (studio.card) st_card_draw(r); else tab_song_draw(r); break;
+     case STAB_NOTES: tab_notes_draw(r); break;
+     case STAB_ORDER: tab_order_draw(r); break;
+     case STAB_LYRICS: tab_lyrics_draw(r); break;
+@@ -1045,12 +1182,10 @@ static void studio_draw(void)
+     case STAB_STAGE: tab_stage_draw(r); break;
+     default: tab_file_draw(r); break;
+     }
+-    {
+-        UiPrompt pr[UI_PROMPTS_MAX];
+-        ui_prompts(pr, tab_prompts(studio.tab, pr), WIN_CUTE);
+-    }
++    st_bar_draw();
+     draw_msg();
+     if (studio.pop_n) popup_draw();
++    if (studio.help) help_draw();
+     if (studio.picking) st_picker_draw();
+     ui_modal_full(&studio, hold_ok);
+ }
+diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+index e11f4a1..18b9818 100644
+--- a/core/src/studio_edit.c
++++ b/core/src/studio_edit.c
+@@ -31,47 +31,51 @@ int tab_prompts(int tab, UiPrompt *p)
+ #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
+     switch (tab) {
+     case STAB_SONG:
++        if (studio.card) return st_card_prompts(p);              /* ST-EASY: "Start a song" */
+         if (studio.srow == 0) PR(BTN_A, 0, "Rename");
+         else PR(BTN_LEFT | BTN_RIGHT, 0, song_row_verb[studio.srow % DOOMO_COUNTOF(song_row_verb)]);
+-        PR(BTN_START, 1, "Play");
++        PR(BTN_START, 1, st_play_verb());
+         PR(BTN_SELECT, 3, "Tools");
+         PR(BTN_B, 2, "Exit");
+         break;
+     case STAB_NOTES:
+         if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); break; }
+         PR(BTN_A, 0, "Note");
+-        PR(BTN_B, 1, "Erase / tie");
+-        PR(BTN_L | BTN_R, 2, "Pattern");
+-        PR(BTN_START, 3, "Play");
++        PR(BTN_START, 1, st_play_verb());
++        PR(BTN_B, 2, "Erase / tie");
++        PR(BTN_L | BTN_R, 3, "Pattern");
+         PR(BTN_Y, 4, "Undo");
++        PR(BTN_X, 5, "Redo");
+         break;
+     case STAB_ORDER:
+         PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
+         PR(BTN_A, 0, "Insert");
+-        PR(BTN_START, 2, "Play");
++        PR(BTN_START, 2, st_play_verb());
+         PR(BTN_SELECT, 3, "Tools");
+         PR(BTN_B, 4, "Exit");
+         break;
+     case STAB_LYRICS:
+         PR(BTN_A, 0, "Write");
+         PR(BTN_LEFT | BTN_RIGHT, 1, "Who sings");
+-        PR(BTN_START, 2, "Fit");
+-        PR(BTN_SELECT, 3, "Sing");
++        PR(BTN_START, 2, st_play_verb());
++        PR(BTN_SELECT, 3, "Tools");
+         break;
+     case STAB_CHOIR:
+         PR(BTN_A, 0, "Pick");
+-        PR(BTN_START, 2, "Section");
++        PR(BTN_START, 2, st_play_verb());
+         PR(BTN_SELECT, 3, "Quick fill");
+         PR(BTN_B, 1, "Back");
+         break;
+     case STAB_STAGE:
+         if (stage_fullscreen()) { PR(BTN_B, 0, "Stop the show"); break; }
+         PR(BTN_A, 0, "Perform!");
++        PR(BTN_START, 3, st_play_verb());
+         PR(BTN_SELECT, 2, "Concert Hall");
+         PR(BTN_B, 1, "Back");
+         break;
+     default:
+         PR(BTN_A, 0, "Choose");
++        PR(BTN_START, 2, st_play_verb());
+         PR(BTN_L | BTN_R, 2, "Tabs");
+         PR(BTN_Y, 3, "Undo");
+         PR(BTN_B, 1, "Back");
+@@ -221,7 +225,6 @@ void tab_song_update(void)
+             song_value(studio.srow, 1);
+         }
+     }
+-    if (btn_pressed(BTN_START)) st_play_from(0);
+     if (studio_sel_tap) {
+         static const char *const items[4] = { "Re-compose music", "Key up", "Key down",
+                                               "Snap notes to scale" };
+@@ -492,10 +495,6 @@ void tab_notes_update(void)
+             ed_commit();
+             audio_sfx(SFX_BLIP);
+         }
+-        if (btn_pressed(BTN_START)) {
+-            if (song_playing()) song_stop();
+-            else song_play_pattern(s, studio.pat, studio.stp);
+-        }
+         if (studio_sel_tap) {
+             static const char *const items[7] = { "Copy pattern", "Paste pattern", "Copy track",
+                                                   "Paste track", "Clear track", "Track up a step",
+@@ -636,6 +635,11 @@ void tab_notes_draw(StRect r)
+                      3, PAL_PAINT(PAINT_ROSE, 1));
+     }
+     ui_scroll_arrows(r.x + 10, gy, gy + vis * 9 - 4, studio.ntop > 0, studio.ntop + vis < SONG_STEPS);
++    /* ST-EASY: the cursor's cell on one line, under the grid (studio_play.c; the text is cached, rebuilt when the cell moves) */
++    {
++        int ly = gy + vis * 9;
++        if (ly + 9 <= r.y + r.h - 18) ui_text(r.x + 6, ly, st_describe_cell(studio.pat, studio.trk, studio.stp), st->text_dim);
++    }
+     /* mini keyboard */
+     {
+         int v = s->notes[studio.pat][studio.trk][studio.stp];
+@@ -738,7 +742,6 @@ void tab_order_update(void)
+         ed_commit_key(KEY(2, studio.osel));
+         audio_sfx(SFX_CURSOR);
+     }
+-    if (btn_pressed(BTN_START)) st_play_from(studio.osel);
+     if (studio_sel_tap) {
+         static const char *const items[5] = { "Insert a copy", "Delete", "Move up", "Move down",
+                                               "Repeat on/off" };
+diff --git a/core/src/studio_file.c b/core/src/studio_file.c
+index 5168fc2..f50830c 100644
+--- a/core/src/studio_file.c
++++ b/core/src/studio_file.c
+@@ -1,11 +1,13 @@
+ /* studio_file.c - the Music Studio's FILE tab (owner: studio): the song
+- * book (6 pages, saved with the game in the 'SONG' chunk), new songs,
+- * templates, "Inspire me!", undo and the way out.
++ * book (6 pages, saved with the game in the 'SONG' chunk), new songs (the
++ * "Start a song" card), templates, "Inspire me!", undo / redo with their
++ * step counters, the Studio level (Easy / Advanced) and the way out.
++ * The list scrolls (ftop) when the screen is too short for all 13 rows.
+  */
+ #include "studio_int.h"
+ 
+-enum { FR_SLOT0 = 0, FR_NEW = SONG_BOOK_SIZE, FR_TEMPLATE, FR_INSPIRE, FR_UNDO, FR_LEAVE,
+-       FR_COUNT };
++enum { FR_SLOT0 = 0, FR_NEW = SONG_BOOK_SIZE, FR_TEMPLATE, FR_INSPIRE, FR_UNDO, FR_REDO, FR_LEVEL,
++       FR_LEAVE, FR_COUNT };
+ 
+ static int pending_slot, pending_tpl;
+ 
+@@ -85,8 +87,9 @@ static void do_new(int c)
+     SS->singer[0] = DOOMO_PLAYER_ID;
+     ed_commit();
+     studio.slot = -1;
+-    st_msg("A blank page. Make some noise!");
+     st_set_tab(STAB_SONG);
++    st_card_open();                          /* ST-EASY: a new song starts on the "Start a song" card */
++    audio_sfx(SFX_SELECT);
+ }
+ 
+ static void do_template(int c)
+@@ -99,6 +102,7 @@ static void do_template(int c)
+     ed_commit();
+     studio.slot = -1;
+     studio.fmode = 0;
++    studio.card = 0;
+     st_msg("Template: %s", studio_template_name(t));
+     audio_sfx(SFX_SPARKLE);
+     st_set_tab(STAB_SONG);
+@@ -115,6 +119,7 @@ static void muse_done(int id)
+     ed_commit();
+     studio.slot = -1;
+     if (studio_stats.inspired < 0xFFFF) studio_stats.inspired++;
++    studio.card = 0;
+     studio_check_unlocks();
+     st_msg("A %s song about %s!", doomo_music_names[SS->genre % MUSIC_COUNT], st_name(id));
+     audio_sfx(SFX_SPARKLE);
+@@ -128,6 +133,25 @@ static void ask_dirty(const char *q, StudioPopDone go)
+     else go(-2);
+ }
+ 
++/* the Start card's two shortcuts */
++void st_file_inspire(void)
++{
++    int muse = song_singer_id(SS, 0);
++    st_pick_citizen("Who inspires you?", muse >= 0 ? muse : DOOMO_PLAYER_ID, muse_done);
++}
++
++void st_file_templates(void)
++{
++    studio.fmode = 1;
++    st_set_tab(STAB_FILE);
++}
++
++/* rows that fit under the list's top edge (the book's divider adds 3 px below the pages) */
++static int file_vis(int rowh)
++{
++    return DOOMO_MAX(1, (st_content().h - 8 - 3) / rowh);
++}
++
+ void tab_file_update(void)
+ {
+     if (studio.fmode == 1) {
+@@ -149,7 +173,16 @@ void tab_file_update(void)
+     }
+     if (btn_repeat(BTN_UP)) { studio.fsel = (uint8_t)((studio.fsel + FR_COUNT - 1) % FR_COUNT); audio_sfx(SFX_CURSOR); }
+     if (btn_repeat(BTN_DOWN)) { studio.fsel = (uint8_t)((studio.fsel + 1) % FR_COUNT); audio_sfx(SFX_CURSOR); }
+-    if (btn_pressed(BTN_START)) st_play_from(0);
++    {
++        int vis = file_vis(st_wide() ? 14 : 10);
++        if (studio.fsel < studio.ftop) studio.ftop = studio.fsel;
++        if (studio.fsel >= studio.ftop + vis) studio.ftop = (uint8_t)(studio.fsel - vis + 1);
++        if (FR_COUNT <= vis) studio.ftop = 0;
++    }
++    if (studio.fsel == FR_LEVEL && (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT))) {
++        st_level_set(!st_level());
++        return;
++    }
+     if (!btn_pressed(BTN_A)) return;
+     if (studio.fsel < SONG_BOOK_SIZE) {
+         static const char *const full_items[4] = { "Save here", "Open", ("Favorite " STR_ICON_HEART), "Delete" };
+@@ -164,7 +197,7 @@ void tab_file_update(void)
+         return;
+     }
+     switch (studio.fsel) {
+-    case FR_NEW: ask_dirty("Start a blank song?", do_new); break;
++    case FR_NEW: ask_dirty("Start a new song?", do_new); break;
+     case FR_TEMPLATE: studio.fmode = 1; audio_sfx(SFX_SELECT); break;
+     case FR_INSPIRE: {
+         int muse = song_singer_id(SS, 0);
+@@ -174,6 +207,11 @@ void tab_file_update(void)
+         if (ed_undo()) { st_msg("Undone! (%d left)", ed_undo_steps()); audio_sfx(SFX_CANCEL); }
+         else { st_msg("Nothing to undo"); audio_sfx(SFX_ERROR); }
+         break;
++    case FR_REDO:
++        if (ed_redo()) { st_msg("Redone! (%d more)", ed_redo_steps()); audio_sfx(SFX_SELECT); }
++        else { st_msg(st_easy() && st_easy()->redo_lost ? "Too big to redo" : "Nothing to redo"); audio_sfx(SFX_ERROR); }
++        break;
++    case FR_LEVEL: st_level_set(!st_level()); break;
+     default: studio_try_leave(); break;
+     }
+ }
+@@ -221,12 +259,13 @@ static void draw_templates(StRect r)
+ void tab_file_draw(StRect r)
+ {
+     const UiStyle *st = ui_style(WIN_CREAM);
+-    int wide = st_wide(), rowh = wide ? 14 : 10, i, lw = r.w;
++    int wide = st_wide(), rowh = wide ? 14 : 10, i, lw = r.w, vis = file_vis(rowh), top = studio.ftop;
+     char buf[48];
+     if (studio.fmode == 1) { draw_templates(r); return; }
++    if (top + vis > FR_COUNT) top = DOOMO_MAX(0, FR_COUNT - vis);
+     st_panel(r.x, r.y, lw, r.h, WIN_CREAM);
+-    for (i = 0; i < FR_COUNT; i++) {
+-        int y = r.y + 4 + i * rowh + (i >= FR_NEW ? 3 : 0), sel = i == studio.fsel;
++    for (i = top; i < FR_COUNT; i++) {
++        int y = r.y + 4 + (i - top) * rowh + (i >= FR_NEW ? 3 : 0), sel = i == studio.fsel;
+         uint8_t tc = sel ? PAL_WHITE : st->text;
+         if (y + rowh > r.y + r.h) break;
+         if (sel) {
+@@ -251,20 +290,25 @@ void tab_file_draw(StRect r)
+                 ui_text(r.x + 28, ty, "- empty page -", sel ? PAL_WHITE : st->text_dim);
+             }
+         } else {
+-            static const char *const labels[] = { "New blank song", "New from a template...",
+-                                                  "Inspire me!", "Undo", "Leave the studio" };
++            static const char *const labels[] = { "New song...", "New from a template...",
++                                                  "Inspire me!", "Undo", "Redo", "Studio level", "Leave the studio" };
+             int ty = y + (rowh - 9) / 2;
+             if (i == FR_UNDO) doomo_snprintf(buf, sizeof(buf), "Undo (%d)", ed_undo_steps());
++            else if (i == FR_REDO) doomo_snprintf(buf, sizeof(buf), "Redo (%d)", ed_redo_steps());
++            else if (i == FR_LEVEL) doomo_snprintf(buf, sizeof(buf), "Studio level: %s", st_level() ? "Advanced" : "Easy");
+             else doomo_snprintf(buf, sizeof(buf), "%s", labels[i - FR_NEW]);
+             if (i == FR_INSPIRE) ui_sparkle(r.x + 19, y + rowh / 2 - 1, (int)(studio.t >> 1) & 15, PAL_PAINT(PAINT_LEMON, 1));
+             else if (i == FR_NEW) st_note_glyph(r.x + 15, ty, tc);
+             else if (i == FR_TEMPLATE) ui_star(r.x + 18, y + rowh / 2 - 1, 3, PAL_PAINT(PAINT_HONEY, 2));
+             else if (i == FR_UNDO) ui_text(r.x + 15, ty, STR_ICON_ARROW_L, tc);
++            else if (i == FR_REDO) ui_text(r.x + 15, ty, STR_ICON_ARROW_R, tc);
++            else if (i == FR_LEVEL) ui_text(r.x + 15, ty, "*", tc);
+             else ui_text(r.x + 15, ty, STR_ICON_HOUSE, tc);
+             ui_text(r.x + 28, ty, buf, tc);
+         }
+         if (i == SONG_BOOK_SIZE - 1) plat_rect(r.x + 10, y + rowh + 1, lw - 20, 1, st->fill_hi);
+     }
++    if (FR_COUNT > vis) ui_scroll_arrows(r.x + lw - 8, r.y + 3, r.y + r.h - 3, top > 0, top + vis < FR_COUNT);
+     if (wide) {
+         doomo_snprintf(buf, sizeof(buf), "Saved %d  Shows %d  Inspired %d", studio_stats.saved,
+                        studio_stats.performed, studio_stats.inspired);
+diff --git a/core/src/studio_gen.c b/core/src/studio_gen.c
+index 2e5a442..e953cdc 100644
+--- a/core/src/studio_gen.c
++++ b/core/src/studio_gen.c
+@@ -397,6 +397,20 @@ static void write_drums(DoomoSong *s, int pat, int groove, int role)
+ /* ====================================================================== */
+ /* compose                                                                  */
+ void studio_compose(DoomoSong *s, int genre, uint32_t seed)
++{
++    studio_compose_scale(s, genre, seed, -1);
++}
++
++/* the genre's own tempo range (studio_start.c: the Start card's Slow / Medium / Fast / Frantic) */
++void studio_style_bpm(int genre, int *lo, int *hi)
++{
++    const GenreStyle *st = &styles[DOOMO_CLAMP(genre, 0, MUSIC_COUNT - 1)];
++    *lo = st->bpm_lo;
++    *hi = st->bpm_hi;
++}
++
++/* scale: a SONG_SCALE_* to write in (the Start card's mood: it also picks the chord family), -1 = the genre's own */
++void studio_compose_scale(DoomoSong *s, int genre, uint32_t seed, int scale)
+ {
+     const GenreStyle *st;
+     DoomoRng r;
+@@ -409,7 +423,8 @@ void studio_compose(DoomoSong *s, int genre, uint32_t seed)
+     s->genre = (uint8_t)genre;
+     if (!s->bpm || !(s->flags & SONGF_CUSTOM) || !keep_order)
+         s->bpm = (uint8_t)rng_between(&r, st->bpm_lo, st->bpm_hi);
+-    s->scale = st->scale;
++    if (scale < 0 || scale >= SONG_SCALE_COUNT) scale = st->scale;
++    s->scale = (uint8_t)scale;
+     s->swing = st->swing;
+     memcpy(s->wave, st->wave, sizeof(s->wave));
+     memcpy(s->vol, st->vol, sizeof(s->vol));
+@@ -421,7 +436,7 @@ void studio_compose(DoomoSong *s, int genre, uint32_t seed)
+     }
+     /* chords: three different progressions */
+     {
+-        int minor = is_minorish(st->scale);
++        int minor = is_minorish(scale);
+         int n = minor ? DOOMO_COUNTOF(prog_minor) : DOOMO_COUNTOF(prog_major);
+         int ia = rng_range(&r, n), ib = (ia + 1 + rng_range(&r, n - 1)) % n, ic = rng_range(&r, n);
+         pa = minor ? prog_minor[ia] : prog_major[ia];
+diff --git a/core/src/studio_help.c b/core/src/studio_help.c
+new file mode 100644
+index 0000000..5020d71
+--- /dev/null
++++ b/core/src/studio_help.c
+@@ -0,0 +1,191 @@
++/* studio_help.c - ST-EASY: say what a tab is for and which buttons do what (owner: studio).
++ *
++ *  - st_tab_label():  the tab strip's names (plan 2.2: Start, Edit, Arrange, Words, Choir, Show, File)
++ *  - st_tab_help():   one line per tab (tab_help[]), at most 36 glyphs so it fits a 240 px bar. It replaces the
++ *                     prompt bar for a few seconds when a tab opens, until the first edit of the session
++ *  - the control card ("?" = SELECT + UP): a popup that lists this tab's buttons by the pad's own names (the
++ *                     prompt bar's glyph builder, ui_prompts_text) and the buttons every tab shares
++ *  - st_level():      the Studio level, Easy / Advanced (FILE). In st_easy() and in bit 15 of studio_stats.lines.
++ *                     Advanced shows no extra tools yet (ST-ADV): the switch and its saved state are real.
++ */
++#include "studio_int.h"
++
++static const char *const tab_label[STAB_COUNT] = { "Start", "Edit", "Arrange", "Words", "Choir", "Show", "File" };
++
++const char *st_tab_label(int tab) { return tab_label[(tab + STAB_COUNT) % STAB_COUNT]; }
++
++static const char *const tab_help[STAB_COUNT] = {
++    "Name, tempo, key and sounds here.",
++    STR_ICON_A " places a note, " STR_ICON_B " erases it.",
++    "The order the patterns play in.",
++    STR_ICON_A " writes the selected line.",
++    "Choose who sings; " STR_ICON_A " edits one.",
++    STR_ICON_A " starts the live show!",
++    "Save, open or start a new song."
++};
++
++const char *st_tab_help(int tab)
++{
++    if (tab == STAB_SONG && studio.card) return "Pick style and mood, then Make it!";
++    return tab_help[(tab + STAB_COUNT) % STAB_COUNT];
++}
++
++void st_help_arm(void)
++{
++    StEasy *ez = st_easy();
++    if (ez && !ez->edited) ez->help_t = 120;
++}
++
++void st_bar_draw(void)
++{
++    StEasy *ez = st_easy();
++    if (ez && ez->help_t && !ez->edited) { ui_hint(st_tab_help(studio.tab), WIN_CUTE); return; }
++    {
++        UiPrompt pr[UI_PROMPTS_MAX];
++        ui_prompts(pr, tab_prompts(studio.tab, pr), WIN_CUTE);
++    }
++}
++
++/* ---- the studio level ------------------------------------------------------------------------------ */
++int st_level(void)
++{
++    StEasy *ez = st_easy();
++    return ez ? ez->level : (studio_stats.lines & STUDIO_LINES_LEVEL) != 0;
++}
++
++void st_level_set(int level)
++{
++    StEasy *ez = st_easy();
++    level = level != 0;
++    if (ez) ez->level = (uint8_t)level;
++    if (level) studio_stats.lines |= STUDIO_LINES_LEVEL;
++    else studio_stats.lines &= (uint16_t)~STUDIO_LINES_LEVEL;
++    st_msg(level ? "Advanced: more tools soon" : "Easy: the simple view");
++    audio_sfx(SFX_SELECT);
++}
++
++/* ---- the control card ------------------------------------------------------------------------------ */
++#define CARD_ROWS_MAX 9
++static const UiPrompt card_song[] = {
++    { BTN_UP | BTN_DOWN, 0, "Pick a setting" },
++    { BTN_LEFT | BTN_RIGHT, 0, "Change its value" },
++    { BTN_A, 0, "Rename (title row)" },
++    { BTN_SELECT, 0, "Song tools" },
++};
++static const UiPrompt card_start[] = {
++    { BTN_UP | BTN_DOWN, 0, "Pick a row" },
++    { BTN_LEFT | BTN_RIGHT, 0, "Change style, mood..." },
++    { BTN_A, 0, "Make it / Shuffle / Open" },
++    { BTN_B, 0, "Skip: a blank song" },
++};
++static const UiPrompt card_notes[] = {
++    { BTN_A, 0, "Place the last note" },
++    { BTN_A, 0, "Hold, then Up / Down: pitch" },
++    { BTN_B, 0, "Erase, or tie a note" },
++    { BTN_L | BTN_R, 0, "Other pattern" },
++    { BTN_SELECT, 0, "Copy, paste, clear..." },
++};
++static const UiPrompt card_order[] = {
++    { BTN_UP | BTN_DOWN, 0, "Pick a pass" },
++    { BTN_LEFT | BTN_RIGHT, 0, "Change its pattern" },
++    { BTN_A, 0, "Add a copy below" },
++    { BTN_SELECT, 0, "Order tools" },
++};
++static const UiPrompt card_lyrics[] = {
++    { BTN_UP | BTN_DOWN, 0, "Pick a line" },
++    { BTN_A, 0, "Write the line" },
++    { BTN_LEFT | BTN_RIGHT, 0, "Who sings it" },
++    { BTN_SELECT, 0, "Sing, fit, write for me" },
++};
++static const UiPrompt card_choir[] = {
++    { BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT, 0, "Move over the choir" },
++    { BTN_A, 0, "Pick or edit a singer" },
++    { BTN_SELECT, 0, "Quick fill the choir" },
++    { BTN_B, 0, "Back" },
++};
++static const UiPrompt card_stage[] = {
++    { BTN_A, 0, "Start the live show" },
++    { BTN_SELECT, 0, "Concert Hall" },
++    { BTN_B, 0, "Back" },
++};
++static const UiPrompt card_file[] = {
++    { BTN_UP | BTN_DOWN, 0, "Pick a row" },
++    { BTN_A, 0, "Open the row" },
++    { BTN_LEFT | BTN_RIGHT, 0, "Studio level (its row)" },
++    { BTN_B, 0, "Back" },
++};
++
++/* this tab's rows, then the ones every tab has; returns the count (at most CARD_ROWS_MAX) */
++static int card_rows(UiPrompt *out)
++{
++    const UiPrompt *t;
++    int n, i, k = 0;
++    switch (studio.tab) {
++    case STAB_SONG: if (studio.card) { t = card_start; n = DOOMO_COUNTOF(card_start); }
++                    else { t = card_song; n = DOOMO_COUNTOF(card_song); } break;
++    case STAB_NOTES: t = card_notes; n = DOOMO_COUNTOF(card_notes); break;
++    case STAB_ORDER: t = card_order; n = DOOMO_COUNTOF(card_order); break;
++    case STAB_LYRICS: t = card_lyrics; n = DOOMO_COUNTOF(card_lyrics); break;
++    case STAB_CHOIR: t = card_choir; n = DOOMO_COUNTOF(card_choir); break;
++    case STAB_STAGE: t = card_stage; n = DOOMO_COUNTOF(card_stage); break;
++    default: t = card_file; n = DOOMO_COUNTOF(card_file); break;
++    }
++    for (i = 0; i < n; i++) out[k++] = t[i];
++    out[k].btn = BTN_START; out[k].prio = 0; out[k].verb = st_play_verb(); k++;
++    out[k].btn = BTN_Y; out[k].prio = 0; out[k].verb = "Undo a step"; k++;
++    out[k].btn = BTN_X; out[k].prio = 0; out[k].verb = "Redo a step"; k++;
++    out[k].btn = BTN_SELECT | BTN_L | BTN_R; out[k].prio = 0; out[k].verb = "Switch tab"; k++;
++    return DOOMO_MIN(k, CARD_ROWS_MAX);
++}
++
++void st_help_open(void)
++{
++    studio.help = 1;
++    studio.pop_t = 0;
++    audio_sfx(SFX_BLIP);
++}
++
++int st_help_is_open(void) { return studio.help; }
++
++void st_help_update(void)
++{
++    studio.pop_t++;
++    if (btn_pressed(BTN_A | BTN_B | BTN_START) || ((studio.sel_held || btn_down(BTN_SELECT)) && btn_pressed(BTN_UP))) {
++        studio.help = 0;
++        audio_sfx(SFX_CANCEL);
++        input_eat();
++    }
++}
++
++#define CARD_RH 11
++int st_help_rect(int *x, int *y, int *w, int *h)
++{
++    UiPrompt rows[CARD_ROWS_MAX + 4];
++    int n = card_rows(rows);
++    *w = plat_screen_w() - 8;
++    *h = 24 + n * CARD_RH + 4;
++    *x = 4;
++    *y = (plat_screen_h() - *h) / 2 + 3;
++    return 1;
++}
++
++void st_help_draw(void)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    UiPrompt rows[CARD_ROWS_MAX + 4];
++    char buf[96], title[24];
++    int n = card_rows(rows), i, x, y, w, h, yy;
++    st_help_rect(&x, &y, &w, &h);
++    if (!ui_window_pop(x, y, w, h, WIN_CREAM, studio.pop_t)) return;
++    doomo_snprintf(title, sizeof(title), "%s: buttons", st_tab_label(studio.tab));
++    ui_title(plat_screen_w() / 2, y - 5, title, WIN_CUTE);
++    ui_text(x + 8, y + 11, st_tab_help(studio.tab), st->text_dim);
++    yy = y + 24;
++    for (i = 0; i < n; i++) {
++        buf[0] = 0;
++        (void)ui_prompts_text(buf, (int)sizeof(buf), &rows[i], 1, 9999);
++        if (!buf[0]) continue;                  /* a button this pad does not have */
++        ui_text(x + 8, yy, buf, st->text);
++        yy += CARD_RH;
++    }
++}
+diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+index 941734e..a0287c4 100644
+--- a/core/src/studio_int.h
++++ b/core/src/studio_int.h
+@@ -11,6 +11,9 @@
+  *   studio_words.c  LYRICS + CHOIR tabs, the citizen picker
+  *   studio_stage.c  PERFORM: the choir show
+  *   studio_file.c   FILE tab: song book, templates, Inspire me
++ *   studio_start.c  ST-EASY: the "Start a song" card + studio_make_song
++ *   studio_play.c   ST-EASY: START = play (target named), the cursor's one-line description
++ *   studio_help.c   ST-EASY: one-line help, the control card, tab labels, Studio level
+  *   studio_gen.c    the composer, lyric writer, templates, choir fills
+  *   unlocks_studio.c unlock ids 240..255 + the activities table
+  *
+@@ -36,13 +39,18 @@ typedef struct StudioStats {
+     uint16_t saved;          /* songs saved to the song book              */
+     uint16_t performed;      /* stage shows finished                       */
+     uint16_t inspired;       /* "Inspire me!" songs                        */
+-    uint16_t lines;          /* lyric lines written                        */
++    uint16_t lines;          /* lyric lines written (bits 0..14); bit 15 = Studio level Advanced (ST-EASY) */
+     uint16_t genres;         /* bit per genre ever saved                   */
+     uint8_t  best_choir;     /* biggest choir that performed               */
+     uint8_t  encores;        /* standing ovations                          */
+ } StudioStats;
+ extern StudioStats studio_stats;
+ void studio_stats_reset(void);
++/* ST-EASY: the Studio level (Easy 0 / Advanced 1) lives in the spare top bit of `lines` (no new save tag: old
++ * saves read 0 = Easy). Count users mask it with STUDIO_LINES(). */
++#define STUDIO_LINES_LEVEL 0x8000u
++#define STUDIO_LINES_MASK  0x7FFFu
++#define STUDIO_LINES(s) ((s)->lines & STUDIO_LINES_MASK)
+ 
+ /* ---- unlocks (UL_CAT_MISC, list = STUL_*, index = the value) ------------------ */
+ enum { STUL_WAVE = 40, STUL_KIT, STUL_TEMPLATE, STUL_LAYOUT };
+@@ -73,6 +81,7 @@ void studio_check_unlocks(void);
+ 
+ /* ---- the scene state ---------------------------------------------------------- */
+ #define STUDIO_UNDO_BYTES 768
++#define STUDIO_REDO_BYTES 384        /* ST-EASY: the redo journal (scene scratch, not .bss) */
+ #define STUDIO_CROWD 11            /* the dark crowd: one short row of 5 behind a row of 6 */
+ 
+ typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
+@@ -86,6 +95,7 @@ typedef struct Studio {
+     int8_t   slot;              /* book slot the song belongs to, -1 none   */
+     uint8_t  dirty, active;
+     uint8_t  sel_held, sel_used;
++    uint8_t  card, help;        /* ST-EASY: the Start card is open on SONG / the control card is open */
+     /* SONG */
+     uint8_t  srow, stop;
+     /* NOTES */
+@@ -135,6 +145,25 @@ typedef struct Studio {
+ extern Studio studio;
+ #define SS (&studio.song)
+ 
++/* ---- ST-EASY state: lives in the shared scene scratch (on the GBA the tail of studio.c's BakeSt), not in .bss.
++ * st_easy() returns it, claiming + zeroing it when another scene took the scratch (the redo history is simply
++ * gone then; the level comes back from studio_stats). */
++#define STUDIO_DESC_LEN 44
++typedef struct StEasy {
++    uint16_t redo_used;
++    uint8_t  redo_steps;
++    uint8_t  level;             /* 0 Easy, 1 Advanced (mirrors studio_stats.lines bit 15) */
++    uint8_t  edited;            /* an edit was made this session: the one-line help stops */
++    uint8_t  redo_lost;         /* the last undo was too big to keep for a redo (say so) */
++    uint8_t  csel, style, mood, tempo, length;   /* the Start card */
++    uint16_t help_t;            /* ticks of the one-line help left on the bar */
++    uint32_t seed;              /* the Start card's seed */
++    uint32_t desc_key;          /* NOTES cursor line cache */
++    char     desc[STUDIO_DESC_LEN];
++    uint8_t  redo[STUDIO_REDO_BYTES];
++} StEasy;
++StEasy *st_easy(void);
++
+ /* ---- studio.c: shared services ------------------------------------------------ */
+ void st_msg(const char *fmt, ...);
+ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
+@@ -153,6 +182,8 @@ int  ed_undo(void);
+ void ed_touch_key(int key, const void *field, int len);
+ void ed_commit_key(int key);
+ int  ed_undo_steps(void);
++int  ed_redo(void);                     /* ST-EASY: 1 = redone; the step the last undo took back */
++int  ed_redo_steps(void);
+ void ed_reset(void);
+ /* look */
+ uint8_t st_track_color(int t, int shade);    /* shade 0 dark, 1 base, 2 light */
+@@ -205,9 +236,51 @@ void stage_draw_full(void);
+ void stage_start(void);
+ void stage_leave(void);
+ 
++/* ---- studio_start.c / studio_play.c / studio_help.c (ST-EASY) --------------------- */
++enum { SMOOD_HAPPY, SMOOD_SWEET, SMOOD_SAD, SMOOD_SPOOKY, SMOOD_FIERCE, SMOOD_COUNT };
++enum { STEMPO_SLOW, STEMPO_MEDIUM, STEMPO_FAST, STEMPO_FRANTIC, STEMPO_COUNT };
++enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };
++typedef struct StartPick { uint8_t style, mood, tempo, length; uint32_t seed; } StartPick;
++/* A whole working song from four picks and a seed: a pure function of (picks, the song's choir and words). */
++void studio_make_song(DoomoSong *s, const StartPick *p);
++int  studio_pick_bpm(int style, int tempo);
++int  studio_pick_passes(int length);            /* order passes (2 bars each) */
++const char *studio_style_name(int style);        /* the friendly short name */
++const char *studio_mood_name(int mood);
++const char *studio_tempo_name(int tempo);
++const char *studio_length_name(int length);
++void st_card_open(void);                         /* the Start card (on SONG) */
++void st_card_close(void);
++void st_card_update(void);
++void st_card_draw(StRect r);
++int  st_card_prompts(UiPrompt *p);
++void st_file_inspire(void);                      /* studio_file.c: the Inspire me! picker */
++void st_file_templates(void);
++/* START: play, with the target named ("Play song" / "Play from here", "Stop" while playing) */
++const char *st_play_verb(void);
++void st_start(void);
++/* the cursor's cell on NOTES as one line (text is cached in st_easy) */
++const char *st_describe_cell(int pat, int trk, int stp);
++int  st_describe_text(char *out, int cap, int maxw, int pat, int trk, int stp);
++/* help: one line per tab, the control card, labels, level */
++const char *st_tab_help(int tab);
++const char *st_tab_label(int tab);
++void st_help_arm(void);                          /* show the one-line help on the bar (until the first edit) */
++void st_bar_draw(void);                          /* the bottom bar: help line or the tab's prompts */
++void st_help_open(void);
++int  st_help_is_open(void);
++void st_help_update(void);
++void st_help_draw(void);
++int  st_help_rect(int *x, int *y, int *w, int *h);
++int  st_level(void);
++void st_level_set(int level);
++
+ /* ---- studio_gen.c --------------------------------------------------------------- */
+ /* Compose music only (patterns, order, instruments) for a genre. */
+ void studio_compose(DoomoSong *s, int genre, uint32_t seed);
++/* The same with the key mode forced (a SONG_SCALE_*, or -1 = the genre's own): the Start card's mood. */
++void studio_compose_scale(DoomoSong *s, int genre, uint32_t seed, int scale);
++void studio_style_bpm(int genre, int *lo, int *hi);
+ /* Lyrics + title about a citizen (their likes, fears, catchphrase, friends). */
+ void studio_write_lyrics(DoomoSong *s, int muse, uint32_t seed);
+ /* Music + lyrics + a small choir around the muse. */
+diff --git a/core/src/studio_play.c b/core/src/studio_play.c
+new file mode 100644
+index 0000000..f05835c
+--- /dev/null
++++ b/core/src/studio_play.c
+@@ -0,0 +1,124 @@
++/* studio_play.c - ST-EASY: START plays, and says what it plays; the cursor's cell described (owner: studio).
++ *
++ * START on every tab plays, and a second press stops. The prompt bar names the target:
++ *   "Play from here"  NOTES (the pattern from the cursor step, looping), ORDER (from the selected pass),
++ *                     LYRICS (from the pass that sings the selected line)
++ *   "Play song"       every other tab (and a LYRICS line that no pass sings)
++ *   "Stop"            while anything plays
++ * One function decides the target (target()), so the words and the action cannot drift apart.
++ *
++ * st_describe_text() is NOTES' one-line description of the cell under the cursor, e.g.
++ *   "Bar 2, beat 3, Lead: E4 (3rd of C)"; it falls back to shorter forms until it fits maxw pixels.
++ */
++#include "studio_int.h"
++
++enum { TG_SONG, TG_PATTERN, TG_ORDER };
++
++static int target(int *pos)
++{
++    *pos = 0;
++    switch (studio.tab) {
++    case STAB_NOTES: return TG_PATTERN;
++    case STAB_ORDER: *pos = studio.osel; return TG_ORDER;
++    case STAB_LYRICS: {
++        int p = studio_line_pos(SS, studio.lsel);
++        if (p >= 0) { *pos = p; return TG_ORDER; }
++        return TG_SONG;
++    }
++    default: return TG_SONG;
++    }
++}
++
++const char *st_play_verb(void)
++{
++    int pos;
++    if (song_playing()) return "Stop";
++    return target(&pos) == TG_SONG ? "Play song" : "Play from here";
++}
++
++void st_start(void)
++{
++    int pos, k;
++    if (song_playing()) {
++        song_stop();
++        audio_sfx(SFX_CANCEL);
++        return;
++    }
++    k = target(&pos);
++    if (k == TG_PATTERN) song_play_pattern(SS, studio.pat, studio.stp);
++    else song_play_at(SS, -1, pos, 0);
++}
++
++/* ---- the cursor's cell ----------------------------------------------------------------------------- */
++static const char *const track_name[SONG_TRACKS] = { "Lead", "Harmony", "Bass", "Drums" };
++static const char *const interval_name[12] = {
++    "root", "flat 2nd", "2nd", "flat 3rd", "3rd", "4th", "flat 5th", "5th", "flat 6th", "6th", "flat 7th", "7th"
++};
++
++int st_describe_text(char *out, int cap, int maxw, int pat, int trk, int stp)
++{
++    const DoomoSong *s = SS;
++    int v, bar, beat, k;
++    char what[8], note[28], full[STUDIO_DESC_LEN];
++    const char *tn;
++    pat &= 3; trk &= 3; stp &= 31;
++    v = s->notes[pat][trk][stp];
++    bar = stp / 16 + 1;
++    beat = (stp % 16) / 4 + 1;
++    tn = track_name[trk];
++    what[0] = 0;
++    note[0] = 0;
++    if (trk == 3) {
++        if (v > 0 && v < SONG_DRUM_COUNT) doomo_snprintf(what, sizeof(what), "%s", doomo_song_drum_names[v]);
++        else doomo_snprintf(what, sizeof(what), "rest");
++    } else if (v >= 2) {
++        int iv = ((v - s->key) % 12 + 12) % 12;
++        song_note_name(v, what);
++        if (song_scale_snap(s, v) == v)
++            doomo_snprintf(note, sizeof(note), "%s of %s", interval_name[iv], doomo_song_key_names[s->key % 12]);
++        else
++            doomo_snprintf(note, sizeof(note), "off the scale");
++    } else {
++        doomo_snprintf(what, sizeof(what), v == SONG_HOLD ? "hold" : "rest");
++    }
++    /* longest form first; each shorter one drops something */
++    for (k = 0; k < 5; k++) {
++        switch (k) {
++        case 0: doomo_snprintf(full, sizeof(full), note[0] ? "Bar %d, beat %d, %s: %s (%s)" : "Bar %d, beat %d, %s: %s%s",
++                               bar, beat, tn, what, note); break;
++        case 1: {
++            /* without "of C" */
++            char *of = strstr(note, " of ");
++            if (of) *of = 0;
++            doomo_snprintf(full, sizeof(full), note[0] ? "Bar %d, beat %d, %s: %s (%s)" : "Bar %d, beat %d, %s: %s%s",
++                           bar, beat, tn, what, note);
++            break; }
++        case 2: doomo_snprintf(full, sizeof(full), note[0] ? "Bar %d.%d %s %s (%s)" : "Bar %d.%d %s %s%s",
++                               bar, beat, tn, what, note); break;
++        case 3: doomo_snprintf(full, sizeof(full), note[0] ? "%s %s (%s)" : "%s %s%s", tn, what, note); break;
++        default: doomo_snprintf(full, sizeof(full), "%s %s", tn, what); break;
++        }
++        if (ui_text_width(full) <= maxw || k == 4) break;
++    }
++    doomo_snprintf(out, cap, "%s", full);
++    return ui_text_width(out);
++}
++
++/* the same, cached in the scene scratch: rebuilt only when the cell, the key / scale or the width change */
++const char *st_describe_cell(int pat, int trk, int stp)
++{
++    StEasy *ez = st_easy();
++    int maxw = st_content().w - 12, v;
++    uint32_t key;
++    if (!ez) return "";
++    pat &= 3; trk &= 3; stp &= 31;
++    v = SS->notes[pat][trk][stp];
++    key = (uint32_t)pat | (uint32_t)trk << 2 | (uint32_t)stp << 4 | (uint32_t)v << 9 | (uint32_t)(SS->key % 12) << 17 |
++          (uint32_t)SS->scale << 21 | (uint32_t)((maxw >> 1) & 255) << 24;
++    key = key * 2654435761u + 1u;
++    if (!ez->desc[0] || ez->desc_key != key) {
++        (void)st_describe_text(ez->desc, (int)sizeof(ez->desc), maxw, pat, trk, stp);
++        ez->desc_key = key;
++    }
++    return ez->desc;
++}
+diff --git a/core/src/studio_start.c b/core/src/studio_start.c
+new file mode 100644
+index 0000000..1b222c3
+--- /dev/null
++++ b/core/src/studio_start.c
+@@ -0,0 +1,208 @@
++/* studio_start.c - ST-EASY: the "Start a song" card (docs/design/STUDIO_PLAN.md 2.1) (owner: studio).
++ *
++ * Shown on the SONG tab when the studio opens on an empty song and on "New song" (FILE):
++ *   Style   one of the 16 composer styles by a short friendly name
++ *   Mood    Happy / Sweet / Sad / Spooky / Fierce  = the key mode (and with it the chord family) + the key
++ *   Tempo   Slow / Medium / Fast / Frantic         = the style's own bpm range, four points
++ *   Length  Short / Song / Long                    = 8 / 12 / 16 order passes (16 / 24 / 32 bars)
++ *   Shuffle (a new seed, the same picks, plays at once)   Make it! (compose with this seed, play, card closes)
++ *   Inspire me! and Templates (the same ones as on FILE)
++ * studio_make_song() is a pure function of the picks, the seed and the song's choir / words: the same picks and
++ * seed always give the same song, so "what Shuffle played" is what "Make it!" keeps.
++ * The card's state (row, picks, seed) lives in the scene scratch (st_easy()); only the open flag is in `studio`.
++ */
++#include "studio_int.h"
++
++enum { CR_STYLE, CR_MOOD, CR_TEMPO, CR_LENGTH, CR_SHUFFLE, CR_MAKE, CR_INSPIRE, CR_TEMPLATES, CR_COUNT };
++
++static const char *const style_names[MUSIC_COUNT] = {
++    "Bubblegum", "Lo-fi", "City Pop", "Chiptune", "Lullaby", "Jazz", "Classical", "Folk", "Disco", "Shanty",
++    "Hymn", "Synthwave", "Goth", "Punk", "Doom", "Industrial"
++};
++static const char *const mood_names[SMOOD_COUNT] = { "Happy", "Sweet", "Sad", "Spooky", "Fierce" };
++static const char *const tempo_names[STEMPO_COUNT] = { "Slow", "Medium", "Fast", "Frantic" };
++static const char *const length_names[SLEN_COUNT] = { "Short", "Song", "Long" };
++/* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D */
++static const uint8_t mood_scale[SMOOD_COUNT] = { SONG_SCALE_MAJOR, SONG_SCALE_PENTATONIC, SONG_SCALE_MINOR,
++                                                SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_BLUES };
++static const uint8_t mood_key[SMOOD_COUNT] = { 0, 5, 9, 4, 2 };
++
++const char *studio_style_name(int style) { return style_names[DOOMO_CLAMP(style, 0, MUSIC_COUNT - 1)]; }
++const char *studio_mood_name(int mood) { return mood_names[DOOMO_CLAMP(mood, 0, SMOOD_COUNT - 1)]; }
++const char *studio_tempo_name(int tempo) { return tempo_names[DOOMO_CLAMP(tempo, 0, STEMPO_COUNT - 1)]; }
++const char *studio_length_name(int length) { return length_names[DOOMO_CLAMP(length, 0, SLEN_COUNT - 1)]; }
++
++int studio_pick_bpm(int style, int tempo)
++{
++    int lo, hi, bpm;
++    studio_style_bpm(style, &lo, &hi);
++    switch (DOOMO_CLAMP(tempo, 0, STEMPO_COUNT - 1)) {
++    case STEMPO_SLOW: bpm = lo - 6; break;
++    case STEMPO_MEDIUM: bpm = (lo + hi) / 2; break;
++    case STEMPO_FAST: bpm = hi; break;
++    default: bpm = hi + 20; break;
++    }
++    return DOOMO_CLAMP(bpm, 60, 220);
++}
++
++int studio_pick_passes(int length)
++{
++    static const uint8_t passes[SLEN_COUNT] = { 8, 12, SONG_ORDER_MAX };
++    return passes[DOOMO_CLAMP(length, 0, SLEN_COUNT - 1)];
++}
++
++void studio_make_song(DoomoSong *s, const StartPick *p)
++{
++    /* the order lists: intro hook 3, verse 0, chorus 1, bridge 2; every one ends on the chorus */
++    static const uint8_t ord8[8] = { 3, 0, 0, 1, 0, 1, 2, 1 };
++    static const uint8_t ord12[12] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1 };
++    static const uint8_t ord16[16] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 0, 1, 2, 1, 1, 1 };
++    int style = DOOMO_CLAMP(p->style, 0, MUSIC_COUNT - 1), mood = DOOMO_CLAMP(p->mood, 0, SMOOD_COUNT - 1);
++    int n = studio_pick_passes(p->length);
++    const uint8_t *ord = n <= 8 ? ord8 : n <= 12 ? ord12 : ord16;
++    s->flags |= SONGF_VALID | SONGF_CUSTOM;
++    s->key = mood_key[mood];
++    s->order_len = 1;                         /* a fresh order: the composer lays its own, we replace it below */
++    studio_compose_scale(s, style, p->seed, mood_scale[mood]);
++    s->bpm = (uint8_t)studio_pick_bpm(style, p->tempo);
++    memset(s->order, 0, sizeof(s->order));
++    memcpy(s->order, ord, (size_t)n);
++    s->order_len = (uint8_t)n;
++    if (!s->title[0] || !memcmp(s->title, "New Song", 9) || !memcmp(s->title, "Untitled", 9))
++        doomo_snprintf(s->title, SONG_TITLE_LEN, "My %s", style_names[style]);
++}
++
++/* ---- the card ------------------------------------------------------------------------------------ */
++static void pick_of(const StEasy *ez, StartPick *p)
++{
++    p->style = ez->style; p->mood = ez->mood; p->tempo = ez->tempo; p->length = ez->length; p->seed = ez->seed;
++}
++
++void st_card_open(void)
++{
++    StEasy *ez = st_easy();
++    studio.card = 1;
++    if (!ez) { studio.card = 0; return; }
++    ez->csel = CR_MAKE;
++    ez->style = 0;
++    ez->mood = SMOOD_HAPPY;
++    ez->tempo = STEMPO_MEDIUM;
++    ez->length = SLEN_SONG;
++    ez->seed = doomo_hash32(doomo_frame_count() * 2654435761u + 0x51ED27u) | 1u;
++    st_help_arm();
++}
++
++void st_card_close(void) { studio.card = 0; }
++
++static void make(StEasy *ez, int shuffle)
++{
++    StartPick p;
++    if (shuffle) ez->seed = doomo_hash32(ez->seed * 2246822519u + 0x9E3779B9u) | 1u;
++    pick_of(ez, &p);
++    song_stop();
++    ed_touch(SS, (int)sizeof(DoomoSong));
++    studio_make_song(SS, &p);
++    ed_commit();
++    studio.slot = -1;
++    song_play_at(SS, -1, 0, 0);
++    audio_sfx(SFX_SPARKLE);
++    if (shuffle) {
++        st_msg("%s %s, take %u", studio_mood_name(p.mood), studio_style_name(p.style), (unsigned)(p.seed % 100));
++    } else {
++        studio.card = 0;
++        st_msg("Made it! START stops the song");
++    }
++}
++
++static void change(StEasy *ez, int row, int d)
++{
++    switch (row) {
++    case CR_STYLE: ez->style = (uint8_t)((ez->style + d + MUSIC_COUNT) % MUSIC_COUNT); break;
++    case CR_MOOD: ez->mood = (uint8_t)((ez->mood + d + SMOOD_COUNT) % SMOOD_COUNT); break;
++    case CR_TEMPO: ez->tempo = (uint8_t)((ez->tempo + d + STEMPO_COUNT) % STEMPO_COUNT); break;
++    case CR_LENGTH: ez->length = (uint8_t)((ez->length + d + SLEN_COUNT) % SLEN_COUNT); break;
++    default: return;
++    }
++    audio_sfx(SFX_CURSOR);
++}
++
++void st_card_update(void)
++{
++    StEasy *ez = st_easy();
++    if (!ez) { studio.card = 0; return; }
++    if (btn_repeat(BTN_UP)) { ez->csel = (uint8_t)((ez->csel + CR_COUNT - 1) % CR_COUNT); audio_sfx(SFX_CURSOR); }
++    if (btn_repeat(BTN_DOWN)) { ez->csel = (uint8_t)((ez->csel + 1) % CR_COUNT); audio_sfx(SFX_CURSOR); }
++    if (btn_repeat(BTN_LEFT)) change(ez, ez->csel, -1);
++    if (btn_repeat(BTN_RIGHT)) change(ez, ez->csel, 1);
++    if (btn_pressed(BTN_A)) {
++        switch (ez->csel) {
++        case CR_SHUFFLE: make(ez, 1); break;
++        case CR_MAKE: make(ez, 0); break;
++        case CR_INSPIRE: st_file_inspire(); break;
++        case CR_TEMPLATES: st_file_templates(); break;
++        default: change(ez, ez->csel, 1); break;
++        }
++    } else if (btn_pressed(BTN_B)) {
++        studio.card = 0;
++        audio_sfx(SFX_CANCEL);
++        st_msg("A blank page. SEL+Up: help");
++        input_eat();
++    }
++}
++
++int st_card_prompts(UiPrompt *p)
++{
++    StEasy *ez = st_easy();
++    int n = 0, row = ez ? ez->csel : CR_MAKE;
++    static const char *const a_verb[CR_COUNT] = { "Next", "Next", "Next", "Next", "Shuffle", "Make it!",
++                                                  "Inspire me!", "Templates" };
++#define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
++    PR(BTN_A, 0, a_verb[row]);
++    if (row < CR_SHUFFLE) PR(BTN_LEFT | BTN_RIGHT, 1, "Change");
++    PR(BTN_START, 2, st_play_verb());
++    PR(BTN_B, 3, "Skip");
++#undef PR
++    return n;
++}
++
++void st_card_draw(StRect r)
++{
++    const UiStyle *st = ui_style(WIN_CREAM);
++    StEasy *ez = st_easy();
++    int wide = st_wide(), rowh = wide ? 16 : 12, i, top = r.y + (wide ? 22 : 17);
++    char buf[40];
++    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
++    ui_text(r.x + 10, r.y + 5, "Start a song", st->text);
++    st_note_glyph(r.x + r.w - 20, r.y + 3 + ui_wave((int)studio.t, 16, 1), st_pattern_color(0, 1));
++    st_note_glyph(r.x + r.w - 32, r.y + 4, st_pattern_color(1, 1));
++    if (!ez) return;
++    for (i = 0; i < CR_COUNT; i++) {
++        int y = top + i * rowh + (i >= CR_SHUFFLE ? 3 : 0), sel = i == ez->csel, ty = y + (rowh - 9) / 2;
++        uint8_t tc = sel ? PAL_WHITE : st->text;
++        static const char *const labels[CR_COUNT] = { "Style", "Mood", "Tempo", "Length", "Shuffle",
++                                                      "Make it!", "Inspire me!", "Templates..." };
++        if (sel) {
++            ui_round_rect(r.x + 3, y - 1, r.w - 6, rowh, 3, st->accent);
++            ui_cursor(r.x + 4, y + (rowh - 8) / 2);
++        }
++        if (i < CR_SHUFFLE) {
++            const char *v = "";
++            int bpm = 0;
++            switch (i) {
++            case CR_STYLE: v = studio_style_name(ez->style); break;
++            case CR_MOOD: v = studio_mood_name(ez->mood); break;
++            case CR_TEMPO: v = studio_tempo_name(ez->tempo); bpm = studio_pick_bpm(ez->style, ez->tempo); break;
++            default: v = studio_length_name(ez->length); bpm = -studio_pick_passes(ez->length) * 2; break;
++            }
++            ui_text(r.x + 14, ty, labels[i], sel ? PAL_WHITE : st->text_dim);
++            if (bpm > 0) doomo_snprintf(buf, sizeof(buf), "%s %s %s  %d bpm", sel ? "<" : " ", v, sel ? ">" : " ", bpm);
++            else if (bpm < 0) doomo_snprintf(buf, sizeof(buf), "%s %s %s  %d bars", sel ? "<" : " ", v, sel ? ">" : " ", -bpm);
++            else doomo_snprintf(buf, sizeof(buf), "%s %s %s", sel ? "<" : " ", v, sel ? ">" : " ");
++            ui_text(r.x + (wide ? 76 : 58), ty, buf, tc);
++        } else {
++            if (i == CR_SHUFFLE) ui_sparkle(r.x + 19, y + rowh / 2 - 1, (int)(studio.t >> 1) & 15, PAL_PAINT(PAINT_LEMON, 1));
++            else if (i == CR_MAKE) ui_star(r.x + 18, y + rowh / 2 - 1, 3, PAL_PAINT(PAINT_HONEY, 2));
++            ui_text(r.x + 28, ty, labels[i], tc);
++        }
++    }
++}
+diff --git a/core/src/studio_words.c b/core/src/studio_words.c
+index ebe5f6a..63ce1c3 100644
+--- a/core/src/studio_words.c
++++ b/core/src/studio_words.c
+@@ -56,7 +56,7 @@ static void lyric_done(int ok)
+     memcpy(line, studio.edit, strlen(studio.edit) < SONG_LYRIC_LEN ? strlen(studio.edit)
+                                                                    : SONG_LYRIC_LEN - 1);
+     ed_commit();
+-    if (line[0] && studio_stats.lines < 0xFFFF) studio_stats.lines++;
++    if (line[0] && STUDIO_LINES(&studio_stats) < STUDIO_LINES_MASK) studio_stats.lines++;
+     studio_check_unlocks();
+     audio_sfx(SFX_HAPPY);
+ }
+@@ -141,6 +141,13 @@ static void lyric_tools(int c)
+         memset(SS->lyrics[studio.lsel], 0, SONG_LYRIC_LEN);
+         ed_commit();
+         break;
++    case 5:                                   /* was START (START plays now): fit one line to its notes */
++        ed_touch(SS->notes, (int)sizeof(SS->notes));
++        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
++        if (studio_autofit(SS, studio.lsel)) { st_msg("Line %d fits now!", studio.lsel + 1); audio_sfx(SFX_SPARKLE); }
++        else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
++        ed_commit();
++        break;
+     default: break;
+     }
+ }
+@@ -161,18 +168,11 @@ void tab_lyrics_update(void)
+         memcpy(studio.edit, SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
+         ui_text_entry(prompt, studio.edit, SONG_LYRIC_LEN, lyric_done);
+     }
+-    if (btn_pressed(BTN_START)) {
+-        ed_touch(SS->notes, (int)sizeof(SS->notes));
+-        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
+-        if (studio_autofit(SS, studio.lsel)) { st_msg("Line %d fits now!", studio.lsel + 1); audio_sfx(SFX_SPARKLE); }
+-        else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
+-        ed_commit();
+-    }
+     if (studio_sel_tap) {
+-        static const char *const items[5] = { "Sing this line", "Auto-fit all lines",
++        static const char *const items[6] = { "Sing this line", "Auto-fit all lines",
+                                               "Share out parts", "Write lyrics for me",
+-                                              "Clear this line" };
+-        st_popup("Lyric tools", items, 5, 0, lyric_tools);
++                                              "Clear this line", "Fit this line" };
++        st_popup("Lyric tools", items, 6, 0, lyric_tools);
+     }
+ }
+ 
+@@ -529,7 +529,6 @@ void tab_choir_update(void)
+                 st_pick_citizen("Who sings here?", DOOMO_PLAYER_ID, pick_done);
+             }
+         }
+-        if (btn_pressed(BTN_START) && song_singer_id(SS, studio.csel) >= 0) cycle_section(studio.csel);
+     }
+     if (studio_sel_tap) {
+         static const char *const items[8] = { "Friends of this singer", "Hillvile choir",
+diff --git a/core/tests/scripts/studio_easy.txt b/core/tests/scripts/studio_easy.txt
+new file mode 100644
+index 0000000..464cd10
+--- /dev/null
++++ b/core/tests/scripts/studio_easy.txt
+@@ -0,0 +1,110 @@
++# SCENE_STUDIO, ST-EASY (docs/design/STUDIO_PLAN.md 2.1 - 2.3): the "Start a song" card on an empty song
++# (style / mood / tempo / length, Shuffle, Make it!), the one-line help on the bar, START naming its target,
++# the NOTES cursor line, undo and redo, the "?" control card (SELECT + UP), the FILE list with Redo and the
++# Studio level row. Shots at both sizes; --check-prompts runs on every bar and help line.
++scene TITLE
++wait 2
++push STUDIO -2
++wait 20
++expect-scene STUDIO
++shot start_card
++press UP
++press UP
++press UP
++press UP
++press UP
++press RIGHT
++press DOWN
++press RIGHT
++press DOWN
++press RIGHT
++press DOWN
++press RIGHT
++wait 6
++shot start_card_picks
++press DOWN
++press A
++wait 40
++shot start_shuffle
++press DOWN
++press A
++wait 40
++shot start_made
++press START
++wait 6
++shot start_stopped
++press R
++wait 140
++shot edit_cursor_line
++press DOWN
++press DOWN
++press A
++wait 8
++shot edit_after_note
++down SELECT
++press B
++release
++wait 8
++shot undo_note
++down SELECT
++press A
++release
++wait 8
++shot redo_note
++down SELECT
++press UP
++release
++wait 20
++shot control_card_edit
++press B
++wait 6
++down SELECT
++press L
++release
++wait 4
++down SELECT
++press UP
++release
++wait 20
++shot control_card_start
++press B
++wait 6
++press R
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++wait 10
++shot file_top
++press UP
++wait 14
++shot file_leave
++press UP
++wait 14
++shot file_level
++press A
++wait 14
++shot file_advanced
++press A
++wait 14
++shot file_easy
++press UP
++press A
++wait 14
++shot file_redo
+diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+index f75ac5e..f8b17a2 100644
+--- a/core/tests/test_studio.c
++++ b/core/tests/test_studio.c
+@@ -793,10 +793,14 @@ TEST(studio_editor_writes_saves_and_reloads_a_song)
+     scene_set(&base_scene, 0);
+     scene_push(&SCENE_STUDIO, -2);
+     CHECK(scene_top() == &SCENE_STUDIO);
+-    CHECK_EQ(studio.tab, STAB_FILE);
+-    /* SONG: the title */
+-    press(BTN_R);
++    /* ST-EASY: an empty song opens on the Start card (SONG); B skips it, leaving the blank song */
+     CHECK_EQ(studio.tab, STAB_SONG);
++    CHECK(studio.card);
++    press(BTN_B);
++    CHECK(!studio.card);
++    CHECK(scene_top() == &SCENE_STUDIO);
++    CHECK_EQ(studio.tab, STAB_SONG);
++    /* SONG: the title */
+     press(BTN_A);
+     CHECK(scene_top() == &SCENE_TEXT_ENTRY);
+     for (i = 0; i < 12; i++) ui_text_entry_feed('\b');
+@@ -894,6 +898,7 @@ TEST(studio_editor_templates_inspire_and_stage)
+     town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
+     scene_set(&base_scene, 0);
+     scene_push(&SCENE_STUDIO, -2);
++    st_set_tab(STAB_FILE);
+     /* FILE: a template */
+     studio.fsel = SONG_BOOK_SIZE + 1;
+     press(BTN_A);
+@@ -943,6 +948,461 @@ TEST(studio_editor_templates_inspire_and_stage)
+     test_reset();
+ }
+ 
++/* ====================================================================== */
++/* ST-EASY (docs/design/STUDIO_PLAN.md 2.1, 2.2, 2.3)                       */
++static void open_blank_studio(void)
++{
++    test_reset();
++    town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
++    scene_set(&base_scene, 0);
++    scene_push(&SCENE_STUDIO, -2);
++}
++
++TEST(studio_make_song_is_deterministic_and_obeys_the_picks)
++{
++    static const uint8_t mood_scale[SMOOD_COUNT] = { SONG_SCALE_MAJOR, SONG_SCALE_PENTATONIC, SONG_SCALE_MINOR,
++                                                    SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_BLUES };
++    int st, mo;
++    for (st = 0; st < MUSIC_COUNT; st++) {
++        int tp, prev = 0;
++        for (tp = 0; tp < STEMPO_COUNT; tp++) {          /* four tempos, rising, in range */
++            int b = studio_pick_bpm(st, tp);
++            CHECK(b >= 60 && b <= 220);
++            CHECK(b >= prev);
++            prev = b;
++        }
++        CHECK(studio_pick_bpm(st, STEMPO_SLOW) < studio_pick_bpm(st, STEMPO_FRANTIC));
++        for (mo = 0; mo < SMOOD_COUNT; mo++) {
++            static DoomoSong a, b, c;
++            StartPick p;
++            int len, differs = 0, i, k;
++            p.style = (uint8_t)st; p.mood = (uint8_t)mo; p.tempo = STEMPO_FAST; p.length = SLEN_SONG; p.seed = 4242u + (uint32_t)st;
++            song_clear(&a); song_clear(&b); song_clear(&c);
++            studio_make_song(&a, &p);
++            studio_make_song(&b, &p);
++            CHECK(!memcmp(&a, &b, sizeof(a)));                /* a pure function of the picks and the seed */
++            CHECK_EQ(a.genre, st);
++            CHECK_EQ(a.scale, mood_scale[mo]);
++            CHECK_EQ(a.bpm, studio_pick_bpm(st, STEMPO_FAST));
++            CHECK_EQ(a.order_len, studio_pick_passes(SLEN_SONG));
++            CHECK(strlen(a.title) > 0 && strlen(a.title) < SONG_TITLE_LEN);
++            CHECK_EQ(song_sanitize(&a), 0);                   /* nothing out of range */
++            p.seed += 1;
++            studio_make_song(&c, &p);
++            for (k = 0; k < SONG_PATTERNS && !differs; k++)
++                for (i = 0; i < SONG_STEPS; i++)
++                    if (memcmp(a.notes[k][0], c.notes[k][0], SONG_STEPS)) { differs = 1; break; }
++            CHECK(differs);                                   /* another seed, another tune */
++            for (len = 0; len < SLEN_COUNT; len++) {
++                p.length = (uint8_t)len;
++                song_clear(&c);
++                studio_make_song(&c, &p);
++                CHECK_EQ(c.order_len, studio_pick_passes(len));
++                CHECK(c.order[c.order_len - 1] < SONG_PATTERNS);
++                CHECK(song_length_ticks(&c) > 0);
++            }
++        }
++    }
++    /* the order lists get longer: 16, 24 and 32 bars */
++    CHECK(studio_pick_passes(SLEN_SHORT) < studio_pick_passes(SLEN_SONG));
++    CHECK(studio_pick_passes(SLEN_SONG) < studio_pick_passes(SLEN_LONG));
++    CHECK_EQ(studio_pick_passes(SLEN_LONG), SONG_ORDER_MAX);
++}
++
++TEST(studio_start_card_opens_on_an_empty_song_and_makes_a_playing_song)
++{
++    int i;
++    open_blank_studio();
++    CHECK_EQ(studio.tab, STAB_SONG);
++    CHECK(studio.card);
++    CHECK_EQ(studio_stats.lines & STUDIO_LINES_LEVEL, 0);
++    /* a song that is already open does not show it again */
++    {
++        UiPrompt pr[UI_PROMPTS_MAX];
++        CHECK(tab_prompts(STAB_SONG, pr) >= 2);               /* the card's own bar */
++    }
++    /* it opens on Make it! (one press to a song); change the style (Right on row 0), the mood, the tempo, the length */
++    CHECK_EQ(st_easy()->csel, 5);
++    st_easy()->csel = 0;
++    press(BTN_RIGHT);
++    CHECK_EQ(st_easy()->style, 1);
++    press(BTN_DOWN); press(BTN_RIGHT);
++    CHECK_EQ(st_easy()->mood, SMOOD_SWEET);
++    press(BTN_DOWN); press(BTN_RIGHT);
++    CHECK_EQ(st_easy()->tempo, STEMPO_FAST);
++    press(BTN_DOWN); press(BTN_RIGHT);
++    CHECK_EQ(st_easy()->length, SLEN_LONG);
++    for (i = 0; i < 40 && st_easy()->csel != 4; i++) press(BTN_DOWN);
++    /* Shuffle: a new seed, the same picks, the song plays and the card stays */
++    {
++        uint32_t seed0 = st_easy()->seed;
++        press(BTN_A);
++        CHECK(studio.card);
++        CHECK(st_easy()->seed != seed0);
++        CHECK(song_playing());
++        CHECK_EQ(studio.song.genre, 1);
++        CHECK_EQ(studio.song.scale, SONG_SCALE_PENTATONIC);
++    }
++    /* Make it!: what Shuffle played is what is kept (same seed), the card closes, undo gives the blank back */
++    {
++        DoomoSong shuffled = studio.song;
++        press(BTN_DOWN);
++        press(BTN_A);
++        CHECK(!studio.card);
++        CHECK(song_playing());
++        CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
++        CHECK_EQ(studio.song.bpm, studio_pick_bpm(1, STEMPO_FAST));
++        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
++        CHECK(ed_undo());                                   /* Make it! again: the same song (same seed) */
++        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
++        CHECK(ed_redo_steps() == 1 || st_easy()->redo_lost);
++        CHECK(ed_undo());                                   /* the shuffle: the blank page */
++        CHECK_STR(studio.song.title, "New Song");
++    }
++    /* START stops it (second press) */
++    CHECK(!strcmp(st_play_verb(), "Stop"));
++    press(BTN_START);
++    CHECK(!song_playing());
++    test_reset();
++}
++
++TEST(studio_start_card_inspire_templates_and_skip_have_no_dead_end)
++{
++    open_blank_studio();
++    CHECK(studio.card);
++    /* Inspire me!: the same citizen picker as FILE, and the card goes away with the new song */
++    while (st_easy()->csel != 6) press(BTN_DOWN);
++    press(BTN_A);
++    CHECK(st_picker_open());
++    press(BTN_B);                                           /* cancelled: the card is still there */
++    CHECK(!st_picker_open());
++    CHECK(studio.card);
++    press(BTN_A);
++    press(BTN_DOWN);
++    press(BTN_A);
++    CHECK(!studio.card);
++    CHECK_EQ(studio_stats.inspired, 1);
++    CHECK(ed_undo());                                       /* and it can be undone */
++    /* New song on FILE opens the card again; templates sit on it too */
++    st_set_tab(STAB_FILE);
++    studio.fsel = SONG_BOOK_SIZE;                           /* New song... */
++    press(BTN_A);
++    if (st_popup_open()) press(BTN_DOWN), press(BTN_A);
++    CHECK(studio.card);
++    CHECK_EQ(studio.tab, STAB_SONG);
++    while (st_easy()->csel != 7) press(BTN_DOWN);
++    press(BTN_A);
++    CHECK_EQ(studio.tab, STAB_FILE);
++    CHECK_EQ(studio.fmode, 1);
++    press(BTN_B);                                           /* back to the file list: not stuck */
++    CHECK_EQ(studio.fmode, 0);
++    press(BTN_L);                                           /* to the card's tab */
++    press(BTN_R);
++    st_set_tab(STAB_SONG);
++    CHECK(studio.card);
++    press(BTN_B);                                           /* Skip: a blank song, the old SONG tab */
++    CHECK(!studio.card);
++    CHECK_EQ(studio.tab, STAB_SONG);
++    test_reset();
++}
++
++/* an edit through the journal, the way the tabs do it */
++static void set_bpm(int v)
++{
++    ed_touch(&studio.song.bpm, 1);
++    studio.song.bpm = (uint8_t)v;
++    ed_commit();
++}
++
++TEST(studio_undo_redo_round_trip)
++{
++    DoomoSong snap[4];
++    int i;
++    open_blank_studio();
++    press(BTN_B);                                           /* skip the card */
++    ed_reset();
++    snap[0] = studio.song;
++    for (i = 1; i < 4; i++) {
++        set_bpm(100 + i * 10);
++        snap[i] = studio.song;
++    }
++    /* a two-record step (one commit): bpm and key together */
++    ed_touch(&studio.song.bpm, 1);
++    ed_touch(&studio.song.key, 1);
++    studio.song.bpm = 77; studio.song.key = 5;
++    ed_commit();
++    CHECK_EQ(ed_undo_steps(), 4);
++    CHECK_EQ(ed_redo_steps(), 0);
++    CHECK(!ed_redo());                                      /* nothing undone yet */
++    CHECK(ed_undo());
++    CHECK(!memcmp(&studio.song, &snap[3], sizeof(DoomoSong)));
++    CHECK_EQ(ed_redo_steps(), 1);
++    CHECK(ed_redo());                                       /* the joined step comes back whole */
++    CHECK_EQ(studio.song.bpm, 77);
++    CHECK_EQ(studio.song.key, 5);
++    CHECK_EQ(ed_undo_steps(), 4);
++    CHECK_EQ(ed_redo_steps(), 0);
++    /* undo everything, redo everything: every state comes back byte for byte */
++    for (i = 0; i < 4; i++) CHECK(ed_undo());
++    CHECK(!ed_undo());
++    CHECK(!memcmp(&studio.song, &snap[0], sizeof(DoomoSong)));
++    CHECK_EQ(ed_redo_steps(), 4);
++    for (i = 1; i < 4; i++) {
++        CHECK(ed_redo());
++        CHECK(!memcmp(&studio.song, &snap[i], sizeof(DoomoSong)));
++    }
++    CHECK(ed_redo());
++    CHECK_EQ(studio.song.bpm, 77);
++    CHECK(!ed_redo());
++    /* undo twice, then a new edit empties the redo history */
++    CHECK(ed_undo()); CHECK(ed_undo());
++    CHECK_EQ(ed_redo_steps(), 2);
++    set_bpm(150);
++    CHECK_EQ(ed_redo_steps(), 0);
++    CHECK(!ed_redo());
++    CHECK_EQ(studio.song.bpm, 150);
++    /* the keys: SELECT+B undoes, SELECT+A (X on a GBA) redoes, and each says so */
++    CHECK(ed_undo());
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_X);                          /* the GBA synthesises A as X while SELECT is held */
++    frames(1, 0);
++    CHECK_EQ(studio.song.bpm, 150);
++    frames(1, BTN_SELECT);
++    frames(1, BTN_SELECT | BTN_B);
++    frames(1, 0);
++    CHECK(studio.song.bpm != 150);
++    frames(1, BTN_X);                                       /* Square on a PS1 */
++    frames(1, 0);
++    CHECK_EQ(studio.song.bpm, 150);
++    /* a whole-song step too big for the redo journal says so instead of redoing half */
++    ed_touch(&studio.song, (int)sizeof(DoomoSong));
++    studio_compose(&studio.song, 5, 99);
++    ed_commit();
++    if (ed_undo()) {
++        if (ed_redo_steps() == 0) { CHECK(st_easy()->redo_lost); CHECK(!ed_redo()); }
++        else CHECK(ed_redo());
++    }
++    test_reset();
++}
++
++TEST(studio_redo_clears_when_the_scratch_is_taken)
++{
++    open_blank_studio();
++    press(BTN_B);
++    ed_reset();
++    set_bpm(111);
++    CHECK(ed_undo());
++    CHECK_EQ(ed_redo_steps(), 1);
++    ed_reset();                                             /* a new song loads: no stale redo */
++    CHECK_EQ(ed_redo_steps(), 0);
++    CHECK(!ed_redo());
++    test_reset();
++}
++
++TEST(studio_start_plays_from_the_cursor_and_names_its_target)
++{
++    int t;
++    open_blank_studio();
++    press(BTN_B);
++    beat_song(&studio.song, 120, 0, 3);
++    studio.song.lyrics[1][0] = 0;
++    /* the prompt bar names START's target on every tab; a second press stops */
++    for (t = 0; t < STAB_COUNT; t++) {
++        UiPrompt pr[UI_PROMPTS_MAX];
++        int n, k, found = 0;
++        if (t == STAB_STAGE) continue;                      /* the show has its own curtain */
++        st_set_tab(t);
++        n = tab_prompts(t, pr);
++        for (k = 0; k < n; k++)
++            if (pr[k].btn == BTN_START) {
++                found = 1;
++                CHECK(!strcmp(pr[k].verb, "Play song") || !strcmp(pr[k].verb, "Play from here"));
++            }
++        CHECK_MSG(found, "tab %d has no START item in its bar", t);
++        CHECK(!song_playing());
++        press(BTN_START);
++        CHECK_MSG(song_playing(), "tab %d: START did not play", t);
++        CHECK(!strcmp(st_play_verb(), "Stop"));
++        press(BTN_START);
++        CHECK_MSG(!song_playing(), "tab %d: the second START did not stop", t);
++    }
++    /* targets: the song, the pattern at the cursor (NOTES), the selected pass (ORDER) */
++    st_set_tab(STAB_SONG);
++    CHECK(!strcmp(st_play_verb(), "Play song"));
++    press(BTN_START);
++    CHECK_EQ(song_pos_order(), 0);
++    press(BTN_START);
++    st_set_tab(STAB_ORDER);
++    CHECK(!strcmp(st_play_verb(), "Play from here"));
++    studio.osel = 2;
++    press(BTN_START);
++    CHECK_EQ(song_pos_order(), 2);
++    press(BTN_START);
++    st_set_tab(STAB_NOTES);
++    CHECK(!strcmp(st_play_verb(), "Play from here"));
++    studio.pat = 1; studio.stp = 8;
++    press(BTN_START);
++    CHECK(song_playing());
++    press(BTN_START);
++    /* LYRICS: a line some pass sings plays from that pass, a line no pass sings plays the song */
++    st_set_tab(STAB_LYRICS);
++    studio.lsel = 1;
++    CHECK(!strcmp(st_play_verb(), "Play from here"));
++    studio.lsel = 5;
++    CHECK(!strcmp(st_play_verb(), "Play song"));
++    test_reset();
++}
++
++TEST(studio_fit_one_line_moved_to_the_lyric_tools)
++{
++    open_blank_studio();
++    press(BTN_B);
++    beat_song(&studio.song, 120, 0, 2);
++    st_set_tab(STAB_LYRICS);
++    memset(studio.song.lyrics, 0, sizeof(studio.song.lyrics));
++    memcpy(studio.song.lyrics[0], "la la la la la la la la la", 26);
++    studio.lsel = 0;
++    frames(1, BTN_SELECT);
++    frames(1, 0);                                           /* SELECT tap: the tools */
++    CHECK(st_popup_open());
++    {
++        int i;
++        for (i = 0; i < 5; i++) press(BTN_DOWN);            /* "Fit this line" is the last of six */
++    }
++    press(BTN_A);
++    CHECK(!st_popup_open());
++    CHECK_EQ(song_syllables(studio.song.lyrics[0], NULL, 0), song_lead_onsets(&studio.song, 0));
++    CHECK(ed_undo());                                       /* undoable */
++    CHECK_STR(studio.song.lyrics[0], "la la la la la la la la la");
++    test_reset();
++}
++
++TEST(studio_tab_help_and_control_cards_fit_the_screen)
++{
++    UiPrompt pr[UI_PROMPTS_MAX];
++    int t, maxw = ui_prompts_maxw(), n;
++    open_blank_studio();
++    for (t = 0; t < STAB_COUNT; t++) {
++        const char *h = st_tab_help(t);
++        CHECK(h && h[0]);
++        CHECK_MSG(ui_text_width(h) <= maxw, "tab %d help \"%s\" is %d px, the bar takes %d", t, h, ui_text_width(h), maxw);
++        CHECK(st_tab_label(t)[0]);
++    }
++    CHECK(ui_text_width(st_tab_help(STAB_SONG)) <= maxw);   /* the card variant */
++    press(BTN_B);
++    CHECK(ui_text_width(st_tab_help(STAB_SONG)) <= maxw);   /* the settings variant */
++    /* the card: opens with SELECT + UP, shows the tab's buttons, closes with B, and never covers the way out */
++    for (t = 0; t < STAB_COUNT; t++) {
++        int x, y, w, h;
++        st_set_tab(t);
++        frames(1, BTN_SELECT);
++        frames(1, BTN_SELECT | BTN_UP);
++        frames(1, 0);
++        CHECK_MSG(st_help_is_open(), "tab %d: SELECT+UP did not open the card", t);
++        frames(14, 0);
++        CHECK(st_help_rect(&x, &y, &w, &h));
++        CHECK(x >= 0 && y >= 0 && x + w <= plat_screen_w() && y + h <= plat_screen_h());
++        frames(1, 0);
++        press(BTN_B);
++        CHECK_MSG(!st_help_is_open(), "tab %d: B did not close the card", t);
++        CHECK(scene_top() == &SCENE_STUDIO);
++    }
++    /* every bar item still fits and no tab's bar is empty */
++    for (t = 0; t < STAB_COUNT; t++) {
++        n = tab_prompts(t, pr);
++        CHECK(n >= 2 && n <= UI_PROMPTS_MAX);
++    }
++    test_reset();
++}
++
++TEST(studio_cursor_cell_is_described_in_one_line_that_fits)
++{
++    char buf[STUDIO_DESC_LEN];
++    int trk, stp, w, wide;
++    open_blank_studio();
++    press(BTN_B);
++    beat_song(&studio.song, 120, 0, 2);
++    studio.song.key = 0;
++    studio.song.scale = SONG_SCALE_MAJOR;
++    studio.song.notes[0][0][0] = 64;                        /* E4: the 3rd of C */
++    studio.song.notes[0][1][5] = 61;                        /* C#4: off the scale */
++    studio.song.notes[0][2][3] = SONG_HOLD;
++    studio.song.key = 0;
++    (void)st_describe_text(buf, sizeof(buf), 400, 0, 0, 0);
++    CHECK_STR(buf, "Bar 1, beat 1, Lead: E4 (3rd of C)");
++    (void)st_describe_text(buf, sizeof(buf), 400, 0, 1, 5);
++    CHECK(strstr(buf, "off the scale") && strstr(buf, "C#4") && strstr(buf, "Harmony") && strstr(buf, "beat 2"));
++    (void)st_describe_text(buf, sizeof(buf), 400, 0, 2, 3);
++    CHECK(strstr(buf, "hold"));
++    (void)st_describe_text(buf, sizeof(buf), 400, 0, 3, 4);
++    CHECK(strstr(buf, "Kick") || strstr(buf, "kick") || strstr(buf, "Drums"));
++    (void)st_describe_text(buf, sizeof(buf), 400, 1, 0, 17);
++    CHECK(strstr(buf, "Bar 2, beat 1") && strstr(buf, "rest"));
++    /* every cell of every key / scale fits the narrow bar, whatever the note */
++    wide = 0;
++    for (w = 0; w < 2; w++) {
++        int maxw = (w ? 320 : 240) - 8 - 12, key, sc;
++        for (sc = 0; sc < SONG_SCALE_COUNT; sc++)
++            for (key = 0; key < 12; key += 5) {
++                studio.song.scale = (uint8_t)sc;
++                studio.song.key = (uint8_t)key;
++                for (trk = 0; trk < 4; trk++)
++                    for (stp = 0; stp < SONG_STEPS; stp += 3) {
++                        int note;
++                        for (note = 0; note < 3; note++) {
++                            studio.song.notes[2][trk][stp] = (uint8_t)(trk == 3 ? note : note == 0 ? 0 : note == 1 ? SONG_HOLD : 70 + (key + stp) % 12);
++                            (void)st_describe_text(buf, sizeof(buf), maxw, 2, trk, stp);
++                            if (ui_text_width(buf) > maxw) wide++;
++                        }
++                    }
++            }
++    }
++    CHECK_EQ(wide, 0);
++    /* the cached form follows the cell */
++    studio.pat = 0; studio.trk = 0; studio.stp = 0;
++    studio.song.scale = SONG_SCALE_MAJOR;
++    studio.song.key = 0;
++    CHECK_STR(st_describe_cell(0, 0, 0), "Bar 1, beat 1, Lead: E4 (3rd of C)");
++    studio.song.notes[0][0][0] = 67;
++    CHECK(strstr(st_describe_cell(0, 0, 0), "G4") != NULL);
++    test_reset();
++}
++
++TEST(studio_level_switch_is_kept_in_the_stats_and_the_save)
++{
++    uint32_t n;
++    open_blank_studio();
++    CHECK_EQ(st_level(), 0);
++    CHECK_EQ(studio_stats.lines, 0);
++    st_level_set(1);
++    CHECK_EQ(st_level(), 1);
++    CHECK(studio_stats.lines & STUDIO_LINES_LEVEL);
++    studio_check_unlocks();
++    CHECK(!unlock_has(UL_STUDIO_WAVE_STATIC));              /* the flag is not twenty lines of lyrics */
++    /* it survives the save, and an old save (no bit) reads as Easy */
++    n = save_serialize(image, sizeof(image));
++    CHECK(n > 0);
++    studio_stats_reset();
++    CHECK_EQ(st_level(), 1);                                /* (the scratch copy) */
++    CHECK(save_deserialize(image, n));
++    CHECK(studio_stats.lines & STUDIO_LINES_LEVEL);
++    CHECK_EQ(STUDIO_LINES(&studio_stats), 0);
++    /* the FILE row flips it back, both ways, with a message */
++    st_set_tab(STAB_FILE);
++    studio.fsel = (SONG_BOOK_SIZE + 5);
++    press(BTN_A);
++    CHECK_EQ(st_level(), 0);
++    CHECK(!(studio_stats.lines & STUDIO_LINES_LEVEL));
++    press(BTN_RIGHT);
++    CHECK_EQ(st_level(), 1);
++    st_level_set(0);
++    /* lyric lines keep counting without touching the flag */
++    st_level_set(1);
++    studio_stats.lines = (uint16_t)(STUDIO_LINES_LEVEL | STUDIO_LINES_MASK);
++    CHECK_EQ(STUDIO_LINES(&studio_stats), STUDIO_LINES_MASK);
++    test_reset();
++}
++
+ /* MS-PF6: the voice-tuning memo returns exactly what the search finds. `ref_tune` is the search as it was before
+  * the memo (copied; it must not be changed to follow the real one). Every pitch, every note, the vowels the
+  * singers use, the spread range; once cold (a miss), once warm (a hit). */
+-- 
+2.43.0
+
+
+From 86b185ec3b9e0c1255560bbf3771ed56b5b20bef Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:28:17 +0000
+Subject: [PATCH 02/10] STUDIO ST-EASY: cheaper NOTES / tab strip (cached bpm
+ text, order slots, step numbers), help line until the first press
+
+Gives back what the new description line costs: the tab strip's 'bpm' text and widths, the NOTES 'in Order' list and the
+step numbers are no longer rebuilt every frame (same pixels). The one-line help stays until the first button press on the
+tab (the switch back to the prompt bar then lands on a frame that has work anyway).
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio.c        | 49 +++++++++++++++++++++++++++++++++-------
+ core/src/studio_edit.c   | 34 ++++++++++++++++++++--------
+ core/src/studio_help.c   |  5 ++--
+ core/src/studio_int.h    |  4 ++++
+ core/tests/test_studio.c | 12 ++++++++++
+ 5 files changed, 84 insertions(+), 20 deletions(-)
+
+diff --git a/core/src/studio.c b/core/src/studio.c
+index 67f5454..4f80746 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -242,7 +242,7 @@ void ed_commit(void)
+     studio.undo_open = 0;
+     studio.dirty = 1;
+     ez = st_easy();
+-    if (ez) ez->edited = 1;                /* the one-line help has done its job */
++    if (ez) { ez->edited = 1; ez->help_t = 0; }   /* the one-line help has done its job */
+ }
+ 
+ int ed_undo_steps(void) { return studio.undo_steps; }
+@@ -848,11 +848,31 @@ static void draw_tabs(void)
+     {
+         int sw = plat_screen_w(), age = song_beat_age();
+         int beat = song_playing() ? (age < 3) : ((int)(studio.t * SS->bpm / 1800) & 1);
+-        char buf[12];
+-        int rx = sw - 4;
+-        doomo_snprintf(buf, sizeof(buf), "%d bpm", SS->bpm);   /* C15: the heart beats the tempo: say so */
+-        if (sw - 4 - ui_text_width(buf) <= x + 12) doomo_snprintf(buf, sizeof(buf), "%d", SS->bpm);
+-        rx -= ui_text_width(buf);
++        StEasy *ez = st_easy();
++        char tmp[12];
++        const char *buf;
++        int rx = sw - 4, bw;
++        /* C15: the heart beats the tempo: say so. ST-EASY (speed): the two texts and their widths are kept until the
++         * tempo changes (a snprintf and two text measures a frame on every tab) */
++        if (ez && ez->bpm_val == SS->bpm && ez->bpm_full[0]) {
++            buf = ez->bpm_full; bw = ez->bpm_wf;
++            if (sw - 4 - bw <= x + 12) { buf = ez->bpm_short; bw = ez->bpm_ws; }
++        } else {
++            doomo_snprintf(tmp, sizeof(tmp), "%d bpm", SS->bpm);
++            if (ez) {
++                doomo_snprintf(ez->bpm_full, sizeof(ez->bpm_full), "%d bpm", SS->bpm);
++                doomo_snprintf(ez->bpm_short, sizeof(ez->bpm_short), "%d", SS->bpm);
++                ez->bpm_wf = (uint8_t)ui_text_width(ez->bpm_full);
++                ez->bpm_ws = (uint8_t)ui_text_width(ez->bpm_short);
++                ez->bpm_val = SS->bpm;
++                buf = ez->bpm_full; bw = ez->bpm_wf;
++                if (sw - 4 - bw <= x + 12) { buf = ez->bpm_short; bw = ez->bpm_ws; }
++            } else {
++                if (sw - 4 - ui_text_width(tmp) <= x + 12) doomo_snprintf(tmp, sizeof(tmp), "%d", SS->bpm);
++                buf = tmp; bw = ui_text_width(tmp);
++            }
++        }
++        rx -= bw;
+         if (rx > x + 12) {
+             ui_text_outline(rx, y + 3, buf, PAL_WHITE, st->outline);
+             ui_heart(rx - 7, y + 7, beat ? 5 : 4, song_playing() ? PAL_PAINT(PAINT_ROSE, 1)
+@@ -1035,7 +1055,11 @@ static void studio_enter(int arg)
+     studio.muse = -1;
+     studio.sing_pos = -1;
+     studio.fmode = 0;
+-    st_help_arm();
++    if (arg != -1) {                       /* a new visit: the help line is back (not when a pushed scene returns) */
++        StEasy *ez = st_easy();
++        if (ez) ez->edited = 0;
++        st_help_arm();
++    }
+ }
+ 
+ static void studio_leave(void)
+@@ -1096,7 +1120,16 @@ static void studio_update(void)
+     studio.t++;
+     if (studio.tab_t < 60000) studio.tab_t++;
+     if (studio.msg_t) studio.msg_t--;
+-    { StEasy *ez = st_easy(); if (ez && ez->help_t) ez->help_t--; }
++    {
++        /* the one-line help stays on the bar until the first button press on the tab (the switch back to the prompt
++         * bar then lands on a frame that has work anyway, not on an idle one), at most 30 s */
++        StEasy *ez = st_easy();
++        if (ez && ez->help_t) {
++            if (btn_pressed(BTN_A | BTN_B | BTN_X | BTN_Y | BTN_L | BTN_R | BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT |
++                            BTN_START | BTN_SELECT)) ez->help_t = 0;
++            else ez->help_t--;
++        }
++    }
+     song_tick();
+     studio_sel_tap = 0;
+     if (studio.picking) { st_picker_update(); return; }
+diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+index 18b9818..646aa13 100644
+--- a/core/src/studio_edit.c
++++ b/core/src/studio_edit.c
+@@ -560,6 +560,11 @@ static void pattern_pills(int x, int y)
+     }
+ }
+ 
++static const char step_num[SONG_STEPS][3] = {
++    " 1", " 2", " 3", " 4", " 5", " 6", " 7", " 8", " 9", "10", "11", "12", "13", "14", "15", "16",
++    "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32"
++};
++
+ void tab_notes_draw(StRect r)
+ {
+     const UiStyle *st = ui_style(WIN_CREAM);
+@@ -573,17 +578,27 @@ void tab_notes_draw(StRect r)
+     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+     pattern_pills(r.x + 6, r.y + 4);
+     {
++        /* ST-EASY (speed): the slot list is built when the order or the pattern changes, not every frame */
++        StEasy *ez = st_easy();
++        char *ord = ez ? ez->ord : buf;          /* the text lives in the cache when there is one (both 24 bytes) */
+         int k, n = 0, x = r.x + 84;
+-        buf[0] = 0;
++        uint32_t key = 0x80000000u | (uint32_t)studio.pat;
+         for (k = 0; k < s->order_len && n < 6; k++)
+-            if (s->order[k] == studio.pat) {
+-                char one[5];
+-                doomo_snprintf(one, sizeof(one), n ? ",%d" : "%d", k + 1);
+-                if ((int)strlen(buf) + 4 < (int)sizeof(buf)) memcpy(buf + strlen(buf), one, strlen(one) + 1);
+-                n++;
+-            }
++            if (s->order[k] == studio.pat) { key = key * 33u + (uint32_t)(k + 1); n++; }
++        if (!ez || ez->ord_key != key) {
++            int m = 0;
++            ord[0] = 0;
++            for (k = 0; k < s->order_len && m < 6; k++)
++                if (s->order[k] == studio.pat) {
++                    char one[5];
++                    doomo_snprintf(one, sizeof(one), m ? ",%d" : "%d", k + 1);
++                    if ((int)strlen(ord) + 4 < 24) memcpy(ord + strlen(ord), one, strlen(one) + 1);
++                    m++;
++                }
++            if (ez) ez->ord_key = key;
++        }
+         ui_text(x, r.y + 6, n ? "in Order" : "not in the song", st->text_dim);   /* C15: its slots in the ORDER tab */
+-        if (n) ui_text(x + 54, r.y + 6, buf, st_pattern_color(studio.pat, 0));
++        if (n) ui_text(x + 54, r.y + 6, ord, st_pattern_color(studio.pat, 0));
+     }
+     /* track headers */
+     for (t = 0; t < 4; t++) {
+@@ -598,8 +613,7 @@ void tab_notes_draw(StRect r)
+         uint8_t rowbg = (stp & 3) == 0 ? st->fill_lo : st->fill;
+         plat_rect(gx, y, colw * 4, 9, head ? PAL_PAINT(PAINT_LEMON, 2) : rowbg);
+         if ((stp & 15) == 0) plat_rect(gx, y, colw * 4, 1, st->outline);
+-        doomo_snprintf(buf, sizeof(buf), "%2d", stp + 1);
+-        ui_text(r.x + 5, y + 1, buf, (stp & 3) == 0 ? st->text : st->text_dim);
++        ui_text(r.x + 5, y + 1, step_num[stp & 31], (stp & 3) == 0 ? st->text : st->text_dim);   /* "%2d" of stp + 1 */
+         for (t = 0; t < 4; t++) {
+             int x = gx + t * colw, v = s->notes[studio.pat][t][stp];
+             int cur = t == studio.trk && stp == studio.stp;
+diff --git a/core/src/studio_help.c b/core/src/studio_help.c
+index 5020d71..8197455 100644
+--- a/core/src/studio_help.c
++++ b/core/src/studio_help.c
+@@ -2,7 +2,8 @@
+  *
+  *  - st_tab_label():  the tab strip's names (plan 2.2: Start, Edit, Arrange, Words, Choir, Show, File)
+  *  - st_tab_help():   one line per tab (tab_help[]), at most 36 glyphs so it fits a 240 px bar. It replaces the
+- *                     prompt bar for a few seconds when a tab opens, until the first edit of the session
++ *                     prompt bar when a tab opens, until the first button press on it (or 30 s), and not at all
++ *                     once an edit was made in this session
+  *  - the control card ("?" = SELECT + UP): a popup that lists this tab's buttons by the pad's own names (the
+  *                     prompt bar's glyph builder, ui_prompts_text) and the buttons every tab shares
+  *  - st_level():      the Studio level, Easy / Advanced (FILE). In st_easy() and in bit 15 of studio_stats.lines.
+@@ -33,7 +34,7 @@ const char *st_tab_help(int tab)
+ void st_help_arm(void)
+ {
+     StEasy *ez = st_easy();
+-    if (ez && !ez->edited) ez->help_t = 120;
++    if (ez && !ez->edited) ez->help_t = 900;
+ }
+ 
+ void st_bar_draw(void)
+diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+index a0287c4..4ab3637 100644
+--- a/core/src/studio_int.h
++++ b/core/src/studio_int.h
+@@ -160,6 +160,10 @@ typedef struct StEasy {
+     uint32_t seed;              /* the Start card's seed */
+     uint32_t desc_key;          /* NOTES cursor line cache */
+     char     desc[STUDIO_DESC_LEN];
++    uint32_t ord_key;           /* NOTES "in Order 2,3,5" cache (the order slots of the pattern) */
++    char     ord[24];
++    uint8_t  bpm_val, bpm_wf, bpm_ws;   /* the tab strip's "110 bpm" / "110" text and widths, cached */
++    char     bpm_full[10], bpm_short[5];
+     uint8_t  redo[STUDIO_REDO_BYTES];
+ } StEasy;
+ StEasy *st_easy(void);
+diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+index f8b17a2..9378d28 100644
+--- a/core/tests/test_studio.c
++++ b/core/tests/test_studio.c
+@@ -1307,6 +1307,18 @@ TEST(studio_tab_help_and_control_cards_fit_the_screen)
+         CHECK_MSG(!st_help_is_open(), "tab %d: B did not close the card", t);
+         CHECK(scene_top() == &SCENE_STUDIO);
+     }
++    /* the one-line help is on the bar when a tab opens and goes with the first button press; edits stop it for good */
++    st_set_tab(STAB_ORDER);
++    CHECK(st_easy()->help_t > 0);
++    frames(1, 0);
++    CHECK(st_easy()->help_t > 0);
++    press(BTN_DOWN);
++    CHECK_EQ(st_easy()->help_t, 0);
++    st_set_tab(STAB_LYRICS);
++    CHECK(st_easy()->help_t > 0);
++    set_bpm(131);
++    st_set_tab(STAB_ORDER);
++    CHECK_EQ(st_easy()->help_t, 0);                         /* after an edit a tab opens without it */
+     /* every bar item still fits and no tab's bar is empty */
+     for (t = 0; t < STAB_COUNT; t++) {
+         n = tab_prompts(t, pr);
+-- 
+2.43.0
+
+
+From 86c0ba049435c928a0ad3a4b7396d1fc10a56397 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:39:08 +0000
+Subject: [PATCH 03/10] STUDIO ST-EASY: docs (Easy mode, function ledger,
+ budgets, GBA speed), ROADMAP, status, GBA RAM ledger row, tab names in the
+ studio tip
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ ROADMAP.md                        |   1 +
+ core/include/doomo/scene.h        |   3 +
+ core/src/tips.c                   |   2 +-
+ docs/GBA.md                       |   1 +
+ docs/STUDIO.md                    | 129 +++++++++++++++++++++++++++---
+ docs/design/held/status/STUDIO.md |   6 +-
+ 6 files changed, 126 insertions(+), 16 deletions(-)
+
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 798d448..68d682d 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -21,6 +21,7 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
+ before redoing any of them; a zip without `.git` cannot tell.
+ 
+ ### Done
++- **Studio ST-EASY, Easy mode (2026-11-15, STUDIO round 1; docs/STUDIO.md "Easy mode" and "Function ledger", docs/design/STUDIO_PLAN.md 2.1 - 2.3):** the studio opens an empty song on a "Start a song" card (Style of 16, Mood of 5, Tempo of 4, Length of 3, Shuffle, Make it!, Inspire me!, Templates; `studio_make_song` is deterministic from the picks and a seed; the plan's 32 / 64 bars are capped at 32 by the 16-pass order until ST-ADV); one help line per tab on the prompt bar until the first press and a "?" control card (SELECT + UP) naming the pad's own buttons; redo (SELECT + A, FILE shows Undo / Redo counts; a second journal in the scene scratch); START plays on every tab with its target in the prompt bar ("Play song" / "Play from here" / "Stop"; LYRICS' old START fit moved to its tools); the NOTES cursor cell described on one line; clearer tab labels (Start, Edit, Arrange, Words, Choir, Show, File; L / R / numbers on the narrow strip); the Studio level switch (Easy / Advanced, bit 15 of `studio_stats.lines`, no new save tag; Advanced shows nothing extra yet). GBA: `.bss`, IWRAM unchanged (the state is the tail of the studio's scene-scratch block), every studio window equal or 0.0 - 0.4 ms faster (GBA ledger row ST-EASY). Tests: `studio_make_song_is_deterministic...`, `studio_undo_redo_round_trip`, `studio_start_plays...`, `studio_tab_help_and_control_cards_fit_the_screen`, runner tour `studio_easy` at both sizes with `--check-prompts`.
+ - **Speed S2-4c (2026-11-15, the kitchen on the GBA, speed audit 2 causes C3 / C1, audit 3 rank 12, partial; measured on libmgba, PCSX-Redux and Flycast on `5aa25cd1` and again on `366ee6c1`, `9dc5e39a`, `e587f9c1`, `167c08ba` (with S2-4b), `262bf2b7` (with S3-2) and the tip it landed on, `fe410024`; docs/GBA.md "Speed wave 2: S2-4c", ledger row 59, docs/PS1.md "Speed tour 2"):** the kitchen's wall, jars and counter (and, for the recipe book, the window, the book and the doily) are kept pictures baked into the GBA ROM (`DOOMO_BACKDROP_KITCHEN`), and every screen (the book, the cooking steps, the result card, the counter) is drawn as layers of SP7's retained stage, each redrawn only when its key or box changes or a changed box lies on it; Granny's 164 poses are baked too (`runner --bake-poses`, `plat_cook_pose`, the file read by `cook_pose_find`: one image instead of ~45 ellipses), cut off where the counter covers her; faces are blitted above the counter only, bubbles are two layers, boxes and keys are measured and follow the translated text; `stage_rows` copies short spans by DMA (the fair's S2-4b windows hash the same, tick for tick). All exact (`test_cook_kept`: the kitchen with the stage on / off, 5,140 frames at each of two sizes, day and night, and in Spanish, identical; the baked pose file read back and checked pose by pose; GBA `vhash-seq` against the tip: 13 windows identical, Spanish 2,479 of 2,480 frames (the tip's one differing frame is the same picture one pixel lower), the counter's windows differ only inside the faces). GBA drawn fps: recipe book 20.0 -> **30.0**, chop 21.9 -> **30.0**, fry 19.8 -> **30.0** (every frame two vblanks); stir 20.0 -> 30.0, bake 20.8 -> 29.9, simmer 21.8 -> 29.7 (one or two 50-67 ms frames at a step change); result card 15.0 -> 20.8 (21.1 before S2-4b's stage changes); with S3-2's portrait jobs counter 26.3 -> 29.2 and serving 24.3 -> 29.3 (3-6 frames of 50 ms a window); `expect-fps` floors. The approved 15 Hz trades were measured on the result card and save nothing over a kept picture (21.1 fps either way: each Mode 4 page is two ticks old), so none is taken. GBA EWRAM and IWRAM unchanged, ROM +320 KB (three pictures, the poses). PS1: compiled out, `_end` unchanged (130,000 B below the stack top with the FMV on `fe410024`, the tip's; delta 0 measured on every earlier tip), the kitchen's table the tip's. Dreamcast: all 16 windows 30.0. **Still short (open):** the result card (needs G2-EX's clipped redraw), the counter / serving's three-vblank frames (animated faces, bobbing bubbles), the step-change frames of stir, bake and simmer; on the PS1 the result card's, counter's and serving's single 50 ms frames (unlock grants, faces: S3-2).
+ - **Talk TKP0-MEASURE (2026-11-15, TALK round 13; docs/design/talk/TKP_PLAN.md, docs/TALK.md 6q):** the PS1 re-measure and a buildable plan, no resident byte. Talk linked on the PS1: 146 KB of files (92 KB as one new overlay group, 0 B of slot growth; resident +19,520 B with the group alone, +15,616 B with the typed line off, about 2 to 4 KB after the planned clean-ups, inside the 12 KB share). PS1 subset of TALK_en.BIN 577,786 B against the 319,488 B budget (9,062 alternatives); lossless levers (word-token strings, packed rows) reach about 437 KB, which does not fit: CR10's part store holds SPU RAM 0x50000-0x7DFFF, leaving Talk 278,528 B at most (decision D1 for the owner: a PS1 content tier, or drop Talk on the PS1). Measured: 2,075 database reads and 43.4 KB a line (74 KB an exchange), 661,000 instructions a line (48 % the lint probes); estimated R3000 step 12 to 30 ms typical, so the generator must be sliced. First load estimated 1.4 to 1.6 s against the 1.5 s gate. Packages TKP1 to TKP6 with acceptance tests. New tools `ps1/tools/talk_size.sh`, `core/tools/talk_reads.sh`, `core/tools/talk_steps.sh`. PS1 margin 110,560 B on the rebased tree (unchanged), GBA sizes unchanged.
+ - **Talk T9, pointer input on the Talk screen (2026-11-15, docs/TALK.md 6k):** add-only `input_set_pointer` / `input_pointer` / `input_pointer_click` (`input.h`, `DOOMO_POINTER` 0 on GBA, PS1 and Dreamcast so they link none of it); on the Talk screen a click is exactly the matching pad press (quick reply, category, act, topic, typed line, Options, invite row, goodbye, a name in the people strip, the header = B, the scroll bar = L / R); a small arrow is drawn only while a pointer is present. Runner `mouse X Y [click]`, `expect-ptr-page`, `expect-ptr-row`; script `talk_pointer.txt`, `test_talk_pointer.c`. Not done: clicking the dialogue box, a wheel.
+diff --git a/core/include/doomo/scene.h b/core/include/doomo/scene.h
+index 88bf6ba..26d3c0e 100644
+--- a/core/include/doomo/scene.h
++++ b/core/include/doomo/scene.h
+@@ -102,6 +102,9 @@ void *scene_scratch_block(void) __attribute__((const));
+  *                           area of OwScratch: scripted overworld scenes (the
+  *                           Feast guests, the Say It walk). A cache: rebuilt
+  *                           from STRY whenever another owner took the block
++ *   SBKE / SEZY studio.c    the Music Studio: its baked shapes (GBA) with ST-EASY's state (redo journal, Start card,
++ *                           caches: `StEasy`, 448 B) as the tail of the same 12 KB block; where shapes are not baked
++ *                           (PS1, host, Dreamcast) the state alone, tag SEZY
+  * A scene that keeps its own state here must not call anything that
+  * claims it for another owner (e.g. weld_view_image()). */
+ 
+diff --git a/core/src/tips.c b/core/src/tips.c
+index c42617f..2830572 100644
+--- a/core/src/tips.c
++++ b/core/src/tips.c
+@@ -83,7 +83,7 @@ static const TipText tip_text[TIP_COUNT] = {
+     /* TIP_STUDIO */
+     { SPK_MAYOR, ICON_NOTE,
+       "The Music Studio! I wrote the town anthem here. It is one note. It is a very good note.",
+-      "%L/%R: switch tabs (Song, Notes, Order, Lyrics, Choir, Stage, File). A: edit the row. START: play. B: back." },
++      "%L/%R: switch tabs (Start, Edit, Arrange, Words, Choir, Show, File). A: edit the row. START: play. B: back." },
+     /* TIP_WORKSHOP */
+     { SPK_RIVET, ICON_WRENCH,
+       "My workshop! Pick parts, weld them, get a gun. Keep all your fingers. Most people do.",
+diff --git a/docs/GBA.md b/docs/GBA.md
+index 80be809..02f8337 100644
+--- a/docs/GBA.md
++++ b/docs/GBA.md
+@@ -459,6 +459,7 @@ against the LAST row, not against a figure from an older base.
+ | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
+ | G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after GBA-500 (row GBA-500) | 50,740 B | **50,740 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B before GBA-500 landed (210,508 B with it, 50,740 B free), `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
+ | 64 | LV4: mechanic kit B (`levels_mech_env.c`, `DoomoView3D.view_dist`, `r3f.maxd` from the per-level view distance) | after G2-EX (`da2d3e9a`) | unchanged | **unchanged** | 0 B | 6,308 B | measured 2026-11-15 on `33d760af` and the same + LV4 (both clean `make -C gba`, `make -C gba sizes`): .iwram 11,272, .iwram_bss 4,088, .bss 254,820 and every overlay slot identical; on the landing tree (after G2-EX) the full sizes are .iwram 11,288, .iwram_bss 4,088, .bss 254,828, which is 33d760af plus G2-EX's +16 B / +8 B and nothing from LV4; ROM .text +40 B (r3d.c: the range check, the hoisted sprite-cull limit); `lv_env_*` is not linked (nothing calls it). The new `view_dist` byte sits in the padding of `DoomoView3D` (stack, and the one static copy in combat_hud.c). Speed tour: every `vhash-seq` identical |
++| ST-EASY | STUDIO round 1: Easy mode (the Start card, one-line help and control card, redo, START plays, cursor line; docs/STUDIO.md "Easy mode", "Function ledger") | after row 63 (`d979c93`) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on `d979c93` and on the package (`make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, all unchanged. The new state (`StEasy`, 448 B: redo journal 384 B, Start card picks, the NOTES cursor-line and slot-list caches, the tab strip's bpm text) is the tail of `BakeSt` in the 12,288 B scene scratch (11,716 -> 12,164 B, asserted `<= DOOMO_SCENE_SCRATCH`); the two flags added to `Studio` (`card`, `help`) fit its padding; the Studio level is bit 15 of `studio_stats.lines` (a saved stat). ROM `.text` +6,776 B, `.rodata` +2,208 B. `make -C gba profile-studio`: SONG, NOTES, ORDER, LYRICS, CHOIR and PERFORM windows equal or 0.0-0.4 ms faster (average and worst), docs/STUDIO.md "GBA speed, ST-EASY" |
+ 
+ Known claimants still to land (their own packages measure and add rows):
+ 
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index ee94623..dabaa62 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -15,14 +15,17 @@ Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_R
+ | `core/include/doomo/song.h` | the contract: `DoomoSong`, the player API, the song book |
+ | `core/src/song_player.c` | the player + helpers (timing, singing, choir, syllables, scales) |
+ | `core/src/song_book.c` | `doomo_song_book[6]` and the `'SONG'` save extension chunk |
+-| `core/src/studio.c` | the scene: tabs, input, undo journal, popups, citizen picker, unlock rules |
++| `core/src/studio.c` | the scene: tabs, input, undo / redo journal, popups, citizen picker, unlock rules, `st_easy()` |
+ | `core/src/studio_edit.c` | SONG, NOTES (tracker) and ORDER tabs |
+ | `core/src/studio_words.c` | LYRICS and CHOIR tabs |
+ | `core/src/studio_stage.c` | PERFORM: the choir show |
+-| `core/src/studio_file.c` | FILE: song book, templates, Inspire me, undo |
++| `core/src/studio_file.c` | FILE: song book, new song, templates, Inspire me, undo / redo, Studio level (scrolls) |
++| `core/src/studio_start.c` | ST-EASY: the "Start a song" card, `studio_make_song` |
++| `core/src/studio_play.c` | ST-EASY: START plays and names its target, the NOTES cursor line |
++| `core/src/studio_help.c` | ST-EASY: one-line help per tab, the control card, tab labels, the Studio level |
+ | `core/src/studio_gen.c` | composer, lyric writer, 14 templates, choir fills, parts, auto-fit, word filter |
+ | `core/src/unlocks_studio.c` | unlock ids 240..255 and the activities |
+-| `core/tests/test_studio.c`, `core/tests/scripts/studio.txt` | tests and the runner tour |
++| `core/tests/test_studio.c`, `core/tests/scripts/studio.txt`, `studio_easy.txt` | tests and the runner tours |
+ 
+ You find it in the **Concert Hall** (activities table `doomo_activities_studio`,
+ free play and story from chapter 1). (CL5, clarity C9: it is no longer a second
+@@ -44,9 +47,53 @@ pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
+ | SELECT + L / R | previous / next tab from any tab [L2 / R2] |
+ | SELECT (tap) | the tab's tools menu |
+ | SELECT + B | undo [Triangle] |
+-| START | play / stop |
++| SELECT + A | redo [Square] (ST-EASY) |
++| SELECT + UP | "?": the control card of the tab (ST-EASY) |
++| START | play / stop, the prompt bar names the target: "Play song", "Play from here", "Stop" (ST-EASY) |
+ | B | leave the studio (asks if the song is unsaved; in NOTES: erase / tie) |
+ 
++### Easy mode (ST-EASY, 2026-11-15)
++The first package of the studio overhaul (`design/STUDIO_PLAN.md` 2.1, 2.2, 2.3). Easy is the only level there is
++for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothing yet (ST-ADV).
++
++* **Start a song.** The studio opens on it when the song is empty (a new save, or an empty page) and FILE's
++  "New song..." opens it again. It lives on the SONG tab (`studio.card`; the picks, the seed and the row are in
++  `st_easy()`). Rows: **Style** (16 short names: Bubblegum, Lo-fi, City Pop, Chiptune, Lullaby, Jazz, Classical, Folk,
++  Disco, Shanty, Hymn, Synthwave, Goth, Punk, Doom, Industrial), **Mood** (Happy = major in C, Sweet = pentatonic in
++  F, Sad = minor in A, Spooky = harmonic minor in E, Fierce = blues in D: key mode, key and with them the chord
++  family), **Tempo** (Slow, Medium, Fast, Frantic: the style's own bpm range at `lo - 6`, its middle, `hi`, `hi + 20`,
++  clamped 60..220; the card shows the bpm), **Length** (Short 8 passes = 16 bars, Song 12 = 24 bars, Long 16 = 32
++  bars: the plan's 32 / 64 bars wait for ST-ADV, `SONG_ORDER_MAX` is 16), **Shuffle** (a new seed, the same picks, the
++  song plays and the card stays), **Make it!** (compose with the seed, play, the card closes: what Shuffle played is
++  what is kept), **Inspire me!** (the FILE citizen picker), **Templates...** (FILE's template list). B skips the card
++  and leaves the blank song. `studio_make_song(song, picks)` is a pure function of the picks, the seed and the
++  song's choir / words (tested: all 16 x 5 styles / moods twice, equal bytes); the mood reaches the composer through
++  `studio_compose_scale()` (`studio_compose` is unchanged for every other caller).
++* **One line per tab** (`st_tab_help`, at most 36 glyphs so it fits the 240 px bar). It replaces the prompt bar when a
++  tab opens until the first button press on it (30 s at most), and never again once an edit was made in the visit.
++* **The control card** (SELECT + UP, "?" on the pads that have it): a popup with the one-line help, this tab's buttons
++  and the buttons every tab has, written with the pad's own names (the prompt bar's glyph builder). A, B or START
++  closes it.
++* **START always plays**, second press stops, and the bar says what it plays: "Play from here" on NOTES (the pattern
++  from the cursor step, looping), ORDER (from the selected pass) and LYRICS (from the pass that sings the selected
++  line), "Play song" everywhere else, "Stop" while anything plays. Two old START jobs moved: LYRICS "Fit this line" is
++  the last item of its SELECT tools (it was START), and CHOIR's section cycle is only in the singer's A menu
++  ("Change section", it was also START).
++* **Redo.** An undo keeps the bytes it overwrites in a second journal in the scene scratch (the same record format,
++  `STUDIO_REDO_BYTES` 384); a redo replays it and puts the step back on the undo journal. Any new edit empties it.
++  A step too big for the redo journal (a whole composed song) can be undone but says "Too big to redo" instead of
++  redoing half. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
++* **The cursor's cell on NOTES**, one line under the grid: "Bar 2, beat 3, Lead: E4 (3rd of C)", "... Harmony: F#4
++  (off the scale)", "... Bass: hold", "... Drums: Snare". It falls back to shorter forms until it fits; the text is
++  cached and rebuilt only when the cell, the key or the scale change.
++* **Tab labels.** Start, Edit, Arrange, Words, Choir, Show, File (the old Song, Notes, Order, Lyrics, Choir, Stage,
++  File). The current tab spells its name; when the strip is too narrow for all names (240x160) the others show
++  L and R beside it (the neighbours that L / R reach) and their number.
++* **Studio level** (FILE row, A or LEFT / RIGHT toggles): Easy or Advanced, in `st_easy()->level` and bit 15 of
++  `studio_stats.lines` (`STUDIO_LINES_LEVEL`; the lyric-line count is the low 15 bits, `STUDIO_LINES()`), so it
++  rides in the existing `'SONG'` chunk with no new save tag; an old save reads Easy. Advanced shows no extra tools
++  yet.
++
+ ### SONG
+ Title (typed with the on-screen keyboard), genre, tempo (60..220 bpm, hold for
+ steps of 5), key (moves all notes with it), scale, swing (0..8), repeat
+@@ -71,7 +118,7 @@ notes of the key/scale with mint dots.
+ | hold A + L / R | an octave down / up |
+ | B | erase; on a rest right after a note: a tie (hold) |
+ | L / R | pattern A..D |
+-| START | loop the pattern from the cursor |
++| START | loop the pattern from the cursor ("Play from here"; again: stop) |
+ | SELECT | copy / paste pattern or track, clear track, nudge a track a scale step |
+ 
+ Every placed note is previewed on its own channel (`song_preview`).
+@@ -100,17 +147,17 @@ of that pass sings the next syllable.
+ * LEFT / RIGHT choose **who sings the line**: a solo, a duet, a section
+   (sopranos, altos, tenors, basses), a half of the choir (call and response)
+   or the full choir - stored in `line_singers`.
+-* START **auto-fits** the line: too few words get "la"s (or an "oh"), and
+-  if there is no room left the last notes merge into long ones (only when no
++* **Fit this line** (SELECT tools; it was START until ST-EASY, START plays now) auto-fits the line: too few words
++  get "la"s (or an "oh"), and if there is no room left the last notes merge into long ones (only when no
+   other line uses the pattern); too many words split long notes into new
+   onsets. SELECT: sing this line, auto-fit all, share out parts, write lyrics
+-  for me, clear the line.
++  for me, clear the line, fit this line. START plays from the pass that sings the line.
+ 
+ ### CHOIR
+ Up to 25 citizens on a 9/8/8 grid, each tile tinted by voice section with an
+ S/A/T/B badge. Sections are automatic from the voice pitch slider (>= 22
+-soprano, >= 15 alto, >= 8 tenor, else bass) and editable (START cycles
+-auto -> S -> A -> T -> B). A on a singer: hear their voice (they sing the first
++soprano, >= 15 alto, >= 8 tenor, else bass) and editable (A on a singer, "Change section", cycles
++auto -> S -> A -> T -> B; START plays the song). A on a singer: hear their voice (they sing the first
+ sung line alone), change singer (the citizen picker), change section, remove.
+ SELECT **quick fills**: friends of the selected singer, a Hillvile choir, a
+ Hellvile choir, both districts, random choir, share out parts, sort by section,
+@@ -134,8 +181,9 @@ stage when that module offers it (`concert_stage_song`).
+ 
+ ### FILE
+ The song book (6 pages: save here / open / favourite / delete, with
+-confirmations), a blank song, **templates**, **Inspire me!**, undo (with the
+-number of steps left) and leave. Saving into the book is kept in memory and
++confirmations), **New song...** (the Start card, with a confirmation when the song is unsaved), **templates**,
++**Inspire me!**, undo and redo (with the number of steps), the **Studio level** and leave. The list is 13 rows and
++scrolls (`studio.ftop`) when the screen is too short (240x160 shows 11). Saving into the book is kept in memory and
+ written with the game save (the `'SONG'` chunk).
+ 
+ ## Templates
+@@ -219,7 +267,46 @@ Boom 808 (2 shows), Hell Forge (songs in 4 genres), the shanty / disco /
+ jazz / synthwave / industrial templates (3 songs, 3 shows, 3 inspirations,
+ an encore, a full 25 choir), the choir pyramid (10+ singers).
+ 
++## Function ledger (ST-EASY, the detail gate of `design/STUDIO_PLAN.md` 2.5c)
++One row per control this package added or changed: what it says, what it does, how it answers, how to take it back,
++what tests it. Keys are GBA names; the pads' names are on the control card. "Journal" = SELECT + B undoes it, SELECT
+++ A redoes it.
++
++| Control | Says | Does | Feedback | Undo | Tested by |
++|---|---|---|---|---|---|
++| Start card: Style (L / R, A) | Style | next / previous of the 16 styles | value on the row, cursor blip; the song is not touched until Shuffle / Make it! | nothing changed | `studio_start_card_opens_on_an_empty_song...` |
++| Start card: Mood | Mood | Happy / Sweet / Sad / Spooky / Fierce: key mode, key, chord family | value, blip | nothing changed | the same, `studio_make_song_is_deterministic...` (scale per mood) |
++| Start card: Tempo | Tempo | Slow / Medium / Fast / Frantic: bpm of the style's range | value and the bpm | nothing changed | `studio_make_song...` (four tempos rise, in range) |
++| Start card: Length | Length | 8 / 12 / 16 order passes | value and the bars | nothing changed | `studio_make_song...` (passes, order ends on a chorus) |
++| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the history restarts if the song before was too big to remember) | `studio_start_card_opens...` |
++| Start card: Make it! | Make it! | composes with the current seed, plays, closes the card | sparkle, toast "Made it! START stops the song" | journal | the same (same notes as the last Shuffle; undo twice reaches the blank page) |
++| Start card: Inspire me! | Inspire me! | the FILE citizen picker, then an Inspire song | picker, toast "A Jazz song about ...!" | journal; B in the picker cancels | `studio_start_card_inspire_templates_and_skip...` |
++| Start card: Templates... | Templates... | FILE tab, template list | the list | B goes back to the FILE list | the same |
++| Start card: B | Skip | closes the card, blank song | cancel blip, toast "A blank page. SEL+Up: help" | nothing changed | the same |
++| START (every tab but a running show) | Play song / Play from here / Stop | plays the named target; again stops | the bar's verb, the heart and playhead | n/a | `studio_start_plays_from_the_cursor_and_names_its_target` (every tab, both presses, targets) |
++| SELECT + UP | (on the bar's help line, the control card) | opens the tab's control card | popup, blip | A / B / START closes | `studio_tab_help_and_control_cards_fit_the_screen` |
++| SELECT + A | Redo | puts back the step the last undo took | toast "Redo! (n more)", "Too big to redo", "Nothing to redo" | SELECT + B | `studio_undo_redo_round_trip` |
++| FILE: Redo | Redo (n) | the same | the same | SELECT + B | the same, runner `studio_easy` |
++| FILE: Undo | Undo (n) | as before | toast "Undone! (n left)" | Redo | the same |
++| FILE: Studio level | Studio level: Easy / Advanced | toggles (A, LEFT, RIGHT) | the row, toast "Advanced: more tools soon" | press again | `studio_level_switch_is_kept_in_the_stats_and_the_save` |
++| FILE: New song... | New song... | confirms if unsaved, blanks the song, opens the Start card | the card | journal | `studio_start_card_inspire_templates_and_skip...` |
++| NOTES: cursor line | (under the grid) | describes the cell: bar, beat, track, note, interval, "off the scale" | text under the grid | n/a | `studio_cursor_cell_is_described_in_one_line_that_fits` (every cell, key and scale fits 240 and 320 px) |
++| LYRICS: Fit this line (SELECT tools, was START) | Fit this line | auto-fits the selected line to its notes | toast "Line 2 fits now!" | journal | `studio_fit_one_line_moved_to_the_lyric_tools` |
++| CHOIR: START | Play song | plays the song (it cycled a section before: A menu "Change section" has it) | the bar | stop with START | `studio_start_plays...` |
++| Tab strip labels | Start / Edit / Arrange / Words / Choir / Show / File, L / R / numbers on the others | names the tabs | the strip | n/a | `studio_tab_help...` (labels set), runner shots |
++
++Not in the ledger because they did not change: every SONG row, the NOTES keys, ORDER, the CHOIR grid, the PERFORM
++show, the song book pages.
++
+ ## Budgets
++ST-EASY adds **no `.bss` and no IWRAM** on the GBA (`make -C gba sizes`: `.bss` 254,820 B before and after, `.iwram`
++11,272, `.iwram_bss` 4,088): its state (`StEasy`, 448 B: the redo journal 384 B, the Start card's picks, the cursor
++line and slot-list caches, the bpm text) is the tail of the studio's baked-shape block in the 12 KB scene scratch
++(`BakeSt`, 11,716 B before, 12,164 B now; a compile-time assert keeps it inside `DOOMO_SCENE_SCRATCH`). Where the
++shapes are not baked (PS1, native, Dreamcast) `st_easy()` claims the scratch itself (`EZ_TAG`, no static pointer).
++The two flags `card` and `help` are bytes of `Studio` that were padding. The level is a spare bit of a stat that is
++saved already. ROM: +6.8 KB `.text`, +2.2 KB `.rodata` (GBA, thumb).
++
+ `.bss`: the book 6 x 892 B + stats 12 B = 5364 B; everything else 2002 B (the
+ working song, a 768-byte undo journal - run-length coded byte ranges, 16+
+ ordinary edits always fit and template loads are undoable too -, UI state,
+@@ -279,6 +366,24 @@ GBA work avg: SONG idle 35.2 -> 33.1, NOTES idle 33.4 -> 29.6, ORDER 31.0 -> 27.
+ (measured in the session before the figures above were re-built; not re-profiled on the final tree). Measured while doing it: backdrop + tab strip +
+ hint bar ~14 ms of every tab; the 25 CHOIR chibis ~14 ms (CHOIR without them 36.8 ms). See `docs/MUSIC_STUDIO_ROADMAP.md` "Facts to know before MS-P4".
+ 
++### GBA speed, ST-EASY (2026-11-15, libmgba, `make -C gba profile-studio`, same script, before = `d979c93`)
++Work per drawn tick in ms (average / worst; the budget at 30 fps is 33.3); every window is 30.0 drawn fps before and after.
++| window | before | after |
++|---|---:|---:|
++| SONG idle | 31.6 / 33.2 | 31.2 / 32.7 |
++| SONG playing | 32.3 / 37.0 | 32.0 / 36.8 |
++| NOTES idle | 27.8 / 29.1 | 27.5 / 28.8 |
++| NOTES playing | 27.9 / 32.0 | 27.7 / 31.8 |
++| ORDER | 25.5 / 26.8 | 25.2 / 26.5 |
++| LYRICS | 32.4 / 34.3 | 32.0 / 33.9 |
++| CHOIR | 30.5 / 31.9 | 30.5 / 31.7 |
++| PERFORM early / later | 22.3 / 22.8, 22.9 / 32.3 | 22.3 / 22.7, 22.8 / 32.2 |
++The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) by three cached things that were rebuilt
++every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
++step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
++(A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
++it now switches on the first button press.) PS1 and Dreamcast were not measured in this package: see the commit.
++
+ ## INTEGRATION NOTE for the Concert Hall (concert*.c)
+ 
+ 1. **Represent generated songs as `DoomoSong`.** Build the song in the shared
+diff --git a/docs/design/held/status/STUDIO.md b/docs/design/held/status/STUDIO.md
+index e756378..f024521 100644
+--- a/docs/design/held/status/STUDIO.md
++++ b/docs/design/held/status/STUDIO.md
+@@ -2,9 +2,9 @@
+ 
+ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it with every landing.
+ 
+-- **Last update:** 2026-11-15 (coordinator): the stream is defined; its lead session starts now.
++- **Last update:** 2026-11-15 (ST-EASY build agent): ST-EASY is on branch `fut-st-easy`, ready for review and landing.
+ - **Lead:** `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, from 2026-11-15)
+ - **Landed:** ST-0: `docs/design/STUDIO_PLAN.md` (flow, screens, controls, format, memory), defaults in OWNER_DECISIONS.
+-- **In flight:** machine setup (PS1 and Dreamcast toolchains building), ST-EASY.
+-- **Next up:** ST-EASY (in flight), ST-PLAY, ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`).
++- **In flight:** ST-EASY (built, on `fut-st-easy`: the Start card, help line + control card, redo, START plays, cursor line, labels, Studio level; docs/STUDIO.md "Easy mode" and its function ledger). Another round package edits the same studio files: rebase conflicts are in `studio.c` / `studio_edit.c` / `studio_file.c` (small hunks; the new code is in `studio_start.c`, `studio_play.c`, `studio_help.c`).
++- **Next up:** ST-PLAY, ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`). ST-ADV: lengths of 32 / 64 bars (the Start card stops at 16 passes = 32 bars), what Advanced shows. ST-PLAY: the plan's PLAY tab will take the START tab's slot in the strip (the labels are in `studio_help.c`).
+ - **Blockers:** none.
+-- 
+2.43.0
+
+
+From c9916a04b34bbd0a0d82bb8eee39b14e97b9ae16 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:03:32 +0000
+Subject: [PATCH 04/10] STUDIO ST-EASY: runner tour of every tab's help line,
+ Start card skip re-arms the help, GBA profile script for the new screens
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio_start.c                     |  1 +
+ core/tests/scripts/studio_easy.txt          | 45 +++++++++++
+ docs/STUDIO.md                              |  9 +++
+ gba/harness/scripts/studio_easy_profile.txt | 84 +++++++++++++++++++++
+ 4 files changed, 139 insertions(+)
+ create mode 100644 gba/harness/scripts/studio_easy_profile.txt
+
+diff --git a/core/src/studio_start.c b/core/src/studio_start.c
+index 1b222c3..7c24b4b 100644
+--- a/core/src/studio_start.c
++++ b/core/src/studio_start.c
+@@ -145,6 +145,7 @@ void st_card_update(void)
+     } else if (btn_pressed(BTN_B)) {
+         studio.card = 0;
+         audio_sfx(SFX_CANCEL);
++        st_help_arm();                         /* the settings view says what it is for */
+         st_msg("A blank page. SEL+Up: help");
+         input_eat();
+     }
+diff --git a/core/tests/scripts/studio_easy.txt b/core/tests/scripts/studio_easy.txt
+index 464cd10..67a40e6 100644
+--- a/core/tests/scripts/studio_easy.txt
++++ b/core/tests/scripts/studio_easy.txt
+@@ -7,6 +7,51 @@ wait 2
+ push STUDIO -2
+ wait 20
+ expect-scene STUDIO
++shot start_card_first
++# B skips the card; every tab once with no edit made: its one-line help is on the bar (checked at both sizes)
++press B
++wait 90
++shot song_help
++press R
++wait 6
++shot edit_help
++down SELECT
++press R
++release
++wait 6
++shot arrange_help
++down SELECT
++press R
++release
++wait 6
++shot words_help
++down SELECT
++press R
++release
++wait 6
++shot choir_help
++down SELECT
++press R
++release
++wait 6
++shot show_help
++down SELECT
++press R
++release
++wait 6
++shot file_help
++# FILE: New song... opens the card again
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++press DOWN
++wait 4
++shot file_new_song
++press A
++wait 14
++expect-scene STUDIO
+ shot start_card
+ press UP
+ press UP
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index dabaa62..4b4a3dd 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -378,6 +378,15 @@ Work per drawn tick in ms (average / worst; the budget at 30 fps is 33.3); every
+ | LYRICS | 32.4 / 34.3 | 32.0 / 33.9 |
+ | CHOIR | 30.5 / 31.9 | 30.5 / 31.7 |
+ | PERFORM early / later | 22.3 / 22.8, 22.9 / 32.3 | 22.3 / 22.7, 22.8 / 32.2 |
++The screens ST-EASY added (`gba/harness/scripts/studio_easy_profile.txt`, work avg / worst, drawn fps): the Start card
++21.1 / 22.7, 30.0; the control card over it 13.5 / 13.5, 30.0 (a held frame: only the window repaints); FILE (13 rows,
++scrolled) 21.2 / 22.4 at the top and 21.4 / 23.0 at the end, 30.0 (the old FILE tab: 21.7 / 23.1 in `speed2_studio`, now
++20.9 / 22.3). The Start card's song, playing on the SONG tab, is the one number under the line: 32.7 / 39.0 ms, 28.8
++drawn fps (a Bubblegum Pop song with 12 passes; the same tab with the demo song is 30.0 in the table above): the SONG
++tab with a playing song is the tab the plan already lists at 24-29 fps, its cost is the tab's own, ST-EASY neither adds
++nor removes any of it. `make -C gba test-speed2 SPEED2=studio SPEED2_GATES=1` passes, every window equal or faster than
++on `d979c93` (work ms: file tab 21.7 -> 20.9, templates 29.3 -> 28.9, stage tab 37.8 -> 37.3, still the SPEED
++stream's S3-8 item, untouched here).
+ The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) by three cached things that were rebuilt
+ every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
+ step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
+diff --git a/gba/harness/scripts/studio_easy_profile.txt b/gba/harness/scripts/studio_easy_profile.txt
+new file mode 100644
+index 0000000..92b1769
+--- /dev/null
++++ b/gba/harness/scripts/studio_easy_profile.txt
+@@ -0,0 +1,84 @@
++# studio_easy_profile.txt - the screens ST-EASY added, on the GBA (docs/STUDIO.md "Easy mode").
++# Same method as studio_profile.txt: `fps` windows (drawn frames/s, average and worst CPU work of a tick in ms) and
++# `profile` (the hottest functions). The studio opens on an empty song (arg -2): the Start card, the control card
++# over it, the song Make it! made (playing), the FILE list and its scrolled end. Reports; run it with
++#   gba/build/harness gba/build/doomogachi.gba --script gba/harness/scripts/studio_easy_profile.txt \
++#       --shots gba/build/shots/studio_easy --nm gba/build/doomogachi.nm --no-fps-gates --worklog --quiet
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene TITLE
++wait 20
++push STUDIO -2
++wait 100
++expect-scene STUDIO
++
++# ---- the Start card (the one-line help is on the bar) ----------------------
++fps settle (ignore)
++wait 130
++fps start card
++shot card
++profile 8000000
++
++# ---- the control card over it ----------------------------------------------
++down SELECT
++press UP
++release
++wait 30
++fps settle (ignore)
++wait 10
++fps control card
++shot control_card
++profile 8000000
++press B
++wait 10
++
++# ---- Make it!: the song plays on SONG ---------------------------------------
++press A
++wait 45
++fps settle (ignore)
++wait 130
++fps made song playing
++shot made
++profile 8000000
++press START
++wait 10
++
++# ---- FILE: the list that scrolls --------------------------------------------
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 20
++fps settle (ignore)
++wait 100
++fps file top
++shot file_top
++profile 8000000
++press UP
++wait 20
++fps settle (ignore)
++wait 100
++fps file end
++shot file_end
++profile 8000000
+-- 
+2.43.0
+
+
+From 1075d2f6dbe8fd9ddf2e65080c4db5e69bc36607 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:05:29 +0000
+Subject: [PATCH 05/10] STUDIO ST-EASY: an empty book page also opens on the
+ Start card
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/src/studio.c b/core/src/studio.c
+index 4f80746..20d9d0c 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -1027,6 +1027,7 @@ static void studio_enter(int arg)
+             studio.slot = (int8_t)arg;
+         } else {
+             new_song();
++            st_card_open();                /* an empty page: "Start a song" */
+         }
+         studio.tab = STAB_SONG;
+     } else if (arg == -3) {
+-- 
+2.43.0
+
+
+From 91d43cf95906c5a9805f7aaf763a9894a32b17a6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:17:33 +0000
+Subject: [PATCH 06/10] STUDIO ST-EASY: Start card tables out of the PS1's
+ resident .sdata (small tables merged: PS1 margin 110,608 B, same as before)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio_start.c | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/core/src/studio_start.c b/core/src/studio_start.c
+index 7c24b4b..eb6a6b1 100644
+--- a/core/src/studio_start.c
++++ b/core/src/studio_start.c
+@@ -22,10 +22,12 @@ static const char *const style_names[MUSIC_COUNT] = {
+ static const char *const mood_names[SMOOD_COUNT] = { "Happy", "Sweet", "Sad", "Spooky", "Fierce" };
+ static const char *const tempo_names[STEMPO_COUNT] = { "Slow", "Medium", "Fast", "Frantic" };
+ static const char *const length_names[SLEN_COUNT] = { "Short", "Song", "Long" };
+-/* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D */
+-static const uint8_t mood_scale[SMOOD_COUNT] = { SONG_SCALE_MAJOR, SONG_SCALE_PENTATONIC, SONG_SCALE_MINOR,
+-                                                SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_BLUES };
+-static const uint8_t mood_key[SMOOD_COUNT] = { 0, 5, 9, 4, 2 };
++/* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D.
++ * (Tables of 8 bytes or less would land in the PS1's resident .sdata; this one is 10 bytes: overlay rodata.) */
++static const struct { uint8_t scale, key; } mood_tab[SMOOD_COUNT] = {
++    { SONG_SCALE_MAJOR, 0 }, { SONG_SCALE_PENTATONIC, 5 }, { SONG_SCALE_MINOR, 9 },
++    { SONG_SCALE_HARMONIC_MINOR, 4 }, { SONG_SCALE_BLUES, 2 }
++};
+ 
+ const char *studio_style_name(int style) { return style_names[DOOMO_CLAMP(style, 0, MUSIC_COUNT - 1)]; }
+ const char *studio_mood_name(int mood) { return mood_names[DOOMO_CLAMP(mood, 0, SMOOD_COUNT - 1)]; }
+@@ -47,23 +49,22 @@ int studio_pick_bpm(int style, int tempo)
+ 
+ int studio_pick_passes(int length)
+ {
+-    static const uint8_t passes[SLEN_COUNT] = { 8, 12, SONG_ORDER_MAX };
+-    return passes[DOOMO_CLAMP(length, 0, SLEN_COUNT - 1)];
++    return length <= SLEN_SHORT ? 8 : length == SLEN_SONG ? 12 : SONG_ORDER_MAX;
+ }
+ 
+ void studio_make_song(DoomoSong *s, const StartPick *p)
+ {
+     /* the order lists: intro hook 3, verse 0, chorus 1, bridge 2; every one ends on the chorus */
+-    static const uint8_t ord8[8] = { 3, 0, 0, 1, 0, 1, 2, 1 };
+-    static const uint8_t ord12[12] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1 };
+-    static const uint8_t ord16[16] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 0, 1, 2, 1, 1, 1 };
++    static const uint8_t ords[36] = { 3, 0, 0, 1, 0, 1, 2, 1,                                  /* 8 passes at 0  */
++                                      3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1,                      /* 12 passes at 8 */
++                                      3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 0, 1, 2, 1, 1, 1 };       /* 16 passes at 20 */
+     int style = DOOMO_CLAMP(p->style, 0, MUSIC_COUNT - 1), mood = DOOMO_CLAMP(p->mood, 0, SMOOD_COUNT - 1);
+     int n = studio_pick_passes(p->length);
+-    const uint8_t *ord = n <= 8 ? ord8 : n <= 12 ? ord12 : ord16;
++    const uint8_t *ord = ords + (n <= 8 ? 0 : n <= 12 ? 8 : 20);
+     s->flags |= SONGF_VALID | SONGF_CUSTOM;
+-    s->key = mood_key[mood];
++    s->key = mood_tab[mood].key;
+     s->order_len = 1;                         /* a fresh order: the composer lays its own, we replace it below */
+-    studio_compose_scale(s, style, p->seed, mood_scale[mood]);
++    studio_compose_scale(s, style, p->seed, mood_tab[mood].scale);
+     s->bpm = (uint8_t)studio_pick_bpm(style, p->tempo);
+     memset(s->order, 0, sizeof(s->order));
+     memcpy(s->order, ord, (size_t)n);
+-- 
+2.43.0
+
+
+From c0af6220438efbe5af3688dabb55bf94fbd0f280 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:18:05 +0000
+Subject: [PATCH 07/10] STUDIO ST-EASY: PS1 and Dreamcast notes (PS1 resident
+ delta 0 B, 30.13 fps everywhere; Dreamcast not run)
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ docs/DREAMCAST.md |  7 +++++++
+ docs/PS1.md       | 15 +++++++++++++++
+ docs/STUDIO.md    |  2 +-
+ 3 files changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 5e91d87..163e9be 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2706,3 +2706,10 @@ blocking card by design). No resident PS1 byte and no GBA byte changed (the PS1
+ machine; the help string is one line of text in `core/src/fp_options.c`, compiled out where `DOOMO_TRIGGERS` is 0).
+ Open: the Controls page has eight rows on a one-stick pad; folding Turn buttons and Stick into one row would
+ change what the options record means, so it is left to the core's UI polish package (UI1).
++
++## Studio ST-EASY (2026-11-15)
++
++Not built or run on KallistiOS / Flycast in this package (the KOS install on the machine was not finished: no `environ.sh`). What was run: the SH4
++compile of every core source with `sh-elf-gcc -Werror` (`core/tools/xcheck.sh`: 429 files OK, the studio sources included) and `make
++dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file
++changed. To check on a machine with KOS: `make -C dc -j2`, `make -C dc/harness`, and `sh dc/harness/speed2.sh OUT studio` against the base.
+diff --git a/docs/PS1.md b/docs/PS1.md
+index cd167e6..209d27c 100644
+--- a/docs/PS1.md
++++ b/docs/PS1.md
+@@ -2470,3 +2470,18 @@ Measured 2026-11-15 on `fe410024` and the same + LV7a (clean builds, boot FMV, `
+ (`DOOMO_TEXBANK_ACTIVE` 0). The new art and the bank blobs reach the PS1 as pack data on the disc with the level packs (LV8). The LEVELS
+ share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
+ 
++## Studio ST-EASY (2026-11-15): Easy mode, resident delta 0 B
++
++Measured on `d979c93` and the same + ST-EASY (clean builds, boot FMV, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
++`PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `elf2exe` says **110,608 B below the stack top both times** (plan gate 73,728 B). The new code
++(`studio_start.c`, `studio_play.c`, `studio_help.c` and the redo / card hooks in `studio*.c`) is in the `studio` overlay group, whose load
++grows by 27 ms (the second part of the group: 283 -> 310 ms, once per scene entry; the first part, 313 ms, is the same). `Studio` did not grow
++(`nm`: 0x738 B before and after) and the state `StEasy` (448 B) is in the scene scratch (`EZ_TAG`, claimed through `scene_scratch()`, no
++static pointer). A first version had four small `static const uint8_t` tables (5, 5, 8 and 3 bytes) and cost 16 B of resident `.sdata` (the
++compiler's small-data threshold is 8 B: anything that small goes to `.sdata`, which is resident, even in an overlay group's file); the tables
++are now one 10-byte and one 36-byte array (overlay `.rodata`). Rule for the next package: a `static const` table of 8 bytes or less is resident.
++Speed (PCSX-Redux, the demo song, `-107`; the same script on both builds): SONG idle / playing, NOTES idle / playing, ORDER, LYRICS and CHOIR
++all 30.13 fps (120 frames in 239 vsyncs); the screens ST-EASY added (the Start card, the control card, the made song playing, FILE at both
++ends) 30.13 - 30.17; `sh ps1/harness/speed2.sh OUT studio`: all nine windows identical to the base. `harness/run.py`: `game_smoke` PASS,
++`core/tests/scripts/studio.txt` and `studio_easy.txt` PASS (the control card names the pad's buttons: "Triangle Undo a step", "Square Redo a
++step", "SEL+L1/R1 Switch tab").
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index 4b4a3dd..88e719c 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -391,7 +391,7 @@ The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) b
+ every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
+ step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
+ (A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
+-it now switches on the first button press.) PS1 and Dreamcast were not measured in this package: see the commit.
++it now switches on the first button press.) PS1 (PCSX-Redux): every editor tab and every new screen 30.13 fps before and after, resident share 0 B, studio overlay load +27 ms (docs/PS1.md "Studio ST-EASY"). Dreamcast: not run (KallistiOS was still installing; docs/DREAMCAST.md "Studio ST-EASY").
+ 
+ ## INTEGRATION NOTE for the Concert Hall (concert*.c)
+ 
+-- 
+2.43.0
+
+
+From 2c7371b2c2b544fb3d075f0437ec88921e161e33 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:55:12 +0000
+Subject: [PATCH 08/10] STUDIO ST-EASY: Make it! / Shuffle undo and redo whole
+ (recipe record in the redo journal, takes replace each other); SELECT release
+ while the card is up no longer leaves a stale chord
+
+Review finding: Make it! -> undo -> redo said "Too big to redo". The redo journal now keeps a 14 byte recipe (picks + seed)
+for the Start card's make and a redo recomposes the same song. Shuffle / Make it! take the previous take back first, so the
+card adds one small undo step. Test studio_make_it_undoes_and_redoes_whole.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ core/src/studio.c        | 55 ++++++++++++++++++++++++++++++++++++++--
+ core/src/studio_int.h    |  6 +++++
+ core/src/studio_start.c  |  3 +++
+ core/tests/test_studio.c | 50 +++++++++++++++++++++++++++++++++---
+ docs/STUDIO.md           |  8 +++---
+ 5 files changed, 113 insertions(+), 9 deletions(-)
+
+diff --git a/core/src/studio.c b/core/src/studio.c
+index 20d9d0c..355f811 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -164,7 +164,9 @@ static void recount(void)
+ static int evict_oldest(void)
+ {
+     int pos = studio.undo_used, first = 0;
++    StEasy *ez0 = st_easy();
+     if (!pos) return 0;
++    if (ez0) ez0->mk_valid = 0;            /* the journal shifts: the make mark would point at the wrong place */
+     do {
+         while (pos > 0) {
+             int start = pos - 6 - (int)rd16(studio.undo + pos - 6 + 4);
+@@ -198,6 +200,8 @@ static void redo_clear(void)
+ 
+ void ed_reset(void)
+ {
++    StEasy *ez = st_easy();
++    if (ez) ez->mk_valid = 0;
+     studio.undo_used = 0;
+     studio.undo_open = 0;
+     studio.undo_steps = 0;
+@@ -235,6 +239,25 @@ static void touch_rec(const void *field, int len, int keep_redo)
+ 
+ void ed_touch(const void *field, int len) { touch_rec(field, len, 0); }
+ 
++void ed_mark_make(const StartPick *p)
++{
++    StEasy *ez = st_easy();
++    if (!ez) return;
++    ez->mk_valid = studio.undo_used >= 6 && !studio.undo_open;
++    ez->mk_style = p->style; ez->mk_mood = p->mood; ez->mk_tempo = p->tempo; ez->mk_length = p->length;
++    ez->mk_seed = p->seed;
++    ez->mk_mark = studio.undo_used;
++}
++
++int ed_undo_make(void)
++{
++    StEasy *ez = st_easy();
++    if (!ez || !ez->mk_valid || studio.undo_open || studio.undo_used != ez->mk_mark) return 0;
++    if (!ed_undo()) return 0;
++    redo_clear();                          /* it is being replaced, not taken back */
++    return 1;
++}
++
+ void ed_commit(void)
+ {
+     StEasy *ez;
+@@ -286,11 +309,13 @@ static int redo_push(StEasy *ez, int off, int len, int join)
+ int ed_undo(void)
+ {
+     StEasy *ez;
+-    int first = 1, keep;
++    int first = 1, keep, is_make, base;
+     if (studio.undo_open) ed_commit();
+     if (studio.undo_used < 6) return 0;
+     ez = st_easy();
+     keep = ez != NULL;
++    is_make = ez && ez->mk_valid && studio.undo_used == ez->mk_mark;
++    base = ez ? ez->redo_used : 0;
+     coal_key = -1;
+     for (;;) {
+         uint8_t *tr = studio.undo + studio.undo_used - 6;
+@@ -306,7 +331,17 @@ int ed_undo(void)
+         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
+         if (!join || studio.undo_used < 6) break;
+     }
+-    if (ez) {
++    if (is_make) ez->mk_valid = 0;         /* the journal no longer ends on that step */
++    if (is_make && !keep && base + 14 <= STUDIO_REDO_BYTES) {
++        /* the made song is too big to keep as an image: keep the recipe (picks + seed) and recompose on redo */
++        uint8_t *q = ez->redo + base;
++        q[0] = ez->mk_style; q[1] = ez->mk_mood; q[2] = ez->mk_tempo; q[3] = ez->mk_length;
++        wr16(q + 4, ez->mk_seed & 0xFFFFu); wr16(q + 6, ez->mk_seed >> 16);
++        wr16(q + 8, 0xFFFFu); wr16(q + 10, 8u); wr16(q + 12, 8u);
++        ez->redo_used = (uint16_t)(base + 14);
++        if (ez->redo_steps < 255) ez->redo_steps++;
++        ez->redo_lost = 0;
++    } else if (ez) {
+         if (keep && !first) { if (ez->redo_steps < 255) ez->redo_steps++; ez->redo_lost = 0; }
+         else { ez->redo_used = 0; ez->redo_steps = 0; ez->redo_lost = 1; }   /* it did not fit: no redo (never half a step) */
+     }
+@@ -334,6 +369,21 @@ int ed_redo(void)
+         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+         int join = (ln & JOIN) != 0;
+         ln &= ~JOIN;
++        if (off == 0xFFFFu && ln == 8 && enc == 8 && ez->redo_used >= 14) {
++            /* a recipe record: recompose the song the undo took back (same picks, seed and starting song) */
++            StartPick pk;
++            const uint8_t *q = tr - 8;
++            pk.style = q[0]; pk.mood = q[1]; pk.tempo = q[2]; pk.length = q[3];
++            pk.seed = rd16(q + 4) | (rd16(q + 6) << 16);
++            ez->redo_used = (uint16_t)(ez->redo_used - 14);
++            touch_rec(&studio.song, (int)sizeof(DoomoSong), 1);   /* keep_redo: older redo steps stay */
++            studio_make_song(&studio.song, &pk);
++            ed_commit();
++            ed_mark_make(&pk);
++            if (ez->redo_steps) ez->redo_steps--;
++            ez->redo_lost = 0;
++            return 1;
++        }
+         if (off + ln <= sizeof(DoomoSong) && enc + 6 <= ez->redo_used) {
+             touch_rec((const uint8_t *)&studio.song + off, (int)ln, 1);
+             rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+@@ -1093,6 +1143,7 @@ static void global_input(void)
+ {
+     /* SELECT: chords while held, the tab's tools on a clean tap */
+     if (btn_pressed(BTN_SELECT)) { studio.sel_held = 1; studio.sel_used = 0; }
++    else if (studio.sel_held && !btn_down(BTN_SELECT) && !btn_released(BTN_SELECT)) studio.sel_held = 0;   /* released while the card was up */
+     if (studio.sel_held) {
+         if (btn_pressed(BTN_L)) { st_set_tab(studio.tab - 1); studio.sel_used = 1; }
+         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); studio.sel_used = 1; }
+diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+index 4ab3637..3511cf0 100644
+--- a/core/src/studio_int.h
++++ b/core/src/studio_int.h
+@@ -155,6 +155,10 @@ typedef struct StEasy {
+     uint8_t  level;             /* 0 Easy, 1 Advanced (mirrors studio_stats.lines bit 15) */
+     uint8_t  edited;            /* an edit was made this session: the one-line help stops */
+     uint8_t  redo_lost;         /* the last undo was too big to keep for a redo (say so) */
++    uint8_t  mk_valid;          /* the top undo step is the Start card's make: recompose it on redo (no big image) */
++    uint8_t  mk_style, mk_mood, mk_tempo, mk_length;
++    uint16_t mk_mark;           /* studio.undo_used right after that step */
++    uint32_t mk_seed;
+     uint8_t  csel, style, mood, tempo, length;   /* the Start card */
+     uint16_t help_t;            /* ticks of the one-line help left on the bar */
+     uint32_t seed;              /* the Start card's seed */
+@@ -247,6 +251,8 @@ enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };
+ typedef struct StartPick { uint8_t style, mood, tempo, length; uint32_t seed; } StartPick;
+ /* A whole working song from four picks and a seed: a pure function of (picks, the song's choir and words). */
+ void studio_make_song(DoomoSong *s, const StartPick *p);
++void ed_mark_make(const StartPick *p);          /* the step just committed was studio_make_song(p): redo recomposes it */
++int  ed_undo_make(void);                        /* take back the top step if it is that make (no redo kept); 1 = done */
+ int  studio_pick_bpm(int style, int tempo);
+ int  studio_pick_passes(int length);            /* order passes (2 bars each) */
+ const char *studio_style_name(int style);        /* the friendly short name */
+diff --git a/core/src/studio_start.c b/core/src/studio_start.c
+index eb6a6b1..404ecdb 100644
+--- a/core/src/studio_start.c
++++ b/core/src/studio_start.c
+@@ -101,9 +101,12 @@ static void make(StEasy *ez, int shuffle)
+     if (shuffle) ez->seed = doomo_hash32(ez->seed * 2246822519u + 0x9E3779B9u) | 1u;
+     pick_of(ez, &p);
+     song_stop();
++    ed_undo_make();                            /* Shuffle again / Make it! after a Shuffle: replace that take, so the
++                                                * one step this card adds always has the small before-image */
+     ed_touch(SS, (int)sizeof(DoomoSong));
+     studio_make_song(SS, &p);
+     ed_commit();
++    ed_mark_make(&p);
+     studio.slot = -1;
+     song_play_at(SS, -1, 0, 0);
+     audio_sfx(SFX_SPARKLE);
+diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+index 9378d28..fdb19b7 100644
+--- a/core/tests/test_studio.c
++++ b/core/tests/test_studio.c
+@@ -1053,11 +1053,10 @@ TEST(studio_start_card_opens_on_an_empty_song_and_makes_a_playing_song)
+         CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
+         CHECK_EQ(studio.song.bpm, studio_pick_bpm(1, STEMPO_FAST));
+         CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
+-        CHECK(ed_undo());                                   /* Make it! again: the same song (same seed) */
+-        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
+-        CHECK(ed_redo_steps() == 1 || st_easy()->redo_lost);
+-        CHECK(ed_undo());                                   /* the shuffle: the blank page */
++        CHECK(ed_undo());                                   /* takes replace each other: one undo = the blank page */
+         CHECK_STR(studio.song.title, "New Song");
++        CHECK(ed_redo());                                   /* and one redo = the very same song again */
++        CHECK(!memcmp(shuffled.notes, studio.song.notes, sizeof(shuffled.notes)));
+     }
+     /* START stops it (second press) */
+     CHECK(!strcmp(st_play_verb(), "Stop"));
+@@ -1185,6 +1184,49 @@ TEST(studio_undo_redo_round_trip)
+     test_reset();
+ }
+ 
++TEST(studio_make_it_undoes_and_redoes_whole)
++{
++    DoomoSong before, made, shuffled;
++    open_blank_studio();                                    /* an empty song: the Start card is open */
++    CHECK(studio.card);
++    before = studio.song;
++    ed_reset();
++    press(BTN_A);                                           /* Make it! (the card's default row) */
++    CHECK(!studio.card);
++    made = studio.song;
++    CHECK(memcmp(&made, &before, sizeof made) != 0);
++    CHECK(ed_undo());                                       /* one undo: the blank song back */
++    CHECK(memcmp(&studio.song, &before, sizeof before) == 0);
++    CHECK_EQ(ed_redo_steps(), 1);
++    CHECK(ed_redo());                                       /* and one redo: the very same made song */
++    CHECK(memcmp(&studio.song, &made, sizeof made) == 0);
++    CHECK_EQ(ed_redo_steps(), 0);
++    CHECK(ed_undo());                                       /* it can go round again */
++    CHECK(ed_redo());
++    CHECK(memcmp(&studio.song, &made, sizeof made) == 0);
++    /* Shuffle twice, then Make it!: each take replaces the last, so one undo still reaches the song before the card
++     * and one redo brings the last take back */
++    open_blank_studio();
++    before = studio.song;
++    ed_reset();
++    press(BTN_UP);                                          /* Make it! -> Shuffle */
++    press(BTN_A);
++    shuffled = studio.song;
++    press(BTN_A);                                           /* a second take */
++    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) != 0);
++    shuffled = studio.song;
++    press(BTN_DOWN);
++    press(BTN_A);                                           /* Make it!: keeps what Shuffle played */
++    CHECK(!studio.card);
++    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) == 0);
++    CHECK_EQ(ed_undo_steps(), 1);
++    CHECK(ed_undo());
++    CHECK(memcmp(&studio.song, &before, sizeof before) == 0);
++    CHECK(ed_redo());
++    CHECK(memcmp(&studio.song, &shuffled, sizeof shuffled) == 0);
++    test_reset();
++}
++
+ TEST(studio_redo_clears_when_the_scratch_is_taken)
+ {
+     open_blank_studio();
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index 88e719c..136c1d5 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -81,8 +81,10 @@ for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothi
+   ("Change section", it was also START).
+ * **Redo.** An undo keeps the bytes it overwrites in a second journal in the scene scratch (the same record format,
+   `STUDIO_REDO_BYTES` 384); a redo replays it and puts the step back on the undo journal. Any new edit empties it.
+-  A step too big for the redo journal (a whole composed song) can be undone but says "Too big to redo" instead of
+-  redoing half. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
++  A step too big for the redo journal says "Too big to redo" instead of redoing half. The Start card's Make it! and
++  Shuffle are the exception: they remember their picks and seed (a 14 byte recipe record in the same journal) and a redo
++  recomposes the very same song. Shuffle and Make it! also take the previous take back first, so the card adds one small
++  undo step whatever the number of takes, and one undo returns to the song before the card. FILE shows `Undo (n)` and `Redo (n)`; SELECT + A is redo on a GBA (X / Square on the others).
+ * **The cursor's cell on NOTES**, one line under the grid: "Bar 2, beat 3, Lead: E4 (3rd of C)", "... Harmony: F#4
+   (off the scale)", "... Bass: hold", "... Drums: Snare". It falls back to shorter forms until it fits; the text is
+   cached and rebuilt only when the cell, the key or the scale change.
+@@ -278,7 +280,7 @@ what tests it. Keys are GBA names; the pads' names are on the control card. "Jou
+ | Start card: Mood | Mood | Happy / Sweet / Sad / Spooky / Fierce: key mode, key, chord family | value, blip | nothing changed | the same, `studio_make_song_is_deterministic...` (scale per mood) |
+ | Start card: Tempo | Tempo | Slow / Medium / Fast / Frantic: bpm of the style's range | value and the bpm | nothing changed | `studio_make_song...` (four tempos rise, in range) |
+ | Start card: Length | Length | 8 / 12 / 16 order passes | value and the bars | nothing changed | `studio_make_song...` (passes, order ends on a chorus) |
+-| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the history restarts if the song before was too big to remember) | `studio_start_card_opens...` |
++| Start card: Shuffle | Shuffle | new seed, same picks, composes and plays | sparkle, toast "Sweet Lo-fi, take 89", the song plays | journal (the first take must have a small song before it; later takes replace the previous take. A song of 768 B or more compressed cannot be remembered, so the history restarts) | `studio_start_card_opens...` |
+ | Start card: Make it! | Make it! | composes with the current seed, plays, closes the card | sparkle, toast "Made it! START stops the song" | journal | the same (same notes as the last Shuffle; undo twice reaches the blank page) |
+ | Start card: Inspire me! | Inspire me! | the FILE citizen picker, then an Inspire song | picker, toast "A Jazz song about ...!" | journal; B in the picker cancels | `studio_start_card_inspire_templates_and_skip...` |
+ | Start card: Templates... | Templates... | FILE tab, template list | the list | B goes back to the FILE list | the same |
+-- 
+2.43.0
+
+
+From d277bb0646809a2762236941d0f59e45bc6225f6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:35:49 +0000
+Subject: [PATCH 09/10] STUDIO ST-EASY: land docs (review fix, PS1 / Dreamcast
+ numbers, open gaps), status
+
+Gates on the rebased tree: core 1478 passed, SAN, check-gen, xcheck, GBA build + test + sizes + profile-studio, PS1 margin 110,608 B, PS1 smoke / studio / studio_easy / speed2 studio, dc-host-test, make -C dc, dc speed2 studio, dc boot.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ docs/STUDIO.md                    | 2 +-
+ docs/design/held/status/STUDIO.md | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/docs/STUDIO.md b/docs/STUDIO.md
+index 136c1d5..61a160f 100644
+--- a/docs/STUDIO.md
++++ b/docs/STUDIO.md
+@@ -393,7 +393,7 @@ The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) b
+ every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
+ step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
+ (A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
+-it now switches on the first button press.) PS1 (PCSX-Redux): every editor tab and every new screen 30.13 fps before and after, resident share 0 B, studio overlay load +27 ms (docs/PS1.md "Studio ST-EASY"). Dreamcast: not run (KallistiOS was still installing; docs/DREAMCAST.md "Studio ST-EASY").
++it now switches on the first button press.) PS1 (PCSX-Redux): every editor tab and every new screen 30.13 fps before and after, resident share 0 B, studio overlay load +27 ms (docs/PS1.md "Studio ST-EASY"). Dreamcast (Flycast, lander, after the review fix): `make -C dc` builds; `speed2.sh studio` all nine windows 30.0 ticks/s, worst work 12.6 ms; `boot.txt` passes. The made song playing on the SONG tab is the one window under 30 fps on the GBA (28.8 fps, 32.7 / 39.0 ms): it is the plan's known SONG-playing cost (STUDIO_PLAN section on speed), owner SPEED S3 / ST-ADV, not fixed here.
+ 
+ ## INTEGRATION NOTE for the Concert Hall (concert*.c)
+ 
+diff --git a/docs/design/held/status/STUDIO.md b/docs/design/held/status/STUDIO.md
+index f024521..c3cfc8d 100644
+--- a/docs/design/held/status/STUDIO.md
++++ b/docs/design/held/status/STUDIO.md
+@@ -2,9 +2,10 @@
+ 
+ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it with every landing.
+ 
+-- **Last update:** 2026-11-15 (ST-EASY build agent): ST-EASY is on branch `fut-st-easy`, ready for review and landing.
++- **Last update:** 2026-11-15 (ST-EASY land agent): ST-EASY landed (commit titles `STUDIO ST-EASY: ...`).
+ - **Lead:** `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, from 2026-11-15)
+ - **Landed:** ST-0: `docs/design/STUDIO_PLAN.md` (flow, screens, controls, format, memory), defaults in OWNER_DECISIONS.
+-- **In flight:** ST-EASY (built, on `fut-st-easy`: the Start card, help line + control card, redo, START plays, cursor line, labels, Studio level; docs/STUDIO.md "Easy mode" and its function ledger). Another round package edits the same studio files: rebase conflicts are in `studio.c` / `studio_edit.c` / `studio_file.c` (small hunks; the new code is in `studio_start.c`, `studio_play.c`, `studio_help.c`).
++- **Landed (ST-EASY, round 1):** the Start card, help line + control card, redo, START plays, cursor line, labels, Studio level (docs/STUDIO.md "Easy mode" and its function ledger). Review fix: Make it! / Shuffle undo and redo whole (a 14 byte recipe record in the redo journal; takes replace each other), test `studio_make_it_undoes_and_redoes_whole`. Measured at landing: core 1478 tests, SAN, check-gen, xcheck 431 files OK; GBA `.bss` / `.iwram` unchanged by the package (state is the tail of `BakeSt`, 448 B + 10 B of recipe), `profile-studio` windows all 30.0 fps and not slower than before; PS1 margin 110,608 B below the stack top (resident share 0), game_smoke / studio / studio_easy PASS, speed2 studio 30 fps; Dreamcast builds, speed2 studio 30.0 ticks/s, boot PASS.
++- **Open (measured gaps):** the made song playing on the SONG tab is 28.8 fps on the GBA (32.7 / 39.0 ms avg / worst); Shuffle or Make it! on a first take over an already composed song (before-image over 768 B) cannot be undone; Advanced shows nothing yet.
+ - **Next up:** ST-PLAY, ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`). ST-ADV: lengths of 32 / 64 bars (the Start card stops at 16 passes = 32 bars), what Advanced shows. ST-PLAY: the plan's PLAY tab will take the START tab's slot in the strip (the labels are in `studio_help.c`).
+ - **Blockers:** none.
+-- 
+2.43.0
+
+
+From 9d4ce32d8aeba42ca331334b33a1ce577085f149 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:36:09 +0000
+Subject: [PATCH 10/10] STUDIO ST-EASY: Dreamcast notes now from the Flycast
+ run
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Xd63cx71nhiXXY4Jbxr864
+---
+ docs/DREAMCAST.md | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/docs/DREAMCAST.md b/docs/DREAMCAST.md
+index 163e9be..43c3f43 100644
+--- a/docs/DREAMCAST.md
++++ b/docs/DREAMCAST.md
+@@ -2709,7 +2709,4 @@ change what the options record means, so it is left to the core's UI polish pack
+ 
+ ## Studio ST-EASY (2026-11-15)
+ 
+-Not built or run on KallistiOS / Flycast in this package (the KOS install on the machine was not finished: no `environ.sh`). What was run: the SH4
+-compile of every core source with `sh-elf-gcc -Werror` (`core/tools/xcheck.sh`: 429 files OK, the studio sources included) and `make
+-dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file
+-changed. To check on a machine with KOS: `make -C dc -j2`, `make -C dc/harness`, and `sh dc/harness/speed2.sh OUT studio` against the base.
++Run on KallistiOS / Flycast by the lander (2026-11-15, after the review fix): `make -C dc -j2` builds, `sh dc/harness/speed2.sh OUT studio`: all nine windows 30.0 ticks/s, worst work 12.6 ms (choir / citizen picker), none over 33.3 ms; `dc/tests/boot.txt` on the ELF passes. Also the SH4 compile of every core source (`core/tools/xcheck.sh`: 431 files OK) and `make dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file changed. The new Start card / control card screens were not timed on Flycast (the speed2 studio group does not visit them).
+-- 
+2.43.0
+
