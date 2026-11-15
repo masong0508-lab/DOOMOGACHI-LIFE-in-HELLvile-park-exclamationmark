@@ -5,6 +5,8 @@
 # buttons, so these are the presses a player makes. Shots are reviewed at 320x240 for readability: one
 # instruction line ("Say something" / "You: ..."), the list below it, the people strip on top.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen (the house is not ticking yet)
+talk-ready
 wait 10
 push HOME 3
 wait 4
@@ -26,14 +28,14 @@ wait 4
 shot talk_1_ready
 # a quick reply: the top row, one press
 talk-quick 0
-wait 10
+wait 90
 shot talk_2_quick_said
 talk-read
 shot talk_3_after
 # a kind word from the category page
 talk-say compliment
 expect-talk-you "You're great"
-wait 12
+wait 90
 shot talk_4_compliment
 talk-read
 # an act that wants a topic: the topic page opens, the script picks "pie"
@@ -43,7 +45,7 @@ talk-read
 # a typed line (native: the keyboard row; the parser reads it, the gate runs first)
 talk-type "i love the pie"
 expect-talk-you "pie"
-wait 12
+wait 90
 shot talk_5_typed
 talk-read
 # Options: the topic row and the invite row (one person here, so no "To:" row)

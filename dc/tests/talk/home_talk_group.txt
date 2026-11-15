@@ -4,6 +4,8 @@
 # acts that need two people (mediate) appear only once there are two; at four people the invite row is
 # gone. Invite order: the list offers the people closest to the first one.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen (the house is not ticking yet)
+talk-ready
 wait 10
 push HOME 3
 wait 4

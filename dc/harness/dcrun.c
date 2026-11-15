@@ -828,6 +828,9 @@ static uint32_t wk_sum0, wk_n0;
 static unsigned long wk_over, wk_ticks;
 static uint32_t wk_worst, wk_worst_tick;
 static char wk_worst_scene[25];
+static unsigned long win_ticks;                  /* TD3: the work of the ticks since mark-ticks (printed by expect-ticks) */
+static unsigned long long win_sum;
+static uint32_t win_worst;
 
 static void work_poll(void)
 {
@@ -838,6 +841,9 @@ static void work_poll(void)
     if (n == wk_n0) return;
     w = (sum - wk_sum0) / (n - wk_n0);  /* mean when several ticks ended in one frame */
     wk_ticks += n - wk_n0;
+    win_ticks += n - wk_n0;
+    win_sum += sum - wk_sum0;
+    if (w > win_worst) win_worst = w;
     if (w > TICK_BUDGET_US) {
         wk_over += n - wk_n0;
         if (!quiet) printf("work: tick %u took %u us (over the 30 fps budget; 3D view %u us)\n",
@@ -1253,14 +1259,17 @@ static int tk_read(int max)
 }
 
 /* TD3: the answer is made a step a tick on the Dreamcast (the native runner makes it in one): after a press that
- * says something, step until the dialogue is up (BUSY) or the screen asks for a topic, so the next expect-talk-*
- * reads the finished answer. Not an error when it takes the whole budget: the expects then say what is wrong. */
+ * says something, step until the answer's dialogue box is up (the list is "busy" from the first step on, so the
+ * box is the sign) or the screen asks for a topic, so the next expect-talk-* reads the finished answer. Not an
+ * error when it takes the whole budget: the expects then say what is wrong. */
 static int tk_settle(void)
 {
     for (int k = 0; k < 240; k++) {
-        uint32_t r;
+        uint32_t r, shown;
         if (!tk_q(DC_TQ_STATE, NULL, &r)) return 0;
-        if (!(r & TKS_ON) || (r & TKS_BUSY) || ((r >> 2) & 7) != 0) return 1;
+        if (!(r & TKS_ON) || (!(r & TKS_BUSY) && ((r >> 2) & 7) != 0)) return 1;
+        if (!tk_q(DC_TQ_DIALOG, NULL, &shown)) return 0;
+        if (shown) return 1;
         if (!run_ticks(1)) return 0;
     }
     return 1;
@@ -1300,6 +1309,15 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         if (!run_ticks(3)) return 0;
         if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
         if (!(st & TKS_ON)) fail("line %d: Talk is not the top scene after talk-enter", lineno);
+    } else if (!strcmp(c, "talk-ready")) {           /* TD3: wait (up to N ticks, default 1500) for the bank the disc feeds in slices */
+        int max = n > 1 ? atoi(a1) : 1500, k;
+        for (k = 0; k < max; k += 10) {
+            if (!tk_q(DC_TQ_READY, NULL, &r)) return 0;
+            if (r == 2) break;
+            if (!run_ticks(10)) return 0;
+        }
+        if (k >= max) fail("line %d: Talk's bank was not read in within %d ticks", lineno, max);
+        else printf("talk-ready: %d ticks\n", k);          /* run_flycast.sh waits as long in the native twin: the title art moves with the tick */
     } else if (!strcmp(c, "talk-party")) {
         for (int i = 1; i < n; i++) {
             if (!tk_q(DC_TQ_PARTY | (i == 1 ? 0x100u : 0u), v[i], &r)) return 0;
@@ -1411,9 +1429,10 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         int g = (int)(st >> 28 & 7);
         if (!ok || g > 6 || strcmp(gates[g], a1)) fail("line %d: expected the gate to say %s, it says %s", lineno, a1, ok && g < 7 ? gates[g] : "(no talk)");
     } else if (!strcmp(c, "expect-talk-reply-romance") || !strcmp(c, "expect-talk-care") || !strcmp(c, "expect-talk-reply-sincere")) {
-        int want = n > 1 ? atoi(a1) : (c[12] == 'c' ? 1 : 0), got;
+        int care = c[12] == 'c', romance = c[18] == 'r';      /* reply-romance vs reply-sincere: both start with r (TD3 fix) */
+        int want = n > 1 ? atoi(a1) : (care ? 1 : 0), got;
         if (!tk_q(DC_TQ_REPLY, NULL, &r)) return 0;
-        got = c[12] == 'r' ? (int)(r >> 10 & 1) : c[12] == 'c' ? (int)(r >> 9 & 1) : (int)(r >> 8 & 1);
+        got = romance ? (int)(r >> 10 & 1) : care ? (int)(r >> 9 & 1) : (int)(r >> 8 & 1);
         if (!r || got != (want != 0)) fail("line %d: %s is %d, wanted %d", lineno, c, got, want);
     } else if (!strcmp(c, "expect-talk-act")) {      /* TD3: does the category page offer the act? (the native runner's walk) */
         int act = tk_act(a1), want = n > 2 ? atoi(v[2]) : 1, found = 0, m, row, cat;
@@ -1474,10 +1493,12 @@ static int run_script(FILE *f)
             if (ms > most) fail("line %d: a frame took %.1f ms (expect-gap %s)", lineno, ms, v[1]);
         } else if (!strcmp(c, "mark-ticks")) {
             tick_mark = tick_now();
+            win_ticks = 0; win_sum = 0; win_worst = 0;
         } else if (!strcmp(c, "expect-ticks") && n >= 3) {
             unsigned long d = tick_now() - tick_mark;
             unsigned long lo = strtoul(v[1], NULL, 0), hi = strtoul(v[2], NULL, 0);
             printf("ticks: %lu since mark-ticks (want %lu..%lu)\n", d, lo, hi);
+            if (win_ticks) printf("window work: %lu ticks, mean %llu us, worst %u us\n", win_ticks, win_sum / win_ticks, win_worst);
             if (d < lo || d > hi) fail("line %d: expect-ticks %lu..%lu got %lu", lineno, lo, hi, d);
         } else if (!strcmp(c, "press") && n >= 2) {
             if (!parse_buttons(v + 1, n - 1, &m, &lt, &rt)) return 0;

@@ -143,7 +143,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test talk-speed host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -320,6 +320,12 @@ room-test: $(CDI) $(BUILD)/doomogachi.nm
 	@$(MAKE) --no-print-directory -C $(ROOT)/core runner
 	@$(MAKE) --no-print-directory -C $(DC)/tests/gfx2d $(HOSTRUN) $(ROOMTEST)
 	sh $(DC)/tests/house/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(HOSTRUN) $(ROOMTEST) $(SHOTS)/house
+
+# TD3: the Talk screens' frame-time table (dc/tests/talk/speed2_talk.txt, on the CDI: the bank is a disc file)
+talk-speed: $(CDI) $(BUILD)/doomogachi.nm $(ELF_RUN)
+	@if [ -z "$(FLYCAST)" ]; then echo "talk-speed: no Flycast core (make -C dc/harness flycast)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	cd $(ROOT) && FLYCAST=$(FLYCAST) sh dc/harness/speed2.sh $(SHOTS)/speed2_talk talk
 
 $(BUILD)/doomogachi.nm: $(ELF)
 	$(NM) $(ELF) >$@

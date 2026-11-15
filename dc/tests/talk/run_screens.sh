@@ -3,7 +3,7 @@
 #
 #   sh dc/tests/talk/run_screens.sh FLYCAST.so DCRUN IMAGE NMFILE RUNNER OUTDIR [script ...]
 #
-# talk_pad and talk_typed (or the named scripts) is played
+# talk_pad, talk_typed and the four home_talk_* (or the named scripts; TD3) are played
 #   - twice in dcrun on the CDI, tick-exact from the native runner's start (--native-seed), with a Maple
 #     keyboard on port 2 (--device 2 keyboard; the pad on port 1 is the player): both runs must end with
 #     "0 failures", and every shot must be byte for byte the same in both;
@@ -16,7 +16,7 @@ set -u
 FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6; shift 6
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
-if [ $# -gt 0 ]; then SCRIPTS=$*; else SCRIPTS='talk_pad talk_typed'; fi
+if [ $# -gt 0 ]; then SCRIPTS=$*; else SCRIPTS='talk_pad talk_typed home_talk_basic home_talk_group home_talk_safety home_talk_visit'; fi
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
 : > "$sum"
@@ -41,7 +41,8 @@ for s in $SCRIPTS; do
     [ $r1 -eq 0 ] && [ $r2 -eq 0 ] || st=FAIL
     # the native twin
     n=$OUT/$s/nat; rm -rf "$n" "$OUT/$s/diff"; mkdir -p "$n" "$OUT/$s/diff"
-    sed 's/^talk-key /talk-type /' "$here/$s.txt" > "$OUT/$s/native.txt"
+    wt=$(sed -n 's/^talk-ready: \([0-9]*\) ticks$/\1/p' "$OUT/$s/1/dcrun.log" | head -1)   # the ticks the disc took: the title art moves with them
+    sed -e 's/^talk-key /talk-type /' -e "s/^talk-ready.*/wait ${wt:-0}/" "$here/$s.txt" > "$OUT/$s/native.txt"
     "$RUNNER" --w 320 --h 240 --pad dc --script "$OUT/$s/native.txt" --shots "$n" --saves "$OUT/$s/saves" > "$OUT/$s/native.log" 2>&1 || { st=FAIL; echo "native runner failed: $s" >&2; }
     python3 -I "$root/dc/harness/compare.py" "$OUT/$s/1/dc" "$n" --diff "$OUT/$s/diff" --gate 98 --close-gate 98 > "$OUT/$s/compare.txt" 2>&1 || st=FAIL
     over=$(sed -n 's/^dcrun: work over [0-9]* us on \([0-9]*\) of \([0-9]*\) ticks; worst \([0-9]*\) us.*/\1 of \2 ticks over 33.3 ms, worst \3 us/p' "$OUT/$s/1/dcrun.log")

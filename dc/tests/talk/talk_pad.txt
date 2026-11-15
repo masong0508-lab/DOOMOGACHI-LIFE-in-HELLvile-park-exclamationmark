@@ -4,6 +4,8 @@
 # keyboard is optional), goodbye. The same commands play in the native runner (core/native/runner_main.c),
 # so make -C dc talk-test compares every shot with the native 320x240 picture.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen
+talk-ready
 wait 10
 push HOME 3
 wait 4

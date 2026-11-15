@@ -1,0 +1,66 @@
+# speed2_talk.txt - TD3: the Talk screen's frame times on the Dreamcast (sh dc/harness/speed2.sh OUT talk; make -C dc talk-speed).
+# The GBA harness format of the other speed2 groups, so tools/speed2.py turns it into a dcrun script; only
+# the Dreamcast plays it (Talk is not built on the PS1, and the GBA's Talk numbers are in docs/TALK.md 6j).
+# Every window holds waits and plain presses only, so its ticks include what a player's press causes: the
+# answer made one generator step a tick (TD2) and typed out. The talk-* lines between windows only move
+# the screen to the next place (they are not measured).
+wait 40
+expect-log doomo: init
+sync on 61
+seed 18
+scene TITLE
+wait 10
+# the bank comes off the disc in slices after boot (talkdisc.c): not a window, the wait is the disc's
+talk-ready
+push HOME 3
+wait 20
+press B
+wait 20
+push HOME 3
+wait 60
+talk-enter Nana
+fps start
+wait 60
+fps talk: opener, greeting box typing
+shot talk_opener
+talk-read
+fps start
+wait 90
+fps talk: list at rest
+shot talk_list
+press DOWN
+wait 2
+fps start
+wait 30
+fps talk: list cursor move
+press UP
+wait 2
+fps start
+press A
+wait 150
+fps talk: quick reply made and typed
+shot talk_quick
+talk-read
+press SELECT
+wait 4
+fps start
+press A
+wait 30
+fps talk: category page open
+shot talk_category
+fps start
+press A
+wait 150
+fps talk: act said, answer made and typed
+shot talk_act
+talk-read
+talk-page more
+fps start
+wait 60
+fps talk: Options page
+shot talk_options
+talk-page main
+talk-leave
+fps start
+wait 90
+fps talk: back in the house after goodbye

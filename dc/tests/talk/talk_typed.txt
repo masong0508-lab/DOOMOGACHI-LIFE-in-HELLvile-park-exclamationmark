@@ -3,6 +3,8 @@
 # game's pad.c turns each key into a character for ui_text_entry_feed). In the native runner talk-key
 # is played as talk-type (make -C dc talk-test does that), so both give the same words and the same pictures.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen
+talk-ready
 wait 10
 push HOME 3
 wait 4

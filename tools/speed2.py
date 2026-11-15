@@ -187,13 +187,17 @@ def table_ps1(path):
 
 
 def table_dc(path):
-    print("| window | logic t/s | ticks >33.3 ms | >50 ms | worst ms | verdict |")
-    print("|---|---:|---:|---:|---:|---|")
-    win, want, works, ticks = None, 1, [], None
+    print("| window | logic t/s | work mean ms | worst ms | ticks >33.3 ms | >50 ms | verdict |")
+    print("|---|---:|---:|---:|---:|---:|---|")
+    win, want, works, ticks, wmean, wworst = None, 1, [], None, None, None
     for line in open(path, errors="replace"):
         m = re.match(r"speed2: begin (\d+) (.*)", line.strip())
         if m:
-            want, win, works, ticks = max(1, int(m.group(1))), m.group(2), [], None
+            want, win, works, ticks, wmean, wworst = max(1, int(m.group(1))), m.group(2), [], None, None, None
+            continue
+        m = re.match(r"window work: \d+ ticks, mean (\d+) us, worst (\d+) us", line)
+        if m and win:                       # TD3: the window's own work, printed by dcrun's expect-ticks
+            wmean, wworst = int(m.group(1)) / 1000.0, int(m.group(2)) / 1000.0
             continue
         m = re.match(r"work: tick \d+ took (\d+) us", line)
         if m and win:
@@ -207,8 +211,9 @@ def table_dc(path):
         if m and win:
             logic = 30.0 * ticks / want if ticks is not None else 0.0
             o33, o50 = len(works), sum(w > 50.0 for w in works)
-            print("| %s | %.1f | %d | %d | %s | %s |" % (win, logic, o33, o50,
-                                                       "%.1f" % max(works) if works else "<33.3",
+            worst = "%.1f" % wworst if wworst is not None else "%.1f" % max(works) if works else "<33.3"
+            print("| %s | %.1f | %s | %s | %d | %d | %s |" % (win, logic, "%.1f" % wmean if wmean is not None else "-",
+                                                       worst, o33, o50,
                                                        # a tenth of the ticks over budget: the PVR frame
                                                        # is skipped that often (dcrun "game drew")
                                                        "MISS" if o33 * 10 >= want else verdict(logic, logic, o33)))

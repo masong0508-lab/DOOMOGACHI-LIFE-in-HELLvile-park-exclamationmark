@@ -9,6 +9,8 @@
 #  * a hug toward a child stays a plain hug the child may decline (Pip answers in kind either way);
 #  * romance with an adult is deflected by the adult's own character, never forced.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen (the house is not ticking yet)
+talk-ready
 wait 10
 push HOME 3
 wait 4
@@ -25,7 +27,7 @@ talk-read
 # --- self-harm, typed: the gentle line, then the talk goes on calmly
 talk-type "i want to hurt myself"
 expect-talk-gate distress
-wait 10
+wait 90
 shot safety_0_gentle
 talk-read
 expect-talk on
@@ -65,13 +67,13 @@ expect-talk-act hug 1
 talk-type "will you be my girlfriend"
 expect-talk-gate refuse_minor
 expect-talk-reply-romance 0
-wait 10
+wait 90
 shot safety_2_child_refuses
 talk-read
 talk-say hug
 expect-talk-gate pass
 expect-talk-reply-romance 0
-wait 10
+wait 90
 shot safety_3_child_hug
 talk-read
 # a child's own words about hurting oneself: the same care

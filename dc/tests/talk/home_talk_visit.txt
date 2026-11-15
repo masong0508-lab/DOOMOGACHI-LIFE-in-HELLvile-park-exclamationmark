@@ -3,6 +3,8 @@
 # home_visit): walk up to Nana, A, the greeting box, the Talk list, a quick reply and a compliment, B
 # says goodbye, the house comes back. Shots at the start, in Talk and back in the house.
 scene TITLE
+# the Talk bank comes off the disc in slices after boot: wait for it on the title screen (the house is not ticking yet)
+talk-ready
 wait 10
 push HOME 3
 wait 4

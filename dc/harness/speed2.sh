@@ -14,8 +14,12 @@ core=${FLYCAST:-$(ls dc/harness/build/flycast_libretro.so /opt/toolchains/dc/fly
 mkdir -p "$out"
 rc=0
 for g in "$@"; do
-  python3 tools/speed2.py dc gba/harness/scripts/speed2_$g.txt > "$out/speed2_$g.txt" || exit 1
-  dc/harness/build/dcrun "$core" dc/build/doomogachi-nodebug.elf --nm dc/build/doomogachi.nm --fresh \
+  src=gba/harness/scripts/speed2_$g.txt
+  [ -f "$src" ] || src=dc/tests/talk/speed2_$g.txt        # TD3: the Talk group is Dreamcast-only (not built on the PS1)
+  python3 tools/speed2.py dc "$src" > "$out/speed2_$g.txt" || exit 1
+  img=dc/build/doomogachi-nodebug.elf
+  [ "$src" = "gba/harness/scripts/speed2_$g.txt" ] || img=dc/build/doomogachi.cdi     # TD3: Talk's bank is a file on the disc
+  dc/harness/build/dcrun "$core" $img --nm dc/build/doomogachi.nm --fresh \
     --run-dir "$out/run" --script "$out/speed2_$g.txt" --shots "$out/$g" --timeout 1800 > "$out/$g.log" 2>&1
   echo "### $g ($out/$g.log)"
   # the pinned core may crash while unloading after the script (dc/harness/README.md "Limits"): the

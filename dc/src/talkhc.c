@@ -15,6 +15,7 @@
 #include "doomo/talk.h"
 #include "doomo/town.h"
 #include "doomo/ui.h"
+#include "doomo/lang.h"
 #include "../../core/src/ui_internal.h"     /* UiDialogDebug */
 #include "../harness/dc_mailbox.h"
 
@@ -143,6 +144,8 @@ uint32_t dc_talk_hcmd(uint32_t arg, const char *name)
         for (i = 0; ui_toast_text(i); i++)
             if (strstr(ui_toast_text(i), name)) return 2;
         return 1;
+    case DC_TQ_READY:                   /* TD3: talk-ready (a poll: the open answers LOADING until the last slice is in) */
+        return talk_db_is_open() || talk_db_open(lang_find("en")) == TALK_DB_OK ? 2u : 1u;
     default:
         return 0;
     }
