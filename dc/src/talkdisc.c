@@ -9,7 +9,8 @@
  * The disc is slow (Flycast: one read of the whole bank held one tick for 7.4 s; one sector takes about
  * 17 ms), so the bank is read in TALK_CHUNK slices by dc_talk_pump() (main.c, in the idle time at the end
  * of a tick): as many slices as the slot has time for, and none when the last one would not fit, so a tick
- * never pays for the file. The pump starts the English bank by itself once the game has run
+ * never pays for the file (the first slice also waits for a slot of TALK_SLICE_GUESS; the rule rests on the
+ * last slice's time, measured on Flycast only: a real GD-ROM seek after PACK.DMP or the FMV may take longer). The pump starts the English bank by itself once the game has run
  * TALK_PREFETCH_TICKS ticks, so it is there by the time a player reaches a housemate; an early
  * plat_talk_load() starts the load too and answers PLAT_TALK_LOADING until the last slice is in (Talk is
  * "not ready" meanwhile: the A press does nothing and works a moment later). Loading another language
@@ -27,6 +28,9 @@
 #ifndef TALK_CHUNK
 #define TALK_CHUNK 2048u                  /* bytes per slice: one CD sector (Flycast takes about 17 ms for it) */
 #endif
+#ifndef TALK_SLICE_GUESS
+#define TALK_SLICE_GUESS 20000u           /* us a slice is assumed to take until one has run (Flycast: 19 ms; a busy tick passes 0) */
+#endif
 #ifndef TALK_PREFETCH_TICKS
 #define TALK_PREFETCH_TICKS 90u           /* ticks after boot (3 s) before the pump starts the English bank */
 #endif
@@ -37,7 +41,7 @@ static uint32_t s_got;                    /* bytes read so far */
 static file_t   s_fd = -1;                /* the open file while slices are still to come */
 static char     s_code[8];                /* the language code it belongs to ("en") */
 static uint32_t s_idle;                   /* pump calls before a load was started */
-static uint32_t s_slice_us;               /* what the last slice took (0 before the first) */
+static uint32_t s_slice_us = TALK_SLICE_GUESS;   /* what the last slice took (a guess before the first) */
 static uint32_t s_slice_max;              /* the longest slice, for the log line when the file is in */
 static int      s_tried;                  /* the pump started (or failed to start) the prefetch: not again */
 

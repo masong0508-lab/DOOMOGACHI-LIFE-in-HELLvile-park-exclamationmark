@@ -289,7 +289,8 @@ void dc_harness_cmd(void)
         r = 1;
         /* TD1: the native runner has Talk's bank from the start; the console reads it behind the title, slice by
          * slice (talkdisc.c), which a script that walks to a housemate within seconds would not wait for */
-        while (plat_talk_load("en") == PLAT_TALK_LOADING) dc_talk_pump(0xFFFFFFFFu);
+        { int guard = 5000;   /* a failing read restarts the load: do not loop for ever */
+          while (plat_talk_load("en") == PLAT_TALK_LOADING && --guard > 0) dc_talk_pump(0xFFFFFFFFu); }
         dc_logf("hcmd: native seed %x", (unsigned)arg);
         break;
     /* --- DC7: the side-mission commands (side_sample_a.txt) --- */
@@ -383,7 +384,8 @@ void dc_harness_cmd(void)
         r = 1;
         if (arg == 0) {
             int o;
-            while ((o = talk_db_open(lang_find("en"))) == TALK_DB_LOADING) dc_talk_pump(0xFFFFFFFFu);   /* the slices a tick would read */
+            int guard = 5000;
+            while ((o = talk_db_open(lang_find("en"))) == TALK_DB_LOADING && --guard > 0) dc_talk_pump(0xFFFFFFFFu);   /* the slices a tick would read */
             int v = o == TALK_DB_OK ? talk_db_verify() : o;
             dc_logf("hcmd: talk-bank open %d verify %d concepts %d", o, v, o == TALK_DB_OK ? talk_db_nconcepts() : 0);
             if (o == TALK_DB_OK && v == TALK_DB_OK) r = 2;

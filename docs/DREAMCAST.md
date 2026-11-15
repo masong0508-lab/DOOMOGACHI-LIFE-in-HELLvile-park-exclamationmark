@@ -2392,7 +2392,10 @@ reader.
   one-sector slices (`TALK_CHUNK` 2,048 B) by `dc_talk_pump(us_left)`, which `plat_end_frame` (`main.c`) calls in the idle
   time at the end of each tick: it runs as many slices as the slot has time for and none when the last slice would not
   fit (the longest slice measured on Flycast is 19.3 ms, so a tick with 20 ms or more free takes one; on a faster
-  disc, several). Ticks over 33.3 ms because of the disc: 0. The pump starts the English bank by itself 90 ticks (3 s)
+  disc, several). Before the first slice the pump assumes 20 ms (`TALK_SLICE_GUESS`), so an overloaded tick (slot 0) never
+  pays for it. "The disc never holds a tick" is measured on Flycast only: a real GD-ROM seek after `PACK.DMP` or the FMV
+  may take longer than a sector, which the last-slice rule does not foresee.
+  Ticks over 33.3 ms because of the disc: 0. The pump starts the English bank by itself 90 ticks (3 s)
   after boot, so it is in about 15 s later on Flycast (a slice a tick) and in about a second on a fast disc, long before
   a player reaches a housemate. A press before that finds Talk "not ready" (`talk_db_open` answers `TALK_DB_LOADING`,
   `home_talk_enter` returns 0) and works a moment later; the house shows no "loading" note for it (a TD2 item if the
@@ -2402,7 +2405,7 @@ reader.
   frame.
 * **Memory.** The bank is heap, not BSS: with the code Talk adds (measured on the tree before DC9C landed: `.text`
   +96,800 B, `.rodata` +11,660 B, `.bss` +5,600 B, `make -C dc sizes` 10,492,376 B in the image before, 10,606,436 B
-  after; on the rebased tree 10,614,212 B) the heap above `_end` is 5.81 MB before the bank is loaded and about 4.9 MB
+  after; on the rebased tree 10,614,912 B) the heap above `_end` is 5.81 MB before the bank is loaded and about 4.9 MB
   after (the floor is 4 MB).
 * **dcrun and the native start.** `dcrun --native-seed` (the start the native runner gets) reads the bank at once, in
   the harness command, so a script that walks to a housemate within seconds finds Talk as the native runner does

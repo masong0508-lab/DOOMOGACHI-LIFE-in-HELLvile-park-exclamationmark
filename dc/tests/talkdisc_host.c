@@ -35,14 +35,18 @@ int main(void)
     CHECK(plat_talk_load("en") == PLAT_TALK_LOADING);
     CHECK(mock_opens == 1 && mock_reads == 0);                /* opening does not read: no tick pays the file */
     CHECK(plat_talk_read(0, head, 16) == 0);                  /* not readable while loading */
-    dc_talk_pump(0);                                          /* no slice time known yet: the first slice runs */
-    CHECK(mock_reads == 1);
-    dc_talk_pump(4999);                                       /* the last slice took 5000 us: this slot is too short */
-    CHECK(mock_reads == 1);
-    dc_talk_pump(5000);
-    CHECK(mock_reads == 2);
-    dc_talk_pump(12000);                                      /* a roomy slot takes two slices (5000 each), the third does not fit */
+    dc_talk_pump(0);                                          /* a full tick (slot 0): even the first slice waits */
+    CHECK(mock_reads == 0);
+    dc_talk_pump(19999);                                      /* no slice time known yet: it is assumed 20000 us */
+    CHECK(mock_reads == 0);
+    dc_talk_pump(20000);                                      /* the guess fits; each slice then takes 5000: 4 slices */
     CHECK(mock_reads == 4);
+    dc_talk_pump(4999);                                       /* the last slice took 5000 us: this slot is too short */
+    CHECK(mock_reads == 4);
+    dc_talk_pump(5000);
+    CHECK(mock_reads == 5);
+    dc_talk_pump(12000);                                      /* a roomy slot takes two slices (5000 each), the third does not fit */
+    CHECK(mock_reads == 7);
     for (ticks = 0; plat_talk_load("en") == PLAT_TALK_LOADING && ticks < 100000; ticks++) {
         long before = mock_reads;
         dc_talk_pump(5000);
