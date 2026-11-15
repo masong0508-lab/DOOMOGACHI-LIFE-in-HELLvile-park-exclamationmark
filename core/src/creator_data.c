@@ -221,10 +221,12 @@ static const CrRow rows_face[] = {
     CHEEK("Tear tattoo", CHEEK_TEAR_TATTOO),
     CHEEK("Dimples", CHEEK_DIMPLES),
     CHEEK("Sparkles", CHEEK_SPARKLES),
+#if LOOK_POOL_SAVED                              /* (not on the PS1: no pool code there yet) */
     HDR("Eye makeup"),
     DEEP_ROW("Lashes", DF_LASH),                 /* CR5: deep parts, saved in the look pool */
     DEEP_ROW("Eyelids", DF_LID),
     DEEP_ROW("Eyeliner", DF_LINER),
+#endif
 };
 
 static const CrRow rows_hair[] = {

@@ -56,7 +56,9 @@ static uint16_t name_hash(const char *s)
 static void nicks_reset(void)
 {
     int i;
+#if LOOK_POOL_SAVED
     look_pool_reset();                                  /* CR5: the look pool goes with the nicknames */
+#endif
     memset(nicks, 0, sizeof(nicks));
     for (i = 0; i < CR_NICKS; i++) nicks[i].id = 0xFFFF;
     nicks_ready = 1;
@@ -142,17 +144,23 @@ static int nick_count_used(void)
 static uint32_t nickext_size(void)
 {
     int n = nick_count_used();
-    uint32_t base = (uint32_t)(1 + n * NICK_REC), g = look_gene_ext_size(), p, t;
+    uint32_t base = (uint32_t)(1 + n * NICK_REC), g = look_gene_ext_size();
+#if LOOK_POOL_SAVED
+    uint32_t p, t;
     look_pool_raw(&p);
     t = base + (g ? g : 2u) + 2u + p;
     if (p && t <= DOOMO_SAVE_EXT_MAX) return t;
+#endif
     return n || g ? base + g : 0;
 }
 
 static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t n = nickext_size(), o = 0, g = look_gene_ext_size(), p;
+    uint32_t n = nickext_size(), o = 0;
+#if LOOK_POOL_SAVED
+    uint32_t g = look_gene_ext_size(), p;
     const uint8_t *pool = look_pool_raw(&p);
+#endif
     int i;
     if (n == 0 || n > cap) return 0;
     dst[o++] = (uint8_t)nick_count_used();
@@ -166,6 +174,7 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
         o += DOOMO_NAME_LEN;
     }
     o += look_gene_ext_write(dst + o, cap - o);           /* CR3 */
+#if LOOK_POOL_SAVED
     if (n > o) {                                          /* CR5: the look pool follows */
         if (!g) { dst[o++] = 0; dst[o++] = 0; }
         dst[o++] = (uint8_t)(p & 255);
@@ -173,18 +182,22 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
         memcpy(dst + o, pool, p);
         o += p;
     }
+#endif
     return o;
 }
 
 static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
     int n, i, k, ok = 1;
+#if LOOK_POOL_SAVED
     uint32_t rest;
+#endif
     nicks_reset();
     if (len < 1) return 1;
     n = src[0];
     if ((uint32_t)(1 + n * NICK_REC) > len || n > CR_NICKS) return 0;
     (void)version;
+#if LOOK_POOL_SAVED
     rest = len - (uint32_t)(1 + n * NICK_REC);
     if (rest >= 2) {                                    /* CR5: the pool follows the gene trailer */
         uint32_t gl = 2u + 8u * (uint32_t)(src[1 + n * NICK_REC] | (src[2 + n * NICK_REC] << 8));
@@ -195,7 +208,12 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
             rest = gl;
         }
     }
+#endif
+#if LOOK_POOL_SAVED
     if (!look_gene_ext_read(src + 1 + n * NICK_REC, rest))
+#else
+    if (!look_gene_ext_read(src + 1 + n * NICK_REC, len - (uint32_t)(1 + n * NICK_REC)))
+#endif
         ok = 0;                                         /* CR3: the gene bits (the town is decoded) */
     for (i = 0; i < n; i++) {
         const uint8_t *b = src + 1 + i * NICK_REC;
@@ -972,9 +990,14 @@ static void view_of(const DoomoResident *r, DoomoLook *out, DoomoDeep *dout, con
 /* CR5: resident `id`'s pool-backed choices (look_pool.c) into dd */
 static void pool_deep_get(int id, uint8_t *dd)
 {
+#if LOOK_POOL_SAVED
     DoomoDeep t;
     look_resolve(NULL, id, &t);
     memcpy(dd, t.v + DF_POOL_FIRST, DF_POOL_N);
+#else
+    (void)id;
+    memset(dd, 0, DF_POOL_N);                   /* the PS1 keeps no pool on the card */
+#endif
 }
 
 static void target_look(DoomoLook *out, DoomoDeep *dout, uint8_t *locked)
@@ -1382,6 +1405,11 @@ static int deep_run(const uint8_t *dd, uint8_t *out)
  * the caller refuses the commit and the town stays unchanged. */
 static int deep_commit(int id)
 {
+#if !LOOK_POOL_SAVED
+    (void)id;
+    return 1;                           /* the PS1 keeps no pool on the card (its rows are not offered) */
+}
+#else
     uint8_t run[2 * DF_POOL_N], old[2 * DF_POOL_N];
     const uint8_t *o;
     int rl = deep_run(cr.dd, run), ol = 0, ok;
@@ -1397,6 +1425,7 @@ static int deep_commit(int id)
     if (!ok) look_pool_put(id, RUN_DEEP, ol ? old : NULL, ol);       /* back to what it was */
     return ok;
 }
+#endif
 
 static int write_town(void)
 {

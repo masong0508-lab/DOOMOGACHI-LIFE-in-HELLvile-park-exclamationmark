@@ -60,7 +60,9 @@ void town_free(int id)
         if (doomo_town.graves[i].resident != id) doomo_town.graves[n++] = doomo_town.graves[i];
     doomo_town.grave_count = (uint16_t)n;
     portrait_invalidate(id);
+#if LOOK_POOL_SAVED
     look_pool_drop(id);                         /* CR5: the deep parts of whoever was there */
+#endif
 }
 
 int town_count(int status)

@@ -25,8 +25,10 @@ DOOMO_STATIC_ASSERT(LOOK_POOL_BYTES + 8 <= DOOMO_SAVE_EXT_MAX, look_pool_fits_on
  * pool) under DOOMO_SAVE_EXT_MAX; the PS1 keeps 384 B (its resident RAM is full, docs/PS1.md). */
 #if defined(DOOMO_PLATFORM_PS1)
 #define LOOK_POOL_CAP 384
+#define LOOK_POOL_SAVED 0     /* the PS1 is 992 B short of its RAM rule: no put / save / load code there yet */
 #else
 #define LOOK_POOL_CAP 6144
+#define LOOK_POOL_SAVED 1
 #endif
 
 /* The pool API (weak stubs in stubs.c until M1 allocates a pool). A run is the bytes of one kind

@@ -12,6 +12,7 @@
 #include "doomo/part_icons.h"
 #include "doomo/part_meta.h"
 #include "doomo/look_fields.h"
+#include "doomo/look_pool.h"
 
 /* ---- tabs ------------------------------------------------------------- */
 enum { CR_TAB_BODY, CR_TAB_FACE, CR_TAB_HAIR, CR_TAB_SPOOKY, CR_TAB_OUTFIT,
