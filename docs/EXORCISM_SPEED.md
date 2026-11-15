@@ -12,12 +12,14 @@ make -C gba profile-exorcism        # gba/harness/scripts/exorcism_profile.txt: 
 python3 ps1/harness/run.py --exe ps1/build/doomogachi.exe --cue ps1/build/doomogachi.cue \
     --script ps1/harness/scripts/perf_exorcism_phases.txt --out OUT        # the same phases on the PS1
 core/build/tests stage_             # the retained stage against the full redraw, frame for frame (native)
+make -C gba test-exorcism           # (G2-EX) gba/harness/scripts/exorcism_fps.txt: every phase with an fps floor
 ```
 
 Both scripts walk the practice ritual on the plush dummy (`scene EXORCISM -1`) like `core/tests/scripts/life_exorcism.txt`:
 the intro under its dialogue, the tools menu, the prayer rhythm, the holy water (reticle held at the left edge, so the phase
-ends when the flasks are thrown), the true name, the verdict and the result. Frame parity between two GBA ROMs: the same
-script without its `profile` lines (they run instructions, so they move later ticks) and compare the `vhash-seq` lines.
+ends when the flasks are thrown), the true name, the verdict and the result. Frame parity between two GBA ROMs: build both
+with `make -C gba rom PSLICE_DET=1`, run `gba/harness/scripts/exorcism_parity.txt` (every tick of the ritual hashed) on
+each and compare with `gba/tools/speedtable.py --compare` (the script's header has the commands).
 
 ## E0: baseline (2026-11-08, tree 7729ada)
 
@@ -184,7 +186,7 @@ CPU-bound in Redux.
   No backdrop on the disc. The PS1's seven phase shots are identical to the base disc's; `game_smoke` and the core's
   `life_exorcism` pass on the harness with no `ovl: ERROR`.
 
-## G2-EX (speed wave 2, 2026-11-13): clipped redraw, held dims, the aura as a list, two held poses
+## G2-EX (speed wave 2, built 2026-11-13, landed 2026-11-15): clipped redraw, held dims, the aura as a list, two held poses
 
 Owner target: a steady 30 fps, logic 30, no frame over 33 ms, in every phase of the ritual. The work started from
 audit 3 (`docs/design/SPEED_AUDIT3.md`, S3-11) and a fresh profile of each phase. The profile now names the
@@ -241,25 +243,39 @@ honour; the clip primitives are checked against the unclipped call (rects, shade
 or a silhouette, text and outlined text, 400 random cases); the aura's list is checked against the shape code; the
 stage's decisions (a clipped layer lying on a dirty box does not widen it, an unclipped one does, the pieces are
 disjoint and cover the dirty part) have their own tests. (b) GBA: every frame of the whole ritual (1,382 frames,
-the harness's `vhash-seq` on every tick of the profile script, longer at the end to cover the fade) is identical
-to the base ROM's. The portraits' slice budget depends on how fast the frame ran, so two ROMs of different speed
-animate the faces differently; the comparison builds both ROMs with `plat_portrait_slice_ok` always yes and no
-idle slices (a local patch of `gba/src/pslice.c`, never committed) and runs the script without its `profile`
-lines (they run instructions and move the ticks).
+`gba/harness/scripts/exorcism_parity.txt`: `vhash-seq` on every tick) is identical to the base ROM's, with the two
+pixel-changing steps below turned off (`EXO_HOLD_STILL` 0). The portraits' slice budget depends on how fast the frame
+ran, so two ROMs of different speed animate the faces differently; both ROMs are built with `make -C gba rom
+PSLICE_DET=1` (`gba/src/pslice.c`: every slice at once, none in idle time; the game ROM's code is unchanged).
+Checked when it was built (base `9877a45e`) and again on the landing tree (base `7cda6362`, which has S2-4b's stamps and
+S2-4c's kitchen in the same stage): 1,382 of 1,382 frames identical, and the 220 hashed frames of `exorcism_fps.txt`
+(both rituals, the cast out's result included) too. (c) PS1: the seven phase shots of `perf_exorcism_phases.txt` are
+byte-identical to the base disc's (the PS1 does not take the pixel-changing steps).
 
-### Pixel-changing steps (SPEED DEFAULTS; before / after shots in the session's evidence `G2-EX/before_after_all.png`)
+### Pixel-changing steps (SPEED DEFAULTS; GBA, Dreamcast and native only; before / after shots below)
+
+Both are under `EXO_HOLD_STILL` (`core/src/exorcism_int.h`): 1 on the GBA, the Dreamcast and native (the GBA's baker
+and the tests), **0 on the PS1**, which reads 30.00 fps in all seven phases with the drips and the poses moving (the
+owner's SPEED DEFAULTS allow a pixel change only where the exact steps cannot reach 30; a review finding of the landing).
+The Dreamcast keeps them: without them its true name, verdict and result windows show 50 ms picture gaps (texture
+uploads: its kept church, DC9B, bakes one texture per church key, and every new pose of a figure is an upload); with
+them those windows are a steady 30 and the run's uploads fall 1,166 -> 164 (docs/DREAMCAST.md).
+Before / after at the same tick (`make PSLICE_DET=1` ROMs of the tip and of G2-EX, `exorcism_fps.txt` with a
+`vhash-seq 1` before each `shot`, so both shots show the frame of the same tick; the third column marks the changed
+pixels): the landing's evidence `G2-EX/land/before_after_same_tick.png` (session scratchpad, not in the tree). The
+changes are the drips on the wall (dread 9 and up: true name, verdict, result) and the host's and Fuzz's faces.
 
 - **The wall's drips hold a length.** The church backdrop's key carried the drips' step (dread >= 9: their length
   cycled every 8 ticks over 5 steps). Each change put a new picture under the stage and redrew the whole screen on
   two frames in a row (one per GBA page): 39-60 ms frames every 8 ticks from the true name on. They stay as the
   first step of the old cycle (2 px wide marks, 3-7 px long, on the wall's stripes). The key is the dread level and
-  the failing beams: the GBA bakes 19 church pictures, not 59 (the ROM is 1.53 MB smaller). The change is in the
-  shared backdrop code, so the PS1 and Dreamcast drips hold too.
+  the failing beams: the GBA bakes 19 church pictures, not 59 (the ROM is 1.53 MB smaller). The Dreamcast's drips hold
+  too; the PS1's key still carries the step (`EXO_DRIP_STEPS`).
 - **The possessed host and Father Fuzz hold one pose** (`portrait_hold(1)`, as the combat HUD's portrait and the
   title's figures do): no blink, breath, aura-frame or mouth frames; a new expression is a stand-in for a few ticks
   while it renders. Their re-renders were 6-8 ms of a GBA frame in the prayer, water, name, verdict and result.
-  The aura around the frame, the shake, the bobs and the candles still move. Shared code: the PS1 and Dreamcast
-  figures hold too.
+  The aura around the frame, the shake, the bobs and the candles still move. The Dreamcast's figures hold too; the
+  PS1's do not.
 
 ### What was tried and not kept (the numbers are why)
 
@@ -273,49 +289,80 @@ lines (they run instructions and move the ticks).
 - A clippable speech bubble (worse in the name phase), the aura and the demons' bobs at 15 Hz, the dust motes at
   15 Hz, the verdict's counter at 15 Hz: no change in the measured windows, so not applied.
 
-### Results (2026-11-13, libmgba, the same `exo_perf` script and `harness --worklog` on the base ROM and on the final ROM)
+### Results (2026-11-15, libmgba, on the landing tree: the tip `cf5e9f27` against the tip + G2-EX)
 
-| phase | base fps | now fps | base work avg / max ms | now work avg / max ms | frames over 33 / over 50 ms (base -> now) |
+`gba/harness/scripts/exorcism_fps.txt` (the profile script's windows without the `profile` lines, then the same ritual
+with seed 2, which ends in a cast out) run with `harness --worklog --no-fps-gates` on both ROMs, table by
+`python3 tools/speed2.py table`:
+
+| phase | tip fps | G2-EX fps | tip work avg / max ms | G2-EX work avg / max ms | frames over 33 / over 50 ms (tip -> G2-EX) |
 |---|---:|---:|---|---|---|
-| intro (dialogue) | 23.0 | **29.8** | 37.1 / 44.7 | 28.2 / 39.0 | 42 / 0 -> 1 / 0 |
-| tools menu | 27.8 | **29.7** | 33.9 / 42.5 | 28.8 / 38.0 | 13 / 0 -> 2 / 0 |
-| prayer rhythm | 19.0 | 27.9 | 46.6 / 57.2 | 32.8 / 42.2 | 76 / 11 -> 17 / 0 |
-| holy water | 23.4 | **30.0** | 36.0 / 47.6 | 22.1 / 36.3 | 40 / 10 -> 0 / 0 |
-| true name | 20.0 | 24.0 | 41.7 / 47.3 | 36.2 / 37.9 | 40 / 0 -> 24 / 0 |
-| verdict | 19.5 | **30.0** | 45.3 / 55.7 | 26.5 / 34.7 | 38 / 3 -> 0 / 0 |
-| result | 19.2 | **29.7** | 43.5 / 47.8 | 31.2 / 42.3 | 57 / 8 -> 3 / 0 |
+| intro (dialogue) | 23.7 | **29.8** | 36.5 / 44.4 | 28.2 / 37.8 | 39 / 0 -> 1 / 0 |
+| tools menu | 27.0 | **29.7** | 34.3 / 39.4 | 28.7 / 37.4 | 18 / 0 -> 2 / 0 |
+| prayer rhythm | 19.5 | 27.5 | 46.1 / 57.1 | 33.1 / 42.0 | 78 / 6 -> 19 / 0 |
+| holy water | 23.6 | **30.0** | 36.7 / 47.8 | 22.0 / 35.3 | 42 / 6 -> 0 / 0 |
+| true name | 20.0 | 24.0 | 42.1 / 46.4 | 36.6 / 38.5 | 40 / 0 -> 26 / 0 |
+| verdict | 19.3 | **30.0** | 45.9 / 55.9 | 26.6 / 35.0 | 37 / 5 -> 0 / 0 |
+| result (a failure) | 19.6 | **29.7** | 43.6 / 47.3 | 31.2 / 41.5 | 58 / 7 -> 3 / 0 |
+| result (a cast out, seed 2) | 19.7 | 19.8 | 43.0 / 46.9 | 42.5 / 44.8 | 57 / 1 -> 58 / 0 |
 
 Logic is 30 ticks a second in every phase. Holy water and the verdict hold a steady 30 with no frame over 33 ms. The
-intro, tools and result windows each have one to three single 50 ms frames (a portrait slice or a state change).
-No window has a frame over 50 ms any more. The prayer (28 fps) and the true name (24) do not reach 30: below.
-The exact steps alone (before the two held poses and the drips) measure: intro 28.4, tools 29.0, prayer 37.2, water
-27.8, name 43.1, verdict 34.8, result 35.3 ms of work.
+intro, tools and failure result have one to three single 50 ms frames (a portrait slice or a state change). No frame in
+a window is over 50 ms any more. The seed-2 ritual's other windows read the same as seed 1's (intro 30.0, tools 30.0,
+prayer 27.9, water 29.9, name 23.5); on the tip before LV11 / LV7a (`7cda6362`) G2-EX read the same numbers to the
+0.1 ms. Built on `9877a45e` the same windows read 29.8 / 29.7 / 27.9 / 30.0 / 24.0 / 30.0 /
+29.7 (base 23.0 / 27.8 / 19.0 / 23.4 / 20.0 / 19.5 / 19.2). The exact steps alone (before the two held poses and the drips)
+measured: intro 28.4, tools 29.0, prayer 37.2, water 27.8, name 43.1, verdict 34.8, result 35.3 ms of work.
+`make -C gba test-exorcism` holds these numbers: floors intro 27, tools 28, prayer 25, water 27, name 22, verdict 27,
+result 27, cast out 17; it fails on the tip before G2-EX. The speed tour's exorcism floor is 28 (was 15).
+
+**The stage's other users** (the kitchen, S2-4c, and the fair, S2-4b, both landed after G2-EX was built): `speed2`
+`fishcook` and `fair` on the same two ROMs. The fair is unchanged (every window the same fps, work within 0.1 ms). The
+kitchen gets faster: the dirty set is now put back as fewer, taller pieces (`build_pieces` joins a band to the piece
+above it), so its cooking windows do 0.8-2.4 ms less work, the result card 20.8 -> 22.0 fps (41.1 -> 37.9 ms), the
+counter 29.2 -> 29.5, serving 29.3 -> 29.8. The native stage on / off tests of both pass on the landing tree.
 
 ### What is still missing, and what it would take
 
-- **Prayer, 27.9 fps (32.8 ms; 17 of 112 frames at 50 ms).** The lane is redrawn on every tick by design (the
+- **Prayer, 27.5 fps (33.1 ms; 19 of 111 frames at 50 ms).** The lane is redrawn on every tick by design (the
   prompts move): 6 ms, plus the stage's work 4 ms and the aura's rebuild on pulse changes. 30 would take the lane
   split into a kept ribbon and a few moving prompts, each with its own boxes (the stage keeps one box per layer, so
   eight prompts would need eight layers or layers with several boxes).
-- **True name, 24.0 fps (36.2 ms, steady).** The clue window and the four names are one layer of text and shapes
+- **True name, 24.0 fps (36.6 ms, steady).** The clue window and the four names are one layer of text and shapes
   (13 ms to draw); the host's aura, the demon's bob, the cursor and the seven motes touch its box on nearly every
   tick, and clipping it costs more than it saves (above). 30 would take the window and the buttons as retained
   panels in the stage (the G7 body copy from the front page, which the stage does not use yet), or text drawn
   cheaply enough that a redraw of the pieces costs less than the whole.
-- **The success path of the result** (not in the measured script, a failure): the confetti is one layer that moves
-  over the whole screen, so a cast out is drawn in full every tick as before. It would take confetti pieces as
-  separate small boxes (more layers than the stage has) or confetti at 15 Hz.
+- **A cast out's result, 19.8 fps (42.5 ms; was 19.7).** The cloud and the confetti are one layer that moves over the
+  whole screen, so every tick is a full redraw, as before G2-EX. It would take the confetti pieces as separate small
+  boxes (more layers than the stage's 24) or the confetti drawn over a kept frame of the rest; confetti at 15 Hz would
+  not help on the GBA (each page compares with the picture two ticks old: docs/GBA.md "Speed wave 2: S2-4c").
+- **The phase changes.** Every layer's key carries the state, so the first frames of a new phase redraw everything on
+  both GBA pages, plus the new expression's portrait: ticks outside the measured windows (`--worklog`, seed 1 / seed 2;
+  tip -> G2-EX): true name -> verdict 88.0 + 76.0 -> **85.9 + 67.6 ms**; verdict -> result 93.6 + 69.0 -> **91.1 + 66.7
+  ms** (a failure), 151.0 + 72.7 -> **155.2 + 68.8 ms** (a cast out: Fuzz's and the host's happy pictures render); leaving
+  the result 103.2 -> **100.9 ms**. A window that starts on such a frame reads lower (seed 2's verdict window holds one:
+  29.0 fps with one 67 ms frame; with seed 3, 20.8). Better than the tip: a second ritual's first frame (96.0 -> 49.5 ms) and a frame
+  after the holy water (81.2 -> 26.5 ms); the first ritual's first frame is the tip's (138.1 -> 138.5 ms; it was 181 ms
+  before the landing fixed the held pose's first fetch). Not profiled further here; a key that
+  does not carry the state for layers that look the same in both phases, and the next expression rendered ahead
+  (`portrait_prefetch`), are the likely levers.
+- Single 50 ms frames in the intro (1), tools (2) and the failure's result (3): portrait slices and the dialogue.
 
-### RAM, ROM (GBA)
+### RAM, ROM (GBA; measured on the landing tree, `make -C gba sizes` and `gba/tools/memreport.py`)
 
-- EWRAM `.bss` + `.data` 246,700 -> 246,708 B (**+8 B**; 15,436 B free): the aura's pointer, the clip box's
-  fifth halfword (the `gba_nodraw` it replaced), padding. The aura's lists (3.8 KB) and the stage's clip mask live
-  in the exorcism's scene scratch (a cache, re-bound when another scene took it).
-- IWRAM resident 11,256 -> 11,272 B (**+16 B**, `plat_rect`'s clip dispatch); the main stack's room is 6,292 B
-  (gate 6,144). The overlay's room group 3,588 -> 3,740 B (`stage_clip_rect`; the slot is the 3D group's 10,352 B,
-  6,612 B of it free).
-- ROM 8,004,984 -> 6,475,500 B (-1.53 MB: the drips' hold).
-- PS1: see `docs/PS1.md` "Speed tour 2" (G2-EX): 30.00 fps in all seven phases, the resident image ends at the base's
-  address (+0 B). The aura's list is not built there (no holes).
+- EWRAM `.bss` 254,820 -> 254,828 B (**+8 B**; 6,428 -> 6,420 B free): the aura's pointer (4 B) and the clip box's fifth
+  halfword (`stage_box[5]`: the old `trk[4]` plus the saved `gba_nodraw`), with padding. The aura's five lists (3,924 B)
+  and the stage's clip mask and pieces live in the exorcism's scene scratch: its claim grows 1,672 -> 6,000 B of the
+  12 KB block (stage memory 1,240 -> 1,644 B, the name cache 432 B, the aura 3,924 B). The kitchen's claim grows by the
+  same 404 B of stage memory (its static assert allows 2,048).
+- IWRAM resident 11,272 -> 11,288 B (**+16 B**, `plat_rect`'s mode-7 dispatch in `video_loops.s`); the main stack's room
+  6,288 -> 6,272 B (gate 6,144 B; 5,124 B beside the flash routines while saving). The overlay's room group 9,800 ->
+  9,952 B (+152 B, `stage_clip_rect`; 400 B of the 10,352 B slot left beside it).
+- ROM 9,929,752 -> 8,399,980 B (-1.53 MB: the drips' hold, 19 church pictures baked instead of 59), `.text` +6,696 B.
+- Net zero is not met: +8 B EWRAM and +16 B IWRAM (GBA ledger row "G2-EX"); tried for the landing and not found without
+  moving the aura's pointer behind a call on the hot path (the bytes land in padding elsewhere).
+- PS1: see `docs/PS1.md` "Speed tour 2" (G2-EX): 30.00 fps in all seven phases before and after, the shots identical,
+  resident +0 B (129,504 B below the stack top with the boot FMV). The aura's list is not built there (no holes).
 - Dreamcast: see `docs/DREAMCAST.md` (G2-EX).
 

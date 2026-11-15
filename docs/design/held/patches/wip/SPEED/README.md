@@ -11,3 +11,4 @@ Landed 2026-11-15: PS1-RAM (folder deleted).
 Landed 2026-11-15: S2-4b (folder deleted).
 Landed 2026-11-15: S2-4c (folder deleted).
 Landed 2026-11-15: S2-10 (folder deleted).
+Landed 2026-11-15: G2-EX (folder deleted). No SPEED package is saved here any more.

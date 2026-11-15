@@ -431,15 +431,19 @@ target. The sim is stopped for the whole job here too (the table's logic column,
 order; the read-back only reports). `dc/tests/vmu` (`make -C dc vmu-test`) checks the images (saves, full, novmu,
 console, input, optvol pass on the landed tree). **Power cut:** the VMU save writes a new file and replaces the old one
 (atomic by design); no test cuts it.
-**G2-EX (the exorcism).** No retained stage here (`plat_clip` and the stage hooks are the weak no-ops, the aura's list is not
-built: `HOST_HOLES` 0), so the Dreamcast gets the wall drips' hold and the host's and Fuzz's held pose (fewer texture
-uploads); `backdrop.c` is built and `plat_stage_begin` is the weak 0 (every frame is drawn whole). `make -C dc` builds (image
-+4.6 KB, 6.93 MB free above `_end`). The exorcism's seven phases (`perf_exorcism_phases.txt`'s steps turned into a `speed2` script, Flycast, base
-`9877a45e` against G2-EX, the same script): ticks over 33.3 ms 723 -> 592 of ~1,310 drawn (intro 24 -> 3, tools 14 -> 0, prayer
-55 -> 45, holy water 79 -> 80, true name 43 -> 44, verdict 10 -> 2, result 71 -> 72), work mean 34.5 -> 33.9 ms, worst tick
-51.8 -> 48.8 ms, texture uploads 659 -> 183 with evictions 510 -> 0. Flycast is not cycle-accurate and the base is
-already over 33 ms on 55% of these ticks (723 of 1,307): the numbers say G2-EX is not slower here, not that the phases hold
-30 on a console.
+**G2-EX (the exorcism; built 2026-11-13, landed 2026-11-15).** The clipped redraw does not run here: DC9B's
+`stage_begin` keeps the church as one texture and says `held` 0, so the core puts the whole picture back and draws every
+layer each frame (`stage_clip_n` is 0; `plat_clip` is the weak no-op; the aura's list is not built, `HOST_HOLES` 0). The
+two pixel-changing steps do run (`EXO_HOLD_STILL` 1): the church key no longer carries the drips' step, so the kept
+church bakes 19 textures instead of 59, and the host and Fuzz hold one pose, so their pictures are uploaded once per
+expression. Flycast, `gba/harness/scripts/exorcism_fps.txt` turned into a dcrun script (`tools/speed2.py dc`), the tip
+`7cda6362` against the tip + G2-EX: 14 windows (both rituals) with 0 ticks over 33.3 ms of work before and after; work
+mean 12.2 -> 11.4 ms; texture uploads 1,166 -> 164 and evictions 1,023 -> 104 over the run; the worst picture gap of the
+true name, verdict and both results 50 -> **33 ms** (a steady 30; the prayer keeps one 50 ms gap in both, the seed-2
+holy water too); the run's ticks over 33.3 ms 6 -> 5 of 2,800 (worst 36.0 -> 35.2 ms, outside the windows). With the two
+steps turned off the run reads exactly the tip's (1,166 uploads, the same 50 ms gaps): the gain is theirs, and without
+them the Dreamcast does not hold a steady 30 in those windows (why it keeps them; the PS1 does not). Again on `cf5e9f27` +
+G2-EX (the landing tree): the same table, the same 164 uploads. `make -C dc` builds, `make dc-host-test` passes.
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 

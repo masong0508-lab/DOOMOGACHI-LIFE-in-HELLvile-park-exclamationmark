@@ -1743,18 +1743,23 @@ tested on the PS1; `write_file` rewrites a file in place when it is big enough (
 132,112 B); +512 B on `262bf2b7` (132,320 -> 131,808 B: the image's 16-byte alignment). (On
 `ee686c74` the package was 320 B *smaller* than its base: it merged the banner's and the loading screen's glyph arrays,
 which PS1-RAM step 3 did on its own since.) The cold busy code is compiled `-Os` by attribute (`COLD` in `gfx.c`).
-**G2-EX (the exorcism toward 30).** The PS1 held 30 before and holds it after: `perf_exorcism_phases.txt` reads 30.00
-fps in the intro, tools, prayer, holy water, true name, verdict and result phases (every frame 2 vsyncs but one 3-vsync
-frame per window, the lockstep resume), `perf_exorcism.txt` 30.00, `game_smoke` PASS. The shared changes (clipped redraw in `backdrop.c`, the verdict and result in layers, the wall
-drips' hold, the host's and Fuzz's held pose) cost nothing here: the platform hooks `plat_clip` / `plat_clip_end` and
-`plat_stage_*` are the weak no-ops (no retained stage on the disc), the aura's list is not built (`HOST_HOLES` 0:
-the shapes are drawn whole), and the exorcism overlay group is 50 KB (was 46; the slot is 168 KB). **Resident +0 B.** The
+**G2-EX (the exorcism toward 30; built 2026-11-13, landed 2026-11-15).** The PS1 held 30 before and holds it after:
+`perf_exorcism_phases.txt` reads 30.00 fps in the intro, tools, prayer, holy water, true name, verdict and result phases on
+the tip and on the tip + G2-EX (every frame 2 vsyncs but one 3-vsync frame per window, the lockstep resume; the histograms
+identical), and the seven phase shots are byte-identical to the tip's. That is why the PS1 does not take the package's two
+pixel-changing steps (the wall drips' hold, the host's and Fuzz's held pose: `EXO_HOLD_STILL` 0 under
+`DOOMO_PLATFORM_PS1`, `core/src/exorcism_int.h`; SPEED DEFAULTS allow a pixel change only where the exact steps cannot
+reach 30). The shared changes (clipped redraw in `backdrop.c`, the verdict and result in layers) cost nothing here: the
+platform hooks `plat_clip` / `plat_clip_end` and `plat_stage_*` are the weak no-ops (no retained stage on the disc), the
+aura's list is not built (`HOST_HOLES` 0: the shapes are drawn whole), and the exorcism overlay group is 51 KB (was 46; the
+slot is 180 KB). `perf_exorcism.txt` 30.00, `game_smoke` and the core's `life_exorcism` pass. **Resident +0 B.** The
 first build was +912 B: the host and demon layers chose between two static declarer functions by a pointer, which made
 their addresses escape and the planner (`ovl_plan.py`: "a section whose address escapes is resident") kept both,
 `stage_layer`, `stage_draw`, `stage_layer_clip` and `layer_set` (792 B of code) resident. `LX(clip, ...)` is one function
-that every caller calls directly (`OVL_WHY_OBJ=exorcism_scene` shows the chain if it comes back). bss start 0x8014a4c0 and
-`_end` 0x801efe60 are the base's: 64 KB (65,952 B) below the stack top with the boot FMV (build with
-`-DDOOMO_INTRO_REQUIRED=ON`), as before; PS1-RAM's 72 KB gate is not G2-EX's to move.
+that every caller calls directly (`OVL_WHY_OBJ=exorcism_scene` shows the chain if it comes back). On the landing tips
+`7cda6362` and `cf5e9f27` the disc with the boot FMV ends at `0x801e0610` with and without G2-EX: **129,504 B below the
+stack top, delta 0 B** (built with `-DDOOMO_INTRO_REQUIRED=ON`; the image and bss sections the same size, `OVL.BIN`
+1,144 -> 1,146 KB), 55,776 B above the 72 KB plan gate.
 
 ## 13. Notes for the core
 

@@ -8,7 +8,7 @@
 # (gba/tools/speedtable.py --compare A B: the exact check of a package that claims "no pixel changes").
 # The floors sit about 2-3 fps under what G2-EX measured on 2026-11-15 (intro 29.8, tools 29.7, prayer
 # 27.5, holy water 30.0, true name 24.0, verdict 30.0, result 29.7) and above the tip before it (23.7,
-# 27.0, 19.5, 23.6, 20.0, 18.8, 20.6): a fall back fails. A cast out's result is drawn in full every tick
+# 27.0, 19.5, 23.6, 20.0, 19.3, 19.6): a fall back fails. A cast out's result is drawn in full every tick
 # (19.8; 19.7 before): its floor only catches a regression. Numbers belong to this script.
 wait 40
 expect-log doomo: init
