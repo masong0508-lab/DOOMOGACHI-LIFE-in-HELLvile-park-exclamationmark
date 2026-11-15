@@ -191,9 +191,20 @@ static int fans_in_crowd(void)
 }
 
 /* the stage as it looks before the show (setup preview) */
+/* (G2-CO) the GBA's approved trades (concert_int.h CLITE_*, docs/GBA.md "G2-CO"); none on the other ports */
+static int concert_lite(void)
+{
+#if defined(DOOMO_PLATFORM_GBA)
+    return CLITE_FLAMES;
+#else
+    return 0;
+#endif
+}
+
 static void prep_view(void)
 {
     memset(&C.v, 0, sizeof(C.v));
+    C.v.lite = concert_lite();
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
     C.v.stage = C.stage_sel >= 0 ? C.stage_sel : auto_stage();
@@ -271,6 +282,7 @@ static void start_studio_show(void)
 static void stage_begin(void)
 {
     memset(&C.v, 0, sizeof(C.v));
+    C.v.lite = concert_lite();
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
     C.v.stage = C.stage;

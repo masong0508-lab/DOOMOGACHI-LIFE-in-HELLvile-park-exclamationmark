@@ -509,8 +509,10 @@ static void draw_show(const StageView *v, const Wall *W, int m)
          * one taller bar (each flushed pair: outer bar first, inner bar over
          * it, as row by row; a flame is finished before the next one) */
         static const uint8_t f47[8] = { 0, 0, 1, 1, 2, 2, 3, 4 };   /* f * 4 / 7 */
-        int fw = W->w / 9, kw = fw / 2 + 1, t3 = t / 3, h3 = W->h / 3, h23 = W->h * 2 / 3;
-        for (i = 0; i < 9; i++) {
+        /* (G2-CO, CLITE_FLAMES) fewer and wider flames of taller bars: 6 flames, a bar every 4 rows */
+        int lite = (v->lite & CLITE_FLAMES) != 0, nf = lite ? 6 : 9, st = lite ? 4 : 2;
+        int fw = W->w / nf, kw = fw / 2 + 1, t3 = t / 3, h3 = W->h / 3, h23 = W->h * 2 / 3;
+        for (i = 0; i < nf; i++) {
             int fx = W->x + fw * i + fw / 2;
             int fh = h23 + (int)(hash2((uint32_t)t3, (uint32_t)i) % (uint32_t)h3) + pulse;
             int yy, hq, hr, dq, dr, f = 0, fr = 0, fq, frr, amp = 1, d10 = 0;
@@ -518,26 +520,26 @@ static void draw_show(const StageView *v, const Wall *W, int m)
             WaveStep sw;
             if (fh <= 0) continue;
             hq = kw; hr = 0;                         /* K * fh / fh */
-            dq = 2 * kw / fh; dr = 2 * kw - dq * fh; /* per step the numerator loses 2K */
-            fq = 16 / fh; frr = 16 - fq * fh;        /* ... and f's gains 16 */
-            ws_init(&sw, t * 2 + i * 23, 40, 6);
+            dq = st * kw / fh; dr = st * kw - dq * fh;   /* per step the numerator loses st * K */
+            fq = 8 * st / fh; frr = 8 * st - fq * fh;    /* ... and f's gains 8 * st */
+            ws_init(&sw, t * 2 + i * 23, 40, 3 * st);
             memset(&ro, 0, sizeof(ro));
             memset(&ri, 0, sizeof(ri));
-            for (yy = 0; yy < fh; yy += 2) {
-                int hw = hq, sway = ws_val(&sw, amp), y = W->y + W->h - yy - 2;
+            for (yy = 0; yy < fh; yy += st) {
+                int hw = hq, sway = ws_val(&sw, amp), y = W->y + W->h - yy - st;
                 if (hw > 0) {
                     uint8_t co = PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(5 - f47[f], 1, 7));
                     uint8_t cn = PAL_RAMP(RAMP_LAVA, DOOMO_CLAMP(7 - f47[f], 2, 7));
                     int ox = fx - hw + sway, nx = fx - hw / 2 + sway, inner = hw > 2;
-                    if (ro.on && ro.y == y + 2 && ro.x == ox && ro.w == 2 * hw && ro.c == co &&
+                    if (ro.on && ro.y == y + st && ro.x == ox && ro.w == 2 * hw && ro.c == co &&
                         (inner ? ri.on && ri.x == nx && ri.w == hw && ri.c == cn : !ri.on)) {
-                        ro.y = y; ro.h += 2;
-                        if (inner) { ri.y = y; ri.h += 2; }
+                        ro.y = y; ro.h += st;
+                        if (inner) { ri.y = y; ri.h += st; }
                     } else {
                         run_flush(W, &ro);
                         run_flush(W, &ri);
-                        ro.x = ox; ro.y = y; ro.w = 2 * hw; ro.h = 2; ro.c = co; ro.on = 1;
-                        if (inner) { ri.x = nx; ri.y = y; ri.w = hw; ri.h = 2; ri.c = cn; ri.on = 1; }
+                        ro.x = ox; ro.y = y; ro.w = 2 * hw; ro.h = st; ro.c = co; ro.on = 1;
+                        if (inner) { ri.x = nx; ri.y = y; ri.w = hw; ri.h = st; ri.c = cn; ri.on = 1; }
                     }
                 } else {
                     run_flush(W, &ro);
@@ -547,7 +549,7 @@ static void draw_show(const StageView *v, const Wall *W, int m)
                 if (hr < 0) { hr += fh; hq--; }
                 f += fq; fr += frr;
                 if (fr >= fh) { fr -= fh; f++; }
-                d10 += 2;
+                d10 += st;
                 if (d10 >= 10) { d10 -= 10; amp++; }
                 ws_next(&sw);
             }

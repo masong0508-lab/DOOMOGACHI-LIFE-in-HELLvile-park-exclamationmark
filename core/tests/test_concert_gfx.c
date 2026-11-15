@@ -187,6 +187,59 @@ TEST(concert_kept_stage_equals_the_full_stage)
     CHECK(kept > 0 && kept < n);
 }
 
+/* (G2-CO, CLITE_FLAMES) the GBA's flame wall in fewer, wider flames of taller bars: at most half the rects of
+ * the full wall, a different picture, and nothing drawn outside the wall */
+TEST(concert_lite_flames_draw_fewer_bars)
+{
+    static ConcertCast cast;
+    static uint8_t full[240 * 160];
+    int g, j, fl = -1, ok = 1;
+    uint32_t nfull = 0, nlite = 0, nbase = 0;
+    StageView v;
+    StageLayout L;
+    for (g = 0; g < MUSIC_COUNT; g++) if (concert_genres[g].show == SHOW_FLAMES) fl = g;
+    CHECK(fl >= 0);
+    if (fl < 0) return;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    nat_w = 240; nat_h = 160;
+    make_view(&v, &cast, fl, 0, 0);
+    v.lights = 16;
+    v.stage = STAGE_DREAMLAND;                 /* drawn whole: every rect of the show is counted */
+    concert_layout(&L);
+    for (j = 0; j < 20; j++) {
+        uint32_t c0;
+        int q;
+        v.t = 300u + (uint32_t)j * 3u;
+        v.lite = 0;
+        v.lights = 0;                          /* the rest of the stage: a dark wall, no lamps, no beams */
+        c0 = nat_calls[NC_RECT];
+        concert_draw_stage(&v, &L);
+        nbase += nat_calls[NC_RECT] - c0;
+        v.lights = 16;
+        memset(nat_fb, 0, sizeof(full));
+        c0 = nat_calls[NC_RECT];
+        concert_draw_stage(&v, &L);
+        nfull += nat_calls[NC_RECT] - c0;
+        memcpy(full, nat_fb, sizeof(full));
+        v.lite = CLITE_FLAMES;
+        memset(nat_fb, 0, sizeof(full));
+        c0 = nat_calls[NC_RECT];
+        concert_draw_stage(&v, &L);
+        nlite += nat_calls[NC_RECT] - c0;
+        for (q = 0; q < 240 * 160; q++) {
+            int x = q % 240, y = q / 240;
+            if (full[q] != nat_fb[q] && (x < L.wall_x || x >= L.wall_x + L.wall_w || y < L.wall_y ||
+                                         y >= L.wall_y + L.wall_h)) ok = 0;
+        }
+        if (memcmp(full, nat_fb, sizeof(full)) == 0) ok = 0;
+    }
+    CHECK(ok);
+    nfull -= nbase;                            /* the show's rects (and the lamps', footlights' and beams', */
+    nlite -= nbase;                            /* which are the same with and without the trade) */
+    CHECK_MSG(nlite * 2 < nfull, "lite %u rects, full %u", (unsigned)nlite, (unsigned)nfull);
+}
+
 /* (G2-CO) the baker's keys are every key a view can ask for */
 TEST(concert_stage_keys_cover_every_view)
 {

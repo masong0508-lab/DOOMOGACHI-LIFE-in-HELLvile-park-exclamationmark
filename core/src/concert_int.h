@@ -231,7 +231,12 @@ typedef struct StageView {
     const ConcertCast *cast;
     int16_t crowd[CROWD_MAX]; /* resident ids (-1 = anonymous silhouette)  */
     int ncrowd;
+    int lite;                 /* (G2-CO) CLITE_* trades of the GBA, 0 elsewhere */
 } StageView;
+/* (G2-CO) the owner's approved trades for the GBA (docs/GBA.md "G2-CO"; OWNER_DECISIONS 2026-11-13): the scene
+ * sets them on the GBA only, so the PS1, the Dreamcast and the native goldens draw the full stage.
+ *   CLITE_FLAMES  the flame wall in 6 wider flames of 4-row bars (9 flames of 2-row bars) */
+enum { CLITE_FLAMES = 1 };
 
 /* layout for this resolution */
 typedef struct StageLayout {
