@@ -877,7 +877,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   (Lashes through Move in / save / load / reopen on the card), `game_smoke` (`parts: loaded`), `creator_speed`.
 * **Measured (PCSX-Redux):** `creator_speed` 30.13 / 30.00 / 30.13 / 29.88 (the base's: 30.13 / 29.39 / 30.13 / 29.88); scripted-part grids held 29.85 to
   30.00, the hair grid 27.52 (painted hair on the base: 21.9); the speed tour's creator group all the same fps; resident
-  RAM **+21,024 B** (132,608 -> 111,584 B below the stack top (111,024 B on the landed tree); the creator group has 63,024 B of room now, was 600 B).
+  RAM **+21,024 B** (132,608 -> 111,584 B below the stack top (110,528 B on the landed tree); the creator group has 63,024 B of room now, was 600 B).
   That is 16,928 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the
   resident image. GBA and Dreamcast: no RAM change (the packed icon set is bigger: +48 KB of ROM there).
 * **Left:** a save with a bigger pool than the PS1's 384 B loads there with an empty pool; the hair try-on is 27.5 (S3-2);
