@@ -2710,3 +2710,10 @@ change what the options record means, so it is left to the core's UI polish pack
 ## Studio ST-EASY (2026-11-15)
 
 Run on KallistiOS / Flycast by the lander (2026-11-15, after the review fix): `make -C dc -j2` builds, `sh dc/harness/speed2.sh OUT studio`: all nine windows 30.0 ticks/s, worst work 12.6 ms (choir / citizen picker), none over 33.3 ms; `dc/tests/boot.txt` on the ELF passes. Also the SH4 compile of every core source (`core/tools/xcheck.sh`: 431 files OK) and `make dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file changed. The new Start card / control card screens were not timed on Flycast (the speed2 studio group does not visit them).
+
+## Music Studio PLAY tab (ST-PLAY)
+
+`make -C dc` builds with the PLAY tab (shared core code only; no `dc/` file changed). Flycast speed tour
+(`sh dc/harness/speed2.sh OUT studio_play studio`, 2026-11-15): every PLAY window 30.0 logic ticks/s, work mean 3.5-4.8 ms (worst 7.3 ms), the
+other studio windows 3.5-9.6 ms, no tick over 33.3 ms. The pad layout is the two-row one (A B L R / X Y L2 R2, d-pad chords); on this pad Y, L2 and
+R2 are pads on the PLAY tab (undo and the tab change stay the SELECT chords, SELECT being START+Y on the Dreamcast pad: Y sounds its pad note while the chord is made). `make dc-host-test` PASS.

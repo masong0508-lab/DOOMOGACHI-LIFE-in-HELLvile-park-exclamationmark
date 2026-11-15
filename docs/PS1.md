@@ -2485,3 +2485,14 @@ all 30.13 fps (120 frames in 239 vsyncs); the screens ST-EASY added (the Start c
 ends) 30.13 - 30.17; `sh ps1/harness/speed2.sh OUT studio`: all nine windows identical to the base. `harness/run.py`: `game_smoke` PASS,
 `core/tests/scripts/studio.txt` and `studio_easy.txt` PASS (the control card names the pad's buttons: "Triangle Undo a step", "Square Redo a
 step", "SEL+L1/R1 Switch tab").
+
+## ST-PLAY (the Music Studio's PLAY tab): resident +256 B, margin 110,352 B
+
+Measured 2026-11-15 on the clean tip `d979c93` and the same + ST-PLAY (clean builds, boot FMV, `-DDOOMO_INTRO_REQUIRED=ON`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`):
+`elf2exe` says 110,608 B below the stack top before and **110,352 B** after (`_end` 0x801e4fe0 -> 0x801e50e0, +256 B resident; the 72 KB gate has
+36 KB to spare). All of it is in `song_player.c` (shared, resident): `song_jam_on` / `song_jam_off` / `song_play_range` and the range loop in
+`advance` (the plan asked for share 0: this is the number to ask the coordinator for). The PLAY tab itself (`studio_play.c`, about 7 KB of
+code) is in the studio overlay group (`OVL.BIN` 1,114 -> 1,122 KB, the studio group still far under the slot; its entry load 283 -> 310 ms), its
+callback `play_menu_done` is in `MODAL_CALLBACKS` (`tools/ovl_plan.py`), and its state is 64 B of the scene scratch, not `.bss`. PCSX-Redux speed
+tour (`sh ps1/harness/speed2.sh OUT studio_play studio`): every PLAY window 30.13-30.25 fps (the take 32.20 with the loop start), every other studio
+window as before (30.00-30.51); `game_smoke` PASS.
