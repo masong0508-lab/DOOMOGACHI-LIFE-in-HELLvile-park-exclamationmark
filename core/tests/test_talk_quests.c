@@ -412,6 +412,7 @@ TEST(quest_pacing)
     CHECK_MSG(total <= 150, "%d requests in 300 conversations: not 'now and then'", total);
     CHECK(raised_run == total);
     CHECK_EQ(giver >= 0, 1);
+    printf("      pacing: %d requests in 300 conversations (%d%%), never two in a row, at most one a town day\n", total, total * 100 / 300);
 }
 
 static const int hurt_acts[] = { TA_INSULT, TA_THREATEN, TA_COMPLAIN, TA_BLAME, TA_COMFORT, TA_SYMPATHIZE, TA_DISMISS, TA_MOCK, TA_ACCUSE };
@@ -852,6 +853,7 @@ TEST(quest_kid_sessions)
         }
         talk_outcome_end(&s, &out, NULL);
     }
+    printf("      kid rooms: %d requests in 600 sessions (%d toys), 0 unsafe kinds or lines\n", raised, saw_toy);
     CHECK_EQ(bad, 0);
     CHECK_MSG(raised > 20, "only %d kid-room requests in 600 sessions", raised);
     CHECK(saw_toy > 0);

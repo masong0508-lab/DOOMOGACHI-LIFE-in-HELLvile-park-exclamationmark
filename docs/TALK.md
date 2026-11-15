@@ -1817,8 +1817,9 @@ the care window is shut and the speaker lost nobody lately and no grief topic is
 was not a no; and the pace allows it. **The pace** is one byte (the spare byte of the talk memory header, not saved):
 at least one conversation since the last raise (so never twice in a row, and a fresh load never raises in its first
 conversation), none yet this town day, fewer than 4 open requests, then 14% of the calm answers. A resident holds one
-request at a time; after a hand-in or a no there is a 3 day cooldown. Measured in `quest_pacing`: 300 conversations,
-see the numbers below.
+request at a time; after a hand-in or a no there is a 3 day cooldown. Measured in `quest_pacing` (300 conversations of 7
+neutral turns, a town day every 4th): 60 requests (20% of the conversations), never two in a row, never two in a day.
+`quest_kid_sessions`: 294 requests in 600 sessions with a child as the giver or in the room (55 of them toys), 0 unsafe.
 
 ### The four replies
 
@@ -1890,10 +1891,13 @@ the cooldown, a second hand-in does nothing), `quest_decline_haggle_more`, `ques
 
 ### Costs
 
-`TalkState` unchanged (964 B native; the two new bytes use the struct's padding holes). GBA: `.bss` 254,836 B before and
-after (`make -C gba sizes`: EWRAM and IWRAM identical, `.text` +8,920 B and `.rodata` +4,824 B in ROM; the Talk quest code
-is linked on the GBA because the quest log references it). PS1: Talk is not linked, so 0 B resident of the 12 KB share (the
-EXE is untouched). `TALK_en.BIN` 909,052 -> 913,148 B.
+`TalkState` unchanged (964 B native; `q_kind` and `q_st` sit in two padding holes of the struct). Talk memory: 0 B more
+(the request is in `spare`, the pace in the table header's spare byte). GBA: EWRAM and IWRAM identical to the base
+(`make -C gba sizes`: `.bss` 254,836 B, `.iwram` 11,272 B before and after; the quest log's list buffer is shared), ROM
+`.text` +8,992 B and `.rodata` +4,824 B (the quest code lives where Talk does). Dreamcast: Talk is linked there, so the
+quest code is too (it builds; `story_engine` and `side_chains` pass in dcrun). PS1: 132,608 B below the stack top before and
+after (the EXE is the same size: `talk_quest.c` is compiled only where `DOOMO_HAS_TALK` is, the quest log rows and
+`NT_TALK_QUEST` compile out), so 0 B of the 12 KB TALK share. `TALK_en.BIN` 909,052 -> 913,148 B.
 
 ---------------------------------------------------------------------------
 
