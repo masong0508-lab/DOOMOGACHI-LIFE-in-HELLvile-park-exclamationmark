@@ -17,15 +17,17 @@ Planned work (fps, functionality, fun): [MUSIC_STUDIO_ROADMAP.md](MUSIC_STUDIO_R
 | `core/src/song_book.c` | `doomo_song_book[6]` and the `'SONG'` save extension chunk |
 | `core/src/studio.c` | the scene: tabs, input, undo / redo journal, popups, citizen picker, unlock rules, `st_easy()` |
 | `core/src/studio_edit.c` | SONG, NOTES (tracker) and ORDER tabs |
+| `core/src/studio_play.c` | PLAY: jam pads, live recording with quantize, range loop, drum pads (ST-PLAY) |
 | `core/src/studio_words.c` | LYRICS and CHOIR tabs |
 | `core/src/studio_stage.c` | PERFORM: the choir show |
 | `core/src/studio_file.c` | FILE: song book, new song, templates, Inspire me, undo / redo, Studio level (scrolls) |
 | `core/src/studio_start.c` | ST-EASY: the "Start a song" card, `studio_make_song` |
-| `core/src/studio_play.c` | ST-EASY: START plays and names its target, the NOTES cursor line |
+| `core/src/studio_easy.c` | ST-EASY: START plays and names its target, the NOTES cursor line |
 | `core/src/studio_help.c` | ST-EASY: one-line help per tab, the control card, tab labels, the Studio level |
 | `core/src/studio_gen.c` | composer, lyric writer, 14 templates, choir fills, parts, auto-fit, word filter |
 | `core/src/unlocks_studio.c` | unlock ids 240..255 and the activities |
 | `core/tests/test_studio.c`, `core/tests/scripts/studio.txt`, `studio_easy.txt` | tests and the runner tours |
+| `core/tests/test_studio_play.c`, `core/tests/scripts/studio_play.txt` | the PLAY tab: tests and the runner tour |
 
 You find it in the **Concert Hall** (activities table `doomo_activities_studio`,
 free play and story from chapter 1). (CL5, clarity C9: it is no longer a second
@@ -43,7 +45,7 @@ pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
 
 | Anywhere | |
 |---|---|
-| L / R | previous / next tab (in NOTES: previous / next pattern) |
+| L / R | previous / next tab (in NOTES: previous / next pattern; in PLAY they are pads: use SELECT + L / R) |
 | SELECT + L / R | previous / next tab from any tab [L2 / R2] |
 | SELECT (tap) | the tab's tools menu |
 | SELECT + B | undo [Triangle] |
@@ -121,9 +123,43 @@ notes of the key/scale with mint dots.
 | B | erase; on a rest right after a note: a tie (hold) |
 | L / R | pattern A..D |
 | START | loop the pattern from the cursor ("Play from here"; again: stop) |
-| SELECT | copy / paste pattern or track, clear track, nudge a track a scale step |
+| SELECT | copy / paste pattern or track, clear track, nudge a track a scale step, loop this bar (ST-PLAY) |
 
 Every placed note is previewed on its own channel (`song_preview`).
+
+### PLAY - jam, record, drum pads (ST-PLAY)
+
+`docs/design/STUDIO_PLAN.md` 2.4. The tab after NOTES. The pads play the song's own scale and chords, so there are no wrong
+notes; a take is written into the song with the count-in and quantize; the drum pads play and record the kit.
+
+| Pad | Notes mode (default) | Drum mode |
+|---|---|---|
+| A B L R | scale degrees 1..4 of the song's key and scale, on the lead (or the chosen track), in the octave shown | kick, snare, hat, open hat |
+| X Y L2 R2 (PS1, Dreamcast, PC) | degrees 5..8 (the GBA has no such keys: SELECT + LEFT / RIGHT swaps the four pads between notes 1-4 and 5-8) | |
+| d-pad Left Down Right Up | the song's four chords (a triad stacked in scale steps on three channels; the roots are the first bass note of each bar of the song, in order, filled up with I IV V vi) | clap, tom, crash, cowbell |
+| SELECT + UP / DOWN | octave up / down (-2..+2) | |
+| SELECT + A | chord set: the song's / I IV V vi | |
+| SELECT + START | record: a count-in of four clicks, then the loop and the take; again (or START) ends the take | the same |
+| START | listen: loop the chosen part; again stops | the same |
+| SELECT (tap) | Play tools: Notes / Drums, Next track (lead, harmony, bass), Quantize (off, 1/4, 1/8, 1/16), Overdub / Replace, Loop part (whole pattern, bar 1, bar 2), Next pattern, Chord set, and on the GBA Notes 1-4 / 5-8 | |
+
+* **Jam.** A held pad holds its note (`song_jam_on` / `song_jam_off`): the track's own channel and instrument, over the
+  song if it plays (tone channel 0 with the lead instrument by default). Several pads: the last one pressed wins, a
+  chord uses channels 0, 1 and 2. Drum pads hit once.
+* **Record.** The loop is `song_play_range(pattern, from, to)`; the step of a pad press is decided from the player's tick position
+  (`song_pos_ticks`, exact with swing: `play_loop_pos`) and the quantize (`play_quantize_step`): off keeps the step you were in,
+  1/16 rounds to the nearest step, 1/8 to the nearest even step, 1/4 to the nearest beat; rounding past the end of the loop wraps to its
+  start. A pad held for more than a step writes tie cells after the note (not over other notes). Chords record their root.
+  **A take is one undo step**: the track row is touched once (`ed_touch`) when the take starts and committed when it ends, however
+  many loops it ran. SELECT + B during a take takes back what was recorded so far and the take goes on. Overdub keeps the old
+  notes; Replace clears the looped part when the loop starts, and a Replace take that recorded nothing is undone again.
+* **Where the state lives.** 64 bytes of the shared scene scratch (`st_tab_state`; on the GBA inside the studio's bake block, whose
+  pixel pool is 64 bytes smaller), reset at every visit; nothing is `.bss`. Leaving the tab (or the studio) ends the take, lets
+  go of the pads and stops the loop.
+* **Pads vs. global keys.** On the PLAY tab L / R, B and (PS1 / Dreamcast / PC) Y, L2, R2 are pads: tabs are SELECT + L / R, undo is
+  SELECT + B, leaving the studio is the FILE tab.
+* **Loop while editing.** NOTES > SELECT tools > "Loop this bar" loops the bar under the cursor (`song_play_range`); edits are
+  heard on the next pass; START stops it as before.
 
 ### ORDER - arrange
 The order list (1..16 passes of patterns A..D), each row showing the lyric line
@@ -187,6 +223,35 @@ confirmations), **New song...** (the Start card, with a confirmation when the so
 **Inspire me!**, undo and redo (with the number of steps), the **Studio level** and leave. The list is 13 rows and
 scrolls (`studio.ftop`) when the screen is too short (240x160 shows 11). Saving into the book is kept in memory and
 written with the game save (the `'SONG'` chunk).
+
+## Function ledger (ST-PLAY: the PLAY tab and its tools)
+
+One row per control: what it says, what it does, the feedback, whether it can be undone, the test. "Pad" rows are the
+PS1 / Dreamcast / PC layout; the GBA has the first four pads only.
+
+| Control | What it does | Feedback | Undo | Tested by |
+|---|---|---|---|---|
+| A B L R (X Y L2 R2) | hold scale degree 1..4 (5..8) of the track in the octave shown | the note sounds while held; the pad lights; its name is on the pad | (nothing is written) | `studio_play_pads_sound_the_songs_notes_and_chords`, `studio_play_jam_stays_in_the_scale` |
+| d-pad (notes mode) | hold the chord (triad on 3 channels) | the chord sounds; the chord's name on the pad | (nothing is written) | `studio_play_pads_sound_the_songs_notes_and_chords`, `studio_play_chords_come_from_the_songs_bass` |
+| pads (drum mode) | hit kick, snare, hat, open hat, clap, tom, crash, cowbell | the drum sounds; the pad's icon and name | (nothing is written) | `studio_play_drum_pads_hit_the_kit` |
+| SELECT + UP / DOWN | octave +1 / -1, from -2 to +2 | "Octave +1"; the pad names change; at the end "Highest / Lowest octave" and a buzz | not a song edit | `studio_play_select_shift_octave_chords_and_limits` |
+| SELECT + A | chord set: the song's / I IV V vi | "Chords: I IV V vi"; the chord names change | not a song edit | `studio_play_select_shift_octave_chords_and_limits`, `studio_play_menu_items_do_what_they_say` |
+| SELECT + LEFT / RIGHT (GBA) | pads A B L R play notes 1-4 / 5-8 | "Pads A B L R: notes 5-8"; the pad names change; the header says "Notes 5-8" | not a song edit | the same code as menu item 7 (a 4-pad build only: the host has 8 pads) |
+| START | loop the chosen part (the pattern or a bar); again: stop | "Looping bar 1 of A" / "Stopped"; the playhead runs on the ruler | not a song edit | `studio_play_count_in_can_be_stopped_and_start_loops_the_part` |
+| SELECT + START | record a take: count-in of four clicks, then the loop; again: end the take | "Recording Lead: count-in"; "Count n"; the red REC; at the end "Take saved: n notes" / "No notes: nothing changed" | **one undo step per take** (SELECT + B) | `studio_play_record_quantizes_and_a_take_is_one_undo_step`, `studio_play_record_then_play_back_gives_the_recorded_notes`, `studio_play_a_held_pad_writes_tie_cells`, `studio_play_drums_record_into_the_drum_track` |
+| Quantize (menu) | off / 1/4 / 1/8 / 1/16: where a note lands | "Quantize: 1/8"; the header shows it | not a song edit | `studio_play_quantize_table`, `studio_play_quantize_off_and_eighths_change_where_a_note_lands` |
+| Overdub / Replace (menu) | a take keeps the old notes / clears the looped part when it starts | "Overdub: keeps the old notes" / "Replace: a take clears the loop" | the take is one undo step; an empty Replace take is undone at once | `studio_play_replace_clears_the_loop_and_an_empty_take_changes_nothing` |
+| Notes / Drums (menu) | the pads play and record the kit instead of the scale | "Drum pads: A B L R + d-pad"; the pads become drum icons; the header says "Drums" | not a song edit | `studio_play_drum_pads_hit_the_kit` |
+| Next track (menu) | lead -> harmony -> bass: where the pads sound and a take is written | "Pads play and record Harmony"; the header pill changes colour | not a song edit | `studio_play_menu_items_do_what_they_say`, `studio_play_chords_and_other_tracks_record` |
+| Loop part (menu) | whole pattern -> bar 1 -> bar 2: what START and a take loop | "Loop: bar 1"; the ruler marks the range | not a song edit | `studio_play_loop_part_limits_the_take_to_a_bar` |
+| Next pattern (menu) | pattern A -> D: which pattern is played and written (shared with NOTES) | "Pattern B"; the pattern pill | not a song edit | `studio_play_menu_items_do_what_they_say` |
+| Chord set (menu) | the same as SELECT + A | as above | | as above |
+| SELECT + B during a take | undo (global) | "Undo! (n left)"; the take goes on | it is the undo | `studio_play_undo_during_a_take_takes_back_what_was_recorded_so_far` |
+| SELECT + L / R, leaving the tab | the take ends, the pads let go, the loop stops | "Take saved" | the take is one undo step | `studio_play_leaving_the_tab_ends_the_take_and_stops_the_sound` |
+| NOTES > "Loop this bar" | loop the bar under the cursor while editing | "Looping bar 2 of A" | not a song edit | `studio_notes_loop_this_bar_loops_the_bar_under_the_cursor_and_hears_edits` |
+
+Not in this package (ST-EASY / ST-TOOLS own them): the "Advanced" level switch (so Replace is always offered), the cursor line,
+the redo, the note grid, per-track velocity.
 
 ## Templates
 

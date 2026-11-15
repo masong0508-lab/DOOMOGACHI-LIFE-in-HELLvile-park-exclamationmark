@@ -12,7 +12,7 @@
  *   studio_stage.c  PERFORM: the choir show
  *   studio_file.c   FILE tab: song book, templates, Inspire me
  *   studio_start.c  ST-EASY: the "Start a song" card + studio_make_song
- *   studio_play.c   ST-EASY: START = play (target named), the cursor's one-line description
+ *   studio_easy.c   ST-EASY: START = play (target named), the cursor's one-line description
  *   studio_help.c   ST-EASY: one-line help, the control card, tab labels, Studio level
  *   studio_gen.c    the composer, lyric writer, templates, choir fills
  *   unlocks_studio.c unlock ids 240..255 + the activities table
@@ -254,7 +254,7 @@ void stage_draw_full(void);
 void stage_start(void);
 void stage_leave(void);
 
-/* ---- studio_start.c / studio_play.c / studio_help.c (ST-EASY) --------------------- */
+/* ---- studio_start.c / studio_easy.c / studio_help.c (ST-EASY) --------------------- */
 enum { SMOOD_HAPPY, SMOOD_SWEET, SMOOD_SAD, SMOOD_SPOOKY, SMOOD_FIERCE, SMOOD_COUNT };
 enum { STEMPO_SLOW, STEMPO_MEDIUM, STEMPO_FAST, STEMPO_FRANTIC, STEMPO_COUNT };
 enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };

@@ -2474,7 +2474,7 @@ share of 8 KB resident: 0 B used by LV7a. `game_smoke` PASS.
 
 Measured on `d979c93` and the same + ST-EASY (clean builds, boot FMV, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`,
 `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`): `elf2exe` says **110,608 B below the stack top both times** (plan gate 73,728 B). The new code
-(`studio_start.c`, `studio_play.c`, `studio_help.c` and the redo / card hooks in `studio*.c`) is in the `studio` overlay group, whose load
+(`studio_start.c`, `studio_easy.c`, `studio_help.c` and the redo / card hooks in `studio*.c`) is in the `studio` overlay group, whose load
 grows by 27 ms (the second part of the group: 283 -> 310 ms, once per scene entry; the first part, 313 ms, is the same). `Studio` did not grow
 (`nm`: 0x738 B before and after) and the state `StEasy` (448 B) is in the scene scratch (`EZ_TAG`, claimed through `scene_scratch()`, no
 static pointer). A first version had four small `static const uint8_t` tables (5, 5, 8 and 3 bytes) and cost 16 B of resident `.sdata` (the
