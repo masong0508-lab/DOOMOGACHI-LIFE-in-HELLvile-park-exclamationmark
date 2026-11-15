@@ -1,0 +1,498 @@
+From 8de66255fe06d2535486791018b4e5b0ed5b330e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 19:54:21 +0000
+Subject: [PATCH 1/5] SA4: tools/winprof.py (profile a speed-tour window's own
+ ticks) and two speed2 groups (talk, sa4)
+
+tools/winprof.py cuts a speed2 script at a window, profiles the window's ticks instead of its
+last wait (harness --worklog: the slow frames' extra functions) and prints each function's share
+and ms per drawn frame; 'misses' does it for every window of GBA speed2 logs whose verdict is not
+ok. Its unit test runs in make -C core test (speed-tools-check). speed2_talk.txt: the Talk screen
+(GBA and Dreamcast; the PS1 has no Talk screen yet). speed2_sa4.txt: the level select's page turn
+and the creator's body types and a held build slider (CR-BODY). No game code changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/Makefile                       |  11 +-
+ gba/harness/scripts/speed2_sa4.txt  |  67 +++++++++
+ gba/harness/scripts/speed2_talk.txt |  59 ++++++++
+ tools/tests/test_winprof.py         |  73 ++++++++++
+ tools/winprof.py                    | 216 ++++++++++++++++++++++++++++
+ 5 files changed, 424 insertions(+), 2 deletions(-)
+ create mode 100644 gba/harness/scripts/speed2_sa4.txt
+ create mode 100644 gba/harness/scripts/speed2_talk.txt
+ create mode 100644 tools/tests/test_winprof.py
+ create mode 100644 tools/winprof.py
+
+diff --git a/core/Makefile b/core/Makefile
+index e518894a..fe8f21cb 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -77,7 +77,7 @@ PLAT_OBJS   := $(call obj,$(NATIVE_PLAT))
+ MAIN_OBJ    := $(call obj,$(NATIVE_MAIN))
+ TEST_OBJS   := $(call obj,$(TEST_SRCS))
+ 
+-.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet portrait-sheet levelcheck mapc-check
++.PHONY: all lib runner test unit scripts journeys gen check-gen xcheck sizes clean story-check talk talk-check parts-check part-icons-sheet portrait-sheet levelcheck mapc-check speed-tools-check
+ .DEFAULT_GOAL := runner
+ 
+ all: runner $(BUILD)/tests
+@@ -125,7 +125,14 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS) $(TESTMAP_OBJS)
+ 	$(CC) $(LDFLAGS_SAN) -o $@ $^
+ 
+ # ---- tests ------------------------------------------------------------------
+-test: story-check talk-check parts-check mapc-check levelcheck unit scripts journeys
++test: story-check talk-check parts-check mapc-check levelcheck speed-tools-check unit scripts journeys
++
++# --- SA4: the speed audits' window profiler (tools/winprof.py; docs/design/SPEED_AUDIT4.md section 1) ---
++speed-tools-check:
++	@mkdir -p $(BUILD)
++	@$(PYTHON) $(ROOT)/tools/tests/test_winprof.py > $(BUILD)/speed-tools-check.log 2>&1 || { cat $(BUILD)/speed-tools-check.log; exit 1; }
++	@tail -n 1 $(BUILD)/speed-tools-check.log
++# --- end SA4 ---
+ 
+ # --- LV1: map format v2 tools (docs/LEVELS.md "Map format v2") ---
+ # mapreach    the reachability search of core/tools/map_bfs.h (the code test_maps runs) as a tool
+diff --git a/gba/harness/scripts/speed2_sa4.txt b/gba/harness/scripts/speed2_sa4.txt
+new file mode 100644
+index 00000000..dc15533e
+--- /dev/null
++++ b/gba/harness/scripts/speed2_sa4.txt
+@@ -0,0 +1,67 @@
++# speed2_sa4.txt - speed tour 2 (SA2), a group speed audit 4 added (docs/design/SPEED_AUDIT4.md): screens that
++# landed after speed audit 3. The level select's page turn (LV0 pages; one page until a level package builds a
++# page's levels) and the creator's body types and a build slider held (CR-BODY). The Talk screen is
++# speed2_talk.txt. Window rules: speed2_fair.txt.
++wait 40
++expect-log doomo: init
++sync on 61
++
++# ---- the level select: a page turn (LV0) -------------------------------------------------
++seed 1
++scene TITLE
++wait 2
++push LEVEL_SELECT 0
++wait 40
++press DOWN
++wait 2
++fps start
++wait 30
++fps levels: level select page turn
++shot sa4_level_page
++fps start
++wait 90
++fps levels: level select other page
++press UP
++wait 2
++fps start
++wait 30
++fps levels: level select page back
++
++# ---- the creator: body types and a build slider held (CR-BODY) ---------------------------
++seed 1
++scene TITLE
++wait 2
++push CREATOR -1
++wait 200
++press DOWN
++press DOWN
++wait 6
++fps start
++press RIGHT
++wait 30
++fps creator: body type step
++shot sa4_body_type
++fps start
++press RIGHT
++wait 4
++press RIGHT
++wait 4
++press RIGHT
++wait 4
++press RIGHT
++wait 4
++press RIGHT
++wait 14
++fps creator: body type steps
++press DOWN
++wait 6
++fps start
++down LEFT
++wait 60
++release
++fps creator: height slider held
++shot sa4_height_held
++fps start
++press A
++wait 30
++fps creator: slider reset
+diff --git a/gba/harness/scripts/speed2_talk.txt b/gba/harness/scripts/speed2_talk.txt
+new file mode 100644
+index 00000000..ee52b6a7
+--- /dev/null
++++ b/gba/harness/scripts/speed2_talk.txt
+@@ -0,0 +1,59 @@
++# speed2_talk.txt - speed tour 2 (SA2), added by speed audit 4 (docs/design/SPEED_AUDIT4.md): the Talk screen
++# (SCENE_TALK, core/src/talk_scene.c) in a conversation as talk.txt plays it: the menu, a cursor move, the Chat
++# list, the answer box (DIALOG over the Talk screen) and the menu after a reply. Talk runs on the GBA and the
++# Dreamcast (TD1); the PS1 has no Talk screen yet (TKP), so ps1/harness/speed2.sh is not given this group.
++# Window rules: speed2_fair.txt. talk.txt's pinned seed 18 (the resident's lines follow the town seed).
++wait 40
++expect-log doomo: init
++sync on 61
++
++# ---- Talk: a conversation (push TALK 1 after the premade island moved in, as talk.txt) ----
++# Pushed straight from the title the resident opens with no line: the menu comes first.
++seed 18
++scene TITLE
++wait 10
++push HOME 3
++wait 20
++press B
++wait 20
++expect-scene TITLE
++push TALK 1
++wait 40
++expect-scene TALK
++fps start
++wait 90
++fps talk: menu
++shot sa4_talk_menu
++press DOWN
++wait 2
++fps start
++wait 30
++fps talk: menu cursor move
++press DOWN
++wait 4
++press DOWN
++wait 4
++press DOWN
++wait 4
++fps start
++press A
++wait 30
++fps talk: chat list open
++shot sa4_talk_chat
++fps start
++wait 60
++fps talk: chat list
++press A
++wait 20
++expect-scene DIALOG
++fps start
++wait 40
++fps talk: answer box
++shot sa4_talk_answer
++press A
++wait 40
++expect-scene TALK
++fps start
++wait 90
++fps talk: menu after a reply
++shot sa4_talk_after
+diff --git a/tools/tests/test_winprof.py b/tools/tests/test_winprof.py
+new file mode 100644
+index 00000000..0b07faef
+--- /dev/null
++++ b/tools/tests/test_winprof.py
+@@ -0,0 +1,73 @@
++#!/usr/bin/env python3
++"""test_winprof.py - tools/winprof.py: the cut script and the summary (python3 tools/tests/test_winprof.py)."""
++import os
++import sys
++
++sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
++import winprof  # noqa: E402
++
++SCRIPT = """wait 40
++sync on 61
++seed 1
++scene TITLE
++fps start
++wait 90
++expect-fps 28 g: first
++vhash-seq 30 first
++press A
++fps start
++press RIGHT
++wait 2
++wait 30
++fps g: second
++fps start
++wait 10
++fps g: third
++""".splitlines(True)
++
++fails = 0
++
++
++def check(name, cond):
++    global fails
++    print("%s %s" % ("ok  " if cond else "FAIL", name))
++    if not cond:
++        fails += 1
++
++
++out = winprof.cut(SCRIPT, "g: second", 1000)
++check("cut ends at the window", out[-1] == "fps g: second")
++check("only the window's last wait is profiled", out[-4:] == ["press RIGHT", "wait 2", "profile 30000", "fps g: second"])
++check("an earlier floor becomes a plain fps", "fps g: first" in out and not any(l.startswith("expect-fps") for l in out))
++check("vhash-seq dropped", not any(l.startswith("vhash-seq") for l in out))
++check("later windows dropped", "fps g: third" not in out)
++check("the window's own fps start kept", out[-5] == "fps start")
++out = winprof.cut(SCRIPT, "g: first", 2)
++check("a floor window is found by its label", out[-2:] == ["profile 180", "fps g: first"])
++try:
++    winprof.cut(SCRIPT, "g: none", 1)
++    check("an unknown window refused", False)
++except SystemExit:
++    check("an unknown window refused", True)
++try:
++    winprof.cut(["fps start\n", "hold LEFT 60\n", "fps g: held\n"], "g: held", 1)
++    check("a window without a wait refused", False)
++except SystemExit:
++    check("a window without a wait refused", True)
++
++LOG = """harness: fps g: x: 30.0 logic ticks/s, 20.0 drawn frames/s, work avg 40.0 ms max 41.0 ms
++harness: profile of 100 instructions, 200 cycles (1.0 video frames), 0.0% outside known symbols
++harness:    50.0%  vid_rect
++harness:    10.0%  vid_text
++harness: slow frames: 3 of 4 over 33.3 ms (worst 41.0 ms)
++harness: slow+   2.00 ms/frame  vid_rect (slow frame 3.00 ms, normal frame 1.00 ms)
++"""
++rows, slow, plus, fps = winprof.summary(LOG)
++check("summary takes the window's drawn fps", fps == 20.0)
++check("summary ms a frame = share x 1000 / fps", abs(rows[0][1] - 25.0) < 1e-9 and rows[0][2] == "vid_rect")
++check("summary slow frames", slow.startswith("slow frames: 3 of 4"))
++check("summary slow+ lines", len(plus) == 1 and plus[0].startswith("2.00 ms/frame  vid_rect"))
++rows, _, _, fps = winprof.summary(LOG, 10.0)
++check("summary fps override", fps == 10.0 and abs(rows[1][1] - 10.0) < 1e-9)
++print("test_winprof: %d failed" % fails)
++sys.exit(1 if fails else 0)
+diff --git a/tools/winprof.py b/tools/winprof.py
+new file mode 100644
+index 00000000..d6b3a684
+--- /dev/null
++++ b/tools/winprof.py
+@@ -0,0 +1,216 @@
++#!/usr/bin/env python3
++"""winprof.py - a PC profile of one speed-tour window's own ticks on the GBA (speed audits 3 and 4).
++
++`make -C gba profile-speed2` samples the ticks AFTER a window. This tool profiles the window itself: the
++script is cut at the window, the window's last `wait N` becomes `profile N*PER_TICK` (about N logic ticks of
++instructions), every later line is dropped, and the harness plays it with --worklog, so the profile also splits
++the frames over HARNESS_SLOW_MS (default 31 ms of work) from the others ("slow+" lines: what a slow frame
++spends extra). `vhash-seq` and floors (`expect-fps` turns into `fps`) are dropped from the cut script.
++
++usage:
++  winprof.py cut SCRIPT LABEL [--per-tick N]     the cut script on stdout
++  winprof.py run SCRIPT LABEL [LABEL..] --out DIR [--harness H] [--rom R] [--nm NM] [--per-tick N]
++                                                 cut, play and summarise each window (DIR/<tag>.txt, .log)
++  winprof.py misses LOG [LOG..] --out DIR [...]  every window of GBA speed2 logs (harness --worklog) whose
++                                                 verdict is not "ok" (tools/speed2.py), profiled as `run` does;
++                                                 the script is gba/harness/scripts/speed2_<group>.txt
++  winprof.py summary LOG [--fps F]               the summary of a profile log: the top functions with their
++                                                 share and ms per drawn frame (share x 1000 / F; F from the
++                                                 window's own `fps` line when not given), the slow frames, the
++                                                 slow+ lines
++
++Run from the repo root after `make -C gba` and the harness's symbol files (`make -C gba profile-speed2` writes
++gba/build/doomogachi.nm; this tool writes it too when missing). Stdlib only.
++"""
++import os
++import re
++import subprocess
++import sys
++
++PER_TICK = 280000          # instructions per logic tick: 16.78 MHz / 30, about 2 cycles an instruction
++
++
++def tag_of(label):
++    return re.sub(r"[^A-Za-z0-9]+", "_", label).strip("_").lower()
++
++
++def close_label(s):
++    """the label of a window's closing line (`fps LABEL` / `expect-fps MIN LABEL`), or None"""
++    s = s.strip()
++    if s.startswith("expect-fps "):
++        p = s.split(None, 2)
++        return p[2].strip() if len(p) > 2 else ""
++    if s.startswith("fps ") and s != "fps start":
++        return s[4:].strip()
++    return None
++
++
++def cut(lines, label, per_tick=PER_TICK):
++    """the lines of a script that play up to the window LABEL and profile it instead of its last wait"""
++    end = None
++    for i, s in enumerate(lines):
++        if close_label(s) == label:
++            end = i
++            break
++    if end is None:
++        raise SystemExit("winprof: no window '%s'" % label)
++    start = None
++    for i in range(end - 1, -1, -1):
++        if lines[i].strip() == "fps start":
++            start = i
++            break
++    if start is None:
++        raise SystemExit("winprof: window '%s' has no 'fps start'" % label)
++    body = [l.rstrip("\n") for l in lines[start + 1:end]]
++    last = None
++    for i in range(len(body) - 1, -1, -1):
++        if re.match(r"\s*wait\s+\d+\s*$", body[i]):
++            last = i
++            break
++    if last is None:
++        raise SystemExit("winprof: window '%s' has no wait" % label)
++    n = int(body[last].split()[1])
++    body[last] = "profile %d" % (n * per_tick)
++    out = []
++    for l in lines[:start + 1]:
++        s = l.strip()
++        if s.startswith("vhash-seq"):
++            continue
++        lab = close_label(s)
++        if s.startswith("expect-fps ") and lab is not None:
++            l = "fps " + lab
++        out.append(l.rstrip("\n"))
++    out.extend(body)
++    out.append("fps " + label)
++    return out
++
++
++def summary(text, fps=None, top=12):
++    """(rows, slow, slowplus): rows = [(share %, ms a frame, function)]"""
++    if fps is None:
++        m = None
++        for m in re.finditer(r"harness: fps (.+?): ([\d.]+) logic ticks/s, ([\d.]+) drawn frames/s", text):
++            pass
++        fps = float(m.group(3)) if m else 30.0
++    rows = []
++    for m in re.finditer(r"^harness:\s+([\d.]+)%\s+(\S+)", text, re.M):
++        share = float(m.group(1))
++        rows.append((share, share / 100.0 * 1000.0 / max(fps, 0.1), m.group(2)))
++    rows = rows[:top]
++    sm = re.search(r"harness: slow frames: (\d+) of (\d+) over ([\d.]+) ms \(worst ([\d.]+) ms\)", text)
++    slow = sm.group(0)[len("harness: "):] if sm else ""
++    plus = [re.sub(r"^harness: slow\+\s+", "", l) for l in text.splitlines() if l.startswith("harness: slow+")]
++    return rows, slow, plus, fps
++
++
++def fmt_summary(label, text, fps=None):
++    rows, slow, plus, fps = summary(text, fps)
++    out = ["%s (drawn %.1f fps, %.1f ms a frame)" % (label, fps, 1000.0 / max(fps, 0.1))]
++    out.append("  " + ", ".join("`%s` %.1f%% %.1f ms" % (f, s, ms) for s, ms, f in rows[:10]))
++    if slow:
++        out.append("  " + slow)
++    for p in plus[:6]:
++        out.append("  slow+ " + p)
++    return "\n".join(out)
++
++
++def ensure_nm(root, nm):
++    if os.path.exists(nm):
++        return
++    elf = os.path.join(root, "gba/build/doomogachi.elf")
++    with open(nm, "w") as f:
++        subprocess.run(["arm-none-eabi-nm", "-n", elf], stdout=f, check=True)
++    ovl = nm[:-3] + ".ovl"
++    if not os.path.exists(ovl):
++        r = subprocess.run(["arm-none-eabi-objdump", "-t", elf], stdout=subprocess.PIPE, text=True, check=True)
++        with open(ovl, "w") as f:
++            for line in r.stdout.splitlines():
++                p = line.split()
++                for x in p[1:]:
++                    if x.startswith(".ovl_"):
++                        f.write("%s %s %s\n" % (p[0], x, p[-1]))
++                        break
++
++
++def play(opts, script_lines, tag):
++    os.makedirs(opts["out"], exist_ok=True)
++    sp = os.path.join(opts["out"], tag + ".txt")
++    with open(sp, "w") as f:
++        f.write("\n".join(script_lines) + "\n")
++    cmd = [opts["harness"], opts["rom"], "--script", sp, "--nm", opts["nm"], "--no-fps-gates", "--worklog",
++           "--quiet"]
++    r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
++    log = os.path.join(opts["out"], tag + ".log")
++    with open(log, "w") as f:
++        f.write(r.stdout)
++    return r.stdout
++
++
++def parse_opts(argv):
++    root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
++    o = dict(out=None, harness=os.path.join(root, "gba/build/harness"),
++             rom=os.path.join(root, "gba/build/doomogachi.gba"), nm=os.path.join(root, "gba/build/doomogachi.nm"),
++             per_tick=PER_TICK, fps=None, root=root)
++    rest, i = [], 0
++    while i < len(argv):
++        a = argv[i]
++        if a in ("--out", "--harness", "--rom", "--nm", "--per-tick", "--fps"):
++            v = argv[i + 1]
++            o[a[2:].replace("-", "_")] = int(v) if a == "--per-tick" else float(v) if a == "--fps" else v
++            i += 2
++            continue
++        rest.append(a)
++        i += 1
++    return o, rest
++
++
++def miss_windows(log):
++    """(label, fps) of every window of a GBA speed2 log whose tools/speed2.py verdict is not ok"""
++    here = os.path.dirname(os.path.abspath(__file__))
++    sys.path.insert(0, here)
++    import speed2  # noqa: E402
++    import io
++    import contextlib
++    buf = io.StringIO()
++    with contextlib.redirect_stdout(buf):
++        speed2.table_gba(log)
++    out = []
++    for line in buf.getvalue().splitlines()[2:]:
++        c = [x.strip() for x in line.strip("|").split("|")]
++        if len(c) >= 11 and c[10] != "ok":
++            out.append((c[0], float(c[2])))
++    return out
++
++
++def main():
++    o, a = parse_opts(sys.argv[1:])
++    if not a:
++        print(__doc__)
++        return 2
++    if a[0] == "cut" and len(a) == 3:
++        print("\n".join(cut(open(a[1]).readlines(), a[2], o["per_tick"])))
++        return 0
++    if a[0] == "summary" and len(a) == 2:
++        print(fmt_summary(a[1], open(a[1], errors="replace").read(), o["fps"]))
++        return 0
++    if a[0] in ("run", "misses") and o["out"]:
++        ensure_nm(o["root"], o["nm"])
++        jobs = []
++        if a[0] == "run":
++            jobs = [(a[1], l, o["fps"]) for l in a[2:]]
++        else:
++            for log in a[1:]:
++                g = re.sub(r"^speed2_|\.log$", "", os.path.basename(log))
++                sc = os.path.join(o["root"], "gba/harness/scripts/speed2_%s.txt" % g)
++                jobs += [(sc, l, f) for l, f in miss_windows(log)]
++        for sc, label, fps in jobs:
++            text = play(o, cut(open(sc).readlines(), label, o["per_tick"]), tag_of(label))
++            print(fmt_summary(label, text, fps))
++            sys.stdout.flush()
++        return 0
++    print(__doc__)
++    return 2
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+-- 
+2.43.0
+

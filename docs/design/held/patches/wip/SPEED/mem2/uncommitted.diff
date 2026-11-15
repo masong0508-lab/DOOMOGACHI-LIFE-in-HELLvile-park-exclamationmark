@@ -1,0 +1,191 @@
+diff --git a/core/gen/unlock_index.c b/core/gen/unlock_index.c
+index 1f132063..334d94a9 100644
+--- a/core/gen/unlock_index.c
++++ b/core/gen/unlock_index.c
+@@ -216,4 +216,17 @@ const int16_t doomo_ul_by_id[1024] = {
+     567, 568, 569, 570, 571, 572, 573, 574, 575, 576, 577, 578, 579, 580, 581, 582,
+     583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, -1, -1, -1,
+ };
++const uint16_t doomo_ul_by_id_mapped = 643;
++
++/* bit id (LSB first): the id names an entry (unlock_owned_count) */
++const uint8_t doomo_ul_id_mask[128] = {
++    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x00, 0x0f, 0x00, 0x00, 0x00,
++    0xff, 0x0f, 0x00, 0x00, 0x0f, 0x7c, 0x30, 0xc0, 0x07, 0x03, 0x00, 0x00, 0x00, 0x00, 0xff, 0x1f,
++    0xff, 0xdf, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x07,
++    0xff, 0xff, 0xff, 0x01, 0xff, 0xff, 0xff, 0x3f, 0xfc, 0xf3, 0xff, 0x1f, 0xff, 0xf3, 0x73, 0xde,
++    0xe7, 0x01, 0x8c, 0xf0, 0x7f, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x3f, 0xf0,
++    0xff, 0x7f, 0xf0, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x00, 0x00, 0x00, 0xf0, 0xff, 0xff, 0x1f,
++    0xfc, 0xff, 0x0f, 0xf8, 0x21, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x1f, 0xff, 0xff, 0xff, 0x07,
++    0xff, 0xff, 0x1f, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x1f,
++};
+ #endif
+diff --git a/core/src/stubs.c b/core/src/stubs.c
+index 82e8ec0f..0eba20f5 100644
+--- a/core/src/stubs.c
++++ b/core/src/stubs.c
+@@ -849,6 +849,8 @@ WEAK const uint16_t doomo_ul_index_at[1] = { 0 };
+ /* (MEM2) its id -> entry map: none unless that file is linked (unlock_by_id then scans) */
+ WEAK const uint16_t doomo_ul_by_id_n = 0;
+ WEAK const int16_t  doomo_ul_by_id[1] = { 0 };
++WEAK const uint16_t doomo_ul_by_id_mapped = 0;
++WEAK const uint8_t  doomo_ul_id_mask[1] = { 0 };
+ #define EMPTY_UNLOCKS(name) WEAK const DoomoUnlock name[1] = { { 0, 0, 0, 0, NULL, NULL, 0, 0 } }
+ EMPTY_UNLOCKS(doomo_unlocks_creator);
+ EMPTY_UNLOCKS(doomo_unlocks_life);
+diff --git a/core/src/unlocks.c b/core/src/unlocks.c
+index 2ae11e12..e05be62f 100644
+--- a/core/src/unlocks.c
++++ b/core/src/unlocks.c
+@@ -270,6 +270,8 @@ static void ul_ix_check(void)
+  * did; when it is not (a stale file), unlock_by_id scans the registry (slow, not wrong). */
+ extern const uint16_t doomo_ul_by_id_n;          /* DOOMO_UNLOCK_BITS; 0 = the weak default (stubs.c) */
+ extern const int16_t  doomo_ul_by_id[];
++extern const uint16_t doomo_ul_by_id_mapped;      /* how many ids it names */
++extern const uint8_t  doomo_ul_id_mask[];         /* bit id: doomo_ul_by_id[id] >= 0 */
+ static uint8_t ul_by_ok;
+ 
+ static int ul_by_scan(int id)
+@@ -283,19 +285,23 @@ static int ul_by_scan(int id)
+ /* 1: no id is named twice; 0: one is (or the map is stale and the answer unknown: the slow paths count) */
+ static int ul_by_check(void)
+ {
+-    int g, firsts = 0, mapped = 0, dup = 0, i;
++    int t, i, g = 0, firsts = 0, dup = 0;
+     ul_by_ok = 0;
+     if (*(const volatile uint16_t *)&doomo_ul_by_id_n != DOOMO_UNLOCK_BITS) return 0;
+-    for (g = 0; g < ul_total; g++) {
+-        int id = unlock_at(g)->id, at;
+-        if (id >= DOOMO_UNLOCK_BITS) continue;
+-        at = doomo_ul_by_id[id];
+-        if (at == g) firsts++;
+-        else if (at >= 0 && at < g && unlock_at(at)->id == id) dup = 1;
+-        else return 0;                       /* the map names a later entry, or none: stale */
++    /* one walk of the tables (unlock_at() would walk them again for every entry: 12 ms on the GBA) */
++    for (t = 0; t < UL_TABLES && UL_TABLE(t); t++) {
++        const DoomoUnlock *u = UL_TABLE(t);
++        for (i = 0; i < ul_len[t]; i++, g++) {
++            int id = u[i].id, at;
++            if (id >= DOOMO_UNLOCK_BITS) continue;
++            at = doomo_ul_by_id[id];
++            if (at == g) firsts++;
++            else if (at >= 0 && at < g && unlock_at(at)->id == id) dup = 1;   /* a second entry: rare */
++            else return 0;                   /* the map names a later entry, or none: stale */
++        }
+     }
+-    for (i = 0; i < DOOMO_UNLOCK_BITS; i++) mapped += doomo_ul_by_id[i] >= 0;
+-    if (mapped != firsts) return 0;          /* an id the registry does not have */
++    /* every id the map names was met above (a first entry each), so the map has no id the registry lacks */
++    if (firsts != doomo_ul_by_id_mapped) return 0;
+     ul_by_ok = 1;
+     return !dup;
+ }
+@@ -332,7 +338,15 @@ int unlock_index_use(int on)
+ static void ul_init(void)
+ {
+     int t, i, g = 0;
++#if defined(UL_HAVE_INDEX)
++    /* (MEM2) the id map's check rides on this walk (ul_by_check's, without its second pass): every entry is its
++     * id's first (counted), a later one (a duplicate: ul_by_check confirms it), or the map is stale */
++    int by_ok, firsts = 0, dupc = 0;
++#endif
+     if (ul_ready) return;
++#if defined(UL_HAVE_INDEX)
++    by_ok = *(const volatile uint16_t *)&doomo_ul_by_id_n == DOOMO_UNLOCK_BITS;
++#endif
+     ul_ready = 1;
+     memset(ul_fc, 0, sizeof(ul_fc));
+ #if !defined(UL_HAVE_INDEX)
+@@ -348,6 +362,13 @@ static void ul_init(void)
+                 if (ul_by_id[u[i].id] < 0) ul_by_id[u[i].id] = (int16_t)g;
+                 else plat_log("unlocks: duplicate unlock id");
+             }
++#else
++            if (u[i].id < DOOMO_UNLOCK_BITS && by_ok) {
++                int at = doomo_ul_by_id[u[i].id];
++                if (at == g) firsts++;
++                else if (at >= 0 && at < g) dupc = 1;
++                else by_ok = 0;
++            }
+ #endif
+             {
+                 unsigned hb = UL_HASH(u[i].cat, u[i].list, u[i].index);
+@@ -370,10 +391,11 @@ static void ul_init(void)
+     ul_total = (uint16_t)g;
+ #if defined(UL_HAVE_INDEX)
+     ul_ix_check();
+-    if (!ul_by_check()) {
+-        if (ul_by_ok) plat_log("unlocks: duplicate unlock id");
++    ul_by_ok = (uint8_t)(by_ok && firsts == doomo_ul_by_id_mapped);
++    if (ul_by_ok && dupc && !ul_by_check() && ul_by_ok)
++        plat_log("unlocks: duplicate unlock id");
++    if (!ul_by_ok || dupc)
+         ul_ready = 2;                            /* (S2-6) unlock_owned_count cannot count bits */
+-    }
+ #endif
+ }
+ 
+@@ -630,6 +652,17 @@ int unlock_owned_count(void)
+         /* (S2-6 speed: the Unlocks gallery asks every frame) every id below DOOMO_UNLOCK_BITS names one entry at
+          * most (ul_init saw no duplicate), and an id at or above it is never owned: the entries owned are the
+          * owned bits whose id names an entry. Not on the PS1 (it holds 30 there; this file is resident) */
++#if defined(UL_HAVE_INDEX)
++        if (ul_by_ok) {
++            /* (MEM2) the generated mask of the ids that name an entry (doomo_ul_id_mask, made with the id map):
++             * the owned entries are the set bits of owned & mask, a byte at a time */
++            for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) {
++                unsigned b = doomo_town.unlocks[i] & doomo_ul_id_mask[i];
++                for (; b; b &= b - 1) c++;
++            }
++            return c;
++        }
++#endif
+         for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) {
+             unsigned b = doomo_town.unlocks[i], j;
+             for (j = 0; b; j++, b >>= 1)
+diff --git a/core/tests/test_integration.c b/core/tests/test_integration.c
+index c9534549..84025f82 100644
+--- a/core/tests/test_integration.c
++++ b/core/tests/test_integration.c
+@@ -371,6 +371,12 @@ TEST(mem2_unlock_by_id_map_matches_the_scan)
+         CHECK_MSG(a == b, "id %d: map %p scan %p", id, (const void *)a, (const void *)b);
+         CHECK(!a || a->id == id);
+     }
++    {   /* the generated mask names exactly the ids the map names */
++        extern const int16_t doomo_ul_by_id[];
++        extern const uint8_t doomo_ul_id_mask[];
++        for (id = 0; id < DOOMO_UNLOCK_BITS; id++)
++            CHECK_MSG(((doomo_ul_id_mask[id >> 3] >> (id & 7)) & 1) == (doomo_ul_by_id[id] >= 0), "id %d", id);
++    }
+     memcpy(saved, doomo_town.unlocks, sizeof(saved));
+     for (i = 0; i < (int)sizeof(saved); i++) doomo_town.unlocks[i] = (uint8_t)(i * 37u + 11u);
+     unlock_index_use(1);
+diff --git a/core/tools/ulgen.c b/core/tools/ulgen.c
+index 8e706869..a2690c74 100644
+--- a/core/tools/ulgen.c
++++ b/core/tools/ulgen.c
+@@ -33,7 +33,7 @@ int main(int argc, char **argv)
+     FILE *f;
+     Ent *e;
+     static int16_t by[DOOMO_UNLOCK_BITS];
+-    int i, n;
++    int i, n, mapped;
+     for (i = 1; i < argc; i++) {
+         if (!strcmp(argv[i], "--out-root") && i + 1 < argc) out_root = argv[++i];
+         else { fprintf(stderr, "usage: ulgen --out-root DIR\n"); return 2; }
+@@ -72,6 +72,15 @@ int main(int argc, char **argv)
+         if (unlock_at(i)->id < DOOMO_UNLOCK_BITS) by[unlock_at(i)->id] = (int16_t)i;
+     for (i = 0; i < DOOMO_UNLOCK_BITS; i++)
+         fprintf(f, "%s%d,%s", i % 16 ? " " : "    ", by[i], (i % 16 == 15 || i == DOOMO_UNLOCK_BITS - 1) ? "\n" : "");
++    for (i = 0, mapped = 0; i < DOOMO_UNLOCK_BITS; i++) mapped += by[i] >= 0;
++    fprintf(f, "};\nconst uint16_t doomo_ul_by_id_mapped = %d;\n\n"
++               "/* bit id (LSB first): the id names an entry (unlock_owned_count) */\n"
++               "const uint8_t doomo_ul_id_mask[%d] = {\n", mapped, DOOMO_UNLOCK_BITS / 8);
++    for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) {
++        int b, m = 0;
++        for (b = 0; b < 8; b++) if (by[i * 8 + b] >= 0) m |= 1 << b;
++        fprintf(f, "%s0x%02x,%s", i % 16 ? " " : "    ", m, (i % 16 == 15 || i == DOOMO_UNLOCK_BITS / 8 - 1) ? "\n" : "");
++    }
+     fprintf(f, "};\n#endif\n");
+     if (fclose(f)) { free(e); return 1; }
+     free(e);

@@ -1,0 +1,262 @@
+From 930ec93da5930a1701cd0a34bd58dca9bf3114e4 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:08:48 +0000
+Subject: [PATCH 4/5] SA4: tools/audit_compare.py (the per-window tables with
+ the previous audit's number and the EVERYTHING AT 30 verdict)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/Makefile                     |   4 +-
+ tools/audit_compare.py            | 147 ++++++++++++++++++++++++++++++
+ tools/tests/test_audit_compare.py |  65 +++++++++++++
+ 3 files changed, 215 insertions(+), 1 deletion(-)
+ create mode 100644 tools/audit_compare.py
+ create mode 100644 tools/tests/test_audit_compare.py
+
+diff --git a/core/Makefile b/core/Makefile
+index fe8f21cb..80172703 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -127,11 +127,13 @@ $(BUILD)/tests: $(CORE_OBJS) $(PLAT_OBJS) $(TEST_OBJS) $(TESTMAP_OBJS)
+ # ---- tests ------------------------------------------------------------------
+ test: story-check talk-check parts-check mapc-check levelcheck speed-tools-check unit scripts journeys
+ 
+-# --- SA4: the speed audits' window profiler (tools/winprof.py; docs/design/SPEED_AUDIT4.md section 1) ---
++# --- SA4: the speed audits' window profiler and tables (tools/winprof.py, tools/audit_compare.py; docs/design/SPEED_AUDIT4.md section 1) ---
+ speed-tools-check:
+ 	@mkdir -p $(BUILD)
+ 	@$(PYTHON) $(ROOT)/tools/tests/test_winprof.py > $(BUILD)/speed-tools-check.log 2>&1 || { cat $(BUILD)/speed-tools-check.log; exit 1; }
+ 	@tail -n 1 $(BUILD)/speed-tools-check.log
++	@$(PYTHON) $(ROOT)/tools/tests/test_audit_compare.py > $(BUILD)/speed-tools-check.log 2>&1 || { cat $(BUILD)/speed-tools-check.log; exit 1; }
++	@tail -n 1 $(BUILD)/speed-tools-check.log
+ # --- end SA4 ---
+ 
+ # --- LV1: map format v2 tools (docs/LEVELS.md "Map format v2") ---
+diff --git a/tools/audit_compare.py b/tools/audit_compare.py
+new file mode 100644
+index 00000000..4d9b7a81
+--- /dev/null
++++ b/tools/audit_compare.py
+@@ -0,0 +1,147 @@
++#!/usr/bin/env python3
++"""audit_compare.py - a speed audit's per-window tables with the previous audit's number beside each window.
++
++usage:
++  audit_compare.py --prev OLD_AUDIT.md LOG [LOG..]
++
++Each LOG is a GBA harness log (--worklog), a PS1 run.py tty.log or a dcrun log (tools/speed2.py `table` detects
++the format and makes the rows). OLD_AUDIT.md is the previous audit (docs/design/SPEED_AUDIT3.md): its section
++"### 2.1 GBA" / "### 2.2 PS1" / "### 2.3 Dreamcast" tables give the old number of a window with the same name
++(PS1: the same tag). Printed: one markdown table per LOG with the columns of tools/speed2.py, the previous
++audit's number and now ("13.2 -> 30.0"; "new" when the old audit has no such window), and the verdict of the
++owner's rule EVERYTHING AT 30 (OWNER_DECISIONS 2026-11-15): OK only when logic and drawn fps hold 30 and no
++presented frame took over 33 ms. A miss is "slow" (logic under 29.5 ticks/s: slow motion), "low" (a quarter or
++more of the frames over 33 ms), "hitch" (3 or more), "1x" (one or two). Dreamcast: ticks over 33.3 ms of work
++(no "low": dcrun counts ticks, not presented frames), and a presented-picture gap over 40 ms counts as one long
++frame. Stdlib only.
++"""
++import contextlib
++import io
++import os
++import re
++import sys
++
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++import speed2  # noqa: E402
++
++SECTIONS = (("### 2.1 GBA", "gba"), ("### 2.2 PS1", "ps1"), ("### 2.3 Dreamcast", "dc"))
++
++
++def prev_table(path):
++    """{platform: {name: (fps, logic)}} from the previous audit's section 2 tables (fps None on the DC)"""
++    out = {"gba": {}, "ps1": {}, "dc": {}}
++    plat = None
++    for line in open(path, errors="replace"):
++        s = line.strip()
++        if s.startswith("### "):
++            plat = next((p for h, p in SECTIONS if s.startswith(h)), None)
++            continue
++        if s.startswith("## ") and not s.startswith("## 2"):
++            plat = None
++        if not plat or not s.startswith("|") or s.startswith("|---") or s.startswith("| window"):
++            continue
++        c = [x.strip() for x in s.strip("|").split("|")]
++        try:
++            if plat == "gba":
++                out[plat].setdefault(c[0], (float(c[2]), float(c[1])))
++            elif plat == "ps1":
++                out[plat].setdefault(c[0], (float(c[1]), float(c[1])))
++            else:
++                out[plat].setdefault(c[0], (None, float(c[1])))
++        except (ValueError, IndexError):
++            continue
++    return out
++
++
++def classify(logic, fps, o33, frames):
++    if logic < 29.5:
++        return "MISS slow"
++    if o33 == 0 and fps >= 29.5:
++        return "OK"
++    if frames and o33 * 4 >= frames:
++        return "MISS low"
++    if o33 >= 3 or o33 == 0:
++        return "MISS hitch"
++    return "MISS 1x"
++
++
++def rows_of(log):
++    buf = io.StringIO()
++    with contextlib.redirect_stdout(buf):
++        table(log)
++    lines = buf.getvalue().splitlines()
++    return lines[0], [[x.strip() for x in l.strip("|").split("|")] for l in lines[2:] if l.startswith("|")]
++
++
++def table(log):
++    head = open(log, errors="replace").read(1 << 20)
++    if "harness: fps" in head or "harness: work" in head:
++        speed2.table_gba(log)
++    elif "vsyncs-per-frame" in head or re.search(r"fps \S+ [\d.]+ \(\d+ frames", head):
++        speed2.table_ps1(log)
++    else:
++        speed2.table_dc(log)
++
++
++def hist_frames(h):
++    n = 0
++    for x in h.split():
++        a, b = x.split(":")
++        n += int(b)
++    return n
++
++
++def compare(log, prev):
++    header, rows = rows_of(log)
++    out = []
++    if header.startswith("| window | logic t/s | drawn fps"):              # GBA
++        out.append("| window | logic t/s | drawn fps | work avg / max ms | >33 / >50 ms | worst ms | audit 3 -> now "
++                   "| verdict |")
++        out.append("|---|---:|---:|---:|---:|---:|---|---|")
++        for c in rows:
++            logic, fps, o33, o50 = float(c[1]), float(c[2]), int(c[6]), int(c[7])
++            old = prev["gba"].get(c[0])
++            was = "%.1f (%.1f) -> %.1f (%.1f)" % (old[0], old[1], fps, logic) if old else "new"
++            out.append("| %s | %s | %s | %s / %s | %d / %d | %s | %s | %s |" % (
++                c[0], c[1], c[2], c[3], c[4], o33, o50, c[8], was, classify(logic, fps, o33, hist_frames(c[5]))))
++    elif header.startswith("| window | fps (= logic)"):                      # PS1
++        out.append("| window | fps (= logic) | frames by vsyncs | >33 / >50 ms | worst ms | overlay loads ms "
++                   "| audit 3 -> now | verdict |")
++        out.append("|---|---:|---|---:|---:|---|---|---|")
++        for c in rows:
++            fps, o33, o50 = float(c[1]), int(c[3]), int(c[4])
++            old = prev["ps1"].get(c[0])
++            was = "%.2f -> %.2f" % (old[0], fps) if old else "new"
++            out.append("| %s | %s | %s | %d / %d | %s | %s | %s | %s |" % (
++                c[0], c[1], c[2], o33, o50, c[5], c[6], was,
++                # one tick a frame: a short window's fps falls with its long frames, so those say what it is
++                classify(30.0 if o33 else fps, fps, o33, hist_frames(c[2]))))
++    else:                                                                    # Dreamcast
++        out.append("| window | logic t/s | work mean / worst ms | ticks >33.3 / >50 ms | worst picture gap ms "
++                   "| audit 3 -> now | verdict |")
++        out.append("|---|---:|---:|---:|---:|---|---|")
++        for c in rows:
++            logic, o33, o50 = float(c[1]), int(c[4]), int(c[5])
++            gap = float(c[6]) if c[6] not in ("-", "") else 0.0
++            n = o33 + (1 if o33 == 0 and gap > 40.0 else 0)
++            old = prev["dc"].get(c[0])
++            was = "%.1f -> %.1f" % (old[1], logic) if old else "new"
++            out.append("| %s | %s | %s / %s | %d / %d | %s | %s | %s |" % (
++                c[0], c[1], c[2], c[3], o33, o50, c[6], was, classify(logic, logic, n, 0)))
++    return out
++
++
++def main():
++    a = sys.argv[1:]
++    if len(a) < 3 or a[0] != "--prev":
++        print(__doc__)
++        return 2
++    prev = prev_table(a[1])
++    for log in a[2:]:
++        print("\n".join(compare(log, prev)))
++        print()
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tools/tests/test_audit_compare.py b/tools/tests/test_audit_compare.py
+new file mode 100644
+index 00000000..a2c87353
+--- /dev/null
++++ b/tools/tests/test_audit_compare.py
+@@ -0,0 +1,65 @@
++#!/usr/bin/env python3
++"""test_audit_compare.py - tools/audit_compare.py: the verdict classes and the previous audit's lookup."""
++import os
++import sys
++import tempfile
++
++sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
++import audit_compare as ac  # noqa: E402
++
++fails = 0
++
++
++def check(name, cond):
++    global fails
++    print("%s %s" % ("ok  " if cond else "FAIL", name))
++    if not cond:
++        fails += 1
++
++
++check("steady 30 is OK", ac.classify(30.0, 30.0, 0, 90) == "OK")
++check("slow logic", ac.classify(20.0, 15.0, 40, 40) == "MISS slow")
++check("a quarter of the frames long is low", ac.classify(30.0, 22.0, 30, 100) == "MISS low")
++check("three long frames is a hitch", ac.classify(30.0, 29.6, 3, 100) == "MISS hitch")
++check("one long frame is 1x", ac.classify(30.0, 29.8, 1, 100) == "MISS 1x")
++check("one long frame in a short window is 1x, not a hitch", ac.classify(30.0, 23.0, 1, 5) == "MISS 1x")
++check("no long frame but under 29.5 drawn is a miss", ac.classify(30.0, 29.0, 0, 0) != "OK")
++
++DOC = """# audit
++### 2.1 GBA
++| window | logic t/s | drawn fps | rest |
++|---|---:|---:|---|
++| fair: whack | 29.9 | 20.9 | x |
++### 2.2 PS1 (PCSX-Redux)
++| window | fps (= logic) | frames |
++|---|---:|---|
++| fair_whack | 30.12 | 2:90 |
++### 2.3 Dreamcast (Flycast)
++| window | logic t/s | ticks |
++|---|---:|---:|
++| fair: whack | 30.0 | 0 / 0 |
++## 3. Ranked misses
++| 1 | not a window | 1.0 | 2.0 |
++"""
++with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
++    f.write(DOC)
++p = ac.prev_table(f.name)
++os.unlink(f.name)
++check("GBA: drawn fps and logic", p["gba"].get("fair: whack") == (20.9, 29.9))
++check("PS1: by tag", p["ps1"].get("fair_whack") == (30.12, 30.12))
++check("Dreamcast: logic", p["dc"].get("fair: whack") == (None, 30.0))
++check("rows after section 2 are not windows", "1" not in p["gba"] and len(p["gba"]) == 1)
++
++LOG = """harness: fps start: 30.0 logic ticks/s, 30.0 drawn frames/s, work avg 1.0 ms max 1.0 ms (1 ticks, 2 video frames)
++harness: work 1 40.0
++harness: work 2 41.0
++harness: fps fair: whack: 30.0 logic ticks/s, 22.0 drawn frames/s, work avg 40.5 ms max 41.0 ms (60 ticks, 120 video frames)
++harness: gaps fair: whack: vblanks-per-frame histogram 2:10 3:30 max 3 (50.1 ms)
++"""
++with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
++    f.write(LOG)
++rows = ac.compare(f.name, {"gba": {"fair: whack": (20.9, 29.9)}, "ps1": {}, "dc": {}})
++os.unlink(f.name)
++check("a GBA row: old -> now and the class", rows[2].endswith("| 20.9 (29.9) -> 22.0 (30.0) | MISS low |"))
++print("test_audit_compare: %d failed" % fails)
++sys.exit(1 if fails else 0)
+-- 
+2.43.0
+

@@ -1,0 +1,86 @@
+From e03a2724078ccc13f89194ed30a2831daf0b4fdd Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:18:06 +0000
+Subject: [PATCH 5/5] SA4: audit_compare.py: a lone 50 ms Dreamcast picture gap
+ with the work far under budget is Flycast's pacing
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ tools/audit_compare.py            | 18 ++++++++++++++----
+ tools/tests/test_audit_compare.py | 17 +++++++++++++++++
+ 2 files changed, 31 insertions(+), 4 deletions(-)
+
+diff --git a/tools/audit_compare.py b/tools/audit_compare.py
+index 4d9b7a81..2fd579e8 100644
+--- a/tools/audit_compare.py
++++ b/tools/audit_compare.py
+@@ -12,8 +12,9 @@ audit's number and now ("13.2 -> 30.0"; "new" when the old audit has no such win
+ owner's rule EVERYTHING AT 30 (OWNER_DECISIONS 2026-11-15): OK only when logic and drawn fps hold 30 and no
+ presented frame took over 33 ms. A miss is "slow" (logic under 29.5 ticks/s: slow motion), "low" (a quarter or
+ more of the frames over 33 ms), "hitch" (3 or more), "1x" (one or two). Dreamcast: ticks over 33.3 ms of work
+-(no "low": dcrun counts ticks, not presented frames), and a presented-picture gap over 40 ms counts as one long
+-frame. Stdlib only.
++(no "low": dcrun counts ticks, not presented frames), and a presented-picture gap over 51 ms counts as one long
++frame (a lone 50 ms gap next to a 17 ms one, "1:1 .. 3:1" in dcrun's histogram, with the work far under budget, is
++Flycast's pacing, as the PS1's lockstep resume). Stdlib only.
+ """
+ import contextlib
+ import io
+@@ -70,7 +71,16 @@ def rows_of(log):
+     with contextlib.redirect_stdout(buf):
+         table(log)
+     lines = buf.getvalue().splitlines()
+-    return lines[0], [[x.strip() for x in l.strip("|").split("|")] for l in lines[2:] if l.startswith("|")]
++    rows, seen = [], set()
++    for l in lines[2:]:
++        c = [x.strip() for x in l.strip("|").split("|")]
++        # a script's "settle (ignore)" windows are not windows; a log of the same script played twice
++        # (profile-concert) lists each window once
++        if not l.startswith("|") or c[0].startswith("settle") or c[0] in seen:
++            continue
++        seen.add(c[0])
++        rows.append(c)
++    return lines[0], rows
+ 
+ 
+ def table(log):
+@@ -123,7 +133,7 @@ def compare(log, prev):
+         for c in rows:
+             logic, o33, o50 = float(c[1]), int(c[4]), int(c[5])
+             gap = float(c[6]) if c[6] not in ("-", "") else 0.0
+-            n = o33 + (1 if o33 == 0 and gap > 40.0 else 0)
++            n = o33 + (1 if o33 == 0 and gap > 51.0 else 0)
+             old = prev["dc"].get(c[0])
+             was = "%.1f -> %.1f" % (old[1], logic) if old else "new"
+             out.append("| %s | %s | %s / %s | %d / %d | %s | %s | %s |" % (
+diff --git a/tools/tests/test_audit_compare.py b/tools/tests/test_audit_compare.py
+index a2c87353..c3c523fd 100644
+--- a/tools/tests/test_audit_compare.py
++++ b/tools/tests/test_audit_compare.py
+@@ -61,5 +61,22 @@ with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
+ rows = ac.compare(f.name, {"gba": {"fair: whack": (20.9, 29.9)}, "ps1": {}, "dc": {}})
+ os.unlink(f.name)
+ check("a GBA row: old -> now and the class", rows[2].endswith("| 20.9 (29.9) -> 22.0 (30.0) | MISS low |"))
++DCLOG = """speed2: begin 30 g: a
++window work: 30 ticks, mean 6000 us, worst 9000 us
++gaps g_a: video-frames-per-frame histogram 1:1 2:28 3:1 max 3 (50.1 ms) at tick 9
++ticks: 30 since mark-ticks
++speed2: end g: a
++speed2: begin 30 g: b
++window work: 30 ticks, mean 6000 us, worst 9000 us
++gaps g_b: video-frames-per-frame histogram 2:28 4:1 max 4 (66.8 ms) at tick 9
++ticks: 30 since mark-ticks
++speed2: end g: b
++"""
++with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
++    f.write(DCLOG)
++rows = ac.compare(f.name, {"gba": {}, "ps1": {}, "dc": {}})
++os.unlink(f.name)
++check("Dreamcast: a lone 50 ms pacing gap is not a long frame", rows[2].endswith("| OK |"))
++check("Dreamcast: a 67 ms picture gap is one long frame", rows[3].endswith("| MISS 1x |"))
+ print("test_audit_compare: %d failed" % fails)
+ sys.exit(1 if fails else 0)
+-- 
+2.43.0
+

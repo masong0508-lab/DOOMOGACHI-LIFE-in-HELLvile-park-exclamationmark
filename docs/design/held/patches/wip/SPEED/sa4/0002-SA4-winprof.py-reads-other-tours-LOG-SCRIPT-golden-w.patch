@@ -1,0 +1,146 @@
+From 44921e13ce186777d2f945cf272e1b4f43aba2e3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:04:29 +0000
+Subject: [PATCH 2/5] SA4: winprof.py reads other tours (LOG=SCRIPT, --golden),
+ windows without 'fps start', the last profile only
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ tools/tests/test_winprof.py |  9 +++++++++
+ tools/winprof.py            | 38 ++++++++++++++++++++++++++-----------
+ 2 files changed, 36 insertions(+), 11 deletions(-)
+
+diff --git a/tools/tests/test_winprof.py b/tools/tests/test_winprof.py
+index 0b07faef..5ceb42ea 100644
+--- a/tools/tests/test_winprof.py
++++ b/tools/tests/test_winprof.py
+@@ -49,6 +49,9 @@ try:
+     check("an unknown window refused", False)
+ except SystemExit:
+     check("an unknown window refused", True)
++out = winprof.cut(["seed 1\n", "fps a\n", "wait 5\n", "fps b\n", "press A\n", "wait 7\n", "fps c\n"], "c", 1)
++check("no fps start: the window opens at the previous window's fps", out == ["seed 1", "fps a", "wait 5", "fps b",
++                                                                          "press A", "profile 7", "fps c"])
+ try:
+     winprof.cut(["fps start\n", "hold LEFT 60\n", "fps g: held\n"], "g: held", 1)
+     check("a window without a wait refused", False)
+@@ -67,6 +70,12 @@ check("summary takes the window's drawn fps", fps == 20.0)
+ check("summary ms a frame = share x 1000 / fps", abs(rows[0][1] - 25.0) < 1e-9 and rows[0][2] == "vid_rect")
+ check("summary slow frames", slow.startswith("slow frames: 3 of 4"))
+ check("summary slow+ lines", len(plus) == 1 and plus[0].startswith("2.00 ms/frame  vid_rect"))
++EARLIER = """harness: profile of 9 instructions, 9 cycles (1.0 video frames), 0.0% outside known symbols
++harness:    90.0%  old_func
++harness: slow frames: 9 of 9 over 33.3 ms (worst 99.0 ms)
++"""
++rows, slow, _, _ = winprof.summary(EARLIER + LOG)
++check("summary reads the last profile only", rows[0][2] == "vid_rect" and len(rows) == 2 and "3 of 4" in slow)
+ rows, _, _, fps = winprof.summary(LOG, 10.0)
+ check("summary fps override", fps == 10.0 and abs(rows[1][1] - 10.0) < 1e-9)
+ print("test_winprof: %d failed" % fails)
+diff --git a/tools/winprof.py b/tools/winprof.py
+index d6b3a684..78ebf2f8 100644
+--- a/tools/winprof.py
++++ b/tools/winprof.py
+@@ -10,10 +10,12 @@ spends extra). `vhash-seq` and floors (`expect-fps` turns into `fps`) are droppe
+ usage:
+   winprof.py cut SCRIPT LABEL [--per-tick N]     the cut script on stdout
+   winprof.py run SCRIPT LABEL [LABEL..] --out DIR [--harness H] [--rom R] [--nm NM] [--per-tick N]
+-                                                 cut, play and summarise each window (DIR/<tag>.txt, .log)
++                                                 cut, play and summarise each window (DIR/<tag>.txt, .log);
++                                                 --golden FILE is passed to the harness (home.txt's room-parity)
+   winprof.py misses LOG [LOG..] --out DIR [...]  every window of GBA speed2 logs (harness --worklog) whose
+                                                  verdict is not "ok" (tools/speed2.py), profiled as `run` does;
+-                                                 the script is gba/harness/scripts/speed2_<group>.txt
++                                                 the script is gba/harness/scripts/speed2_<group>.txt, or
++                                                 LOG=SCRIPT for another tour (breach_*.txt, view3d.txt, ...)
+   winprof.py summary LOG [--fps F]               the summary of a profile log: the top functions with their
+                                                  share and ms per drawn frame (share x 1000 / F; F from the
+                                                  window's own `fps` line when not given), the slow frames, the
+@@ -54,13 +56,16 @@ def cut(lines, label, per_tick=PER_TICK):
+             break
+     if end is None:
+         raise SystemExit("winprof: no window '%s'" % label)
++    # the window opens at the `fps start` before it, or (scripts without them: exorcism_profile.txt, ...) at the
++    # previous window's closing line, or at the first `fps`
+     start = None
+     for i in range(end - 1, -1, -1):
+-        if lines[i].strip() == "fps start":
++        s = lines[i].strip()
++        if s == "fps start" or close_label(s) is not None:
+             start = i
+             break
+     if start is None:
+-        raise SystemExit("winprof: window '%s' has no 'fps start'" % label)
++        raise SystemExit("winprof: window '%s' has no 'fps start' or earlier window" % label)
+     body = [l.rstrip("\n") for l in lines[start + 1:end]]
+     last = None
+     for i in range(len(body) - 1, -1, -1):
+@@ -92,6 +97,9 @@ def summary(text, fps=None, top=12):
+         for m in re.finditer(r"harness: fps (.+?): ([\d.]+) logic ticks/s, ([\d.]+) drawn frames/s", text):
+             pass
+         fps = float(m.group(3)) if m else 30.0
++    k = text.rfind("harness: profile of ")      # the window's own profile: the script's earlier ones come first
++    if k >= 0:
++        text = text[k:]
+     rows = []
+     for m in re.finditer(r"^harness:\s+([\d.]+)%\s+(\S+)", text, re.M):
+         share = float(m.group(1))
+@@ -138,7 +146,7 @@ def play(opts, script_lines, tag):
+     with open(sp, "w") as f:
+         f.write("\n".join(script_lines) + "\n")
+     cmd = [opts["harness"], opts["rom"], "--script", sp, "--nm", opts["nm"], "--no-fps-gates", "--worklog",
+-           "--quiet"]
++           "--quiet"] + (["--golden", opts["golden"]] if opts.get("golden") else [])
+     r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+     log = os.path.join(opts["out"], tag + ".log")
+     with open(log, "w") as f:
+@@ -150,11 +158,11 @@ def parse_opts(argv):
+     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+     o = dict(out=None, harness=os.path.join(root, "gba/build/harness"),
+              rom=os.path.join(root, "gba/build/doomogachi.gba"), nm=os.path.join(root, "gba/build/doomogachi.nm"),
+-             per_tick=PER_TICK, fps=None, root=root)
++             per_tick=PER_TICK, fps=None, root=root, golden=None)
+     rest, i = [], 0
+     while i < len(argv):
+         a = argv[i]
+-        if a in ("--out", "--harness", "--rom", "--nm", "--per-tick", "--fps"):
++        if a in ("--out", "--harness", "--rom", "--nm", "--per-tick", "--fps", "--golden"):
+             v = argv[i + 1]
+             o[a[2:].replace("-", "_")] = int(v) if a == "--per-tick" else float(v) if a == "--fps" else v
+             i += 2
+@@ -177,7 +185,7 @@ def miss_windows(log):
+     out = []
+     for line in buf.getvalue().splitlines()[2:]:
+         c = [x.strip() for x in line.strip("|").split("|")]
+-        if len(c) >= 11 and c[10] != "ok":
++        if len(c) >= 11 and c[10] != "ok" and not c[0].startswith("settle"):
+             out.append((c[0], float(c[2])))
+     return out
+ 
+@@ -200,11 +208,19 @@ def main():
+             jobs = [(a[1], l, o["fps"]) for l in a[2:]]
+         else:
+             for log in a[1:]:
+-                g = re.sub(r"^speed2_|\.log$", "", os.path.basename(log))
+-                sc = os.path.join(o["root"], "gba/harness/scripts/speed2_%s.txt" % g)
++                if "=" in log:                  # LOG=SCRIPT: another tour's log and the script that made it
++                    log, sc = log.split("=", 1)
++                else:
++                    g = re.sub(r"^speed2_|\.log$", "", os.path.basename(log))
++                    sc = os.path.join(o["root"], "gba/harness/scripts/speed2_%s.txt" % g)
+                 jobs += [(sc, l, f) for l, f in miss_windows(log)]
+         for sc, label, fps in jobs:
+-            text = play(o, cut(open(sc).readlines(), label, o["per_tick"]), tag_of(label))
++            try:
++                lines = cut(open(sc).readlines(), label, o["per_tick"])
++            except SystemExit as e:
++                print("%s: not profiled (%s)" % (label, e))
++                continue
++            text = play(o, lines, tag_of(label))
+             print(fmt_summary(label, text, fps))
+             sys.stdout.flush()
+         return 0
+-- 
+2.43.0
+

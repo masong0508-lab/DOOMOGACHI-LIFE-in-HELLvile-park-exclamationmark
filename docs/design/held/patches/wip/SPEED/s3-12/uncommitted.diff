@@ -1,0 +1,180 @@
+diff --git a/core/src/ui_raster.c b/core/src/ui_raster.c
+index 4ef8c2f2..1e783964 100644
+--- a/core/src/ui_raster.c
++++ b/core/src/ui_raster.c
+@@ -158,8 +158,7 @@ enum { K_HEART = 1, K_TINY, K_STAR, K_GLYPH, K_TEXT, K_ELLIPSE };
+ typedef uint32_t SRect;
+ typedef struct {
+     uint32_t k0, k1, k2;
+-    uint32_t start : 12, n : 12;       /* its rects: sc_pool[start .. start + n) */
+-    uint32_t seen : 8;                 /* (S3-12) low bits of the frame it was last drawn in */
++    uint16_t start, n;
+     uint8_t pal[SC_PAL];
+ #if !defined(DOOMO_PLATFORM_GBA)
+     DoomoImage img;                    /* its pixels, valid iff igen == si_gen */
+@@ -172,31 +171,6 @@ static SEnt sc_ent[SC_ENT];
+ static int sc_top, sc_nent;
+ static uint8_t sc_hash[SC_HASH];       /* entry index + 1, 0 = empty slot   */
+ static uint32_t sc_resets, sc_misses, sc_hits, sc_replayed;
+-DOOMO_STATIC_ASSERT(SC_POOL <= 4096 && SC_ENT <= 255, sc_fields_fit);
+-
+-/* (S3-12) Big outlined text (K_TEXT) is the dearest shape to make again (a wide title: text_emit + the run
+- * emitter, 20-45 ms on the GBA). When the pool fills, the big text drawn in the last few frames stays (it is
+- * moved to the front); everything else goes, as before. A title that leaves the screen is gone after
+- * SC_LIVE frames, so a scene "pins" its titles just by drawing them. */
+-#define SC_LIVE 3u
+-static int sc_keep_off;                /* set: sc_evict keeps nothing */
+-static const DoomoScene *sc_scene;     /* the scene on top when a shape was last stamped, */
+-static uint32_t sc_scene_at;           /* and the frame it came up (a new scene keeps nothing of the old) */
+-static uint32_t sc_now(void)
+-{
+-    uint32_t now = doomo_frame_count();
+-    if (scene_top() != sc_scene) {
+-        sc_scene = scene_top();
+-        sc_scene_at = now;
+-    }
+-    return now & 255u;
+-}
+-
+-static int sc_keep(const SEnt *e)
+-{
+-    uint32_t age = (sc_now() - e->seen) & 255u, up = doomo_frame_count() - sc_scene_at;
+-    return !sc_keep_off && (e->k0 & 255u) == K_TEXT && age <= SC_LIVE && age <= up;
+-}
+ 
+ static unsigned sc_slot(uint32_t k0, uint32_t k1, uint32_t k2)
+ {
+@@ -246,66 +220,6 @@ static void sc_reset(void)
+ static SEnt *rec_e;
+ static int rec_ax, rec_ay, rec_fail, rec_npal;
+ 
+-static void sc_rehash(void)
+-{
+-    int i;
+-    memset(sc_hash, 0, sizeof(sc_hash));
+-    for (i = 0; i < sc_nent; i++) {
+-        unsigned slot = sc_slot(sc_ent[i].k0, sc_ent[i].k1, sc_ent[i].k2);
+-        while (sc_hash[slot]) slot = (slot + 1) & (SC_HASH - 1);
+-        sc_hash[slot] = (uint8_t)(i + 1);
+-    }
+-}
+-
+-/* (S3-12) The pool or the entry table is full: drop every shape but the big text in use (sc_keep), which moves
+- * to the front of the pool in its order. A shape being recorded (rec_e, not yet an entry) moves behind it with
+- * the rects it has so far, so the recording goes on: nothing is rasterised twice. With nothing to keep this is
+- * sc_reset. Images (PS1 / native) all start over as in sc_reset: a kept shape paints its image again. */
+-static void sc_evict(void)
+-{
+-    int i, k = 0, top = 0;
+-    for (i = 0; i < sc_nent; i++)
+-        if (sc_keep(&sc_ent[i])) break;
+-    if (i == sc_nent) {
+-        SEnt r;
+-        if (rec_e) r = *rec_e;
+-        sc_reset();
+-        if (rec_e) {
+-            memmove(&sc_pool[0], &sc_pool[r.start], sizeof(SRect) * r.n);
+-            r.start = 0;
+-            sc_ent[0] = r;
+-            rec_e = &sc_ent[0];
+-        }
+-        return;
+-    }
+-    for (i = 0; i < sc_nent; i++) {
+-        SEnt *e = &sc_ent[i];
+-        if (!sc_keep(e)) continue;
+-        if (e->start != (uint32_t)top) memmove(&sc_pool[top], &sc_pool[e->start], sizeof(SRect) * e->n);
+-        e->start = (uint32_t)top;
+-#if SC_IMAGES
+-        e->igen = 0;
+-#endif
+-        top += e->n;
+-        if (k != i) sc_ent[k] = *e;
+-        k++;
+-    }
+-    if (rec_e) {
+-        SEnt r = *rec_e;
+-        memmove(&sc_pool[top], &sc_pool[r.start], sizeof(SRect) * r.n);
+-        r.start = (uint32_t)top;
+-        sc_ent[k] = r;
+-        rec_e = &sc_ent[k];
+-    }
+-#if SC_IMAGES
+-    si_reset();
+-#endif
+-    sc_top = top;
+-    sc_nent = k;
+-    sc_rehash();
+-    sc_resets++;
+-}
+-
+ static void rec_add(int x, int y, int w, int h, uint8_t c)
+ {
+     int rx = x - rec_ax, ry = y - rec_ay, i;
+@@ -315,17 +229,7 @@ static void rec_add(int x, int y, int w, int h, uint8_t c)
+         rec_fail = 2;                   /* this shape cannot be cached     */
+         return;
+     }
+-    if (sc_top + rec_e->n >= SC_POOL) {
+-        /* full: make room (S3-12: the big text in use stays) and go on recording; a shape that does not fit
+-         * even beside nothing is drawn directly (ur_cache_end returns 0) */
+-        sc_evict();
+-        if (sc_top + rec_e->n >= SC_POOL && sc_top > 0) {
+-            sc_keep_off = 1;
+-            sc_evict();
+-            sc_keep_off = 0;
+-        }
+-        if (sc_top + rec_e->n >= SC_POOL) { rec_fail = 1; return; }
+-    }
++    if (sc_top + rec_e->n >= SC_POOL) { rec_fail = 1; return; }    /* full */
+     for (i = 0; i < rec_npal && rec_e->pal[i] != c; i++) {}
+     if (i == rec_npal) {
+         if (rec_npal == SC_PAL) { rec_fail = 2; return; }
+@@ -439,7 +343,6 @@ int ur_cache_draw(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
+     for (n = 0; n < SC_HASH && sc_hash[slot]; n++, slot = (slot + 1) & (SC_HASH - 1)) {
+         SEnt *e = &sc_ent[sc_hash[slot] - 1];
+         if (e->k0 == k0 && e->k1 == k1 && e->k2 == k2) {
+-            if ((k0 & 255u) == K_TEXT) e->seen = sc_now();     /* (only big text is kept) */
+ #if SC_IMAGES
+             if (si_draw(e, ax, ay)) { sc_hits++; return 1; }
+ #endif
+@@ -471,14 +374,11 @@ void ur_cache_image_stats(uint32_t *replayed, uint32_t *built, uint32_t *drawn)
+ 
+ void ur_cache_begin(uint32_t k0, uint32_t k1, uint32_t k2, int ax, int ay)
+ {
+-    rec_e = NULL;
+-    if (sc_nent == SC_ENT) sc_evict();
+     if (sc_nent == SC_ENT) sc_reset();
+     rec_e = &sc_ent[sc_nent];
+     rec_e->k0 = k0; rec_e->k1 = k1; rec_e->k2 = k2;
+-    rec_e->start = (uint32_t)sc_top;
++    rec_e->start = (uint16_t)sc_top;
+     rec_e->n = 0;
+-    rec_e->seen = (k0 & 255u) == K_TEXT ? sc_now() : 0;
+ #if SC_IMAGES
+     rec_e->igen = 0;
+     rec_e->last = 0;
+@@ -495,7 +395,11 @@ int ur_cache_end(void)
+     SEnt *e = rec_e;
+     rec_e = NULL;
+     if (!e) return 0;
+-    if (rec_fail) return 0;            /* (S3-12: the pool was made room for in rec_add) */
++    if (rec_fail) {
++        /* pool full: start over (the shapes in use come back next frame) */
++        if (rec_fail == 1) sc_reset();
++        return 0;
++    }
+     sc_top += e->n;
+     sc_nent++;
+     {
+@@ -1655,9 +1559,7 @@ static void text_emit(const TextBlock *tb, const uint8_t col[4])
+         int rel = q - 1, is_top = 0, run_x = 0, run_c = -1;
+         uint32_t any = 0;
+         text_grow(tb, q + 1, gd);
+-        /* (S3-12) rows off the screen are skipped, but a shape being recorded keeps them: the replay clips (every
+-         * plat_rect does), so a title dropping in from the top is made once, not twice a frame */
+-        if ((oy + q < 0 || oy + q >= sh) && !rec_e) continue;
++        if (oy + q < 0 || oy + q >= sh) { rec_clipped(); continue; }
+         for (k = 0; k < nw; k++) {
+             dil[k] = gu[k] | g[k] | gd[k];
+             any |= dil[k] | gs[k];

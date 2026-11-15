@@ -12,3 +12,5 @@ Landed 2026-11-15: S2-4b (folder deleted).
 Landed 2026-11-15: S2-4c (folder deleted).
 Landed 2026-11-15: S2-10 (folder deleted).
 Landed 2026-11-15: G2-EX (folder deleted). No SPEED package is saved here any more.
+
+Paused 2026-11-15 ~20:35 UTC (allowance at 98%): mem2 (memory wave 2), s3-12 (big text) and sa4 (speed audit 4, partial) saved here as patches; resume by applying them in fresh worktrees and re-running wave-runner with their build reports.

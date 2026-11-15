@@ -1,0 +1,172 @@
+From 24ccee35f1813ce8154ea414f4ccac7ac418ea7c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:05:41 +0000
+Subject: [PATCH 3/5] SA4: the GBA Talk windows as talk_speed.txt (not a speed2
+ group: the Dreamcast has its own, the PS1 no Talk), with the reply press and
+ a house visit's greeting
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ gba/harness/scripts/speed2_talk.txt | 59 ---------------------
+ gba/harness/scripts/talk_speed.txt  | 82 +++++++++++++++++++++++++++++
+ 2 files changed, 82 insertions(+), 59 deletions(-)
+ delete mode 100644 gba/harness/scripts/speed2_talk.txt
+ create mode 100644 gba/harness/scripts/talk_speed.txt
+
+diff --git a/gba/harness/scripts/speed2_talk.txt b/gba/harness/scripts/speed2_talk.txt
+deleted file mode 100644
+index ee52b6a7..00000000
+--- a/gba/harness/scripts/speed2_talk.txt
++++ /dev/null
+@@ -1,59 +0,0 @@
+-# speed2_talk.txt - speed tour 2 (SA2), added by speed audit 4 (docs/design/SPEED_AUDIT4.md): the Talk screen
+-# (SCENE_TALK, core/src/talk_scene.c) in a conversation as talk.txt plays it: the menu, a cursor move, the Chat
+-# list, the answer box (DIALOG over the Talk screen) and the menu after a reply. Talk runs on the GBA and the
+-# Dreamcast (TD1); the PS1 has no Talk screen yet (TKP), so ps1/harness/speed2.sh is not given this group.
+-# Window rules: speed2_fair.txt. talk.txt's pinned seed 18 (the resident's lines follow the town seed).
+-wait 40
+-expect-log doomo: init
+-sync on 61
+-
+-# ---- Talk: a conversation (push TALK 1 after the premade island moved in, as talk.txt) ----
+-# Pushed straight from the title the resident opens with no line: the menu comes first.
+-seed 18
+-scene TITLE
+-wait 10
+-push HOME 3
+-wait 20
+-press B
+-wait 20
+-expect-scene TITLE
+-push TALK 1
+-wait 40
+-expect-scene TALK
+-fps start
+-wait 90
+-fps talk: menu
+-shot sa4_talk_menu
+-press DOWN
+-wait 2
+-fps start
+-wait 30
+-fps talk: menu cursor move
+-press DOWN
+-wait 4
+-press DOWN
+-wait 4
+-press DOWN
+-wait 4
+-fps start
+-press A
+-wait 30
+-fps talk: chat list open
+-shot sa4_talk_chat
+-fps start
+-wait 60
+-fps talk: chat list
+-press A
+-wait 20
+-expect-scene DIALOG
+-fps start
+-wait 40
+-fps talk: answer box
+-shot sa4_talk_answer
+-press A
+-wait 40
+-expect-scene TALK
+-fps start
+-wait 90
+-fps talk: menu after a reply
+-shot sa4_talk_after
+diff --git a/gba/harness/scripts/talk_speed.txt b/gba/harness/scripts/talk_speed.txt
+new file mode 100644
+index 00000000..0beb36ea
+--- /dev/null
++++ b/gba/harness/scripts/talk_speed.txt
+@@ -0,0 +1,82 @@
++# talk_speed.txt - the Talk screen's windows on the GBA, added by speed audit 4 (docs/design/SPEED_AUDIT4.md):
++# SCENE_TALK (core/src/talk_scene.c) in a conversation as talk.txt plays it: the menu, a cursor move, the Chat
++# list, the press that makes the answer, the answer box (DIALOG over the Talk screen) and the menu after a reply.
++# Window rules: speed2_fair.txt (`fps start` .. `fps LABEL`; talk.txt's own `fps` lines span the whole script
++# before them, not a window). Not a speed2_ group: the PS1 has no Talk screen yet and the Dreamcast's Talk group
++# is dc/tests/talk/speed2_talk.txt (TD3, the bank from the disc). Run:
++#   gba/build/harness gba/build/doomogachi.gba --script gba/harness/scripts/talk_speed.txt --no-fps-gates \
++#       --worklog --quiet > LOG; python3 tools/speed2.py table LOG
++# talk.txt's pinned seed 18 (the resident's lines follow the town seed).
++wait 40
++expect-log doomo: init
++sync on 61
++
++# ---- Talk: a conversation (push TALK 1 after the premade island moved in, as talk.txt) ----
++# Pushed straight from the title the resident opens with no line: the menu comes first.
++seed 18
++scene TITLE
++wait 10
++push HOME 3
++wait 20
++press B
++wait 20
++expect-scene TITLE
++push TALK 1
++wait 40
++expect-scene TALK
++fps start
++wait 90
++fps talk: menu
++shot sa4_talk_menu
++press DOWN
++wait 2
++fps start
++wait 30
++fps talk: menu cursor move
++press DOWN
++wait 4
++press DOWN
++wait 4
++press DOWN
++wait 4
++fps start
++press A
++wait 30
++fps talk: chat list open
++shot sa4_talk_chat
++fps start
++wait 60
++fps talk: chat list
++fps start
++press A
++wait 20
++fps talk: reply press (the answer is made)
++expect-scene DIALOG
++fps start
++wait 40
++fps talk: answer box
++shot sa4_talk_answer
++press A
++wait 40
++expect-scene TALK
++fps start
++wait 90
++fps talk: menu after a reply
++shot sa4_talk_after
++
++# ---- Talk from a house visit: walk up to the host and press A (talk.txt section 1) ---------------
++seed 18
++scene TITLE
++wait 10
++push HOME 3
++wait 60
++hold DOWN 24
++hold LEFT 14
++fps start
++press A
++wait 30
++fps talk: house visit, the press that opens Talk (the greeting is made)
++expect-scene DIALOG
++fps start
++wait 60
++fps talk: house visit greeting box
+-- 
+2.43.0
+

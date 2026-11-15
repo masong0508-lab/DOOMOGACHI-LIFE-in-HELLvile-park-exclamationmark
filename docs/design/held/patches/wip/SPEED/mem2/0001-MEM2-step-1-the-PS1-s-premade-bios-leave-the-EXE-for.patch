@@ -1,0 +1,560 @@
+From 31af6ad709246aa9d43da34595dedd9abbf136e3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 20:14:57 +0000
+Subject: [PATCH 1/2] MEM2 step 1: the PS1's premade bios leave the EXE for SPU
+ RAM (+45,776 B resident)
+
+The 45 KB of premade citizens' bios (core/gen/roster_data.c) are no longer linked on
+the PS1 (DOOMO_ROSTER_BIO_EXT). ps1/tools/rosterbin.py writes them as 64-byte records
+to ROSTER.BIN; src/rosterbio.c uploads it to SPU RAM at 0x40000 at boot (below the part
+store; the effects stop there, they use 35 KB), and roster_bio() reads one record back
+with one 64-byte SPU DMA read into a ring of four (core/src/roster.c roster_bio_ext).
+Same strings, same callers (each uses the bio at once). EXE with the boot FMV:
+110,608 -> 156,384 B below the stack top. GBA, Dreamcast and native unchanged.
+
+Tests: three native tests of roster_bio_ext (every bio equals the linked text; the four
+newest stay valid without a read; a missing store reads empty and is not kept), four
+rosterbin.py tests, game_smoke expects 'roster: bios loaded'.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/Makefile                      |   4 +-
+ core/include/doomo/roster.h        |  15 +++++
+ core/src/roster.c                  |  32 +++++++++
+ core/tests/test_roster.c           |  59 +++++++++++++++++
+ ps1/CMakeLists.txt                 |  14 +++-
+ ps1/harness/scripts/game_smoke.txt |   2 +
+ ps1/src/main.c                     |   3 +
+ ps1/src/ps1.h                      |   5 ++
+ ps1/src/rosterbio.c                |  80 ++++++++++++++++++++++
+ ps1/src/spu.c                      |   5 +-
+ ps1/tools/rosterbin.py             | 103 +++++++++++++++++++++++++++++
+ ps1/tools/test_tools.py            |  40 +++++++++++
+ 12 files changed, 357 insertions(+), 5 deletions(-)
+ create mode 100644 ps1/src/rosterbio.c
+ create mode 100644 ps1/tools/rosterbin.py
+
+diff --git a/core/Makefile b/core/Makefile
+index e518894a..c2078404 100644
+--- a/core/Makefile
++++ b/core/Makefile
+@@ -61,9 +61,9 @@ LDFLAGS_SAN := -fsanitize=address,undefined
+ endif
+ # T6: the native host has Talk, so it registers the 'TALK' save chunk (core/src/talk_save.c);
+ # a console build defines DOOMO_HAS_TALK when it gets Talk (docs/TALK.md 6e).
+-CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PARTS_SPU_TEST -DDOOMO_PART_AGE_TEST -DDOOMO_HAS_TALK=1 -DDOOMO_TALK_DEBUG=1 -DDOOMO_EDGE_GAP_LOOP -I$(CORE_INC)
++CORE_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_HITCHECK -DDOOMO_PARTS_LZ_TEST -DDOOMO_PARTS_SPU_TEST -DDOOMO_ROSTER_BIO_EXT_TEST -DDOOMO_PART_AGE_TEST -DDOOMO_HAS_TALK=1 -DDOOMO_TALK_DEBUG=1 -DDOOMO_EDGE_GAP_LOOP -I$(CORE_INC)
+ # Native platform + tests may use the host libc.
+-HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -DDOOMO_PARTS_SPU_TEST -DDOOMO_PART_AGE_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
++HOST_CFLAGS   := $(CFLAGS_COMMON) -DDOOMO_PARTS_LZ_TEST -DDOOMO_PARTS_SPU_TEST -DDOOMO_ROSTER_BIO_EXT_TEST -DDOOMO_PART_AGE_TEST -D_POSIX_C_SOURCE=200809L -I$(CORE_INC) -I$(CORE)/native \
+                  -DNAT_TALK_DIR='"$(BUILD)/talk"'
+ 
+ NATIVE_SRCS := $(sort $(wildcard $(CORE)/native/*.c))
+diff --git a/core/include/doomo/roster.h b/core/include/doomo/roster.h
+index 6bedb742..a4e8730d 100644
+--- a/core/include/doomo/roster.h
++++ b/core/include/doomo/roster.h
+@@ -36,6 +36,20 @@ int roster_premade_record(int id, DoomoResident *out);
+  * stays valid for the next 7 calls only: use it at once, or copy it (roster_premade_record). */
+ const DoomoResident *roster_premade(int id);   /* 0..999 */
+ const char *roster_bio(int id);                /* <= 60 chars */
++/* (MEM2) DOOMO_ROSTER_BIO_EXT (the PS1): the bios are not linked. They sit in fixed records of
++ * ROSTER_BIO_REC bytes outside the EXE (ps1/tools/rosterbin.py -> ROSTER.BIN -> SPU RAM), and
++ * roster_bio() reads one through plat_roster_bio_read() into a ring of ROSTER_BIO_RING buffers:
++ * its pointer stays valid until ROSTER_BIO_RING other bios have been read (use it at once, as
++ * every caller does). plat_roster_bio_read(id, dst) fills ROSTER_BIO_REC bytes (4-byte aligned
++ * dst; the record is the bio, NUL padded) and returns 1, or 0 when the store is missing (the bio
++ * then reads as ""). roster_bio_ext() is that path with the reader as an argument, so the
++ * native tests run it (DOOMO_ROSTER_BIO_EXT_TEST). */
++#define ROSTER_BIO_REC  64
++#define ROSTER_BIO_RING 4
++#if defined(DOOMO_ROSTER_BIO_EXT) || defined(DOOMO_ROSTER_BIO_EXT_TEST)
++int plat_roster_bio_read(int id, void *dst);
++const char *roster_bio_ext(int id, int (*read)(int id, void *dst));
++#endif
+ const char *roster_job(int id);                /* "Baker", "Imp Accountant" */
+ 
+ /* Pre-seeded relationships between premade citizens. */
+@@ -60,6 +74,7 @@ extern const uint16_t doomo_story_npc[NPC_COUNT];
+ 
+ /* Text limits (characters, without the NUL). */
+ #define ROSTER_BIO_MAX 60
++DOOMO_STATIC_ASSERT(ROSTER_BIO_MAX < ROSTER_BIO_REC, a_bio_and_its_nul_fit_a_record);
+ #define ROSTER_JOB_MAX 20
+ 
+ /* Story NPC resident ids (the values of doomo_story_npc[], fixed so other
+diff --git a/core/src/roster.c b/core/src/roster.c
+index e0c12675..f9512a72 100644
+--- a/core/src/roster.c
++++ b/core/src/roster.c
+@@ -43,9 +43,41 @@ const DoomoResident *roster_premade(int id)
+     return r;
+ }
+ 
++#if defined(DOOMO_ROSTER_BIO_EXT) || defined(DOOMO_ROSTER_BIO_EXT_TEST)
++/* (MEM2) the bios live outside the EXE (roster.h): the ROSTER_BIO_RING newest reads are kept
++ * (oldest replaced first); a hit costs no read. The union keeps every record 4-byte aligned for
++ * the DMA. */
++static union { uint32_t w[ROSTER_BIO_REC / 4]; char s[ROSTER_BIO_REC]; } bio_buf[ROSTER_BIO_RING];
++static int16_t bio_id[ROSTER_BIO_RING] = { -1, -1, -1, -1 };
++static uint8_t bio_next;
++DOOMO_STATIC_ASSERT(ROSTER_BIO_RING == 4, bio_ring_init_lists_four);
++
++const char *roster_bio_ext(int id, int (*read)(int id, void *dst))
++{
++    int i, k;
++    if (!valid(id)) return "";
++    for (i = 0; i < ROSTER_BIO_RING; i++)
++        if (bio_id[i] == id) return bio_buf[i].s;
++    k = bio_next;
++    bio_next = (uint8_t)((k + 1) % ROSTER_BIO_RING);
++    if (!read(id, bio_buf[k].w)) {
++        bio_id[k] = -1;
++        bio_buf[k].s[0] = 0;
++        return bio_buf[k].s;
++    }
++    bio_buf[k].s[ROSTER_BIO_REC - 1] = 0;
++    bio_id[k] = (int16_t)id;
++    return bio_buf[k].s;
++}
++#endif
++
+ const char *roster_bio(int id)
+ {
++#ifdef DOOMO_ROSTER_BIO_EXT
++    return roster_bio_ext(id, plat_roster_bio_read);
++#else
+     return valid(id) ? doomo_roster_bio_text + doomo_roster_bio_ofs[id] : "";
++#endif
+ }
+ 
+ const char *roster_job(int id)
+diff --git a/core/tests/test_roster.c b/core/tests/test_roster.c
+index 1dec52f3..9665bb21 100644
+--- a/core/tests/test_roster.c
++++ b/core/tests/test_roster.c
+@@ -425,3 +425,62 @@ TEST(roster_v2_record_edges)
+     CHECK(roster_premade(ROSTER_COUNT) == NULL);
+     CHECK(roster_premade(999) != NULL);
+ }
++
++/* (MEM2) the PS1's bios outside the EXE (roster.h DOOMO_ROSTER_BIO_EXT): roster_bio_ext() through a
++ * fake store that serves the linked text as records, counting its reads */
++static int bio_reads, bio_fail;
++static int fake_bio_read(int id, void *dst)
++{
++    const char *b = doomo_roster_bio_text + doomo_roster_bio_ofs[id];
++    bio_reads++;
++    if (bio_fail) return 0;
++    memset(dst, 0, ROSTER_BIO_REC);
++    memcpy(dst, b, strlen(b));
++    return 1;
++}
++
++TEST(mem2_roster_bio_ext_reads_each_bio_like_the_linked_text)
++{
++    int i;
++    bio_fail = 0;
++    for (i = 0; i < ROSTER_COUNT; i++) {
++        const char *b = roster_bio_ext(i, fake_bio_read);
++        CHECK_MSG(((uintptr_t)b & 3u) == 0, "[%d] record not 4-byte aligned", i);
++        CHECK_MSG(strcmp(b, doomo_roster_bio_text + doomo_roster_bio_ofs[i]) == 0, "[%d] bio %s", i, b);
++        CHECK_MSG(strlen(doomo_roster_bio_text + doomo_roster_bio_ofs[i]) < ROSTER_BIO_REC, "[%d] too long", i);
++    }
++    CHECK_STR(roster_bio_ext(-1, fake_bio_read), "");
++    CHECK_STR(roster_bio_ext(ROSTER_COUNT, fake_bio_read), "");
++}
++
++TEST(mem2_roster_bio_ext_keeps_the_newest_reads)
++{
++    const char *p[ROSTER_BIO_RING];
++    int i, before;
++    bio_fail = 0;
++    for (i = 0; i < ROSTER_BIO_RING; i++) p[i] = roster_bio_ext(100 + i, fake_bio_read);
++    before = bio_reads;
++    /* the ROSTER_BIO_RING newest bios are hits: no read, the same pointer, the text intact */
++    for (i = 0; i < ROSTER_BIO_RING; i++) {
++        CHECK(roster_bio_ext(100 + i, fake_bio_read) == p[i]);
++        CHECK_STR(p[i], doomo_roster_bio_text + doomo_roster_bio_ofs[100 + i]);
++    }
++    CHECK_EQ(bio_reads, before);
++    /* one more bio replaces the oldest only */
++    roster_bio_ext(200, fake_bio_read);
++    CHECK_EQ(bio_reads, before + 1);
++    for (i = 1; i < ROSTER_BIO_RING; i++)
++        CHECK_STR(p[i], doomo_roster_bio_text + doomo_roster_bio_ofs[100 + i]);
++    roster_bio_ext(100, fake_bio_read);
++    CHECK_EQ(bio_reads, before + 2);
++}
++
++TEST(mem2_roster_bio_ext_missing_store_reads_empty)
++{
++    bio_fail = 1;
++    CHECK_STR(roster_bio_ext(321, fake_bio_read), "");
++    /* a failed read is not kept: the next call asks the store again */
++    roster_bio_ext(321, fake_bio_read);
++    bio_fail = 0;
++    CHECK_STR(roster_bio_ext(321, fake_bio_read), doomo_roster_bio_text + doomo_roster_bio_ofs[321]);
++}
+diff --git a/ps1/CMakeLists.txt b/ps1/CMakeLists.txt
+index ded9a581..fa776c57 100644
+--- a/ps1/CMakeLists.txt
++++ b/ps1/CMakeLists.txt
+@@ -95,6 +95,17 @@ if(DOOMO_CORE)
+ 		VERBATIM)
+ 	set(DOOMO_ISO_SFX "${DOOMO_ISO_SFX}<file name=\"PARTS.BIN\" type=\"data\" source=\"PARTS.BIN\" />")
+ 	set(DOOMO_SFX_DEP ${DOOMO_SFX_DEP} ${CMAKE_CURRENT_BINARY_DIR}/PARTS.BIN)
++	# MEM2: ROSTER.BIN, the premade citizens' bios (core/gen/roster_data.c) for src/rosterbio.c: uploaded to
++	# SPU RAM at boot, never linked (DOOMO_ROSTER_BIO_EXT, core/include/doomo/roster.h)
++	add_custom_command(
++		OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/ROSTER.BIN
++		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/rosterbin.py
++		        ${CORE_DIR}/gen/roster_data.c ${CMAKE_CURRENT_BINARY_DIR}/ROSTER.BIN
++		DEPENDS ${CORE_DIR}/gen/roster_data.c ${CMAKE_CURRENT_SOURCE_DIR}/tools/rosterbin.py
++		COMMENT "Packing the citizens' bios (tools/rosterbin.py -> ROSTER.BIN)"
++		VERBATIM)
++	set(DOOMO_ISO_SFX "${DOOMO_ISO_SFX}<file name=\"ROSTER.BIN\" type=\"data\" source=\"ROSTER.BIN\" />")
++	set(DOOMO_SFX_DEP ${DOOMO_SFX_DEP} ${CMAKE_CURRENT_BINARY_DIR}/ROSTER.BIN)
+ endif()
+ # --- end S2 ---
+ 
+@@ -270,6 +281,7 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
+ 	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_VM=1)
+ 	if(DOOMO_CORE)
+ 		target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_SPU=1)
++		target_compile_definitions(${_t} PRIVATE DOOMO_ROSTER_BIO_EXT=1)   # MEM2: the bios in SPU RAM (src/rosterbio.c)
+ 	endif()
+ 	target_compile_definitions(${_t} PRIVATE DOOMO_ICONS_RLE=1)   # CR7: part_icons.h
+ 	if(DOOMO_ENGINE_TEST)
+@@ -308,7 +320,7 @@ set_source_files_properties(${PS1_SRCS} PROPERTIES
+ # mailbox, the boot / frame glue, the player model build, the SPU voice setup, the portrait slice
+ # scheduler's bookkeeping) are compiled for size: ~3.2 KB of resident RAM, the same pixels and timing
+ # within the measurement noise.
+-set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu fmv pad partstore
++set(DOOMO_PS1_COLD memcard hcmd overlay txtload coreref main pslice model spu fmv pad partstore rosterbio
+ 	CACHE STRING "ps1/src files (no extension) compiled -Os instead of -O2")
+ foreach(_cold ${DOOMO_PS1_COLD})
+ 	set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/${_cold}.c PROPERTIES
+diff --git a/ps1/harness/scripts/game_smoke.txt b/ps1/harness/scripts/game_smoke.txt
+index 9e8c711b..c4ec065f 100644
+--- a/ps1/harness/scripts/game_smoke.txt
++++ b/ps1/harness/scripts/game_smoke.txt
+@@ -12,6 +12,8 @@ shot smoke_01_boot
+ expect-log effects (all)
+ # CR10: PARTS.BIN (the part scripts and the packed part icons) went into SPU RAM and a read back at an odd offset matched
+ expect-log parts: loaded
++# MEM2: ROSTER.BIN (the premade citizens' bios, not linked into the EXE) went into SPU RAM and its header read back
++expect-log roster: bios loaded
+ wait 120
+ expect-scene TITLE
+ shot smoke_02_title
+diff --git a/ps1/src/main.c b/ps1/src/main.c
+index 782500ee..e7416be1 100644
+--- a/ps1/src/main.c
++++ b/ps1/src/main.c
+@@ -108,6 +108,9 @@ static void plat_init_hw(void)
+     audio_hw_sfx_preload();   /* SFX.BIN (PCM is not in the EXE) -> SPU RAM */
+ #if defined(DOOMO_HAVE_CORE) && defined(DOOMO_PARTS_SPU) && !defined(DOOMO_ENGINE_TEST)
+     partstore_boot();         /* CR10: PARTS.BIN (the part scripts) -> SPU RAM above the effects */
++#endif
++#if defined(DOOMO_HAVE_CORE) && defined(DOOMO_ROSTER_BIO_EXT) && !defined(DOOMO_ENGINE_TEST)
++    rosterbio_boot();         /* MEM2: ROSTER.BIN (the bios) -> SPU RAM below the part store */
+ #endif
+     dbg("ps1: hardware ready (%s)\n", plat_name());
+ }
+diff --git a/ps1/src/ps1.h b/ps1/src/ps1.h
+index cb6a7ae8..3867e8ec 100644
+--- a/ps1/src/ps1.h
++++ b/ps1/src/ps1.h
+@@ -292,6 +292,11 @@ void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU R
+ #define SPU_PARTS_BASE 0x50000u
+ void     partstore_boot(void);
+ uint32_t partstore_reads(void);
++/* MEM2: ROSTER.BIN (the premade citizens' bios, 64 B a record) -> SPU RAM below the part store
++ * (rosterbio.c); the effects stop below SPU_ROSTER_BASE (spu.c SPU_SFX_END). */
++#define SPU_ROSTER_BASE 0x40000u
++void     rosterbio_boot(void);
++uint32_t rosterbio_reads(void);
+ void     audio_hw_frame(void);
+ void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks the loop */
+ int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */
+diff --git a/ps1/src/rosterbio.c b/ps1/src/rosterbio.c
+new file mode 100644
+index 00000000..a63a07a4
+--- /dev/null
++++ b/ps1/src/rosterbio.c
+@@ -0,0 +1,80 @@
++/* rosterbio.c - the premade citizens' bios in SPU RAM (owner: ps1; MEM2, docs/PS1.md "Memory wave 2").
++ *
++ * The bios are 45 KB of text that a page shows one at a time (the citizen page, the roster's
++ * card, the Almanac, the exorcism's file, a story line's {B}). The EXE does not link them
++ * (DOOMO_ROSTER_BIO_EXT, core/include/doomo/roster.h): ps1/tools/rosterbin.py writes ROSTER.BIN
++ * (a 64-byte header record, then one 64-byte record per premade id), this file reads it at boot
++ * into the display lists' scratch (idle until the game loop starts, like PARTS.BIN) and uploads
++ * it to SPU RAM at SPU_ROSTER_BASE, between the sound effects and the part store.
++ * plat_roster_bio_read() copies one record back with one 64-byte SPU DMA read; roster.c keeps the
++ * last four in a ring, so a page that shows a bio reads it once.
++ *
++ * Nothing writes SPU RAM after boot (spu.c "staging", partstore.c "audio driver lock"), so a read
++ * never races an upload. The engine-test build does not load the store (its bios read as "").
++ */
++#include <string.h>
++#include <psxapi.h>
++#include <psxcd.h>
++#include <psxspu.h>
++#include "ps1.h"
++
++#if defined(DOOMO_HAVE_CORE) && defined(DOOMO_ROSTER_BIO_EXT)
++#include "doomo/roster.h"
++
++#define SECTOR 2048
++#define RB_RECS (ROSTER_COUNT + 1)
++#define RB_BYTES ((RB_RECS * ROSTER_BIO_REC + SECTOR - 1) / SECTOR * SECTOR)
++typedef char rb_fits[SPU_ROSTER_BASE + RB_BYTES <= SPU_PARTS_BASE ? 1 : -1];
++
++static int      s_ok;
++static uint32_t s_reads;
++
++int plat_roster_bio_read(int id, void *dst)
++{
++    if (!s_ok || id < 0 || id >= ROSTER_COUNT)
++        return 0;
++    SpuSetTransferStartAddr(SPU_ROSTER_BASE + (uint32_t)(id + 1) * ROSTER_BIO_REC);
++    SpuRead((uint32_t *)dst, ROSTER_BIO_REC);
++    SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
++    s_reads++;
++    return 1;
++}
++
++/* After partstore_boot(): ROSTER.BIN -> SPU RAM in one read and one upload, through the display
++ * lists' scratch. The header is read back from SPU RAM: the log says whether the store works. */
++void rosterbio_boot(void)
++{
++    uint32_t cap = 0, sum = 0;
++    uint8_t *buf = (uint8_t *)plat_save_scratch(&cap);
++    CdlFILE f;
++    int tries, ok = 0;
++    s_ok = 0;
++    if (!buf || cap < RB_BYTES + ROSTER_BIO_REC || !CdSearchFile(&f, "\\ROSTER.BIN;1") || f.size < RB_RECS * ROSTER_BIO_REC)
++        goto done;
++    for (tries = 0; tries < 4 && !ok; tries++) {
++        CdlLOC loc;
++        CdIntToPos(CdPosToInt(&f.pos), &loc);
++        ok = CdControl(CdlSetloc, &loc, 0) && CdRead(RB_BYTES / SECTOR, (uint32_t *)buf, CdlModeSpeed) &&
++             CdReadSync(0, 0) >= 0;
++    }
++    if (!ok || memcmp(buf, "RBIO", 4) != 0 || (buf[4] | (buf[5] << 8)) != ROSTER_COUNT ||
++        (buf[6] | (buf[7] << 8)) != ROSTER_BIO_REC)
++        goto done;
++    SpuSetTransferStartAddr(SPU_ROSTER_BASE);
++    SpuWrite((const uint32_t *)buf, RB_BYTES);
++    SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
++    sum = (uint32_t)buf[8] | ((uint32_t)buf[9] << 8) | ((uint32_t)buf[10] << 16) | ((uint32_t)buf[11] << 24);
++    {
++        uint8_t *chk = buf + RB_BYTES;      /* past the file in the scratch: the header back from SPU RAM */
++        SpuSetTransferStartAddr(SPU_ROSTER_BASE);
++        SpuRead((uint32_t *)chk, ROSTER_BIO_REC);
++        SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
++        s_ok = memcmp(chk, buf, ROSTER_BIO_REC) == 0;
++    }
++done:
++    dbg("roster: bios %s, %d at spu %05x, sum %08x\n", s_ok ? "loaded" : "MISSING", s_ok ? ROSTER_COUNT : 0,
++        (unsigned)SPU_ROSTER_BASE, (unsigned)sum);
++}
++
++uint32_t rosterbio_reads(void) { return s_reads; }
++#endif
+diff --git a/ps1/src/spu.c b/ps1/src/spu.c
+index 3ebb9191..e1b13aff 100644
+--- a/ps1/src/spu.c
++++ b/ps1/src/spu.c
+@@ -14,7 +14,8 @@
+  * SPU RAM map (512 KB):
+  *   0x00000-0x00fff  capture buffers (reserved by hardware)
+  *   0x01000-0x01fff  silent block + waveforms
+- *   0x02000-0x4ffff  sound effects (bump allocator; about 35 KB used)
++ *   0x02000-0x3ffff  sound effects (bump allocator; about 35 KB used)
++ *   0x40000-0x4ffff  the premade citizens' bios (MEM2, rosterbio.c: ROSTER.BIN, 65,536 B)
+  *   0x50000-0x7dfff  the part scripts (CR10, partstore.c: PARTS.BIN, 143,360 B today)
+  *   0x7e000-0x7ffff  (reverb work area, unused)
+  */
+@@ -27,7 +28,7 @@
+ 
+ #define SPU_WAVE_BASE   0x1000
+ #define SPU_SFX_BASE    0x2000
+-#define SPU_SFX_END     SPU_PARTS_BASE      /* CR10: the part store (partstore.c) is above the effects */
++#define SPU_SFX_END     SPU_ROSTER_BASE     /* MEM2: the bios (rosterbio.c), then CR10's part store, are above the effects */
+ #define TONE_VOICES     4
+ #define SFX_VOICE0      4
+ #define SFX_VOICES      20
+diff --git a/ps1/tools/rosterbin.py b/ps1/tools/rosterbin.py
+new file mode 100644
+index 00000000..a987ba94
+--- /dev/null
++++ b/ps1/tools/rosterbin.py
+@@ -0,0 +1,103 @@
++#!/usr/bin/env python3
++"""rosterbin.py - write ROSTER.BIN, the premade citizens' bios for the PS1 disc (owner: ps1, MEM2).
++
++    rosterbin.py core/gen/roster_data.c ROSTER.BIN
++
++The PS1 EXE does not link the bios (core/gen/roster_data.c `doomo_roster_bio_text`, 45 KB; roster.h
++DOOMO_ROSTER_BIO_EXT): src/rosterbio.c reads this file at boot into SPU RAM, and roster_bio() reads one
++record back with an SPU DMA read when a page shows a bio.
++
++Layout: records of 64 bytes (ROSTER_BIO_REC). Record 0 is the header: "RBIO", u16 count, u16 record
++size, u32 FNV-1a of every bio record, the rest zero. Record 1 + id is the bio of premade `id`, NUL
++padded. The file is padded to whole 2,048-byte sectors.
++
++The bios are read back from the generated C (tools/roster_build.py writes each as one string literal
++with "\\0" and an id comment per line, escaping only \\\\, \\" and \\?) and checked against
++`doomo_roster_bio_ofs[]`, so a change of that format fails here instead of writing wrong text.
++Stdlib only, deterministic.
++"""
++import re
++import struct
++import sys
++
++SECTOR = 2048
++REC = 64
++MAGIC = b"RBIO"
++
++
++def unescape(lit):
++    out = bytearray()
++    i = 0
++    while i < len(lit):
++        c = lit[i]
++        if c != "\\":
++            out += c.encode("utf-8")
++            i += 1
++            continue
++        n = lit[i + 1]
++        if n in "\\\"?'":
++            out += n.encode()
++            i += 2
++        elif n == "0" and (i + 2 >= len(lit) or lit[i + 2] not in "01234567"):
++            out += b"\0"
++            i += 2
++        elif n == "n":
++            out += b"\n"
++            i += 2
++        else:
++            raise ValueError("unexpected escape \\%s" % n)
++    return bytes(out)
++
++
++def bios_from(src):
++    m = re.search(r"const char doomo_roster_bio_text\[\] =\n(.*?)\n\s*;\n", src, re.S)
++    if not m:
++        raise ValueError("no doomo_roster_bio_text[]")
++    blob = b"".join(unescape(s) for s in re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1)))
++    o = re.search(r"const uint16_t doomo_roster_bio_ofs\[ROSTER_COUNT\] = \{(.*?)\};", src, re.S)
++    if not o:
++        raise ValueError("no doomo_roster_bio_ofs[]")
++    ofs = [int(v) for v in re.findall(r"\d+", o.group(1))]
++    bios = []
++    for k, a in enumerate(ofs):
++        end = blob.index(b"\0", a)
++        if k + 1 < len(ofs) and ofs[k + 1] != end + 1:
++            raise ValueError("bio %d: the offsets do not follow the text" % k)
++        bios.append(blob[a:end])
++    if ofs and len(blob) != ofs[-1] + len(bios[-1]) + 1:
++        raise ValueError("bio text has %d bytes, the offsets end at %d" % (len(blob), ofs[-1] + len(bios[-1]) + 1))
++    return bios
++
++
++def pack(bios):
++    body = bytearray()
++    for k, b in enumerate(bios):
++        if len(b) >= REC:
++            raise ValueError("bio %d is %d bytes: a record holds %d with its NUL" % (k, len(b), REC - 1))
++        body += b + bytes(REC - len(b))
++    h = 0x811C9DC5
++    for x in body:
++        h = ((h ^ x) * 16777619) & 0xFFFFFFFF
++    head = MAGIC + struct.pack("<HHI", len(bios), REC, h)
++    data = head + bytes(REC - len(head)) + body
++    return data + bytes(-len(data) % SECTOR)
++
++
++def main(argv):
++    if len(argv) != 3:
++        sys.stderr.write(__doc__)
++        return 2
++    try:
++        bios = bios_from(open(argv[1], encoding="utf-8").read())
++        data = pack(bios)
++    except ValueError as e:
++        sys.stderr.write("rosterbin: %s\n" % e)
++        return 1
++    with open(argv[2], "wb") as f:
++        f.write(data)
++    print("rosterbin: %d bios, %d bytes (%d sectors)" % (len(bios), len(data), len(data) // SECTOR))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv))
+diff --git a/ps1/tools/test_tools.py b/ps1/tools/test_tools.py
+index 38066c13..b84c198d 100644
+--- a/ps1/tools/test_tools.py
++++ b/ps1/tools/test_tools.py
+@@ -29,6 +29,7 @@ import elf2exe          # noqa: E402
+ import ovl_plan         # noqa: E402
+ import partsbin         # noqa: E402
+ import ram_ledger       # noqa: E402
++import rosterbin        # noqa: E402
+ import strsec           # noqa: E402
+ 
+ CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
+@@ -734,6 +735,45 @@ class PartsBin(unittest.TestCase):
+         self.assertEqual(n, int(re.search(r"doomo_part_script_count = (\d+)", idx).group(1)))
+         self.assertLessEqual(2048 + struct.unpack("<I", data[8:12])[0], 0x2E000)   # fits SPU RAM above the effects
+ 
++class RosterBin(unittest.TestCase):
++    """rosterbin.py (MEM2): the bios as 64-byte records after a header record, in whole sectors"""
++
++    SRC = ('const char doomo_roster_bio_text[] =\n'
++           '    "Bakes \\"pies\\" at 3\\?" "\\0"  /* 0 */\n'
++           '    "A back\\\\slash." "\\0"  /* 1 */\n'
++           '    ;\n'
++           'const uint16_t doomo_roster_bio_ofs[ROSTER_COUNT] = {\n'
++           '    0,19,\n'
++           '};\n')
++
++    def test_records_follow_the_header_nul_padded(self):
++        data = rosterbin.pack(rosterbin.bios_from(self.SRC))
++        self.assertEqual(len(data), 2048)
++        self.assertEqual(data[:4], b"RBIO")
++        self.assertEqual(struct.unpack("<HH", data[4:8]), (2, 64))
++        self.assertEqual(data[64:64 + 18], b'Bakes "pies" at 3?')
++        self.assertEqual(data[64 + 18:128], bytes(64 - 18))
++        self.assertEqual(data[128:128 + 13], b"A back\\slash.")
++        h = 0x811C9DC5
++        for x in data[64:192]:
++            h = ((h ^ x) * 16777619) & 0xFFFFFFFF
++        self.assertEqual(struct.unpack("<I", data[8:12])[0], h)
++
++    def test_offsets_that_disagree_with_the_text_are_refused(self):
++        with self.assertRaises(ValueError):
++            rosterbin.bios_from(self.SRC.replace("0,19,", "0,18,"))
++
++    def test_a_bio_too_long_for_a_record_is_refused(self):
++        with self.assertRaises(ValueError):
++            rosterbin.pack([b"x" * 64])
++
++    def test_the_real_generated_roster_packs(self):
++        src = open(os.path.join(HERE, "..", "..", "core", "gen", "roster_data.c"), encoding="utf-8").read()
++        bios = rosterbin.bios_from(src)
++        self.assertEqual(len(bios), 1000)
++        self.assertEqual(len(rosterbin.pack(bios)), 65536)
++
++
+ if __name__ == "__main__":
+     import warnings
+     warnings.simplefilter("ignore", ResourceWarning)    # the tools read files in one expression
+-- 
+2.43.0
+
