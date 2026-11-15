@@ -1306,9 +1306,11 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
     look_pool_reset();
     memset(big, 1, sizeof(big));
     for (id = 600; look_pool_put(id, RUN_DEEP, big, 200); id++) { }
-    CHECK(look_pool_put(5, RUN_NICK, big, look_pool_free() - 4));     /* a filler: no byte left */
-    CHECK_EQ(look_pool_free(), 0);
-    n0 = look_pool_emit(keep, sizeof(keep));
+    look_pool_raw(&n0);
+    CHECK(look_pool_put(5, RUN_NICK, big, (int)(LOOK_POOL_CAP - n0) - 4));   /* a filler: no byte left */
+    look_pool_raw(&n0);
+    CHECK_EQ(n0, (uint32_t)LOOK_POOL_CAP);
+    { const uint8_t *q = look_pool_raw(&n0); memcpy(keep, q, n0); }
     memcpy(&snap, &doomo_town, sizeof(snap));
     scene_set(&base_scene, 0);
     scene_push(&SCENE_CREATOR, -1);
@@ -1324,7 +1326,7 @@ TEST(cr5_a_full_pool_refuses_the_commit_and_leaves_the_town)
     CHECK(scene_top() == &SCENE_CREATOR);
     CHECK(ui_toast_pending() > 0);
     CHECK(memcmp(&snap, &doomo_town, sizeof(snap)) == 0);   /* the town is as it was */
-    n1 = look_pool_emit(now, sizeof(now));
+    { const uint8_t *q = look_pool_raw(&n1); memcpy(now, q, n1); }
     CHECK(n0 == n1 && memcmp(keep, now, n0) == 0);           /* and so is the pool */
     CHECK(look_pool_find(0, RUN_DEEP, &id) == NULL);
     frames(200, 0);                                     /* the toast goes */

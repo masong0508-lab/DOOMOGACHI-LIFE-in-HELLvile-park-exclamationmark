@@ -3,7 +3,7 @@
  * Replaces the weak stubs of look_pool_find / put / drop (stubs.c). The pool holds the runs of the
  * citizens whose look has deep fields (a record: id lo, id hi, kind, len, data): LOOK_POOL_CAP bytes
  * (6,144 B; the PS1 keeps 384 B, its resident RAM is full). The creator writes it when it commits a
- * citizen; it is saved as a section of the creator's save chunk (creator.c: look_pool_emit /
+ * citizen; it is saved as a section of the creator's save chunk (creator.c: look_pool_raw /
  * look_pool_load) and cleared by a new town, a load and town_free. With no run stored the renderer
  * is bit-for-bit what it was. */
 #include "doomo/doomo.h"
@@ -14,7 +14,6 @@
 /* record: id lo, id hi, kind, len, data[len] */
 static uint8_t  pool[LOOK_POOL_CAP];
 static uint16_t used;
-static uint16_t pool_gen;
 
 const DoomoDeep doomo_deep_zero = { { 0 } };
 const uint8_t doomo_df_flags[DF_COUNT] = {
@@ -59,13 +58,12 @@ int look_pool_put(int id, int kind, const uint8_t *data, int len)
     if (id < 0 || id > 1023 || kind < 0 || kind > 255 || len < 0 || len > 255 || (len && !data)) return 0;
     if (rec_find(id, kind, &at)) had = 4 + pool[at + 3];
     if (len && used - had + 4 + len > LOOK_POOL_CAP) return 0;        /* full: the old run stays */
-    if (had) { rec_cut(at); pool_gen++; }
+    if (had) rec_cut(at);
     if (!len) return 1;
     pool[used] = (uint8_t)id; pool[used + 1] = (uint8_t)(id >> 8);
     pool[used + 2] = (uint8_t)kind; pool[used + 3] = (uint8_t)len;
     memcpy(pool + used + 4, data, (size_t)len);
     used = (uint16_t)(used + 4 + len);
-    pool_gen++;
     return 1;
 }
 
@@ -73,53 +71,29 @@ void look_pool_drop(int id)
 {
     int p = 0;
     while (p + 4 <= used) {
-        if ((pool[p] | (pool[p + 1] << 8)) == id) { rec_cut(p); pool_gen++; }
+        if ((pool[p] | (pool[p + 1] << 8)) == id) rec_cut(p);
         else p += 4 + pool[p + 3];
     }
 }
 
-void look_pool_reset(void)
+/* The saved form is the records as they are (creator.c writes and reads it in its chunk). */
+const uint8_t *look_pool_raw(uint32_t *len)
 {
-    if (used) pool_gen++;
-    used = 0;
-}
-
-int look_pool_free(void) { return LOOK_POOL_CAP - used; }
-unsigned look_pool_gen(void) { return pool_gen; }
-
-/* The saved form: the records as they are, whole ones only, at most `cap` bytes. dst NULL only counts. */
-uint32_t look_pool_emit(uint8_t *dst, uint32_t cap)
-{
-    uint32_t n = 0;
-    int p = 0;
-    while (p + 4 <= used) {
-        uint32_t r = 4u + pool[p + 3];
-        if (n + r > cap) break;
-        if (dst) memcpy(dst + n, pool + p, r);
-        n += r;
-        p += (int)r;
-    }
-    return n;
+    *len = used;
+    return pool;
 }
 
 /* Replace the pool by saved records. 1 ok; 0 if the bytes are malformed (a record that runs past the
- * end, an id over 1023, no room): the records before the fault are kept. */
+ * end, no room): the pool is then empty. */
 int look_pool_load(const uint8_t *src, uint32_t len)
 {
-    uint32_t p = 0;
-    look_pool_reset();
-    while (p < len) {
-        uint32_t n;
-        int id;
-        if (len - p < 4) return 0;
-        n = 4u + src[p + 3];
-        id = src[p] | (src[p + 1] << 8);
-        if (n > len - p || id > 1023 || used + n > LOOK_POOL_CAP) return 0;
-        memcpy(pool + used, src + p, n);
-        used = (uint16_t)(used + n);
-        p += n;
-    }
-    pool_gen++;
+    uint32_t p;
+    used = 0;
+    if (len > LOOK_POOL_CAP) return 0;
+    for (p = 0; p < len; p += 4u + src[p + 3])
+        if (len - p < 4 || 4u + src[p + 3] > len - p) return 0;
+    if (len) memcpy(pool, src, len);
+    used = (uint16_t)len;
     return 1;
 }
 

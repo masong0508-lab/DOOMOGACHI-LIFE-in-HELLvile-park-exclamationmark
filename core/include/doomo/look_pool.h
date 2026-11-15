@@ -35,12 +35,10 @@ const uint8_t *look_pool_find(int id, int kind, int *len);        /* NULL if the
 int  look_pool_put(int id, int kind, const uint8_t *data, int len); /* 1 stored, 0 pool full       */
 void look_pool_drop(int id);                                      /* every run of one id          */
 /* CR5. put keeps the old run when the new one does not fit (0 returned); len 0 removes the run. */
-void look_pool_reset(void);                                       /* every run (new town, load)   */
-int  look_pool_free(void);                                        /* bytes left                   */
-unsigned look_pool_gen(void);                                     /* changes with every change    */
-/* The saved form: whole records, at most cap bytes (dst NULL: only counts); load replaces the pool,
- * 1 ok, 0 malformed (what came before the fault is kept). */
-uint32_t look_pool_emit(uint8_t *dst, uint32_t cap);
+#define look_pool_reset() ((void)look_pool_load(NULL, 0))               /* every run (new town, load)   */
+/* The saved form: the records as they are. raw gives the bytes and their count; load replaces the pool,
+ * 1 ok, 0 malformed (the pool is then empty). */
+const uint8_t *look_pool_raw(uint32_t *len);
 int  look_pool_load(const uint8_t *src, uint32_t len);
 
 #endif

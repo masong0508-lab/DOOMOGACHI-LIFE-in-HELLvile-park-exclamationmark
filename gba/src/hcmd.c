@@ -42,6 +42,8 @@
 #include "room_int.h"
 #include "doomo/doomo.h"
 #include "doomo/plat_ext.h"
+#include "doomo/look_fields.h"
+#include "doomo/look_pool.h"
 
 /* (CL4) the harness's test flags (gba_plat.h GbaMailbox.test_flags): the
  * first-time tip cards stay off in scripted runs unless a script asks */
@@ -111,6 +113,14 @@ static void town_fill(uint32_t seed)
     }
     resident_sanitize(&doomo_town.player);
     rel_normalize();
+    /* CR5: the worst case includes a full look pool (10 deep choices for as many citizens as fit),
+     * saved in the creator's chunk and checked by town_crc */
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        uint8_t run[2 * DF_POOL_N];
+        int k;
+        for (k = 0; k < DF_POOL_N; k++) { run[2 * k] = (uint8_t)(DF_POOL_FIRST + k); run[2 * k + 1] = (uint8_t)(1 + rng_range(&r, 3)); }
+        if (!look_pool_put(i, RUN_DEEP, run, (int)sizeof(run))) break;
+    }
 }
 
 static uint32_t crc_more(uint32_t crc, const void *p, uint32_t n)
@@ -140,6 +150,13 @@ static uint32_t town_crc(void)
     c = crc_more(c, t->opt, sizeof(t->opt));
     c = crc_more(c, t->unlocks, sizeof(t->unlocks));
     c = crc_more(c, t->progress, sizeof(t->progress));
+    {                                                    /* CR5: the look pool, run by run */
+        int id, len;
+        for (id = 0; id < 1024; id++) {
+            const uint8_t *run = look_pool_find(id, RUN_DEEP, &len);
+            if (run) { c = crc_more(c, &id, sizeof(id)); c = crc_more(c, run, (uint32_t)len); }
+        }
+    }
     return c;
 }
 

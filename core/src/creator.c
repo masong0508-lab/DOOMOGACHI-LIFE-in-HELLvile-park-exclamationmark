@@ -118,7 +118,7 @@ static int nick_set(int id, const char *name, const char *nick)
 
 /* ---- save extension 'NICK': [count][id lo hi][hash lo hi][12 name bytes]...
  * CR5 (version 2) appends the look pool after the gene trailer: [u16 length][the pool's records,
- * look_pool_emit]: the deep choices of the citizens who have any (the "LOOK" section; the 14
+ * the pool bytes]: the deep choices of the citizens who have any (the "LOOK" section; the 14
  * registry slots are full and the chunk has the room: nicknames <= 1 KB, the pool <= 6 KB). It is
  * written only when the pool holds something; the gene trailer then always comes first (an empty one,
  * [0 0], when no record has gene bits), so a reader finds the pool by the trailer's length.
@@ -136,27 +136,25 @@ static int nick_count_used(void)
     return n;
 }
 
-/* the pool's saved bytes: whole records that still leave the chunk under DOOMO_SAVE_EXT_MAX */
-static uint32_t pool_saved(uint32_t others)
-{
-    return others + 4u > DOOMO_SAVE_EXT_MAX ? 0 : look_pool_emit(NULL, DOOMO_SAVE_EXT_MAX - others - 2u);
-}
-
+/* CR5: the chunk is [nicknames][gene trailer][pool section] (above). base = the bytes before the
+ * section (a missing gene trailer counts 2 when the pool follows: [0 0]). The pool is left out when
+ * it would take the chunk over DOOMO_SAVE_EXT_MAX (the creator refuses to grow it that far). */
 static uint32_t nickext_size(void)
 {
     int n = nick_count_used();
-    uint32_t g = look_gene_ext_size(), head = (uint32_t)(1 + n * NICK_REC), p;
-    p = pool_saved(head + (g ? g : 2u));
-    if (p) return head + (g ? g : 2u) + 2u + p;
-    return n || g ? head + g : 0;
+    uint32_t base = (uint32_t)(1 + n * NICK_REC), g = look_gene_ext_size(), p, t;
+    look_pool_raw(&p);
+    t = base + (g ? g : 2u) + 2u + p;
+    if (p && t <= DOOMO_SAVE_EXT_MAX) return t;
+    return n || g ? base + g : 0;
 }
 
 static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
 {
     uint32_t n = nickext_size(), o = 0, g = look_gene_ext_size(), p;
+    const uint8_t *pool = look_pool_raw(&p);
     int i;
     if (n == 0 || n > cap) return 0;
-    p = pool_saved((uint32_t)(1 + nick_count_used() * NICK_REC) + (g ? g : 2u));
     dst[o++] = (uint8_t)nick_count_used();
     for (i = 0; i < CR_NICKS; i++) {
         if (nicks[i].id == 0xFFFF || !nicks[i].nick[0]) continue;
@@ -168,11 +166,12 @@ static uint32_t nickext_write(uint8_t *dst, uint32_t cap)
         o += DOOMO_NAME_LEN;
     }
     o += look_gene_ext_write(dst + o, cap - o);           /* CR3 */
-    if (p) {                                              /* CR5: the look pool */
+    if (n > o) {                                          /* CR5: the look pool follows */
         if (!g) { dst[o++] = 0; dst[o++] = 0; }
         dst[o++] = (uint8_t)(p & 255);
         dst[o++] = (uint8_t)(p >> 8);
-        o += look_pool_emit(dst + o, p);
+        memcpy(dst + o, pool, p);
+        o += p;
     }
     return o;
 }
@@ -191,7 +190,7 @@ static int nickext_read(const uint8_t *src, uint32_t len, uint16_t version)
         uint32_t gl = 2u + 8u * (uint32_t)(src[1 + n * NICK_REC] | (src[2 + n * NICK_REC] << 8));
         if (gl < rest) {
             const uint8_t *q = src + 1 + n * NICK_REC + gl;
-            uint32_t pl = rest - gl >= 2 ? (uint32_t)(q[0] | (q[1] << 8)) : 0xFFFFu;
+            uint32_t pl = (uint32_t)(q[0] | (q[1] << 8));      /* (a one-byte tail reads the next byte: it then differs) */
             if (pl + 2u != rest - gl || !look_pool_load(q + 2, pl)) ok = 0;
             rest = gl;
         }
@@ -1386,13 +1385,15 @@ static int deep_commit(int id)
     uint8_t run[2 * DF_POOL_N], old[2 * DF_POOL_N];
     const uint8_t *o;
     int rl = deep_run(cr.dd, run), ol = 0, ok;
-    uint32_t others;
+    uint32_t n, g = look_gene_ext_size();
     o = look_pool_find(id, RUN_DEEP, &ol);
     if (o) memcpy(old, o, (size_t)ol);
     ok = look_pool_put(id, RUN_DEEP, run, rl);
-    /* the whole pool must still fit the chunk beside the nicknames and the gene bits (8 B for this record) */
-    others = (uint32_t)(1 + nick_count_used() * NICK_REC) + (look_gene_ext_size() ? look_gene_ext_size() : 2u) + 8u;
-    if (ok && rl > ol && look_pool_emit(NULL, 0xFFFFu) != pool_saved(others)) ok = 0;   /* only growth is refused */
+    /* only growth is refused: the whole pool must still fit the chunk beside the nicknames and the gene
+     * bits (8 B more for this record) */
+    look_pool_raw(&n);
+    if (ok && rl > ol && 1u + (uint32_t)nick_count_used() * NICK_REC + (g ? g : 2u) + 8u + 2u + n > DOOMO_SAVE_EXT_MAX)
+        ok = 0;
     if (!ok) look_pool_put(id, RUN_DEEP, ol ? old : NULL, ol);       /* back to what it was */
     return ok;
 }
