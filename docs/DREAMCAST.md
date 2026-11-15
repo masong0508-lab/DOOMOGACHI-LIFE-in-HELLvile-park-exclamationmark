@@ -2377,9 +2377,8 @@ testable on the console. The Talk screen itself is the core's (`core/src/talk_sc
 * **Bubble columns.** `TALK_BUBBLE_COLS` is 40 on the Dreamcast (`core/include/doomo/talk.h`): the dialogue
   box holds 41 columns beside a portrait at 320x240 (250 px of 6 px glyphs). The generator can use lines up to
   3 x 40. The census still runs at 26.
-* **HD text is NOT built.** The design's "2x font at native resolution" needs a finer glyph set and a font
-  advance the dialogue box can read; there is none (the core has one 5x8 font at a 6 px advance and the Dreamcast
-  draws it at 2x). Left open; nothing in Talk waits for it.
+* **HD text** (DC10B, see "Talk: the warming-up note and HD text (DC10B)"): built; the Talk screen draws its text with a
+  10x16 glyph page at one texel per screen pixel (it was the 5x8 font at 2x).
 * **The harness.** `DC_HC_TALKQ` (`dc/src/talkhc.c`, built with `DOOMO_TALK_DEBUG`, a few KB) answers questions
   about the screen; `dcrun` has the native runner's T8 commands (`talk-enter`, `talk-party`, `talk-read`,
   `talk-quick`, `talk-quick-act`, `talk-say`, `talk-type`, `talk-key`, `talk-page`, `talk-to`, `talk-invite`,
@@ -2403,7 +2402,8 @@ testable on the console. The Talk screen itself is the core's (`core/src/talk_sc
   so on the tree that landed `talk-ready` answers at once ("talk-ready: 0 ticks") and the native twin gets
   `wait 0`. The wait still matters in a run without the seed (`talk-ready` is a real poll, 1,500 ticks at most).
   So these scripts do not cover the "Talk not ready yet" window of a player who reaches a housemate in the first
-  8 s after boot; `talk_prefetch.txt` (TD1) covers only the slice read itself (0 ticks over). Open.
+  8 s after boot; `talk_prefetch.txt` (TD1) covers only the slice read itself (0 ticks over). Since DC10B
+  `talk_warming.txt` covers that window.
 * Longer waits (`wait 90`) before a shot that follows a said line. The Dreamcast makes an answer one generator
   step a tick (TD2), the native runner in one go; the shot must show the answer typed out.
 * Nothing else: the `expect-*` lines, the presses and the order are the native script's.
@@ -2494,6 +2494,63 @@ slot's script into a 32 KB buffer (`PACK_SCRIPT_CAP_DC`; mpack.py refuses a bigg
 320x240 buffer (not drawn until the 2D layer, DC3, lands). Cost with a pack: about 140 KB BSS. Test without
 KallistiOS: `sh dc/tests/packdisc_host.sh` (the real reader over a mocked `fs_*`).
 
+## Talk: the warming-up note and HD text (DC10B)
+
+Two open items of TD1 and TD2.
+
+**The note.** A press of A on a housemate before the bank is in used to do nothing at all (the house fell back to its
+one-liner, or the press was lost). `home_talk_note()` (`core/src/talk_scene.c`, a weak 0 in `weak_talk.c`; cross-stream
+TALK, 30 lines) asks the database: while `plat_talk_load` answers `PLAT_TALK_LOADING` it shows one toast, "Talk is warming
+up...", and the house returns without the one-liner. A second press while the toast is up adds no second one. The native
+host and the PS1 never answer "loading", so nothing changes there. The Dreamcast toast costs nothing in frame time: the
+run below has 0 of 843 ticks over 33.3 ms. Only the house's A press (`home_draw.c`) asks; the resident screen's Talk
+action still falls back to its one-liner (it is a menu action, the bank is long in by the time anyone gets there).
+`dc/tests/talk/talk_warming.txt` (no `--native-seed`, no `talk-ready` first: the console's own start) walks to Nana
+within 3 s of boot, presses A, expects the toast and the house, waits for `talk-ready` (390 ticks on Flycast), expects
+no toast, presses A and expects the greeting and the Talk list. `run_flycast.sh` plays it twice and gates 0 ticks over
+33.3 ms and equal shots. Unit test `talk_note_says_warming_up_while_the_bank_loads_once` (test hook
+`plat_native_talk_loading` in `plat_native.c`).
+
+**HD text.** `font.c` builds a second glyph page, 256x256 PAL8 (64 KB of video RAM, built from the same `font.h` table, so
+every language page is covered), with a 16x16 cell per byte holding the 5x8 glyph at 10x16. The scaling is Scale2x
+(EPX): a pixel becomes four, and a corner where two neighbours of the same side agree and the others differ takes that
+neighbour's ink. Diagonals and curves lose their steps, a straight stroke stays exactly 2 px thick. No new font data: the
+glyph keeps its shape and its 6 px advance, so every line wraps as before (the 40-column bubbles are unchanged). A glyph
+quad is 5x8 logical pixels with 10x16 texels, one texel per screen pixel at 640x480.
+`talk_text_hd()` (core, one line in `talk_scene.c`, weak 0) says 1 while the Talk screen is open; `main.c` hands it to
+`dc2d_text_hd_fn`, and `glyph_pass` (`gfx2d.c`) reads the HD page for plain text on those frames: the bubble, the list
+rows, the typed line, the hints and toasts of the Talk screen. Outlined text keeps the plain page (its outline is
+made from the plain glyph). Every other screen is pixel for pixel as before (the host fuzz test, text and outlined
+text against the native frame, still has 0 differing pixels with the function unset). Unit test `test_hd_text` in
+`dc/tests/gfx2d/test_dc2d.c`: the page, the exact 2x block for a straight bar, at least 40 glyphs smoothed, the drawn
+pixels of an "o" equal to the page's, outlined text exact with HD on, plain text exact with it off.
+**Result** (`make -C dc talk-test`: `run_flycast.sh` then `run_screens.sh`, Flycast, 2026-11-15, same machine, before = origin
+77185ff1 built in a second worktree): `talk_warming` 0 of 843 ticks over 33.3 ms (worst 23.0 ms at tick 11, the house's
+first tick, as before), both runs' shots equal; the six Talk scripts 6 of 6, twice identical, 0 ticks over 33.3 ms.
+The share of exact pixels against the native 320x240 picture drops a little because the glyph corners now differ from
+the plain 2x block (gate 98 %, unchanged):
+
+| script | ticks | worst tick before / after | lowest exact before / after |
+|---|---:|---:|---:|
+| talk_pad | 940 | 15.9 / 15.8 ms | 98.88 / 98.78 % |
+| talk_typed | 660 | 16.9 / 16.9 ms | 98.97 / 98.82 % |
+| home_talk_basic | 876 | 17.0 / 17.0 ms | 98.25 / 98.15 % |
+| home_talk_group | 572 | 26.8 / 26.9 ms | 99.9 / 99.7 % (before: TD3 table) |
+| home_talk_safety | 955 | 14.4 / 14.3 ms | 98.4 / 98.3 % (before: TD3 table) |
+| home_talk_visit | 474 | 16.8 / 19.2 ms | 98.4 / 98.3 % (before: TD3 table) |
+
+(`talk_pad`, `talk_typed`, `home_talk_basic` before are measured on this machine; the other three rows' "before" are the TD3
+table, the baseline run was stopped to free the emulator.) Screenshots: `/tmp/claude-0/ev/DC10B/shots/` (`before_*` / `after_*`,
+`after_note.png` is the house with the note). The picture change is small: the same glyphs and spacing, rounded
+corners on diagonals and curves. **Honest limit:** this is the old 5x8 font smoothed, not a finer font; a real 10x16
+face would read better and needs a design pass. The 19.2 ms worst tick of `home_talk_visit` is one tick in the house
+before Talk opens (0 ticks over 33.3 ms).
+`talk-speed` (the speed2 group) was not re-run for this package.
+
+Not a hand-drawn 10x16 font: that would be a design job for the owner (the smoothing keeps the look of the 5x8 font).
+Cost: 64 KB video RAM, 64 KB of `.bss` on the Dreamcast only; GBA and PS1 are untouched (the core change is a weak
+function and a one-line strong one in a file only the Talk builds compile).
+
 ## Talk on the Dreamcast (TD1)
 
 Talk (the word network, the generator, the Talk screen: docs/TALK.md) is built into the Dreamcast game since TD1:
@@ -2518,8 +2575,8 @@ reader.
   Ticks over 33.3 ms because of the disc: 0. The pump starts the English bank by itself 90 ticks (3 s)
   after boot, so it is in about 15 s later on Flycast (a slice a tick) and in about a second on a fast disc, long before
   a player reaches a housemate. A press before that finds Talk "not ready" (`talk_db_open` answers `TALK_DB_LOADING`,
-  `home_talk_enter` returns 0) and works a moment later; the house shows no "loading" note for it (a TD2 item if the
-  owner wants one).
+  `home_talk_enter` returns 0) and works a moment later; since DC10B the house shows the note "Talk is warming up..."
+  for it (below).
 * **`plat_talk_read(off, dst, len)`** is a bounds-checked `memcpy` out of that block (it answers 0 while the load is
   not finished; `off + len` cannot wrap). Talk reads a row or a string at a time, so a disc read per call would stall a
   frame.
@@ -2544,7 +2601,7 @@ reader.
   (slice max 19.2 ms), `talk-bank ready` finds it, 0 of 901 ticks over 33.3 ms (worst 11.7 ms). On the ELF (no disc) the
   first script fails at `talk-bank open`, which is how the test is known to look at the disc.
 * **`room-test`.** `home_visit` passes in dcrun (the Talk screen is there) but the host runner (`dc2d_runner`) links no Talk; since the TD2 landing it is not in `room-test`'s list (family-test2 plays it) and `room-test` is green.
-* **Not yet (TD2, TD3).** The typed line from the keyboard queue, the pad fallback, HD-text bubbles (40 columns) and
-  the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
+* **Done later (TD2, TD3, DC10B).** The typed line from the keyboard queue, the pad fallback, 40-column bubbles, HD text
+  and the `home_talk_*` scripts on dcrun with frame-time gates. The Talk screen's list and the opener's dialogue box overlap
   at 640x480 in the TD1 shots (`talk_disc_opener.png`: the dialogue box sits over the list; the native 320x240 screen
   has the same layout): TD2 owns that layout.

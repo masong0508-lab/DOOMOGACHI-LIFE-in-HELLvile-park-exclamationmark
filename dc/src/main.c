@@ -29,6 +29,7 @@
 #include "dc3d.h"
 #include "room_int.h"
 #include "doomo/game.h"
+#include "doomo/talk.h"
 #include "doomo/input.h"
 #include "doomo/palette.h"
 
@@ -166,6 +167,7 @@ void plat_init_hw(void)
     vblank_handler_add(on_vblank, NULL);
     video_init();
     dc2d_init();                        /* palettes, font pages, texture cache */
+    dc2d_text_hd_fn(talk_text_hd);      /* DC10B: HD glyphs while the Talk screen is open */
     dc_log("DOOMOGACHI DC: boot ok");
 }
 

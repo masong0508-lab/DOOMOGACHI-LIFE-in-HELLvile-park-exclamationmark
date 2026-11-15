@@ -938,12 +938,18 @@ void DC2D_FN(checker)(int x, int y, int w, int h, uint8_t color)
     p->v1 = p->v0 + (float)h / 8.0f;
 }
 
-/* one pass of glyphs (outline: the outline page, cells at -1,-1) */
-static void glyph_pass(int x, int y, const char *s, uint8_t color, int outline)
+static int (*text_hd_fn)(void);
+void dc2d_text_hd_fn(int (*fn)(void)) { text_hd_fn = fn; }
+
+/* one pass of glyphs (outline: the outline page, cells at -1,-1; hd: the HD page, DC10B, 2 texels a pixel) */
+static void glyph_pass(int x, int y, const char *s, uint8_t color, int outline, int hdok)
 {
-    int slot = outline ? dc2d_font_outline_tex() : dc2d_font_tex();
-    int cw = outline ? DC2D_OUTL_CW : DC2D_GLYPH_CW, chh = outline ? DC2D_OUTL_CH : DC2D_GLYPH_CH;
+    int hd = hdok && !outline && text_hd_fn && text_hd_fn() && dc2d_font_hd_tex() >= 0;
+    int slot = outline ? dc2d_font_outline_tex() : hd ? dc2d_font_hd_tex() : dc2d_font_tex();
+    int cw = outline ? DC2D_OUTL_CW : hd ? DC2D_HD_CW : DC2D_GLYPH_CW;
+    int chh = outline ? DC2D_OUTL_CH : hd ? DC2D_HD_CH : DC2D_GLYPH_CH;
     int qw = outline ? 7 : 5, qh = outline ? 11 : 8, o = outline ? 1 : 0;
+    int tqw = hd ? 2 * qw : qw, tqh = hd ? 2 * qh : qh;     /* the quad's size in texels */
     int cx = x;
     const DcTex *t;
     if (slot < 0) return;
@@ -959,8 +965,8 @@ static void glyph_pass(int x, int y, const char *s, uint8_t color, int outline)
             set_xy(p, cx - o, y - o, qw, qh);
             p->u0 = (float)((int)(ch & 15) * cw) / (float)t->tw;
             p->v0 = (float)((int)(ch >> 4) * chh) / (float)t->th;
-            p->u1 = p->u0 + (float)qw / (float)t->tw;
-            p->v1 = p->v0 + (float)qh / (float)t->th;
+            p->u1 = p->u0 + (float)tqw / (float)t->tw;
+            p->v1 = p->v0 + (float)tqh / (float)t->th;
         }
         cx += FONT_ADVANCE;
     }
@@ -971,7 +977,7 @@ void DC2D_FN(text)(int x, int y, const char *s, uint8_t color)
     if (!s) return;
     dc2d_be_text(s);                    /* the harness's expect-text */
     if (!drawing) return;
-    glyph_pass(x, y, s, color, 0);
+    glyph_pass(x, y, s, color, 0, 1);
 }
 
 void DC2D_FN(text_outline)(int x, int y, const char *s, uint8_t color, uint8_t outline)
@@ -979,8 +985,8 @@ void DC2D_FN(text_outline)(int x, int y, const char *s, uint8_t color, uint8_t o
     if (!s) return;
     dc2d_be_text(s);
     if (!drawing) return;
-    glyph_pass(x, y, s, outline, 1);
-    glyph_pass(x, y, s, color, 0);
+    glyph_pass(x, y, s, outline, 1, 0);     /* outlined text stays on the plain page: its outline is made from it */
+    glyph_pass(x, y, s, color, 0, 0);
 }
 
 /* IMG_SHADOW exactly: the native runner darkens, through colormap level 5,

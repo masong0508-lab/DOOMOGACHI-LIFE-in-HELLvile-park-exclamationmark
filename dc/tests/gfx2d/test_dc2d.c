@@ -616,6 +616,66 @@ static void test_post(void)
     }
 }
 
+/* ---- HD text (DC10B) ------------------------------------------------------------------------------ */
+static int hd_on;
+static int hd_fn(void) { return hd_on; }
+
+static void test_hd_text(void)
+{
+    static uint8_t hd[DC2D_HD_PW * DC2D_HD_PH], g[128 * 128], ol[128 * 256];
+    unsigned ch;
+    int differ = 0, x, y, bad = 0, blank_ok = 1, bar_ok = 1;
+    dc2d_font_build(0, g, ol);
+    dc2d_font_build_hd(0, hd);
+    for (ch = 0x20; ch < 0x7F; ch++) {
+        int ox = (int)(ch & 15) * DC2D_HD_CW, oy = (int)(ch >> 4) * DC2D_HD_CH, gx = (int)(ch & 15) * DC2D_GLYPH_CW,
+            gy = (int)(ch >> 4) * DC2D_GLYPH_CH, d = 0, ink = 0, r, c;
+        for (r = 0; r < 16; r++)
+            for (c = 0; c < 10; c++) {
+                int h = hd[(oy + r) * DC2D_HD_PW + ox + c], p = g[(gy + r / 2) * 128 + gx + c / 2];
+                ink += h;
+                if (h != p) d++;
+            }
+        for (r = 0; r < 16; r++)
+            for (c = 10; c < 16; c++) if (hd[(oy + r) * DC2D_HD_PW + ox + c]) bad++;   /* nothing outside the 10x16 ink box */
+        if (ch == ' ' && ink) blank_ok = 0;
+        if (ch == '-') {                              /* a straight bar stays two pixels thick, exactly the 2x block */
+            if (d) bar_ok = 0;
+        }
+        differ += d != 0;
+    }
+    CHECK(blank_ok && bar_ok, "HD page: space blank %d, '-' is the exact 2x block %d", blank_ok, bar_ok);
+    CHECK(bad == 0, "HD page: ink outside the 10x16 box");
+    CHECK(differ >= 40, "HD page: only %d glyphs differ from the 2x block (the smoothing did nothing)", differ);
+    /* drawn: with the function on, "o" is the HD page's pixels (1 texel = 1 screen pixel); off, the plain 2x block */
+    hd_on = 1;
+    dc2d_text_hd_fn(hd_fn);
+    frame_begin();
+    plat_text(10, 10, "o", PAL_WHITE);
+    frame_end();
+    swpvr_render(dc2d_last(), rgb);
+    for (y = 0; y < 16; y++)
+        for (x = 0; x < 10; x++) {
+            int want = hd[('o' >> 4) * DC2D_HD_CH * DC2D_HD_PW + (y) * DC2D_HD_PW + ('o' & 15) * DC2D_HD_CW + x];
+            int r, gg, b;
+            const uint8_t *q = &rgb[((20 + y) * DC2D_W + 20 + x) * 3];
+            nat565(want ? PAL_WHITE : PAL_BLACK, &r, &gg, &b);
+            if (q[0] != r || q[1] != gg || q[2] != b) bad++;
+        }
+    CHECK(bad == 0, "HD 'o': %d screen pixels differ from the HD page", bad);
+    frame_begin();                                    /* outlined text stays plain: equal to the native frame */
+    plat_text_outline(20, 20, "Outlined", PAL_WHITE, PAL_BLACK);
+    frame_end();
+    CHECK(frame_diff(NULL) == 0, "HD on: outlined text must stay the plain, exact picture");
+    hd_on = 0;
+    frame_begin();
+    plat_text(10, 10, "o", PAL_WHITE);
+    plat_text(40, 30, "Plain again", PAL_WHITE);
+    frame_end();
+    CHECK(frame_diff(NULL) == 0, "HD off: text is the native picture again");
+    dc2d_text_hd_fn(NULL);
+}
+
 int main(void)
 {
     NatOptions o;
@@ -635,6 +695,7 @@ int main(void)
     test_header();
     test_budget();
     test_post();
+    test_hd_text();
     printf("dc2d tests: %d checks, %d failed\n", checks, fails);
     return fails ? 1 : 0;
 }

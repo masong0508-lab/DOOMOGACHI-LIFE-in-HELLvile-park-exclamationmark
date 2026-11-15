@@ -251,6 +251,15 @@ uint32_t dc2d_twiddle_index(uint32_t x, uint32_t y, int tw, int th);
 #define DC2D_GLYPH_CH 8
 #define DC2D_OUTL_CW  8
 #define DC2D_OUTL_CH  12
+/* DC10B: the HD page, 16x16 cells in 256x256 (10x16 ink: the 5x8 glyph through Scale2x) */
+#define DC2D_HD_CW 16
+#define DC2D_HD_CH 16
+#define DC2D_HD_PW 256
+#define DC2D_HD_PH 256
+void dc2d_font_build_hd(int page, uint8_t *hd);
+int  dc2d_font_hd_tex(void);     /* slot of the HD glyph page */
+/* HD text: while the function answers 1, plain text (not outlined) draws from the HD page. NULL: never. */
+void dc2d_text_hd_fn(int (*fn)(void));
 void dc2d_font_init(void);
 void dc2d_font_frame(void);      /* rebuild the pages if the language's glyph page changed */
 int  dc2d_font_tex(void);        /* slot of the glyph page   */

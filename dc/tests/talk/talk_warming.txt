@@ -1,0 +1,34 @@
+# assert-no-stubs
+# DC10B: A on a housemate BEFORE the Talk bank has been read off the disc (no --native-seed, no talk-ready
+# first: the console's own start). The house shows a short plain note ("Talk is warming up...") and nothing else
+# happens; the game keeps its 30 fps (run_flycast.sh gates the ticks). When the last slice is in, A opens Talk.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+push HOME 3
+wait 40
+expect-scene HOME
+hold DOWN 24
+hold LEFT 14
+shot tw_0_before
+press A
+wait 6
+expect-toast warming up
+expect-scene HOME
+shot tw_1_note
+# the bank arrives behind the house (a slice a tick in the idle time)
+talk-ready 2000
+wait 150
+expect-no-toast warming up
+press A
+wait 20
+expect-scene DIALOG
+talk-read
+expect-talk on
+shot tw_2_greeting
+talk-quick 0
+talk-read
+shot tw_3_talk

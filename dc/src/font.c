@@ -34,8 +34,9 @@
 #define OP_H 256
 
 static uint8_t glyph_pg[GP_W * GP_H], outl_pg[OP_W * OP_H], checker[8 * 8];
+static uint8_t hd_pg[DC2D_HD_PW * DC2D_HD_PH];   /* DC10B: the HD page, 16x16 cells */
 static uint8_t blank[256];
-static int     t_glyph = -1, t_outl = -1, t_check = -1;
+static int     t_glyph = -1, t_outl = -1, t_check = -1, t_hd = -1;
 static int     cur_page = -1;
 
 /* the 5 columns of byte `ch` in glyph page `page` (bit 0 = top row) */
@@ -73,6 +74,40 @@ void dc2d_font_build(int page, uint8_t *glyph, uint8_t *outline)
     }
 }
 
+/* DC10B, HD text: every glyph at twice the resolution, 10x16 in a 16x16 cell, so a quad of 5x8 logical pixels
+ * shows 10x16 texels, one per screen pixel at 640x480. The 5x8 bitmap is scaled by Scale2x (EPX): a pixel
+ * becomes four, and a corner where two neighbours of the same side agree and the others differ takes that
+ * neighbour's ink, so diagonals and curves lose their steps while straight strokes stay exactly 2 px wide.
+ * The glyph keeps its place and its 6 px advance: a line wraps the same as the plain text. */
+void dc2d_font_build_hd(int page, uint8_t *hd)
+{
+    unsigned ch;
+    memset(hd, 0, DC2D_HD_PW * DC2D_HD_PH);
+    for (ch = 0; ch < 256; ch++) {
+        uint8_t cols[5];
+        uint8_t g[8][5];
+        int c, r, ox = (int)(ch & 15) * DC2D_HD_CW, oy = (int)(ch >> 4) * DC2D_HD_CH;
+        glyph_cols(page, ch, cols);
+        for (r = 0; r < 8; r++)
+            for (c = 0; c < 5; c++) g[r][c] = (uint8_t)((cols[c] >> r) & 1);
+        for (r = 0; r < 8; r++)
+            for (c = 0; c < 5; c++) {
+                int p = g[r][c];
+                int up = r > 0 ? g[r - 1][c] : 0, dn = r < 7 ? g[r + 1][c] : 0;
+                int lf = c > 0 ? g[r][c - 1] : 0, rt = c < 4 ? g[r][c + 1] : 0;
+                int e0 = p, e1 = p, e2 = p, e3 = p;                 /* top-left, top-right, bottom-left, bottom-right */
+                if (lf == up && lf != dn && up != rt) e0 = up;
+                if (up == rt && up != lf && rt != dn) e1 = rt;
+                if (dn == lf && dn != rt && lf != up) e2 = lf;
+                if (rt == dn && rt != up && dn != lf) e3 = dn;
+                hd[(oy + 2 * r) * DC2D_HD_PW + ox + 2 * c] = (uint8_t)e0;
+                hd[(oy + 2 * r) * DC2D_HD_PW + ox + 2 * c + 1] = (uint8_t)e1;
+                hd[(oy + 2 * r + 1) * DC2D_HD_PW + ox + 2 * c] = (uint8_t)e2;
+                hd[(oy + 2 * r + 1) * DC2D_HD_PW + ox + 2 * c + 1] = (uint8_t)e3;
+            }
+    }
+}
+
 static int lang_page(void)
 {
     int l = lang_get();
@@ -89,7 +124,9 @@ void dc2d_font_init(void)
     t_glyph = dc2d_tex_static(glyph_pg, GP_W, GP_H, GP_W, GP_H);
     t_outl  = dc2d_tex_static(outl_pg, OP_W, OP_H, OP_W, OP_H);
     t_check = dc2d_tex_static(checker, 8, 8, 8, 8);
-    if (t_glyph < 0 || t_outl < 0 || t_check < 0)
+    dc2d_font_build_hd(cur_page, hd_pg);
+    t_hd = dc2d_tex_static(hd_pg, DC2D_HD_PW, DC2D_HD_PH, DC2D_HD_PW, DC2D_HD_PH);
+    if (t_glyph < 0 || t_outl < 0 || t_check < 0 || t_hd < 0)
         dc2d_be_log("DC3: font/checker textures did not fit in video RAM");
 }
 
@@ -99,12 +136,15 @@ void dc2d_font_frame(void)
     if (p == cur_page) return;
     cur_page = p;
     dc2d_font_build(p, glyph_pg, outl_pg);
+    dc2d_font_build_hd(p, hd_pg);
     dc2d_be_wait_idle();                /* the PVR may still read the old pages */
     dc2d_tex_restatic(t_glyph, glyph_pg, GP_W, GP_H);
     dc2d_tex_restatic(t_outl, outl_pg, OP_W, OP_H);
+    dc2d_tex_restatic(t_hd, hd_pg, DC2D_HD_PW, DC2D_HD_PH);
 }
 
 int dc2d_font_tex(void) { return t_glyph; }
 int dc2d_font_outline_tex(void) { return t_outl; }
+int dc2d_font_hd_tex(void) { return t_hd; }
 int dc2d_checker_tex(void) { return t_check; }
 int dc2d_font_blank(unsigned ch) { return blank[ch & 255]; }

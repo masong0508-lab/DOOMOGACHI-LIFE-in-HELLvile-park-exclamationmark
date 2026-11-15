@@ -40,6 +40,23 @@ grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log" || rc=1
 grep -q '^talkdisc: TALK_en.BIN read, [1-9][0-9]* bytes' "$d/dcrun.log" || rc=1
 grep -q '^dcrun: work over 33333 us on 0 of ' "$d/dcrun.log" || rc=1
 [ $rc -eq 0 ] || { echo "talk_prefetch: FAIL (see $d/dcrun.log)"; bad=1; }
+# DC10B: talk_warming.txt, twice, without --native-seed: A on a housemate before the bank is in shows the note
+# ("Talk is warming up..."), then Talk opens; no tick over 33.3 ms; both runs' shots identical.
+for n in 1 2; do
+    d=$OUT/warming$n
+    rm -rf "$d"; mkdir -p "$d/dc"
+    "$DCRUN" "$FLY" "$IMG" --nm "$NM" --fresh --run-dir "$d/run" --script "$here/talk_warming.txt" --shots "$d/dc" \
+        --timeout 1500 > "$d/dcrun.log" 2>&1
+    rc=$?
+    rm -rf "$d/run"
+    if [ $rc -eq 132 ] && grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log"; then rc=0; fi
+    grep -q '^dcrun: .* 0 failures$' "$d/dcrun.log" || rc=1
+    grep -q '^dcrun: work over 33333 us on 0 of ' "$d/dcrun.log" || rc=1
+    (cd "$d/dc" && md5sum *.png 2>/dev/null | sort) > "$d/shots.md5"
+    [ -s "$d/shots.md5" ] || rc=1
+    [ $rc -eq 0 ] || { echo "talk_warming run $n: FAIL (see $d/dcrun.log)"; bad=1; }
+done
+cmp -s "$OUT/warming1/shots.md5" "$OUT/warming2/shots.md5" || { echo "talk_warming: the two runs' shots differ"; bad=1; }
 cmp -s "$OUT/1/shots.md5" "$OUT/2/shots.md5" || { echo "talk_disc: the two runs' shots differ"; bad=1; }
-[ $bad -eq 0 ] && { echo "talk_disc: pass (bank read from the disc, a Talk line generated, shots identical twice)"; grep '^hcmd: talk-bank' "$OUT/1/dcrun.log"; grep '^talkdisc:\|^dcrun: work over' "$d/dcrun.log"; }
+[ $bad -eq 0 ] && { echo "talk_disc: pass (bank read from the disc, a Talk line generated, shots identical twice)"; grep '^hcmd: talk-bank' "$OUT/1/dcrun.log"; grep '^talkdisc:\|^dcrun: work over' "$d/dcrun.log"; grep '^dcrun: work over' "$OUT/warming1/dcrun.log"; }
 exit $bad
