@@ -1,0 +1,35 @@
+# TD2: the typed line. talk-type feeds the characters to the text entry the way the native runner does;
+# talk-key types the same words through the Maple keyboard on port 2 (dcrun --device 2 keyboard: the
+# game's pad.c turns each key into a character for ui_text_entry_feed). In the native runner talk-key
+# is played as talk-type (make -C dc talk-test does that), so both give the same words and the same pictures.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+wait 4
+shot typed_0_ready
+# the line through the keyboard: the row opens the entry, the keys type, Enter sends
+talk-key "i love the pie"
+expect-talk-you "pie"
+wait 90
+shot typed_1_said
+talk-read
+shot typed_2_answer
+# a second line, a question, with a capital letter and punctuation (Shift + key)
+talk-key "Nana, what is in the pie?"
+expect-talk-you "pie"
+wait 90
+shot typed_3_question
+talk-read
+# a line the safety gate refuses: Talk says so and goes on (the same gate as everywhere)
+talk-key "let us have sex"
+expect-talk-gate refuse
+wait 90
+shot typed_4_refused
+talk-read
+talk-leave
+expect-talk off

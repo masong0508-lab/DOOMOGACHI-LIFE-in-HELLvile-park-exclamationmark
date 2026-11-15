@@ -55,7 +55,7 @@ Contents:
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
 | T8 | the house mode `HM_TALK` on native, with its UI | the owner's SCENE_TALK is the UI (reached from the Talk action and a house visit's A); **T8-SCRIPTS done**: runner `talk-*` commands, four scripts, press-budget journeys, frame time, the gap list (6j). The in-room `HM_TALK` is not landed |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
-| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | TD1 done (the bank is read from the disc, docs/DREAMCAST.md "Talk on the Dreamcast (TD1)"); the rest to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
+| TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | TD1 done (the bank is read from the disc, docs/DREAMCAST.md "Talk on the Dreamcast (TD1)"); TD2 partly done (Talk plays on the Dreamcast with the typed line, the pad fallback and 40-column bubbles; HD text is not built, docs/DREAMCAST.md "Talk on the Dreamcast"); the rest to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
 
 Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
 default that answers "not available", and no platform sets `PLATF_TALK`.

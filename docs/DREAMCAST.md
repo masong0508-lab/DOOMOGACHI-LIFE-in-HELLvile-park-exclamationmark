@@ -980,9 +980,8 @@ twice identical, 0 of 1,141 ticks over 33.3 ms, worst 26.0 ms. Measured 2026-11-
 Not in the list, and why:
 
 * `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
-  `expect-talk-*`). Talk is built on the Dreamcast since TD1 (the bank is read from the disc, section "Talk
-  on the Dreamcast (TD1)" below), but dcrun has no `talk-*` commands yet (TD3): they fail on the first
-  `talk-enter`.
+* `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
+  `expect-talk-*`). Talk is built on the Dreamcast (TD1: the bank is read from the disc; TD2: dcrun has the `talk-*` commands, see "Talk on the Dreamcast"). `home_talk_basic` runs unchanged except `expect-toast`; TD3 puts these four on the list (it needs `expect-talk-act`, `expect-toast`, `talk-rows`).
 * `home_visit` expects the live Talk screen after A at the host (greeting box, the Talk list, B, the goodbye box). Until
   TD1 the Dreamcast had a copy without that step (`home_visit_dc.txt`); since TD1 the core script runs as it is (it only
   uses `press` and `expect-scene`), the copy is gone and `home_visit` is in `family-test2`'s list.
@@ -2342,6 +2341,40 @@ shows the last picture byte for byte, twice in a row the backdrop with no cells,
 another level the backdrop), `dc3d_test` 593 (new: `test_seg_textures`, `test_seg_repeat`), parity unchanged
 (level views, sprites: the same numbers as DC6B). `ui-compare` 94 of 94; `ow-test` as on origin (`side_sample_a`);
 `room-test`'s `home_visit` fails on origin 249a0282 as well (`expect-scene DIALOG`, not this package).
+
+## Talk on the Dreamcast: input, display and the harness (TD2)
+
+TD1 puts the word network on the disc (`dc/src/talkdisc.c`); this package makes the Talk screen playable and
+testable on the console. The Talk screen itself is the core's (`core/src/talk_scene.c`, owner TALK).
+
+* **The typed line.** Nothing new was needed in `pad.c`: Talk's "Type your own line..." row opens the core's text
+  entry (`SCENE_TEXT_ENTRY`), and `read_keyboards` already feeds every key of a Maple keyboard to
+  `ui_text_entry_feed` while it is open. `dcrun --device 2 keyboard` plus the script command `talk-key "words"`
+  types a line through the real Maple keyboard path (Flycast keyboard, Shift for capitals); `talk-type` feeds the
+  characters the way the native runner does. Both end in the same parser and the same safety gate.
+* **The pad fallback.** Without a keyboard the player has the quick replies (one press), catch-the-word (the
+  quick reply that picks up the offered topic), the category pages, Options > Topic, and the row "Type your
+  own line..." opens the on-screen keyboard, which the pad types on. `dc/tests/talk/talk_pad.txt` plays them.
+* **One generator step a tick.** A step of the answer's generator costs 3 to 17 ms on the SH4 and an answer is
+  three steps: "Ask about" the offered topic took 26.5 ms in one tick, 35.0 ms with the screen, the one tick over
+  33.3 ms the first Talk run showed. `talk_scene_slice(1)` (called nowhere on the GBA; the Dreamcast sets it in
+  its start-up) runs the steps one a tick from `talk_update`; the pad is dead meanwhile (1 to 3 ticks per answer). The Dreamcast's
+  lines are not the native ones (40 columns against 26 wrap differently, so the shots match the native runner's
+  to 98.97 % exact at worst, not 100 %). Unit test `talk_scene_slice_runs_the_answer_one_step_a_tick`.
+* **Bubble columns.** `TALK_BUBBLE_COLS` is 40 on the Dreamcast (`core/include/doomo/talk.h`): the dialogue
+  box holds 41 columns beside a portrait at 320x240 (250 px of 6 px glyphs). The generator can use lines up to
+  3 x 40. The census still runs at 26.
+* **HD text is NOT built.** The design's "2x font at native resolution" needs a finer glyph set and a font
+  advance the dialogue box can read; there is none (the core has one 5x8 font at a 6 px advance and the Dreamcast
+  draws it at 2x). Left open; nothing in Talk waits for it.
+* **The harness.** `DC_HC_TALKQ` (`dc/src/talkhc.c`, built with `DOOMO_TALK_DEBUG`, a few KB) answers questions
+  about the screen; `dcrun` has the native runner's T8 commands (`talk-enter`, `talk-party`, `talk-read`,
+  `talk-quick`, `talk-quick-act`, `talk-say`, `talk-type`, `talk-key`, `talk-page`, `talk-to`, `talk-invite`,
+  `talk-leave`, `expect-talk`, `-page`, `-to`, `-row`, `-you`, `-quick`, `-gate`, `-reply-romance`, `-care`,
+  `-reply-sincere`) built on real button presses and ticks. Not done: `talk-rows`, `expect-talk-act`, `expect-toast`.
+* **On Flycast** (`make -C dc talk-test`: `dc/tests/talk/run_screens.sh`, after TD1's `run_flycast.sh`): each script twice in `dcrun` (a keyboard on
+  port 2), every shot identical in both runs, then against the native runner's 320x240 shots by `compare.py`
+  (exact >= 98 %, the gate in the script), and no tick over 33.3 ms. Results are in the commit message and the status file.
 
 ## Rumble (X2)
 

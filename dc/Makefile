@@ -333,10 +333,13 @@ check-packdisc:
 check-talkdisc:
 	@sh $(DC)/tests/talkdisc_host.sh
 
-# TD1 on Flycast: the CDI's Talk bank opens and verifies, one greeting is generated, the Talk screen opens
+# TD1 on Flycast: the CDI's Talk bank opens and verifies, one greeting is generated, the Talk screen opens;
+# TD2: then the pad and keyboard scripts twice each, against the native runner's pictures (run_screens.sh)
 talk-test: $(CDI) $(BUILD)/doomogachi.nm
 	@if [ -z "$(FLYCAST)" ] || [ ! -x $(DCRUN) ]; then echo "note: no Flycast core or dcrun: talk-test skipped"; exit 0; fi; \
-	sh $(DC)/tests/talk/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/talk
+	sh $(DC)/tests/talk/run_flycast.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(SHOTS)/talk && \
+	$(MAKE) --no-print-directory -C $(HARNESS) all && $(MAKE) --no-print-directory -C $(ROOT)/core runner && \
+	sh $(DC)/tests/talk/run_screens.sh $(FLYCAST) $(DCRUN) $(CDI) $(BUILD)/doomogachi.nm $(RUNNER) $(SHOTS)/talk-screens
 
 # DC3: the portable 2D layer against the native runner, on the host
 # (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);

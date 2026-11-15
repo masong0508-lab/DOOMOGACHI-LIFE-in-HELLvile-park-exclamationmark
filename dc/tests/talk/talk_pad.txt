@@ -1,0 +1,52 @@
+# TD2: Talk on the Dreamcast with the pad alone (no keyboard on any port): the opener, a quick reply (one
+# press), catch-the-word (the quick reply that steers to the topic on offer), a topic from Options, a
+# compliment, the "Type your own line..." row (it opens the on-screen keyboard: the pad types there, the
+# keyboard is optional), goodbye. The same commands play in the native runner (core/native/runner_main.c),
+# so make -C dc talk-test compares every shot with the native 320x240 picture.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+wait 20
+shot pad_0_opener
+talk-read
+expect-talk on
+expect-talk-page main
+expect-talk-row "Type your own line..."
+wait 4
+shot pad_1_ready
+# a quick reply: the top row, one press
+talk-quick 0
+wait 90
+shot pad_2_quick_said
+talk-read
+# catch-the-word: the third quick reply picks up the word the resident just offered ("Random, but... music?")
+talk-quick 2
+wait 90
+shot pad_3_catch
+talk-read
+shot pad_4_caught
+# a kind word from the category page
+talk-say compliment
+expect-talk-you "You're great"
+wait 90
+shot pad_5_compliment
+talk-read
+# a topic act: Ask > (no topic picked: "Tell me about <the topic on offer>")
+talk-say ask_about
+expect-talk-you "Tell me about"
+talk-read
+# Options, then the typing row: the on-screen keyboard opens for the pad
+talk-page more
+expect-talk-page more
+expect-talk-row "Topic:"
+wait 4
+shot pad_6_options
+talk-page main
+talk-leave
+expect-talk off
+wait 90
+shot pad_7_after

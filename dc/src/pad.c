@@ -24,6 +24,7 @@
 #include "doomo/scenes.h"
 #include "doomo/ui.h"
 #include "doomo/plat_ext.h"
+#include "doomo/talk.h"
 
 static int kbd_seen;
 
@@ -31,6 +32,9 @@ int dc_keyboard_present(void) { return kbd_seen; }
 
 void dc_pad_init(void)
 {
+#ifdef DOOMO_HAS_TALK
+    talk_scene_slice(1);                /* TD2: one generator step a tick keeps Talk's ticks under 33.3 ms */
+#endif
     input_set_feel(1);                  /* the PS1's analog feel: the Dreamcast pad has a stick */
 }
 

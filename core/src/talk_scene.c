@@ -49,7 +49,7 @@ static struct TalkScn {
     int       ids[TALK_PARTS_MAX];
     int       n, avatar;
     int8_t    to;                       /* slot spoken to, -1 everyone               */
-    uint8_t   page, cat, active, busy, after, leaving, typed_ok, pad;
+    uint8_t   page, cat, active, busy, after, leaving, typed_ok, gen;   /* gen: TD2, steps still to run (talk_scene_slice) */
     uint8_t   pending;                  /* a topic act waiting for its topic         */
     uint16_t  topic, idle;
     int       nrows, nstock;
@@ -680,18 +680,43 @@ static void begin_talk(void)
     uint32_t seed = talk_gen_seed(T.avatar, T.ids, T.n) + (++sessions) * 2654435761u;
     talk_outcome_begin(&T.s, T.avatar, T.ids, T.n, seed);
     if (T.to >= T.n) T.to = 0;
-    T.busy = T.after = T.leaving = T.pending = 0;
+    T.busy = T.after = T.leaving = T.pending = T.gen = 0;
     T.idle = 0;
     T.you[0] = 0;
+}
+
+/* The generator's steps for the lines just asked for, then the lines go into the dialogue box. A step is 3 to 17 ms on
+ * the Dreamcast's SH4 (the first one of "Ask about pie" 17 ms, the three of an answer 26 ms in all, on top of the
+ * 8 ms the screen costs), which is a tick over 33.3 ms: with talk_scene_slice(1) (TD2: the Dreamcast, and the unit
+ * test) the steps run one a tick from talk_update, the input is dead meanwhile, and the lines are the very same.
+ * T.gen: 1 an answer to the player (a farewell sets leaving), 2 the opener or the idle chatter. Not on the GBA. */
+#ifndef DOOMO_PLATFORM_GBA
+static uint8_t slice_on;
+void talk_scene_slice(int on) { slice_on = (uint8_t)(on != 0); }
+#endif
+
+static void gen_done(void)
+{
+    if (T.gen == 1 && (T.s.flags & TDF_FAREWELL)) T.leaving = 1;
+    T.gen = 0;
+    show_lines();
+}
+
+static void gen_run(int kind)
+{
+    T.gen = (uint8_t)kind;
+#ifndef DOOMO_PLATFORM_GBA
+    if (slice_on) return;                /* talk_update takes the steps, one a tick */
+#endif
+    while (talk_dm_step(&T.s, NULL)) {}
+    gen_done();
 }
 
 static void say_utter(TalkUtter *u)
 {
     doomo_snprintf(T.you, sizeof T.you, "%s", u->shown);
     talk_dm_say(&T.s, u);
-    while (talk_dm_step(&T.s, NULL)) {}
-    if (T.s.flags & TDF_FAREWELL) T.leaving = 1;
-    show_lines();
+    gen_run(1);
 }
 
 static void say_act(int act)
@@ -872,8 +897,7 @@ static void talk_enter(int arg)
     begin_talk();
     build_main();
     if (talk_dm_open(&T.s)) {            /* the resident opens the talk and hands it to the player */
-        while (talk_dm_step(&T.s, NULL)) {}
-        show_lines();
+        gen_run(2);
     } else {
         ui_say(arg, "Oh! Hi. What's up?");
         T.busy = 1;
@@ -958,6 +982,10 @@ static void talk_update(void)
     int r;
     if (!T.active) { scene_pop(); return; }
     if (T.busy) return;                  /* the dialogue box is up (we are not on top then) */
+    if (T.gen) {                         /* sliced generation: one step a tick, no input meanwhile */
+        if (!talk_dm_step(&T.s, NULL)) gen_done();
+        return;
+    }
 #ifdef TALK_TYPING
     if (T.typed_ok) {
         int ok = T.typed_ok == 1;
@@ -971,8 +999,7 @@ static void talk_update(void)
         if (T.page == PG_MAIN) build_main();          /* new replies for what was just said */
     }
     if (T.page == PG_MAIN && ++T.idle % 8 == 0 && talk_dm_tick(&T.s, 8)) {
-        while (talk_dm_step(&T.s, NULL)) {}
-        show_lines();
+        gen_run(2);
         return;
     }
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
@@ -1116,7 +1143,7 @@ int talk_scene_debug(TalkSceneDebug *o)
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
-    o->busy = T.busy;
+    o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
     o->page = pages[T.page < 5 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;

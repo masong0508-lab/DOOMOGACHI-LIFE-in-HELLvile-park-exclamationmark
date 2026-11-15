@@ -1241,7 +1241,7 @@ static int tk_read(int max)
         if (!(r & TKS_ON) || !(r & TKS_BUSY)) return 1;
         for (int w = 0; w < 150 && still < 4; w++) {
             if (!tk_q(DC_TQ_DIALOG, NULL, &shown)) return -1;
-            still = (int)shown == last ? still + 1 : 0;
+            still = (int)shown == last && shown ? still + 1 : 0;      /* no box yet (0): the answer is still being made */
             last = (int)shown;
             if (!run_ticks(1)) return -1;
         }

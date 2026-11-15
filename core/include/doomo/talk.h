@@ -112,7 +112,11 @@ typedef struct TalkAudience {
 /* ---- limits ---------------------------------------------------------------- */
 #define TALK_PARTS_MAX     4      /* residents in a conversation (PS1: 3)          */
 #define TALK_PARTS_PS1     3      /* = HOME_HOUSEMATES                             */
-#define TALK_BUBBLE_COLS   26     /* a bubble's columns at 320x240 (DC HD text: 40) */
+#ifdef DOOMO_PLATFORM_DC
+#define TALK_BUBBLE_COLS   40     /* TD2: the Dreamcast's dialogue box holds 41 columns beside a portrait (250 px of 6 px) */
+#else
+#define TALK_BUBBLE_COLS   26     /* a bubble's columns at 320x240 (the census runs at this, the stricter value) */
+#endif
 #define TALK_BUBBLE_LINES  3
 
 /* ---- the talk memory chunk 'TALK' (T6 owns it; T0 fixes its size) ---------
@@ -1309,6 +1313,10 @@ int  talk_scene_act_cat(int act);
  * through this and the feature test, so --gc-sections drops it all on the
  * GBA. */
 int  home_talk_enter(int who);
+/* TD2: 1 = the Talk screen runs the generator one step a tick (the Dreamcast: a tick under 33.3 ms), 0 (the default) = all
+ * at once. Not on the GBA (the function does not exist there). Talk's own lines are identical either way. */
+void talk_scene_slice(int on);
+
 /* Others to bring into the next talk (up to TALK_PARTS_MAX - 1; consumed by it): talk_scene.c, DOOMO_HAS_TALK. */
 void talk_scene_party(const int *ids, int n);
 

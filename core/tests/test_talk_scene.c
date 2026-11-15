@@ -14,6 +14,7 @@
 #include "doomo/roster.h"
 #include "doomo/town.h"
 #include "doomo/ui.h"
+#include "../src/ui_internal.h"     /* UiDialogDebug */
 
 #define ID_NANA 1
 #define ID_PIP  42            /* kid cast */
@@ -251,6 +252,65 @@ TEST(talk_scene_has_a_control_card_on_every_page)
     ui_prompt_stats(&st, 0);
     CHECK(strstr(st.last, "Back") != NULL);
     CHECK(strstr(st.last, "Goodbye") == NULL);
+}
+
+/* TD2: talk_scene_slice(1) (the Dreamcast: a generator step is 3 to 17 ms there, an answer of three steps a tick over
+ * 33.3 ms) runs the answer one step a tick. The answer comes a few ticks later than at once, the screen reports it
+ * as busy meanwhile, no press changes anything meanwhile, and the answer is a real one. Without the slice the box
+ * is up on the tick after the press. */
+static int ticks_to_box(UiDialogDebug *dd)
+{
+    int k;
+    for (k = 0; k < 40; k++) {
+        memset(dd, 0, sizeof *dd);
+        ui_dialog_debug(dd);
+        if (dd->text && dd->text[0]) return k;
+        frames(0, 1);
+    }
+    return -1;
+}
+
+TEST(talk_scene_slice_runs_the_answer_one_step_a_tick)
+{
+    UiDialogDebug dd;
+    TalkSceneDebug d;
+    int plain, sliced, sel, k;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("quick", 0, -1));
+    press(BTN_A);
+    plain = ticks_to_box(&dd);
+    CHECK(plain >= 0 && talk_scene_debug(&d) && d.nlines >= 1);
+    town();
+    talk_scene_slice(1);
+    CHECK(open_talk(ID_NANA));                              /* the opener is sliced too */
+    CHECK(top_is(&SCENE_TALK));
+    go_to(find_row("quick", 0, -1));
+    press(BTN_A);
+    memset(&dd, 0, sizeof dd);
+    ui_dialog_debug(&dd);
+    CHECK(dd.text == NULL || !dd.text[0]);                  /* not up yet: the steps run in the next ticks */
+    CHECK(talk_scene_debug(&d) && d.busy);                  /* but the list is not up either */
+    sel = d.sel;
+    for (k = 0; k < 2; k++) {                               /* the pad does nothing while the answer is made */
+        frames(BTN_DOWN, 1);
+        frames(0, 1);
+        CHECK(talk_scene_debug(&d) && d.sel == sel);
+        memset(&dd, 0, sizeof dd);
+        ui_dialog_debug(&dd);
+        if (dd.text && dd.text[0]) break;
+    }
+    sliced = ticks_to_box(&dd);
+    CHECK(sliced >= 0 && sliced + 2 >= plain);              /* it comes, within a few ticks */
+    CHECK(strlen(dd.text) > 2);
+    CHECK(talk_scene_debug(&d) && d.busy && d.nlines >= 1 && d.reply_act > 0);
+    for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) { frames(0, 90); press(BTN_A); }
+    CHECK(talk_scene_debug(&d) && !d.busy);                 /* the list is back after the answer */
+    go_to(find_row("bye", -1, -1));                         /* a farewell still ends the talk when sliced */
+    press(BTN_A);
+    for (k = 0; k < 60 && top_is(&SCENE_TALK); k++) { frames(0, 90); press(BTN_A); }
+    CHECK(!top_is(&SCENE_TALK));
+    talk_scene_slice(0);
 }
 
 #endif /* !DOOMO_PLATFORM_GBA */
