@@ -23,6 +23,11 @@
 #undef portrait_image_look_d
 #undef fighter_render_d
 #define PD_STATIC static
+/* S3-2: portrait_ui_image makes four calls, not four copies */
+const DoomoImage *portrait_image(int resident_id, int expr) __attribute__((noinline));
+const DoomoImage *figure_image(const DoomoLook *l, int status, int expr) __attribute__((noinline));
+const DoomoImage *figure_image_res(const DoomoResident *r, int status, int expr) __attribute__((noinline));
+const DoomoImage *bodyspr_image(int resident_id, int dir, int frame) __attribute__((noinline));
 static const DoomoImage *figure_image_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr);
 static const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr);
 static void fighter_render_d(const DoomoLook *l, const DoomoDeep *d, int status, int view, int anim,
@@ -1219,39 +1224,6 @@ void portrait_idle_run(void)
 void portrait_hold(int on) { hold_on = on; }
 void portrait_hold_patient(int on) { hold_patient = (uint8_t)(on != 0); }
 
-/* S3-2: a UI preview (a card's portrait, a figure on a rug, a chibi in a row) never draws a whole image inside its
- * frame: with nothing cached to stand in it is a job finished in a few ticks and NULL meanwhile (portrait_hold(3)).
- * Where stand-ins are off (native, Dreamcast: a tick has room for the whole job) it is ready at once. A caller that
- * holds (portrait_hold 1 / 2: the title, the creator) keeps its own mode. */
-const DoomoImage *portrait_image_ui(int resident_id, int expr)
-{
-    const DoomoImage *img;
-    int h = hold_on;
-    if (!h) hold_on = 3;
-    img = portrait_image(resident_id, expr);
-    hold_on = h;
-    return img;
-}
-
-const DoomoImage *figure_image_ui(const DoomoLook *l, int status, int expr)
-{
-    const DoomoImage *img;
-    int h = hold_on;
-    if (!h) hold_on = 3;
-    img = figure_image(l, status, expr);
-    hold_on = h;
-    return img;
-}
-
-const DoomoImage *figure_image_res_ui(const DoomoResident *r, int status, int expr)
-{
-    const DoomoImage *img;
-    int h = hold_on;
-    if (!h) hold_on = 3;
-    img = figure_image_res(r, status, expr);
-    hold_on = h;
-    return img;
-}
 
 
 #ifdef DOOMO_HITCHECK
@@ -1287,7 +1259,7 @@ uint32_t portrait_hitcheck_fails(void) { return 0; }
  * the image to show, or NULL when there is nothing to stand in: then the caller draws at once, or with `none`
  * (portrait_hold(3)) the job is started anyway (urgent) and the caller shows nothing meanwhile. */
 static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l,
-                         const DoomoDeep *d, int st, int expr, const Phase *p, int vac, int none)
+                         const DoomoDeep *d, int st, int expr, const Phase *p, int vac, int none, int patient)
 {
     CacheEnt *o = cache_get(kind, rid, base, lh, 0x0000F000u, 0);
     if (!o) o = cache_get(kind, rid, base, lh, 0, 0);
@@ -1302,7 +1274,7 @@ static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_
                 o->tick = now();
             }
             if (job_begin(kind, rid, key, lh, l, d, st, expr, p, 0)) {
-                job.urgent = !o || !recent_has(content_hash(kind, rid, lh, base));
+                job.urgent = !patient && (!o || !recent_has(content_hash(kind, rid, lh, base)));
                 job.si = 1;
                 job.vac = (uint8_t)vac;
             }
@@ -1359,11 +1331,11 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, const D
         if (o) return &o->img;
         if (hold_on == 2) return NULL;
     }
-    if (!e && (hold_on == 3 || (!hold_on && si_ticks))) {
+    if (!e && (hold_on >= 3 || (!hold_on && si_ticks))) {
         /* SP2: a new expression / status of a look on screen: a few ticks of the old picture instead of a
          * whole render in this frame; portrait_hold(3) with nothing to stand in: a few ticks of nothing */
-        CacheEnt *o = standin(kind, rid, key, base, lh, l, d, st, expr, &p, status == RES_EMPTY, hold_on == 3);
-        if (o || hold_on == 3) {
+        CacheEnt *o = standin(kind, rid, key, base, lh, l, d, st, expr, &p, status == RES_EMPTY, hold_on >= 3, hold_on == 4);
+        if (o || hold_on >= 3) {
             job_pump();
             e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
             return e ? &e->img : o ? &o->img : NULL;
@@ -1708,7 +1680,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
         m->ei = (uint8_t)(e - ent);
         return &e->img;
     }
-    if (body_lazy == 3 && job.on && !job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
+    if (body_lazy >= 3 && job.on && !job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
         /* S2-7: the job slot is drawing another body: this one waits (no look, no stand-in search: a parade
          * asks for dozens a tick); a job nobody asks for any more gives the slot up first */
         job_reap();
@@ -1730,7 +1702,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
                 job.urgent = 1;
                 job.fq_tick = now() - 1;
             }
-            if (body_lazy == 3) {
+            if (body_lazy >= 3) {
                 /* S2-7: this tick's share of slices now; a platform with room for all of them shows it at once */
                 job_pump();
                 e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
@@ -1761,12 +1733,23 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     return &e->img;
 }
 
-const DoomoImage *bodyspr_image_ui(int resident_id, int dir, int frame)
+/* S3-2: a UI preview (a card's portrait, a figure on a rug, a chibi in a row) never draws a whole image inside its
+ * frame: with nothing cached to stand in it is a job and NULL meanwhile (portrait_hold(4): hold 3 without the
+ * 4-tick deadline: the job runs in idle time and in the room the frame leaves, as a stand-in of a face seen before
+ * does; a deadline put 7 slices into each of 4 ticks, so 4 frames of 50-60 ms instead of one).
+ * Where stand-ins are off (native, Dreamcast: a tick has room for the whole job) it is ready at once. A caller that
+ * holds (portrait_hold 1 / 2: the title, the creator) keeps its own mode. */
+const DoomoImage *portrait_ui_image(int kind, int id, const void *p, int a, int b)
 {
     const DoomoImage *img;
-    int l = body_lazy;
-    if (!l) body_lazy = 3;
-    img = bodyspr_image(resident_id, dir, frame);
+    int h = hold_on, l = body_lazy;
+    if (!h) hold_on = 4;
+    if (!l) body_lazy = 4;     /* 3 without the deadline: idle time and the frame's room only */
+    if (kind == 0) img = portrait_image(id, b);
+    else if (kind == 1) img = figure_image((const DoomoLook *)p, a, b);
+    else if (kind == 2) img = figure_image_res((const DoomoResident *)p, a, b);
+    else img = bodyspr_image(id, a, b);
+    hold_on = h;
     body_lazy = (uint8_t)l;
     return img;
 }

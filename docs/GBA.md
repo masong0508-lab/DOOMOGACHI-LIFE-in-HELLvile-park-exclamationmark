@@ -447,6 +447,7 @@ against the LAST row, not against a figure from an older base.
 | 54 | CR4 A1b: 51 face parts (12 noses, 12 mouths, 16 ears, 11 blush styles; docs/CREATOR.md "CR4 A1b") | after CR5-FIX (row 53) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured with `make -C gba sizes` (clean `make -C gba`) on the tip before A1b (`5aa25cd1`, rebased tree) and on A1b rebased onto it: `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B identical (an earlier same-base measurement gave `.bss` 249,084 B on both sides); the part scripts, catalog rows and icons are `const` ROM: `.rodata` +23.5 KB; the `mat blush` branch of `pm_of` costs about +112 B `.text`. `make -C gba test` and `test-creator` pass. |
 | 55 | TM2E-ACTIONS: sim actions a reply can carry (docs/TALK.md 6p) | after CR4 A1b (row 54) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on the origin tip (clean worktree; its own build reads `.bss` 254,836 B) and the same + TM2E-ACTIONS (`make -C gba`, `make -C gba sizes`, `make -C gba test` all clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, all the overlays identical. `TalkState` stays 932 B on the GBA: `TalkLine.action` is 4 bits packed with `stance` (`TalkLine` 104 B), `TalkPart.pad[2]` became `actp` / `actw`, `TalkState.call_to` and the ledger's `invn` / `giftn` sit in padding, and the ledger flags are bits of `LedP.flags`. ROM: `.text` 1,498,704 -> 1,503,560 B (+4,856: `talk_act.o`, `sim_nudge.o`, `DK_ACT`, `talk_gen_action`, the caps), `.rodata` +912 B (the TALK bin 908,412 B). Stack: `TalkOutcome` 22 -> 27 B and `TalkSummary` 76 -> 78 B (locals of `finish`); the DM's `pick_call` scans 1,000 residents once, on the stack 40 B |
 | 56 | S2-4b: the Fun Fair's bands, undo lists and stamps, the results card held (docs: "Speed wave 2: S2-4b" below) | after CR4 A1b (`41df852`) | 6,412 B | **6,420 B** | +8 B | 6,288 B | measured 2026-11-15 on `41df852` (origin, built) and that tree + S2-4b (built clean, `make -C gba sizes`): `.bss` 254,836 -> 254,828 B (`mg_bake_key` is gone on the GBA), `.data` 816 B, `.iwram` 11,272 B and `.iwram_bss` 4,088 B unchanged (no resident IWRAM); the overlay's room group 9,512 -> 9,796 B (+284: `stage_find`, the binary search of the baked table, and `stage_list`) and its UI group 9,740 -> 10,124 B (+384: the `ldm` / `stm` checker), both inside the slot the 3D group sizes (10,352 B; 228 B left beside the UI group). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B; the results hold is code only. ROM `.text` 1,500,088 -> 1,507,888 B (+7,800), `.rodata` 7,693,800 -> 7,935,356 B (+241,556; `backdrops.bin` 3,418,324 -> 3,659,772 B: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB). PS1: compiled out, `_end` 0x801df9f0 = the tip's on `41df852`, `366ee6c`, `5aa25cd` and `cb9df1c` (with PS1-RAM: 132,608 B below the stack top with the boot FMV; 0x801ee550 = the tip's on `b9e74a5`), +0 B resident. The same deltas on `2bc6130`, `0cce022` (`.bss` 249,084 -> 249,076 B there, before CR5's look pool) `b9e74a5` (254,844 -> 254,836 B), `5aa25cd` and `366ee6c`; first measured on `ee686c7` (15,444 -> 15,452 B). Frames equal to the base but for the shake, 10 fade frames and the held results card (below) |
+| 57 | S3-2: no whole portrait or chibi inside a frame (docs: "Speed wave 3: S3-2" above) | after row 56 | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured: `.bss` 249,084 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B (row 50's values; no new static data, the hold / lazy mode is one more value of two existing bytes); ROM code only. PS1: +304 B resident (`_end` 0x801ee550 -> 0x801ee680: 72,064 B below the stack top, 304 B less than before). |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -1308,6 +1309,52 @@ the try-on (each step is a whole new bust: S3-2), one 50 ms frame a tab change (
 (18 of 20 shots byte-identical, the other two differ by the pane's sparkle phase); in-between frames differ only inside
 the preview pane (the new picture's landing and its sparkle come a tick or two later), and the first three frames of
 the entry fade, which is timed by the clock.
+
+### Speed wave 3: S3-2, no whole portrait or chibi inside a frame (2026-11-15)
+
+Speed audit 3's S3-2 (CREATOR area; the callers are SPEED's: the commits say so). A face or a chibi the cache did not
+have was drawn whole inside the frame that asked for it (a portrait 45-100 ms, a chibi ~20 ms: the picker, the shop's
+keeper, the cafe's customers, the Friends tab's twelve chibis, the lobby's Quillby). What changed:
+
+* **UI previews are patient jobs** (`portrait_image_ui`, `figure_image_ui`, `figure_image_res_ui`, `bodyspr_image_ui` in
+  `portrait.h`; one function, `portrait_ui_image`, behind four macros). With nothing cached to stand in, the job is
+  started and NULL comes back: the caller shows nothing, or its placeholder (`fp_portrait`, `fp_figure`, `fp_chibi`
+  draw their ball), for a few ticks. The mode is `portrait_hold(4)` / `bodyspr_lazy` 4: the dialogue's hold 3 / lazy 3
+  **without the 4-tick deadline**. A first try with the deadline (7 slices in each of 4 ticks) made four frames of
+  50-60 ms instead of one (almanac list move 41 -> 61 ms worst, quest log cursor, the picker's first frames): the
+  job now runs in the idle time after frames and in the room the frame leaves, like a stand-in of a face seen before.
+  Native and the Dreamcast have stand-ins off: ready at once, pixels unchanged. A caller that holds already (the title,
+  the creator) keeps its mode. Used by `ui_portrait`, `fp_common.c` (the card portrait, figures, chibis), the studio's
+  picker and its choir row and list (`st_chibi_ui`; **not** the STAGE tab, which got slower with it: S3-8's), the quest
+  log's friends, the library's Quillby and the Almanac figure, the cafe counter, the creator's move-in scene.
+* **List cursors prefetch their neighbours**: the roster card (once the cursor rests) and the studio picker ask for
+  the next and the previous face (`portrait_prefetch`, idle time), so a step lands on a cached picture.
+* **A forced slice only when it fits** (`core/include/doomo/pslice_policy.h`, used by `gba/src/pslice.c` and
+  `ps1/src/pslice.c`): after its patience a job's one forced slice a frame runs only when it still ends before the
+  next vblank; a job that has waited 60 ticks runs anyway. A class never timed keeps the old patience.
+
+Measured on libmgba (`make -C gba test-speed2 SPEED2="studio story library fair creator"` and the `life`, `sim`,
+`fishcook`, `house` groups; tip `5879aa3f` before, S3-2 after; drawn fps, worst frame in ms, "load" = the scene's
+command time plus the first drawn tick):
+
+| window | before | after |
+|---|---|---|
+| studio: citizen picker move | 28.5 fps, 2 frames of 50 ms, work max 45.5 | **30.0**, 0 over 33 ms, work max 32.4 |
+| life: citizen picker move (add member) | 25.4 fps, worst frame 100 | 29.5-30.5, worst 50 |
+| life: shop cursor move; gifts tab | 28.0; 29.5 | **30.0; 30.0** (no frame over 33 ms) |
+| cook: counter; serving | 18.3 (worst 84); 20.0 | 26.5 (worst 50); 24.8 |
+| library: lobby; shelf move; almanac list move | 19.6 (worst 67); 20.0; 24.8 | 24.0 (worst 50); 23.0; 26.6 |
+| quest log friends tab, load | 238 ms | 41 ms |
+| shop (food), cafe counter, Black Market, care popup, picker: load | 118, 123, 136, 123, 75 ms | 52, 57, 70, 64, 59 ms |
+
+Not reached (open): every window above 30 is still short of the owner's steady 30 (the counter's and the lobby's
+frames are 37-47 ms of other work: S3-5 and S3-8), the entries are 41-70 ms (not under 34), the creator's windows
+(entry, swatch move, hat try-on) did not change (the creator preview holds with `portrait_hold(1 / 2)` and the
+whole-render frame there is the CR9 path: needs its own package), the title (`fp_title.c`, S2-10's file) and "dear
+slices cut finer" (a core change to the piece table, held back). Hitches grew a little in a few 90-tick windows (a
+forced slice makes one 50 ms frame): citizen picker 3 -> 5 frames over 33 ms, Black Market 7 -> 9; the sim's picker
+interval 9 -> 18 of 1,200. Memory: no new static data; `.bss` 249,084 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B,
+`.data` 816 B before and after (the ledger's row 50 values); ROM code only.
 
 ### Where the title's time goes (`make -C gba profile-title`)
 

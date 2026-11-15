@@ -1240,6 +1240,11 @@ Three packages a round. Biggest win a player sees first. No two packages of a ro
 Shared files to watch: S3-2 and S3-3 both touch `creator_draw.c` and are in the CREATOR stream's area (rounds 2
 and 3, never together). S3-2 touches `fp_title.c`, which S2-10 (in flight) also changes: do the title part after
 S2-10 lands. S3-4, S3-5 and S3-7 all add families to `backdrop.c` and the baker: small edits, expect a rebase.
+**S3-2 status (2026-11-15, partial):** built as UI previews that are patient jobs, neighbour prefetch and the forced-slice rule
+(docs/GBA.md "Speed wave 3: S3-2"). Reached: studio picker move, shop cursor move and gifts tab at 30.0; Friends tab
+load 238 -> 41 ms. Not reached: the entries under 34 ms, the creator's windows, the title, finer dear slices,
+scene-start prefetch. A deadline on the UI jobs was tried and rejected (four 50-60 ms frames instead of one).
+
 S3-8 and S3-13 both touch `lib_*.c` and `studio*.c`: S3-13's library and studio slices come after S3-8. The
 owner calls of section 6 (15 Hz skies, walls and auras; sprites for actors) can be decided at any time; each
 would become a follow-up to S3-6, S3-9, S3-11, S3-7 and S3-4.

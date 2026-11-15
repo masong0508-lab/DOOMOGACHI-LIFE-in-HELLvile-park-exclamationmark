@@ -441,7 +441,7 @@ void st_picker_draw(void)
             ui_round_rect(x + 5, yy, lw, rh - 1, 4, st->accent);
             ui_cursor(x + 6, yy + 8);
         }
-        st_chibi(id, x + 16, yy, 0, sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
+        st_chibi_ui(id, x + 16, yy, 0, sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
         ui_text(x + 36, yy + 3, st_name(id), sel ? PAL_WHITE : st->text);
         ui_text(x + 36, yy + 12, district_of(id), sel ? ui_lighter(st->accent) : st->text_dim);
         if (r) {
@@ -489,7 +489,15 @@ void st_panel(int x, int y, int w, int h, int style)
 
 void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col)
 {
-    const DoomoImage *img = bodyspr_image_ui(id, dir, frame);   /* S3-2 */
+    const DoomoImage *img = bodyspr_image(id, dir, frame);
+    if (img) plat_image(x, y, img, 1, flags, col);
+}
+
+/* S3-2: a chibi of a list or the choir row (not the STAGE tab, S3-8's): never drawn whole inside a frame; it comes
+ * in over a few ticks (nothing is drawn for them) */
+void st_chibi_ui(int id, int x, int y, int dir, int frame, int flags, uint8_t col)
+{
+    const DoomoImage *img = bodyspr_image_ui(id, dir, frame);
     if (img) plat_image(x, y, img, 1, flags, col);
 }
 

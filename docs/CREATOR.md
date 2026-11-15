@@ -376,6 +376,15 @@ card), so its 150 KB need about 100 KB of slot. On `696ffa6` the disc ends 79,56
 top: 14,032 B above the 64 KB reserve and 5,840 B above the 72 KB plan gate (CRB's resident cost:
 80 B; docs/PS1.md has how it was brought down from 832 B).
 
+### S3-2: no whole portrait or chibi inside a frame (2026-11-15)
+
+The speed audit 3's S3-2 (docs/GBA.md "Speed wave 3: S3-2" has the table, docs/PORTRAIT.md "UI previews"). Creator area:
+`core/src/portrait.c`, `gba/src/pslice.c`, `ps1/src/pslice.c`, and one line in `creator_draw.c` (the move-in scene's figure
+is a UI preview). **The creator's own preview is not changed**: it holds with `portrait_hold(1 / 2)` and a patient
+job (CR9), and the creator windows measure the same as after S3-3 (entry, tab changes, swatch move 24.4 fps with a 100 ms
+frame, hat try-on 23.4 with a 107 ms frame): what makes those frames was not profiled here
+(left open: the swatch and try-on moves, the entry's 162 ms).
+
 ### S3-3: the held frame and panels drawn first (2026-11-13)
 
 The speed audit 3's package S3-3 (the old G2-CR). Two GBA pieces and one PS1 piece, all in

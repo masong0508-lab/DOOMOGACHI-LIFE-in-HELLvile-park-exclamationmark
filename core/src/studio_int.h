@@ -159,6 +159,7 @@ uint8_t st_track_color(int t, int shade);    /* shade 0 dark, 1 base, 2 light */
 uint8_t st_pattern_color(int p, int shade);
 void st_panel(int x, int y, int w, int h, int style);
 void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col);
+void st_chibi_ui(int id, int x, int y, int dir, int frame, int flags, uint8_t col);   /* S3-2 */
 /* Baked shapes (GBA, or any build with DOOMO_STUDIO_BAKE): a shape drawn from many rects is painted once into an image
  * (through ST_RECT / the UI kit's own rasteriser, so the same pixels) and from then on drawn with one plat_image.
  * st_bake() draws fn(x, y, a) that way and returns 1, or returns 0 (nothing drawn) when it cannot and the caller draws
