@@ -57,11 +57,28 @@ STAGE_ARM const BkEnt *stage_find(const BkEnt *t, int n, uint32_t want)
     return NULL;
 }
 
+/* (G2-CO) the same search from the cartridge (THUMB), for a scene that keeps the UI group in (the concert: its 2D
+ * loops, checkers and scale-2 images take their fast paths only while that group is in, and it asks for a few
+ * backdrops a frame): loading the room group for the search took the UI group out for the rest of the frame */
+static const BkEnt *stage_find_rom(const BkEnt *t, int n, uint32_t want)
+{
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) >> 1;
+        uint32_t k = t[mid].idkey;
+        if (k == want) return &t[mid];
+        if (k < want) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return NULL;
+}
+
 /* the baked picture of (id, key), NULL if it is not in the ROM (binary search). The blob's header is
  * checked once (a game asks for a hundred stamps a frame); `bk_n` is the entry count, 0 until then, -1
- * for a blob that is not this build's */
+ * for a blob that is not this build's. keep_ui: a backdrop (not a stamp) asked while the UI group is in is
+ * searched from the cartridge, so the group stays in (G2-CO) */
 static int16_t bk_n;
-static const BkEnt *find(int id, uint32_t key)
+static const BkEnt *find(int id, uint32_t key, int keep_ui)
 {
     const uint8_t *b = gba_backdrops;
     const BkEnt *t = (const BkEnt *)(const void *)(b + 12);
@@ -71,6 +88,7 @@ static const BkEnt *find(int id, uint32_t key)
             (b[4] | b[5] << 8) != SCREEN_W || (b[6] | b[7] << 8) != SCREEN_H) { bk_n = -1; return NULL; }
         bk_n = (int16_t)*(const uint32_t *)(const void *)(b + 8);
     }
+    if (keep_ui && iwram_ovl_current() == OVL_UI) return stage_find_rom(t, bk_n, want);
     iwram_ovl_use(OVL_ROOM);
     return stage_find(t, bk_n, want);
 }
@@ -84,7 +102,7 @@ int plat_stage_begin(int id, uint32_t key, void (*draw)(uint32_t key), PlatStage
     if (gba_nodraw == GBA_NODRAW_FIRST) gba_nodraw = 0;  /* (G5) the first call: Mode 4 */
     if (gba_nodraw != 0 && gba_nodraw != GBA_NODRAW_PANEL) return 0;   /* a tile frame */
     if (hold_building() || hold_page() >= 0) return 0;   /* held / built frames: not ours */
-    cur = find(id, key);
+    cur = find(id, key, 1);
     if (!cur || cur->w != SCREEN_W) { cur = NULL; return 0; }   /* (a stamp is not a backdrop) */
     back = gba_back == (uint16_t *)VRAM_PAGE1;
     info->held = page_serial[back];
@@ -180,7 +198,7 @@ int plat_stage_stamp(int id, uint32_t key, int x, int y)
     const BkEnt *e;
     DoomoImage im;
     if (gba_nodraw == 1) return 1;                       /* a skipped tick draws nothing */
-    e = find(id, key);
+    e = find(id, key, 0);
     if (!e) return 0;
     if (!e->w) return 1;
     im.w = e->w;
