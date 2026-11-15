@@ -623,10 +623,72 @@ static void draw_show(const StageView *v, const Wall *W, int m)
 
 /* ====================================================================== */
 /* stage                                                                    */
-static void draw_backdrop(const StageView *v, const StageLayout *L, const StagePal *p, int m)
+/* (G2-CO) the Dreamland's clouds drift (one pixel every 3 ticks, 840 ticks round): they are live parts, the rows
+ * [y0, y1) of them (the stage's kept rows on one side, the rows below on the other). Returns 1 when a cloud's box
+ * reaches the wall frame or a speaker box: those are drawn over the clouds, so the live pass draws them again. */
+#if !defined(DOOMO_PLATFORM_PS1)
+extern void (*ur_tap)(int, int, int, int, uint8_t);   /* ui_raster.c: every rect of a shape */
+/* the two clips a cloud needs: the kept rows [0, R) or the rows below them (R: keep_rows(), the wall frame's foot,
+ * worked out from the screen as concert_layout() does: no state of their own, so no byte of RAM) */
+static int tap_rows(void)
+{
+    int h = plat_screen_h(), big = h >= 200;
+    return h * 62 / 100 - (big ? 44 : 34) + 3;
+}
+static void tap_above(int x, int y, int w, int h, uint8_t c)
+{
+    int r = tap_rows();
+    if (y + h > r) h = r - y;
+    if (w > 0 && h > 0) plat_rect(x, y, w, h, c);
+}
+static void tap_below(int x, int y, int w, int h, uint8_t c)
+{
+    int r = tap_rows();
+    if (y < r) { h -= r - y; y = r; }
+    if (w > 0 && h > 0) plat_rect(x, y, w, h, c);
+}
+#endif
+
+static int box_meets(int ax0, int ay0, int ax1, int ay1, int bx0, int by0, int bx1, int by1)
+{
+    return ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1;
+}
+
+static int draw_clouds(const StageView *v, const StageLayout *L, const StagePal *p, int y0, int y1)
+{
+    int i, hit = 0, sw = L->big ? 26 : 18, sh = L->big ? 26 : 18;
+    int fx0 = L->wall_x - 3, fy0 = L->wall_y - 3, fx1 = L->wall_x + L->wall_w + 3, fy1 = L->wall_y + L->wall_h + 3;
+    int sl = DOOMO_MAX(0, L->wall_x - sw - 2), sr = DOOMO_MIN(L->wall_x + L->wall_w + 2, L->w - sw);
+    int sy0 = L->floor_y - 2 * sh, sy1 = L->floor_y;
+#if !defined(DOOMO_PLATFORM_PS1)
+    void (*prev)(int, int, int, int, uint8_t) = ur_tap;
+    if (y1 < L->h) ur_tap = tap_above;                  /* [0, R): keep_half */
+    else if (y0 > 0) ur_tap = tap_below;                /* [R, h): keep_stage */
+#endif
+    for (i = 0; i < 5; i++) {
+        int cxx = (i * 67 + (int)v->t / 3) % (L->w + 40) - 20;
+        int cyy = L->wall_y + 4 + (i * 23) % (L->floor_y - L->wall_y - 10);
+        int bx0 = cxx - 14, by0 = cyy - 5, bx1 = cxx + 13, by1 = cyy + 7;     /* both ellipses' box */
+        if (cxx > L->wall_x - 8 && cxx < L->wall_x + L->wall_w + 8) continue;
+        if (by0 < y1 && by1 > y0) {
+            ui_fill_ellipse(cxx, cyy, 12, 5, p->prop1);
+            ui_fill_ellipse(cxx - 6, cyy + 2, 8, 4, p->prop0);
+        }
+        if (box_meets(bx0, by0, bx1, by1, fx0, fy0, fx1, fy1) || box_meets(bx0, by0, bx1, by1, sl, sy0, sl + sw, sy1) ||
+            box_meets(bx0, by0, bx1, by1, sr, sy0, sr + sw, sy1))
+            hit = 1;
+    }
+#if !defined(DOOMO_PLATFORM_PS1)
+    ur_tap = prev;
+#endif
+    return hit;
+}
+
+static int draw_backdrop(const StageView *v, const StageLayout *L, const StagePal *p, int m)
 {
     int i, y0 = 0, band = L->floor_y / 4;
-    if (!STILL(m)) return;                      /* the props' phase is part of the still key */
+    if (!STILL(m))                              /* the props' phase is part of the still key */
+        return v->stage == STAGE_DREAMLAND ? draw_clouds(v, L, p, 0, L->h) : 0;
     for (i = 0; i < 4; i++) {
         int y1 = i == 3 ? L->floor_y : y0 + band;
         plat_rect(0, y0, L->w, y1 - y0, p->sky[i]);
@@ -666,24 +728,24 @@ static void draw_backdrop(const StageView *v, const StageLayout *L, const StageP
         }
         break;
     case STAGE_DREAMLAND:
-        for (i = 0; i < 5; i++) {
-            int cxx = (i * 67 + (int)v->t / 3) % (L->w + 40) - 20;
-            int cyy = L->wall_y + 4 + (i * 23) % (L->floor_y - L->wall_y - 10);
-            if (cxx > L->wall_x - 8 && cxx < L->wall_x + L->wall_w + 8) continue;
-            ui_fill_ellipse(cxx, cyy, 12, 5, p->prop1);
-            ui_fill_ellipse(cxx - 6, cyy + 2, 8, 4, p->prop0);
-        }
+        if (LIVE(m)) return draw_clouds(v, L, p, 0, L->h);
         break;
     }
+    return 0;
+}
+
+/* the synthwave grid's and the bats' lines leave the wall and can reach the speakers (drawn after the show): over a
+ * kept picture those shows draw the speakers again, whole (G2-CO; so does a Dreamland cloud on a speaker box) */
+static int lines_out(const StageView *v)
+{
+    int show = concert_genres[v->genre].show;
+    return show == SHOW_GRID || show == SHOW_BATS;
 }
 
 static void draw_speakers(const StageView *v, const StageLayout *L, int m)
 {
     int i, k, sw = L->big ? 26 : 18, sh = L->big ? 26 : 18;
-    /* the synthwave grid's and the bats' lines leave the wall and can reach the speakers (drawn after the show):
-     * over a kept picture those shows draw the speakers again, whole */
-    int show = concert_genres[v->genre].show, over = m == SP_LIVE && (show == SHOW_GRID || show == SHOW_BATS);
-    if (over) m = SP_ALL;
+    if (m == SP_LIVE && lines_out(v)) m = SP_ALL;
     for (i = 0; i < 2; i++) {
         int x = i ? L->wall_x + L->wall_w + 2 : L->wall_x - sw - 2;
         if (x < 0) x = 0;
@@ -843,23 +905,26 @@ static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c, in
 
 static void draw_beams(const StageView *v, const StageLayout *L, int y0, int y1);
 
+/* the wall frame */
+static void wall_frame(const Wall *W)
+{
+    ui_round_rect(W->x - 3, W->y - 3, W->w + 6, W->h + 6, 3, PAL_RAMP(RAMP_STEEL, 1));
+    plat_rect(W->x - 2, W->y - 3, W->w + 4, 1, PAL_RAMP(RAMP_STEEL, 4));
+}
+
 static void stage_parts(const StageView *v, const StageLayout *L, int m)
 {
     StagePal p;
     Wall W;
-    int i;
+    int i, cloud;
     stage_pal(v->stage, &p);
-    draw_backdrop(v, L, &p, m);
+    cloud = draw_backdrop(v, L, &p, m);         /* (G2-CO) a live Dreamland cloud on the frame or a speaker */
     W.x = L->wall_x; W.y = L->wall_y; W.w = L->wall_w; W.h = L->wall_h;
-    /* the wall frame */
-    if (STILL(m)) {
-        ui_round_rect(W.x - 3, W.y - 3, W.w + 6, W.h + 6, 3, PAL_RAMP(RAMP_STEEL, 1));
-        plat_rect(W.x - 2, W.y - 3, W.w + 4, 1, PAL_RAMP(RAMP_STEEL, 4));
-    }
-    draw_show(v, &W, m);
+    if (STILL(m) || cloud) wall_frame(&W);
+    draw_show(v, &W, cloud ? m | SP_STILL : m);
     /* scanline sheen (over the show: it moves with it) */
     for (i = W.y + 1; i < W.y + W.h && LIVE(m); i += 3) cspan(W.x, W.x + W.w, i, 1, PAL_RAMP(RAMP_STONE, 1));
-    draw_speakers(v, L, m);
+    draw_speakers(v, L, cloud ? SP_ALL : m);
     draw_floor(v, L, &p, m);
     draw_truss(v, L, m);
     if (LIVE(m)) draw_beams(v, L, 0, L->h);
@@ -894,15 +959,17 @@ static void draw_beams(const StageView *v, const StageLayout *L, int y0, int y1)
 
 #if !defined(DOOMO_PLATFORM_PS1)    /* (the PS1 never bakes, and its retained stage lives in another overlay group) */
 /* (G2-CO) The still key of a view: the stage theme and the phase of its backdrop props (the Sugar Bowl's
- * stripes and sparkles repeat every 32 ticks, the Hellfire braziers every 12; the Graveyard and the Disco
- * Inferno have none). 0 for the Dreamland, whose clouds drift over 840 ticks: it is drawn whole as before. */
+ * stripes and sparkles repeat every 32 ticks, the Hellfire braziers every 12; the Graveyard, the Disco
+ * Inferno and the Dreamland have none: the Dreamland's clouds drift over 840 ticks, so they are live parts and
+ * its still picture has none). */
 int concert_stage_key(const StageView *v, uint32_t *key)
 {
     switch (v->stage) {
     case STAGE_SUGAR_BOWL:   *key = (uint32_t)STAGE_SUGAR_BOWL << 8 | ((v->t / 2u) & 15u); return 1;
     case STAGE_HELLFIRE:     *key = (uint32_t)STAGE_HELLFIRE << 8 | (v->t % 12u); return 1;
     case STAGE_GRAVEYARD:
-    case STAGE_DISCO_INFERNO: *key = (uint32_t)v->stage << 8; return 1;
+    case STAGE_DISCO_INFERNO:
+    case STAGE_DREAMLAND:    *key = (uint32_t)v->stage << 8; return 1;
     default: return 0;
     }
 }
@@ -922,10 +989,11 @@ static void concert_stage_still(uint32_t key)
 
 static int concert_stage_keys(uint32_t *out, int cap)
 {
-    static const uint8_t st[4] = { STAGE_SUGAR_BOWL, STAGE_HELLFIRE, STAGE_GRAVEYARD, STAGE_DISCO_INFERNO };
-    static const uint8_t ph[4] = { 16, 12, 1, 1 };
+    static const uint8_t st[5] = { STAGE_SUGAR_BOWL, STAGE_HELLFIRE, STAGE_GRAVEYARD, STAGE_DISCO_INFERNO,
+                                   STAGE_DREAMLAND };
+    static const uint8_t ph[5] = { 16, 12, 1, 1, 1 };
     int i, k, n = 0;
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 5; i++)
         for (k = 0; k < ph[i]; k++, n++)
             if (n < cap) out[n] = (uint32_t)st[i] << 8 | (uint32_t)k;
     return n;
@@ -938,17 +1006,19 @@ const DoomoBackdrop concert_backdrop_family = { DOOMO_BACKDROP_CONCERT, concert_
  * The rows [0, R) (R: the wall frame's foot) of the stage are kept in the platform's buffer (plat_keep_rows) and
  * drawn anew every other tick, half of the next picture on each tick (the bake's rows and the show's first half; the
  * show's rest, the sheen, the lamps and the beams' top), so every tick costs about the same. Each picture is put
- * into two frames (the GBA's two pages); the rows below are drawn on every tick, their beams at the kept picture's
- * time so they go on where the kept ones end. Shows whose shapes leave the wall (notes, the synthwave grid, bats)
- * are drawn whole on every tick. Pixel-changing (SPEED DEFAULTS, the owner's 2026-11-13 trade): the wall, the
- * lamps and the beams move at 15 Hz. */
-static int keep_rows(const StageLayout *L) { return L->wall_y + L->wall_h + 3; }
+ * into two frames (the GBA's two pages); the rows below are drawn on every tick, at the kept picture's time (the
+ * props' phase, the Dreamland's clouds and the beams, so they go on where the kept ones end). The synthwave grid's
+ * and the bats' lines leave the wall but stay in the kept rows; they can cross the speakers' top rows, so with those
+ * shows (and with a Dreamland cloud on the frame or a speaker) the speakers are drawn again whole below and the beams
+ * from the speakers' top. The notes show is drawn whole on every tick: a note at the wall's foot reaches row R.
+ * Pixel-changing (SPEED DEFAULTS, the owner's 2026-11-13 trade): the wall, the lamps, the beams, the props and the
+ * clouds move at 15 Hz. */
+static int keep_rows(const StageLayout *L) { return L->wall_y + L->wall_h + 3; }   /* (tap_rows() too) */
 
 static int keep_ok(const StageView *v, const StageLayout *L)
 {
-    int show = concert_genres[v->genre].show;
-    return (v->lite & CLITE_HALF) && v->keep && keep_rows(L) * L->w <= 16384 && show != SHOW_NOTES &&
-           show != SHOW_GRID && show != SHOW_BATS;
+    return (v->lite & CLITE_HALF) && v->keep && keep_rows(L) * L->w <= 16384 &&
+           concert_genres[v->genre].show != SHOW_NOTES;
 }
 
 /* half 1 or 2 of the kept picture of tick tb (v's other fields: this tick's) into the platform's buffer */
@@ -965,8 +1035,15 @@ static int keep_half(const StageView *v, const StageLayout *L, int half, uint32_
         return 0;
     W.x = L->wall_x; W.y = L->wall_y; W.w = L->wall_w; W.h = L->wall_h;
     if (half == 1) {
+        int cloud = 0;
         plat_stage_restore(0, 0, L->w, R);
-        draw_show_part(&b, &W, SP_LIVE, 1);
+        if (b.stage == STAGE_DREAMLAND) {
+            StagePal p;
+            stage_pal(b.stage, &p);
+            cloud = draw_clouds(&b, L, &p, 0, R);
+            if (cloud) wall_frame(&W);                   /* (the speakers: below, whole) */
+        }
+        draw_show_part(&b, &W, cloud ? SP_ALL : SP_LIVE, 1);
     } else {
         draw_show_part(&b, &W, SP_LIVE, 2);
         for (i = W.y + 1; i < W.y + W.h; i += 3) cspan(W.x, W.x + W.w, i, 1, PAL_RAMP(RAMP_STONE, 1));
@@ -1005,14 +1082,17 @@ static int keep_stage(const StageView *v, const StageLayout *L)
     }
     plat_stage_restore(0, R, L->w, L->h - R);
     stage_pal(v->stage, &p);
-    draw_speakers(v, L, SP_LIVE);
-    draw_floor(v, L, &p, SP_LIVE);
-    c = *v;
-    c.beam_dt = (int)(v->t - K->tc);                     /* the beams go on below the kept ones */
     {
-        /* a kicked speaker's cone reaches up into the kept rows: the beams over it from its top row on (the
-         * kept rows there already hold these same beams, which draw the same pixels again) */
-        int sh = L->big ? 26 : 18, top = L->floor_y - 2 * sh + sh / 2 - (sh / 3 + 1);
+        /* the Dreamland's clouds below the kept rows, at the kept picture's time; a cloud on the frame or a speaker
+         * box, and the grid's and the bats' lines, ask for the speakers whole (draw_speakers) */
+        int whole = (c.stage == STAGE_DREAMLAND && draw_clouds(&c, L, &p, R, L->h)) || lines_out(v);
+        /* a kicked speaker's cone, or the speakers drawn whole, reach up into the kept rows: the beams over them from
+         * that row on (the kept rows there already hold these same beams, which draw the same pixels again) */
+        int sh = L->big ? 26 : 18, top = whole ? L->floor_y - 2 * sh : L->floor_y - 2 * sh + sh / 2 - (sh / 3 + 1);
+        draw_speakers(v, L, whole ? SP_ALL : SP_LIVE);
+        draw_floor(v, L, &p, SP_LIVE);
+        c = *v;
+        c.beam_dt = (int)(v->t - K->tc);                 /* the beams go on below the kept ones */
         draw_beams(&c, L, top < R ? top : R, L->h);
     }
     return 1;
@@ -1481,24 +1561,32 @@ void concert_draw_fx(const StageView *v, const StageLayout *L)
         concert_confetti(0, 0, L->w, L->stage_front, v->t, L->big ? 60 : 40, 1);
 }
 
-void concert_draw_curtain(const StageView *v, const StageLayout *L)
+/* (G2-CO land) the rows [y0, y1) of the curtain: y0 = 0 draws it all (the valance and its fringe, rows 0..12, come
+ * with y0 = 0 only; the held intro repaints a strip further down) */
+void concert_draw_curtain_rows(const StageView *v, const StageLayout *L, int y0, int y1)
 {
-    int half = L->w / 2, cw = half * v->curtain / 256, i, x;
+    int half = L->w / 2, cw = half * v->curtain / 256, i, x, h = y1 - y0;
     uint8_t c0 = PAL_PAINT(PAINT_CHERRY, 0), c1 = PAL_PAINT(PAINT_CHERRY, 1), c2 = PAL_PAINT(PAINT_CHERRY, 2);
-    if (cw <= 0) return;
+    if (cw <= 0 || h <= 0) return;
     for (i = 0; i < 2; i++) {
         int x0 = i ? L->w - cw : 0;
-        plat_rect(x0, 0, cw, L->h, c1);
+        plat_rect(x0, y0, cw, h, c1);
         for (x = 0; x < cw; x += 10) {
             int fx = i ? L->w - cw + x : cw - x - 10;
-            plat_rect(fx + 2, 0, 3, L->h, c0);
-            plat_rect(fx + 6, 0, 1, L->h, c2);
+            plat_rect(fx + 2, y0, 3, h, c0);
+            plat_rect(fx + 6, y0, 1, h, c2);
         }
-        plat_rect(i ? L->w - cw : cw - 2, 0, 2, L->h, c0);
+        plat_rect(i ? L->w - cw : cw - 2, y0, 2, h, c0);
     }
+    if (y0 > 0) return;
     /* valance + gold fringe */
     for (x = 0; x < L->w; x += 20) ui_fill_ellipse(x + 10, 4, 11, 7, c1);
     for (x = 0; x < L->w; x += 3) plat_rect(x, 10 + ((x / 3) & 1), 2, 2, PAL_PAINT(PAINT_HONEY, 2));
+}
+
+void concert_draw_curtain(const StageView *v, const StageLayout *L)
+{
+    concert_draw_curtain_rows(v, L, 0, L->h);
 }
 
 /* ====================================================================== */

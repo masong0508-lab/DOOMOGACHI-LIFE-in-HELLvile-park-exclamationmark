@@ -130,8 +130,8 @@ TEST(concert_stage_frames_match_the_golden)
 }
 
 /* (G2-CO) The stage over a kept picture of its still parts (the GBA's baked backdrop; the native platform keeps
- * one when nat_stage_on is set) is the stage drawn whole, pixel for pixel: every theme (the Dreamland is drawn whole
- * either way), every genre's show, kicks on and off, the props at every phase, both resolutions. A part that moves
+ * one when nat_stage_on is set) is the stage drawn whole, pixel for pixel: every theme (the Dreamland's clouds are
+ * live parts), every genre's show, kicks on and off, the props at every phase, both resolutions. A part that moves
  * but is kept, or a still part drawn over something that moves, shows up as a differing frame. */
 TEST(concert_kept_stage_equals_the_full_stage)
 {
@@ -184,7 +184,80 @@ TEST(concert_kept_stage_equals_the_full_stage)
     nat_w = 240; nat_h = 160;
     portrait_cache_reset();
     portrait_cache_clock(0, 0);
-    CHECK(kept > 0 && kept < n);
+    CHECK(kept == n);
+}
+
+/* (G2-CO land) The Dreamland's clouds drift over the kept still picture (which has none): every cloud position
+ * (840 ticks: one pixel every 3), both resolutions, the grid's and the bats' shows and a plain one, kicks on and off.
+ * A cloud that reaches the wall frame or a speaker box makes the live pass draw those again over it; without that
+ * the frame's and the speakers' pixels under a cloud differ. The ticks with such a cloud are counted. */
+TEST(concert_dreamland_clouds_over_the_kept_stage)
+{
+    static ConcertCast cast;
+    static uint8_t want[320 * 240];
+    static const int shows[3] = { SHOW_GRID, SHOW_BATS, SHOW_HEARTS };
+    int res, si, g, bad = 0, n = 0, near = 0;
+    uint32_t t;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    concert_cast_make(&cast, 3, CMODE_SOLO, 1, 0);
+    for (res = 0; res < 2 && !bad; res++) {
+        int w = res ? 320 : 240, h = res ? 240 : 160;
+        nat_w = w; nat_h = h;
+        for (si = 0; si < 3 && !bad; si++) {
+            StageView v;
+            StageLayout L;
+            for (g = 0; g < MUSIC_COUNT && concert_genres[g].show != shows[si]; g++) {}
+            CHECK(g < MUSIC_COUNT);
+            if (g >= MUSIC_COUNT) continue;
+            memset(&v, 0, sizeof(v));
+            v.cast = &cast;
+            v.genre = g;
+            v.stage = STAGE_DREAMLAND;
+            v.lights = 16;
+            v.sec = SEC_CHORUS1;
+            concert_layout(&L);
+            for (t = 0; t < 840 && !bad; t += 1u + (uint32_t)si) {
+                int c;
+                v.t = t;
+                v.kick = (int)(t % 7u);
+                nat_stage_on = 0;
+                memset(nat_fb, 0, (size_t)(w * h));
+                concert_draw_stage(&v, &L);
+                memcpy(want, nat_fb, (size_t)(w * h));
+                nat_stage_on = 1;
+                nat_stage_buffers = 2;
+                memset(nat_fb, 0x5A, (size_t)(w * h));
+                concert_draw_stage(&v, &L);
+                c = memcmp(want, nat_fb, (size_t)(w * h));
+                if (c != 0) {
+                    char m[160];
+                    snprintf(m, sizeof(m), "Dreamland over its kept picture differs: res %d genre %d tick %u", res, g,
+                             (unsigned)t);
+                    test_fail(__FILE__, __LINE__, m);
+                    bad = 1;
+                }
+                {
+                    /* a cloud on the frame or a speaker this tick? (concert_gfx.c draw_clouds' boxes) */
+                    int i, sw = L.big ? 26 : 18;
+                    for (i = 0; i < 5; i++) {
+                        int cxx = (i * 67 + (int)t / 3) % (L.w + 40) - 20;
+                        int cyy = L.wall_y + 4 + (i * 23) % (L.floor_y - L.wall_y - 10);
+                        if (cxx > L.wall_x - 8 && cxx < L.wall_x + L.wall_w + 8) continue;
+                        if ((cxx + 13 > L.wall_x - 3 && cxx - 14 < L.wall_x + L.wall_w + 3 && cyy - 5 < L.wall_y + L.wall_h + 3) ||
+                            (cyy + 7 > L.floor_y - 2 * sw && (cxx + 13 > 0 && cxx - 14 < L.wall_x - 2)) ||
+                            (cyy + 7 > L.floor_y - 2 * sw && cxx + 13 > L.wall_x + L.wall_w + 2)) { near++; break; }
+                    }
+                }
+                n++;
+            }
+        }
+    }
+    nat_stage_on = 0;
+    nat_stage_reset();
+    nat_w = 240; nat_h = 160;
+    CHECK(n > 1000);
+    CHECK(near > 100);
 }
 
 /* (G2-CO, CLITE_FLAMES) the GBA's flame wall in fewer, wider flames of taller bars: at most half the rects of
@@ -297,9 +370,10 @@ TEST(concert_choir_singers_drawn_smaller)
 /* (G2-CO, CLITE_HALF) the LED wall, the lamps and the beams at 15 Hz: with a kept backdrop and kept rows (the native
  * platform emulates both), the first frame is drawn whole and from then on the rows down to the wall's foot are the
  * whole stage of tick tc (each picture on two frames in a row: tc = t, then t - 1); below them the stage is tick
- * t's, its beams tick tc's (exact for the themes without a prop phase; for the others the rows above are checked).
- * Nothing is drawn below the kept rows into the buffer; a lost buffer draws one frame whole and goes on; the
- * shows that leave the wall (notes, grid, bats) are drawn whole on every frame. */
+ * t's, its beams tick tc's (exact for the themes without a prop phase, and for the Dreamland while its clouds stand
+ * where they stood at tc; for the others the rows above are checked). Nothing is drawn below the kept rows into the
+ * buffer; a lost buffer draws one frame whole and goes on; the notes show is drawn whole on every frame (the grid's
+ * and the bats' lines, which leave the wall, are kept: the speakers below are drawn whole over them). */
 static void ref_stage(const StageView *v, const StageLayout *L, uint32_t t, int beam_dt, uint8_t *out)
 {
     StageView r = *v;
@@ -317,7 +391,8 @@ TEST(concert_half_rate_wall_and_beams)
     static ConcertCast cast;
     static ConcertKeep K;
     static uint8_t ref[240 * 160], out[240 * 160];
-    static const int stages[4] = { STAGE_GRAVEYARD, STAGE_DISCO_INFERNO, STAGE_SUGAR_BOWL, STAGE_HELLFIRE };
+    static const int stages[5] = { STAGE_GRAVEYARD, STAGE_DISCO_INFERNO, STAGE_SUGAR_BOWL, STAGE_HELLFIRE,
+                                   STAGE_DREAMLAND };
     int g, si, j, bad = 0, kept = 0, R;
     StageView v;
     StageLayout L;
@@ -333,9 +408,9 @@ TEST(concert_half_rate_wall_and_beams)
     concert_layout(&L);
     R = L.wall_y + L.wall_h + 3;
     for (g = 0; g < MUSIC_COUNT && !bad; g++)
-        for (si = 0; si < 4 && !bad; si++) {
-            int show = concert_genres[g].show, whole_only = show == SHOW_NOTES || show == SHOW_GRID || show == SHOW_BATS;
-            uint32_t t0 = 300u + (uint32_t)(g * 31 + si * 7);
+        for (si = 0; si < 5 && !bad; si++) {
+            int show = concert_genres[g].show, whole_only = show == SHOW_NOTES;
+            uint32_t t0 = 300u + (uint32_t)(g * 31 + si * 7) + (si == 4 ? 900u : 0u);   /* clouds on a speaker */
             memset(&v, 0, sizeof(v));
             memset(&K, 0, sizeof(K));
             v.cast = &cast;
@@ -358,7 +433,7 @@ TEST(concert_half_rate_wall_and_beams)
                 if (tc != t) kept++;
                 ref_stage(&v, &L, tc, 0, ref);
                 if (memcmp(out, ref, (size_t)(R * 240)) != 0) bad = 1;
-                if (si < 2) {                                    /* no prop phase: the rows below are exact too */
+                if (si < 2 || (si == 4 && t / 3u == tc / 3u)) {  /* no prop phase: the rows below are exact too */
                     ref_stage(&v, &L, t, (int)(t - tc), ref);
                     if (memcmp(out + R * 240, ref + R * 240, (size_t)((160 - R) * 240)) != 0) bad = 2;
                 }
@@ -390,7 +465,7 @@ TEST(concert_stage_keys_cover_every_view)
     CHECK(f != NULL);
     if (!f) return;
     n = f->keys(keys, 64);
-    CHECK(n == 30);
+    CHECK(n == 31);
     for (st = 0; st < STAGE_COUNT; st++) {
         uint32_t t;
         for (t = 0; t < 200; t++) {
@@ -399,7 +474,7 @@ TEST(concert_stage_keys_cover_every_view)
             memset(&v, 0, sizeof(v));
             v.stage = st;
             v.t = t * 7919u;
-            if (!concert_stage_key(&v, &key)) { if (st != STAGE_DREAMLAND) ok = 0; continue; }
+            if (!concert_stage_key(&v, &key)) { ok = 0; continue; }
             for (i = 0; i < n; i++) if (keys[i] == key) found = 1;
             if (!found) ok = 0;
         }

@@ -273,6 +273,7 @@ void concert_draw_performers(const StageView *v, const StageLayout *L);
 void concert_draw_crowd(const StageView *v, const StageLayout *L);
 void concert_draw_fx(const StageView *v, const StageLayout *L);
 void concert_draw_curtain(const StageView *v, const StageLayout *L);
+void concert_draw_curtain_rows(const StageView *v, const StageLayout *L, int y0, int y1);   /* (G2-CO land) */
 /* Lyric pill: line with the first `lit` bytes highlighted and a bouncing
  * heart over byte `ball` (-1 none); who = resident shown singing (-1). */
 void concert_draw_lyric(const StageLayout *L, const char *line, int lit, int ball,
