@@ -498,3 +498,70 @@ TEST(crsx_the_creator_previews_the_range_and_saves_the_look_as_it_is)
     scene_pop();
     opt_defaults();
 }
+
+/* The safe ranges were found by scanning with the default styles; this one varies every style too (species,
+ * body, head, eye, brow, nose, mouth, hair, ears, horns, facial hair) with each slider at an end or random,
+ * so a style that breaks a range shows up (reviewer finding, CR-SLIDERX). */
+static uint32_t crsx_rs = 12345;
+static uint32_t crsx_rnd(void)
+{
+    crsx_rs = crsx_rs * 1664525u + 1013904223u;
+    return crsx_rs >> 8;
+}
+static int crsx_guard_ok(const uint8_t *g)
+{
+    int i;
+    for (i = 0; i < CANARY; i++)
+        if (g[i] != 0xA5)
+            return 0;
+    return 1;
+}
+static XPic g_fz;
+TEST(crsx_extremes_stay_inside_with_every_style_randomised)
+{
+    int it, m, i, bad = 0;
+    test_reset();
+    for (m = 1; m < 4; m++) {
+        opt_set(OPT_SLIDER_RANGE, m);
+        for (it = 0; it < 300; it++) {
+            DoomoResident r;
+            DoomoLook lk, d;
+            resident_default(&r);
+            res_get_look(&r, &lk);
+            lk.species = crsx_rnd() % SPECIES_COUNT;
+            lk.body = crsx_rnd() % BODY_TYPES;
+            lk.head_shape = crsx_rnd() % HEAD_COUNT;
+            lk.eye_style = crsx_rnd() % EYE_COUNT;
+            lk.eye_count = 1 + crsx_rnd() % 3;
+            lk.brow_style = crsx_rnd() % BROW_COUNT;
+            lk.nose_style = crsx_rnd() % NOSE_COUNT;
+            lk.mouth_style = crsx_rnd() % MOUTH_COUNT;
+            lk.hair_style = crsx_rnd() % HAIR_COUNT;
+            lk.ears = crsx_rnd() % EARS_COUNT;
+            lk.horns = crsx_rnd() % HORNS_COUNT;
+            lk.facial_hair = crsx_rnd() % FHAIR_COUNT;
+            lk.fangs = crsx_rnd() % 4;
+            for (i = 0; i < LOOK_SLIDERS; i++) {
+                int k = (int)(crsx_rnd() % 4);
+                ((uint8_t *)&lk)[look_sliders[i].off] = (uint8_t)(k == 0 ? 0 : k == 1 ? 15 : crsx_rnd() % 16);
+            }
+            res_set_look(&r, &lk);
+            look_for_stage(RES_LOOK_VIEW(&r), LIFE_ADULT, &d);
+            memset(&g_fz, 0, sizeof g_fz);
+            memset(g_fz.g0, 0xA5, CANARY);
+            memset(g_fz.g1, 0xA5, CANARY);
+            memset(g_fz.g2, 0xA5, CANARY);
+            memset(g_fz.g3, 0xA5, CANARY);
+            memset(g_fz.g4, 0xA5, CANARY);
+            portrait_render(&d, RES_ALIVE, (int)(crsx_rnd() % 6), 0, g_fz.bust);
+            figure_render(&d, RES_ALIVE, EXPR_NEUTRAL, 0, g_fz.fig);
+            fighter_render(&d, RES_ALIVE, 4, 0, -1, g_fz.fgt);
+            bodyspr_render(&d, RES_ALIVE, (int)(crsx_rnd() % 4), (int)(crsx_rnd() % 2), g_fz.chi);
+            if (!crsx_guard_ok(g_fz.g0) || !crsx_guard_ok(g_fz.g1) || !crsx_guard_ok(g_fz.g2) ||
+                !crsx_guard_ok(g_fz.g3) || !crsx_guard_ok(g_fz.g4))
+                bad++;
+        }
+    }
+    CHECK_EQ(bad, 0);
+    opt_defaults();
+}

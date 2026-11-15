@@ -1026,7 +1026,12 @@ build sliders and are not scaled.
   GBA: `.bss`, `.iwram`, `.iwram_bss`, `.data` identical (free EWRAM unchanged at 6,404 B after CR5, ROM `.text` +192 B, `.rodata` +572 B; the option's byte replaced a bit, docs/GBA.md ledger
   row 52). Old saves load with x1.
 * **Not done here.** Only the build sliders scale; the voice, personality and enum rows do not. A resident drawn by a script that
-  reads a slider (none does today) would need the same table.
+  reads a slider (none does today) would need the same table. The cheat acts only on the paths that go through
+  `look_for_stage` (portraits, figures, fighters, chibis, the creator preview). A few direct readers of the saved look
+  (the title screen figures in `fp_title.c`, `exorcism_gfx.c`, the paw in `combat_hud.c`) still draw an adult at its
+  saved size, so at x2..x4 the same citizen can look different there than in the overworld. Routing them through
+  `look_for_stage` is open. The style test (`crsx_extremes_stay_inside_with_every_style_randomised`) varies every style
+  with each slider at an end, so a future style that breaks a safe range is caught.
 
 ## Extending
 
