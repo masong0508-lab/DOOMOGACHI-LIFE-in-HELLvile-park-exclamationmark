@@ -599,7 +599,7 @@ held; on the GBA the bust's effect frames change every 16 ticks).
   nicknames and gene bits of that chunk are kept (`nickext_read` no longer returns 0 for it, so `save.c` does not reset them). The
   `creator_deep.txt` header says what the script covers (no move in / reopen: that is in `test_creator.c` and `test_cr5.c`).
   Tests: `cr5_fix_a_new_nickname_that_would_overflow_the_chunk_is_refused`, `cr5_a_damaged_pool_keeps_nicknames_and_gene_bits`.
-  PS1 resident bytes 0 (the code is under `LOOK_POOL_SAVED`); GBA: see ledger row 52.
+  PS1 resident bytes 0 (the code is under `LOOK_POOL_SAVED`); GBA: see ledger row 53.
 
 ## CR4 batch A2: hair (2026-11-13)
 
