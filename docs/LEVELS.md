@@ -146,7 +146,7 @@ spent until a level starts a VM.
   mechanic union of LV3-LV5, or a block of the combat overlay), a `LVE_USE` source (usables:
   LV3), a `LVE_PHASE` source (boss phases), `levelcheck` counting the script bytes.
 
-## Mechanic kit A, movement (LV3 part 1, 2026-11-13)
+## Mechanic kit A, movement (LV3 part 1, 2026-11-15)
 
 `core/src/levels_mech_move.c` + `levels_mech_move.h`: the rules of six movement mechanics as pure
 functions on a `DoomoMapExt` and one 16-byte state block `MmMove` (it will be the movement member of
