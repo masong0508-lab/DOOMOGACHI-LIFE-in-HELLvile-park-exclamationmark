@@ -589,6 +589,37 @@ the PVR keeps two), of which 960 KB is used for prims; a frame over
 either drops its last prims and counts them. The `.bss` grew by 2.1 MB
 (the three lists and a 512 KB texture scratch); 8.93 MB of RAM stays free.
 
+### The kept backdrop (DC9B)
+
+The core lets a scene give the platform a full-screen backdrop that depends on a small key
+(`plat_stage_begin` / `_restore` / `_end`, `core/include/doomo/plat_ext.h`, `backdrop.h`). Only the
+exorcism's church uses it on the Dreamcast (the minigame booths' family is not taken: those scenes are
+cheap). The Dreamcast rebuilds the picture every tick, so `plat_stage_begin` answers "yes, but the buffer
+holds nothing" (`held` 0); the core then asks for the whole backdrop with `plat_stage_restore` and draws
+every moving layer over it.
+
+* **First restore of a key (a bake).** The core's own `draw(key)` runs with the 2D calls pointed at a
+  320x240 canvas of palette indices (`rect`, `line` and `shade_rect` as the native runner does them,
+  `image` without shadow or silhouette). Any other call (text, checker, a post effect, a palette lerp)
+  ends the bake: the key is marked unbakeable and is drawn the old way, prim by prim, from then on. The
+  canvas is uploaded as one 512x256 PAL8 texture (3.9 ms) and the backdrop is two prims: a black rect under
+  it (index 0 of a texture is clear) and the texture.
+* **Later restores.** Two prims. The church was 3,100 to 4,900 prims.
+* **Shades over it.** An exact shade (`plat_shade_rect`) re-emits what lies under its rect. For the
+  canvas that is the same prim over a copy of the canvas sent through the colormap level (one copy per
+  key and level, kept) when the shade is 12,000 logical pixels or more, else the canvas's solid runs under
+  the rect (about 130 to 400 prims for the church's panel shadows). Nested shades work (a copy of a copy).
+  The full-screen dim of the verdict screen is a copy: two prims.
+* **Memory.** 6 keys and 4 shaded copies, 76,800 B of canvas each: 768,000 B of `.bss` (`stg_canvas`), and
+  up to 10 textures of 128 KB in video RAM, freed by the texture cache when unused for 120 frames.
+
+Verified: `dc2d_test` plays a stand-in backdrop (stripes, lines, a circle of rects, hearts, flipped and
+scaled, shaded bands) through the stage and compares every frame with the native one, with every mix of
+eight shades over it (255 frames), another key, the key again, and a backdrop that cannot be baked. On
+Flycast `life_exorcism` has 9 of its 11 shots byte-identical to the old path; `result` and `verdict` changed
+by about 300 pixels each, and those are now **equal to the native runner's frame** (the old path was off by
+up to 26/255 on 19 to 26 logical pixels around the demon's soft shadow).
+
 ### Counters
 
 After each drawn frame the mailbox holds `gfx_prims`, `gfx_vbytes` (last
@@ -630,7 +661,7 @@ Measured 2026-11-08 (host, this tree):
 
 | what | result |
 |---|---|
-| `dc2d_test` | 52 checks, 0 failed (also under ASan/UBSan) |
+| `dc2d_test` | 593 checks, 0 failed (52 at DC3; DC9B added the kept backdrop in 255 shade mixes and the palette table; also under ASan/UBSan) |
 | the six DC3 UI scripts, hardware effects | 94 shots, **100.000% exact** on every shot; at most 2,704 prims and 223 KB of vertices a frame, nothing dropped |
 | all 80 runner scripts, `DC3_FX=sw` | 905 shots, 854 exact to the pixel, mean 99.984%; worst 98.59% (home_defend: `room_ref` reuses one uid for translucent actors whose dither changes every frame, so a uid-keyed cache shows the last pattern; the room is DC8's own renderer on the console, section 8, whose translucent residents are GLASS prims) |
 | all 80 runner scripts, hardware effects | 905 shots, 810 exact; the rest differ where the post effects do their hardware job (shakes, palette lerps, blends) |
@@ -756,10 +787,92 @@ save already keeps the screen alive: its card redraws every vblank with a
 progress bar while the writes run. Raw logs of the runs: `dc/build/shots/families/`
 and the speed2 output directory.
 
+### The rest of the full game's scripts and frame times (DC9B)
+
+`make -C dc family-test2` is DC9A's `family-test` (same runner, `dc/tests/families/run_flycast.sh`,
+same pass rule: both runs end with "0 failures" and repeat byte for byte) for the other scene families,
+from `core/tests/scripts` (`FAMILY_GLOBS` in `dc/Makefile` names them): minigames (`mg_*`), the house
+(`home_defend`, `_editor`, `_flats`, `_gallery`, `_haunt`, `_mart`, `_rooms`, `_tutorial`), the creator
+(`creator*`), the studio, fishing and cooking, the library (`library_*`), dreams (`dream*`), the concert
+(`concert_*`) and the exorcism (`life_exorcism`), plus one script of our own,
+`dc/tests/families/scripts/home_visit_dc.txt`. Measured 2026-11-15 on Flycast (emulated time):
+**42 of 42 pass, 42 of 42 identical**, 504 shots, 39,832 ticks.
+
+| family | scripts | shots | ticks | ticks over 33.3 ms | worst tick |
+|---|---:|---:|---:|---:|---|
+| minigames | 7 | 44 | 14,069 | 0 | 21.8 ms |
+| house | 9 | 126 | 5,884 | 0 | 21.4 ms |
+| creator | 8 | 125 | 4,024 | 0 | 21.8 ms |
+| studio | 1 | 19 | 1,495 | 0 | 19.4 ms |
+| fishing and cooking | 2 | 26 | 2,989 | 0 | 17.2 ms |
+| library | 9 | 108 | 2,579 | 0 | 29.3 ms |
+| dreams | 2 | 17 | 1,612 | 0 | 16.8 ms |
+| concert | 3 | 28 | 5,759 | **23** | 37.5 ms |
+| exorcism | 1 | 11 | 1,421 | **2** | 33.9 ms (the game's own largest tick: 35.1 ms) |
+
+Not in the list, and why:
+
+* `home_talk_basic`, `_group`, `_safety`, `_visit` play the Talk screen (`talk-enter`, `talk-read`,
+  `expect-talk-*`). Talk is not built on the Dreamcast yet (TD1-TD3 wait for TK5): `home_talk_enter` is
+  the core's weak "no" and dcrun has no `talk-*` commands. They fail on the first `talk-enter`, 26 ticks in.
+* `home_visit` expects the live Talk screen after A at the host. `home_visit_dc.txt` is the same visit
+  with that step cut (A at the host gets the old "I wish I had ..." line); it passes, no tick over
+  33.3 ms. Put the core script back in the list when Talk lands.
+
+What the first run (before any change) found, on the same machine: the two Talk scripts' failures above and
+two real frame-time misses:
+
+* **The exorcism** was over the 33.3 ms budget on 1,012 of 1,421 ticks (mean 38.1 ms, worst 51.0 ms; the
+  church is 3,100 to 4,900 SOLID prims a tick, 6,941 with the foreground, 31 ms of the tick). Fixed with the
+  kept backdrop (section 4, "The kept backdrop"): mean 12.1 ms, 2 ticks over by dcrun's per-tick log (33.9
+  and 33.5 ms), the game's own largest tick 35.1 ms, prims at most 2,263. The ticks left are the ones where
+  the church's key changes (a bake 14 ms, 3.9 ms to upload the canvas, one shaded copy 6 ms, all in one
+  tick with the foreground); the church changes key about every 15 ticks at the most, and a key already
+  seen again costs nothing. **Gap: 1.8 ms on the key-change ticks (35.1 against 33.3).** (dcrun's "work
+  over" line averages the ticks that end in one video frame, so the game's own `work max` is the safer
+  number.)
+* **The concert** was over on 63 of 5,759 ticks (worst 40.6 ms): `concert_choir` ticks 57 to 101, the
+  Concert Hall's setup page with a choir of 25 (3,000 prims, 19 ms of the core drawing the stage and the
+  25 portraits, 9 ms to send them), and 22 ticks of `concert_band` (worst 38.1 ms). Two changes that touch every screen cut it to
+  23 ticks (worst 37.5 ms): `dc2d_pal_argb` is a table lookup (`pal.c` `argb_tab`, filled with the banks
+  and the palette lerp), and the header test of two rects and the sprite colour of `send_prim` are done
+  only when a header is sent. Frames are identical (shots of 8 scripts compared with the old build:
+  byte for byte), and the mean work of every speed-tour group fell 5 to 15 % (table below).
+  **Gap: 4.2 ms on 23 ticks of the choir setup page.** What is left is the core's drawing of the stage; a
+  kept backdrop for the concert would need a backdrop family in core (the church's is `exo_church_*`), which
+  is a cross-stream change not made here.
+
+Speed tour 2 (`sh dc/harness/speed2.sh OUT`, the ten groups, 218 windows) before and after, work per tick
+(mean / worst), the same windows and scripts, measured on this machine: before is the tree at `17d5e17f`
+(the table of DC9A above), after is this package.
+
+| group | before | after | ticks over 33.3 ms |
+|---|---|---|---|
+| action | 11.4 / 26.0 ms | 10.7 / 25.4 ms | 0 |
+| creator | 8.2 / 15.6 ms | 6.5 / 13.8 ms | 0 |
+| dream | 8.3 / 16.3 ms | 6.9 / 14.6 ms | 0 |
+| fair (minigames) | 7.5 / 15.8 ms | 5.6 / 12.2 ms | 0 |
+| fishcook | 6.3 / 17.8 ms | 4.8 / 16.5 ms | 0 |
+| house | 3.4 / 20.6 ms | 2.9 / 20.2 ms | 0 |
+| library | 8.8 / 18.9 ms | 6.9 / 15.6 ms | 0 |
+| life | 8.8 ms mean | 7.2 ms mean | 2: new island 121 ms, saving 4.53 s |
+| story | 6.2 ms mean | 5.0 ms mean | 1: title to new story 129 ms |
+| studio | 7.2 / 30.8 ms | 5.9 / 29.4 ms | 0 |
+
+215 of 218 windows hold 30; the 3 hitches are the three of DC9A (the new island, the VMU save and the
+new story: the core making a town and the card's block writes, speed package S2-10). Studio's worst steady
+tick is 29.4 ms (4 ms under the budget). The tour does not play the exorcism; `life_exorcism` above does.
+
+Memory: `make -C dc` prints `.bss` 5,354,740 B (4,581,012 B before this package on the same base, +773,728 B:
+the kept backdrop's 10 canvases of 76,800 B, section 4, and the other streams' changes since), 5.99 MB
+free above `_end` (6.74 MB before; the floor is 4 MB). Video RAM: up to 10 canvas textures of 128 KB, the
+texture cache frees them when unused.
+
 ### Owed on hardware
 
 - The frame time on a real console (Flycast's timing is not exact), on
-  the heaviest screens (island hub, creator, home rooms); and the three
+  the heaviest screens (island hub, creator, home rooms, the concert's choir setup page, the
+  exorcism's church-key ticks); and the three
   loading ticks above (DC4: VMU saves).
 - The PVR details an emulator does not prove: sprite 16-bit UVs and
   point sampling at 2x, the presorted translucent list, the TA bins on
