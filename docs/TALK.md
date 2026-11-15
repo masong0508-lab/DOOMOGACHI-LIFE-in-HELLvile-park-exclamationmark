@@ -2035,7 +2035,7 @@ package evidence, before / after at 240x160 and 320x240):
 - The people strip shows the engage bar of the person you speak to (everyone's when you speak to the room), not all.
 - No sliding glint on the two windows and no bar shine (`ui_glint_hold`, `ui_bar_still`): calm motion.
 - A control card (`ui_prompts_at`, the shared prompt bar): "A Pick  B Goodbye" on the replies page, "A Pick  B Back"
-  below it, centred just above the panel. It is a retained panel, so it costs almost nothing to redraw.
+  below it, centred just above the panel. It is hidden while a dialogue box is up. Its own draw cost was not measured apart from the rest (the GBA fps did not move).
 - The panel is the same 90 px, so the pointer map (T9) and `talk_pointer.txt` are unchanged.
 Test that fails without it: `talk_scene_has_a_control_card_on_every_page`. Measured on the GBA (`make -C gba test-talk`,
 emulated time): list 15.7 -> 15.4 drawn fps, answer 18.1 -> 17.3 (work avg 47.7 -> 48.2 ms, 45.8 -> 45.1 ms): no gain,

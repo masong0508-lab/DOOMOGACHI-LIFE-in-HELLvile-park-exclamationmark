@@ -1059,7 +1059,7 @@ static void talk_draw(void)
     }
     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
-    if (py - 14 >= 26) talk_card(py - 14);
+    if (!T.busy && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
 #if DOOMO_POINTER
     pointer_draw();
 #endif
