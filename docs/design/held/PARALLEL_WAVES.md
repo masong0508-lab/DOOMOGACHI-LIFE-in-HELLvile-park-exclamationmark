@@ -57,10 +57,13 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   Every landing reports its PS1 delta in bytes. PS1-FLAT (houses draw no 3D model, `model.c` in the
   combat overlay group) took it from 65,952 B to 70,480 B on 2026-11-13 (+4.5 KB; on the tip at landing, 68,224 B to
   72,736 B).
+  PS1-RAM landed 2026-11-15: 72,352 B -> **132,608 B** on `b9e74a51` (+60,256 B; docs/PS1.md "RAM headroom
+  2026-11-12"). The shares above are still the coordinator's to confirm.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
-  resident memory: ask the coordinator first. The slot is 131,072 B. The combat group is 128,232 B
-  since PS1-FLAT (2,840 B of room; about 200 B on PS1-RAM's tree): LEVELS adds to `combat*.c`,
-  `actor.c` and `levels*.c`, and growth beyond that room grows the slot by 2 KB.
+  resident memory: ask the coordinator first. The slot is 131,072 B. With PS1-RAM (2026-11-15) the
+  combat group is 129,380 B in the link map (1,692 B of room; the planner's estimate says 129,956 B),
+  the story group 129,856 B (1,216 B), the creator 1,320 B (CREATOR batches): LEVELS adds to `combat*.c`, `actor.c` and `levels*.c`, and
+  growth beyond that room grows the slot by 2 KB (2 KB less resident RAM).
 * **GBA EWRAM / IWRAM.** About 2 KB of EWRAM free and IWRAM nearly full (`make -C gba sizes`). Net
   zero for every package unless its plan frees room first (CR5a frees EWRAM for the creator).
   Scene data lives in the scene scratch arena, not in new statics.

@@ -1217,7 +1217,13 @@ cmake --build --preset ps1-enginetest --target harness  # the engine suite
   the native runner's: comparing `core/tests/scripts/boot.txt` and
   `ui_gallery.txt` against the native PNGs gives 0.4-4 % differing pixels,
   all from the checker-seam blending and the shade approximation
-  (section 4), apart from screens dimmed by a modal.
+  (section 4), apart from screens dimmed by a modal. The harness sets
+  `lock` as soon as the mailbox's magic word is in RAM, which can be while
+  the BIOS is still loading the EXE: when `lock` sits in the next 2 KB
+  sector (`g_hcmd` at `0x8013f7fc`, the PS1-RAM tree of 2026-11-15), that
+  sector's load wrote it back to 0 and the game ran free (the language
+  picker, no shot, a timeout). `harness.lua` now sets it again on every
+  vsync until the game has stopped once.
 * **Checks:** hang detection (no new frame for 15 s while running; long
   memory card I/O counts as alive), crash patterns on the TTY, `--expect
   TEXT`, `--assert-no-stubs`, failing mailbox commands. Writes `tty.log`,
@@ -1757,6 +1763,16 @@ section can move). That is 55,728 B above the plan gate and 1,616 B short of the
 newest tip, `f91bd3e4` (LV0, STKOPT and the Talk and DC work on top of that), the disc ends at `0x801e0a20`:
 **128,464 B below the stack top** (core tests 1153 passed, `game_smoke` passes with the same SPU line).
 
+**Landed (2026-11-15) on `b9e74a51`** (PS1-FLAT, S2-11, S2-9, S3-1, CR-BODY, CR5, the CR4, LV, Talk and DC landings
+and the owner's Talk and GBA commits of 2026-11-14; builds of both, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`):
+the tip alone ends at `0x801ee550`, 72,352 B below the stack top (1,376 B under the plan gate); with the package it
+ends at `0x801df9f0`, **132,608 B below the stack top** (+60,256 B). That is 58,880 B above the plan gate, 34,304 B
+above the 96 KB aim and 1,536 B above the old 128 KB goal. The overlay slot is still 131,072 B. The package was
+checked on `d5305653` (72,304 -> 132,592 B), on `3d9905df` (S2-9: 72,320 -> 132,608 B), on `249a0282` (the same
+layout), on `ad060127` (CR-BODY: 72,336 -> 132,608 B; its 16 B are 8 B of `.rodata` and alignment in the package
+build), on `5879aa3f` (S3-1, CR4 A5, TM2c: 72,352 -> 132,624 B) and last on `b9e74a51` (DC9B, TUI-TALK, DC6D and
+CR5 on top: CR5's 8 B of code cost the package build 16 B of alignment). The layout of the landed tree is the last table under "Ledger", its checks the last items under "Checks".
+
 ### The gate and the ledger tools
 
 * `tools/elf2exe.py` prints the exact margin on every build: `elf2exe: N B left below the stack top 0x801ffff0
@@ -1827,6 +1843,25 @@ with under 1 KB each (9 KB together, mostly their table strings). The ledger of 
 | core/gen/mus_data | 15784 | 0 | 15784 | 0 | 0 | 0 | 0 |
 | (276 more) | 645438 | 377156 | 105016 | 73916 | 3676 | 73386 | 12288 |
 
+Layout of the landed tree, `b9e74a51` against `b9e74a51` with this package (`tools/ram_ledger.py`, boot FMV
+linked; its 24 biggest symbols are the ones above and its biggest objects within a few hundred bytes of them,
+`ps1/src/gfx` 152,386 -> 143,852 and `ps1/src/vram` 35,217 -> 26,297 as on `89a28b56`):
+
+| what (bytes) | before | after | change |
+|---|---:|---:|---:|
+| resident `.text` (code) | 711,328 | 702,356 | -8,972 |
+| resident `.rodata` (const data) | 565,740 | 540,696 | -25,044 |
+| of it: the merged string literals | 104,244 | 81,916 | -22,328 |
+| `.data` + `.sdata` + ctors / dtors | 3,984 | 3,988 | +4 |
+| `.sbss` + `.bss` | 493,332 | 467,072 | -26,260 |
+| `.borrow` | 53,776 | 53,776 | 0 |
+| overlay slot | 131,072 | 131,072 | 0 |
+| the EXE ends at | `0x801ee550` | `0x801df9f0` | |
+| **left below the stack top** | **72,352** | **132,608** | **+60,256** |
+
+(The rows add up to 60,272 B; 16 B go to the sections' alignment here, on `d5305653` and `3d9905df` 16 B came from it.) Fewer strings move than on `89a28b56`
+(-22,328 B against -27,444 B): CR3 already took the creator's string pool out of the resident image.
+
 **The 24 biggest resident symbols**
 
 | symbol | bytes | kind | object |
@@ -1879,7 +1914,10 @@ builds of steps 2, 3b and 5, and every number is the base's unless a difference 
 No source file of the game changes in steps 1, 2, 6 and 7: the same code and data run from the overlay slot
 instead of from resident RAM. Steps 3 to 5 change three platform buffers in `ps1/src`.
 
-**Step 1: callbacks that never leave their group (`ovl_plan.py`).** The planner keeps a function resident as
+**Step 1: callbacks that never leave their group (`ovl_plan.py`).** (In the final build the tables are tested but
+not used: step 7's `HOLD` keeps every group they name, and their callbacks, as before, so step 1's bytes are
+given back there. What the final build frees is the strings, the three buffers and the shared files' parts.
+The tables act as soon as a group leaves `HOLD`.) The planner keeps a function resident as
 soon as its address is taken, because resident code may call it later. 22 KB were resident for addresses that
 never leave their own group:
 
@@ -2060,6 +2098,73 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
   with `SAN=1`: only the four old UBSan reports of `concert_gfx.c` / `fixmath.c` and their tests);
   `check-gen`; `core/tools/xcheck.sh` (408 files on gcc, arm, mipsel, sh4, no warning); `make -C gba` and
   `make -C gba test` (nothing under `core/`, `gba/` or `dc/` changes in this package); `make dc-host-test`.
+* **First landing tree, `d5305653` (2026-11-15).** `d5305653` against `d5305653` with the package, clean builds, PCSX-Redux,
+  one emulator at a time (the harness of this package on both builds). Speed tour, all 10 groups, 218
+  windows: 213 the same fps, 5 better (the kitchen counter 29.83 -> 30.00, the nightmare vignette 29.85 ->
+  30.00, the dream wake-up 29.75 -> 30.00, the new-island load 16.25 -> 16.39, title to New story 8.40 ->
+  8.43), none lower; no window has more frames over 33 ms or a worse worst frame. 180 of the 182 tour shots
+  are byte for byte the same (the arena's 3D floor in `act_rush_round1`, 2,509 px in its bottom band, and
+  the 218 px choir sparkle, both named above). Loads (the tour's `ovl:` lines, mean ms): free play 313.7 ->
+  313.7 (52 loads), the island 206.5 -> 206.8, the cutscenes 348.2 -> 347.7, story 367.6 -> 367.8, home
+  500.2 -> 500.7; fishing / cooking 287 -> 315, the library 288 -> 307, the creator 448 -> 456, combat
+  367.4 -> 374.8, studio 276 -> 282. `perf_combat`: 29.75 / 30.00 / 29.94 / 29.51 -> 29.88 / 30.00 / 29.94 /
+  29.51 fps, its 4 shots the same. `game_smoke` passes with 7 of 7 shots the same as the tip's and the same
+  SPU line (`sum 50d935f7`); `memcard_check.py` finds the save. `harness/scripts/busy_banner.txt` (the
+  review's probe: VRAM and displayed shots 0, 1, 2, 4 and 24 frames after the "Saving settings..." banner,
+  twice): 16 of 16 shots the same.
+* **The harness on the landed trees.** `game_smoke` first timed out on the package build (twice): `g_hcmd`
+  sits at `0x8013f7fc` there, its magic word in one 2 KB sector of the EXE and `lock` in the next, so the
+  BIOS's load of that sector wrote `lock` back to 0 after the harness had set it; the game ran free into the
+  first-boot language picker and never stopped. `harness.lua` now sets `lock` again on every vsync until the
+  game has stopped once (section 10). The tip's own build is not affected (its mailbox is inside one sector).
+* **Gates on `d5305653`.** `make -C core -j2 test`: 1211 passed, 0 failed, also with `SAN=1` (only the four
+  old UBSan reports). The runner script `home_visit` and the GBA `test-talk` failed on `d5305653` itself in the
+  same way (the owner's Talk follow-ups and quick replies of 2026-11-14); the S2-9 lander repaired both
+  (`tip repair:` commits). Every other GBA test passed, the GBA ROM was byte for byte the tip's.
+* **Rebased onto S2-9, `3d9905df`.** Clean builds: 72,320 -> 132,608 B. The whole speed tour again on both:
+  213 windows the same fps, the same 5 better, none lower, no window with more frames over 33 ms or a worse
+  worst frame, and all 182 shots byte for byte the same; the loads as above (the workshop 205 -> 206 ms).
+  `perf_combat` 29.75 / 30.00 / 29.94 / 29.51 -> 29.88 / 30.00 / 29.94 / 29.51 (4 of 4 shots the same),
+  `game_smoke` and `busy_banner.txt` (16 of 16) the same, the game harness suite (`cmake --build --preset ps1
+  --target harness`: `game_smoke` + `memcard_check`, boot, UI gallery, saves, Field Guide, `creator_speed`,
+  `fair_cache` and the 15 journeys) 22 of 22 PASS. Gates: core 1,224 passed and 206 script runs OK (also
+  `SAN=1`, the four old reports), `check-gen`, `xcheck.sh` (417 files), `make -C gba` + `make -C gba test` +
+  `make -C gba sizes` (EWRAM `.bss` 248,924 B, IWRAM 11,272 B: the package changes no GBA byte), `make
+  dc-host-test`, `tools/test_tools.py` (29) and `harness/tilerow_test.c`.
+* **`249a0282`** (CR4 A4, Talk T8 / T9 and DC6C on top of `3d9905df`). The resident layout is
+  the same as on `3d9905df` (72,320 -> 132,608 B); the creator group grew with CR4 A4 (planner estimate 123,484
+  B, inside the slot). Played again on both builds, the parts those commits touch: `game_smoke` (7 of 7 shots
+  the same) and the creator's 25 speed-tour windows (all the same fps, 16 of 16 shots the same, the creator's
+  load 455 -> 463 ms); on the package build the game harness suite, 22 of 22 PASS (`creator_speed` 30.13 /
+  29.39 / 30.13). Gates: core 1,256 passed and 218 script runs OK (also `SAN=1`, the four old reports), `check-gen`, `xcheck.sh` (419
+  files, no warning), `make -C gba` + `make -C gba sizes` (EWRAM `.bss` 249,084 B, IWRAM 11,272 B) +
+  `make -C gba test`, `make dc-host-test`, `tools/test_tools.py` (29).
+* **`ad060127`** (CR-BODY, Talk care and TM2b on top of `249a0282`). Clean builds: 72,336 ->
+  132,608 B. `game_smoke` 7 of 7 shots the same, the game harness suite 23 of 23 PASS (`creator_speed` 30.13 /
+  29.39 / 30.13 / 29.88, as before), the creator's 16 speed-tour shots the same. One creator window changed:
+  `creator_home_tab` 30.17 -> 30.00, one 50 ms frame at frame 1402 (two runs, both builds deterministic; the
+  creator group has 15 such frames on both builds, this is a 16th: 2,890 -> 2,891 vsyncs over 1,450 frames).
+  It is not more work. Builds that log every frame's CPU time there show the frame before it, a portrait-cache
+  slice frame, at 32,480 us on the package and 32,479 us without step 5, and the four tile-upload frames 1.3 to
+  1.6 ms CHEAPER with step 5 (24,280 against 25,869 us, ...). `pslice.c` packs slice frames up to 700 us
+  (`MARGIN_US`) under two vblanks, so a frame that lands a little differently can cross the line: the package
+  with step 5 reverted has no such frame (a phase change, at 8,640 B), the creator group on `HOLD` still has it.
+  The margin of the slice scheduler is where that frame is fixed (a speed package), not here. Gates: core 1,274
+  passed and 220 script runs OK (also `SAN=1`, the four old reports), `check-gen`, `xcheck.sh` (419 files, no
+  warning), `make -C gba` + `make -C gba test` + `make -C gba sizes` (EWRAM `.bss` 249,084 B, IWRAM 11,272 B),
+  `make dc-host-test`, `tools/test_tools.py` (29).
+* **`5879aa3f`** (S3-1, CR4 A5 and TM2c on top of `ad060127`). Clean builds: 72,352 -> 132,624
+  B. `game_smoke` 7 of 7 shots the same; the creator's and S3-1's new `sim` speed-tour groups on both builds: 29
+  windows, all the same fps (the home tab's extra frame of `ad060127` is gone again), 20 of 20 shots the same,
+  the creator's load 460 -> 469 ms; the game harness suite 23 of 23 PASS (`creator_speed` 30.13 / 29.39 / 30.13 / 29.88). Gates: core 1,302 passed and 222
+  script runs OK (also `SAN=1`, the four old reports), `check-gen`, `xcheck.sh` (421 files, no warning), `make -C gba` + `make -C gba test` + `make -C gba sizes` (EWRAM `.bss` 249,084 B, IWRAM 11,272 B), `make
+  dc-host-test`, `tools/test_tools.py` (29).
+* **The final tip, `b9e74a51`** (DC9B, TUI-TALK, DC6D and CR5 on top of `5879aa3f`). Builds: 72,352 -> 132,608 B.
+  `game_smoke` 7 of 7 shots the same as on `5879aa3f`; the creator's 25 speed-tour windows on both builds all the
+  same fps, 16 of 16 shots the same, the creator's load 469 -> 475 ms. Gates: core 1,315 passed and 224 script runs OK
+  (also `SAN=1`, the four old reports), `check-gen`, `xcheck.sh` (421 files, no warning), `make -C gba` + `make -C
+  gba test` + `make -C gba sizes` (EWRAM `.bss` 254,844 B with CR5's pool, IWRAM 11,272 B), `make dc-host-test`,
+  `tools/test_tools.py` (29).
 
 ### Keeping the room (for the packages that follow)
 
@@ -2072,9 +2177,14 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
 * A resident module must not keep a pointer to a group's string or table across scenes (section 3). That now
   also holds for the table strings of a group's files and for the `SHARED` files' name tables: they are in the
   slot only while their group is.
-* The slot is 552 B from growing: 2 KB more in the house group (or 1.2 KB in the story group) is 2 KB less
-  resident RAM. Combat has 4,984 B of room, the cutscenes 12,304 B, free play 24,824 B. A group that reaches
-  the slot can keep its table strings resident instead (`STR_WHOLE`) or take no shared code (`SHARED_NOT`).
+* The slot is 131,072 B (64 sectors of 2 KB); a group that outgrows it makes it 2 KB bigger, which is 2 KB less
+  resident RAM. Room on the landed tree (`b9e74a51` with this package, from `build/doomogachi.ldmap`): the story
+  group ends 1,216 B below the slot's end, combat 1,692 B (PS1-FLAT put `model.c` in it), the house's common part
+  1,816 B (its parts follow it in whole 2 KB sectors: HomeMart, the biggest at 12,144 B, has 144 B before it
+  takes one more), the creator **1,320 B** (it loads over borrowed `.bss` and ends in the slot, in whole 2 KB
+  sectors; 183,000 B with this package, which gives it about 3.8 KB of catalog parts and table strings; every
+  creator batch adds to it: CR5 took 1,932 B of the room), the cutscenes 12,344 B, free play 24,752 B. A group that reaches the slot can keep its table
+  strings resident instead (`STR_WHOLE`) or take no shared code (`SHARED_NOT`).
 * The held groups (`HOLD`) keep their loads as long as they were; a new callback of theirs is resident, too.
 * Levers not used here (the ledger above): `weld_gfx` (28 KB resident, reached by the workshop and by combat),
   the portrait files (130 KB of code every scene uses), `s_prim` (the display lists, 108 KB: frames have needed

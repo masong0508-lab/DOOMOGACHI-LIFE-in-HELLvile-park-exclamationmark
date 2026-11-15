@@ -65,7 +65,7 @@ Rules that apply to every package below:
 |---|---|---|---|
 | Clarity | **done** | CL1-CL6 | - |
 | Speed 1 | **done** | SP1-SP8, Options volume freeze fix (`7370263`), PS1 RAM fix (`d875604`) | SP8 G-C2 (GBA BG2 2x + HUD as OBJ) not built |
-| Speed 2 | **running at the stop** | S2-1, S2-2, S2-3, S2-6, S2-7, S2-8, S2-11 (partial: GBA house 30.0, the creator hat try-on not done), S2-9 (2026-11-15: the workshop windows 30.0 on GBA and PS1; tab switches, the first Armory open and a message box still drop a frame on the GBA), S2-12, S2-13 (tooling) | S2-4, S2-5, S2-10, gap-closers G2-EX/CO/CR/PET, PS1 RAM package (see section 2) |
+| Speed 2 | **running at the stop** | S2-1, S2-2, S2-3, S2-6, S2-7, S2-8, S2-11 (partial: GBA house 30.0, the creator hat try-on not done), S2-9 (2026-11-15: the workshop windows 30.0 on GBA and PS1; tab switches, the first Armory open and a message box still drop a frame on the GBA), S2-12, S2-13 (tooling) | S2-4, S2-5, S2-10, gap-closers G2-EX/CO/CR/PET (PS1-RAM landed 2026-11-15: 132,608 B below the stack top) |
 | Sticks (ST1) | **running at the stop** | - | all of `STICKS_PLAN.md` (section 3) |
 | Talk | held | TK1 (T0-T2), TK2 (T3+T4), TK3 (T5a + T7 + K-10) | TK4, TK5, TKP, TD (section 4) |
 | Dreamcast | held | DC3, DC4, DC5, DC7, DC8 | DC6, DC9, DC5b (section 5) |
@@ -100,7 +100,7 @@ remaining packages one by one with the fast-land pattern.
 | **G2-CO** | Concert gap-closer | GBA concert ~20 fps after SP6 | same |
 | **G2-CR** | Creator held-input gap-closer | GBA creator ~22 fps with input held | same |
 | **G2-PET** | Pet scene last frames | ~29.5-30 with hitches | no frame over 34 ms |
-| **PS1-RAM** | Give back ~2-5 KB resident on PS1 (move more cold code to `-Os` via `DOOMO_PS1_COLD`, or trim tables) | EXE ~67-70 KB below stack top, gate is 72 KB | >= 72 KB below stack top with FMV linked, no fps loss |
+| **PS1-RAM** | Give back ~2-5 KB resident on PS1 (move more cold code to `-Os` via `DOOMO_PS1_COLD`, or trim tables) | EXE ~67-70 KB below stack top, gate is 72 KB | >= 72 KB below stack top with FMV linked, no fps loss. **Landed 2026-11-15**: 132,608 B on `b9e74a51` (72,352 B without it), no window slower (docs/PS1.md "RAM headroom 2026-11-12") |
 
 Pixel-changing steps (saving card, load fades, stand-ins, slice ticks) were pre-approved
 under SPEED DEFAULTS; list each with before/after screenshots.

@@ -7,3 +7,4 @@ S2-4b were in the land step). Resume: restart the round script (round1 PS1-RAM /
 S3-1 via wave-runner); a build agent continues in `.claude/worktrees/fut-<id>` if the machine still has it, else
 apply the patches into a new worktree. Delete a folder when its package lands.
 Landed today: PS1-FLAT, S2-11.
+Landed 2026-11-15: PS1-RAM (folder deleted).
