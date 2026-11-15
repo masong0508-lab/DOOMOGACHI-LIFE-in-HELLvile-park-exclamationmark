@@ -13,7 +13,7 @@
   "What's your best {x} story?"
   "Do you think about {x} much?"
   "What about you, {you}?"
-  "And you, {you}?"
+  "And what about you, {you}?"
 @rule hook.ask.open guard: hook=ask&!topic act: ask_about
   "So what's on your mind, {you}?"
   "And you? What's your deal?"
@@ -56,3 +56,8 @@
   "Go on, what's next, {you}?"
   "Tell me something I don't know, {you}."
   "So what are we talking about now?"
+  "So, what's on your mind?"
+  "What else is new, then?"
+  "Go on, what's next?"
+  "Anything else to share?"
+  "Right, so what now?"

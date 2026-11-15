@@ -60,16 +60,15 @@ TEST(talk_census_smoke)
      * finds a rule for the kind in 99% of the answer lines or more (docs/TALK.md 6m) */
     CHECK_EQ(r.fail[QF_Q8_KIND], 0);
     CHECK_EQ(r.fail[QF_Q8_VOICE], 0);
-    /* TM2d, the Q8 budget (design 7.2) on the smoke census: the unknown-word check (Q8f) has no failure at all; a dead end
-     * after a refused request or a question handed back (Q8d) is under 0.5%; a filler or a short reply (Q8e) under 0.1%
-     * (every one left is a three-sentence line that cannot take a fourth, or a lower-case voice); a topic act answered
-     * without the topic (Q8b) under 5% (it was 27% on the engine before the layers; the rest are bank lines that fill no
-     * bubble). THESE LIMITS ARE A TEMPORARY RATCHET, not the spec target (7.2: Q8b 0.5%, Q8e 0, Q8a 0); measured on the
-     * smoke census at landing: Q8a 123 of 562, Q8b 3.2%, Q8e 5 of 20,000. Tighten them as TM2e fixes the bank. Q8a stays what the bank's own act labels make it (docs/TALK.md 6n). */
+    /* TM2F-Q8, the Q8 budget (design 7.2) on the smoke census: no unknown-word failure (Q8f), no reaction against the
+     * speaker's own stance (Q8a), no filler or short reply (Q8e); a dead end after a refused request or a question handed
+     * back (Q8d) and a topic act answered without the topic (Q8b) at most 0.5% each. Measured at landing: Q8a 0 of 501,
+     * Q8b 9 of 3,979 (0.23%), Q8d 0, Q8e 0, Q8f 0 (docs/TALK.md 6o). */
+    CHECK_MSG(r.q8[Q8_KIND] == 0, "Q8a %llu of %llu", (unsigned long long)r.q8[Q8_KIND], (unsigned long long)r.q8_n[Q8_KIND]);
     CHECK_EQ(r.q8[Q8_UNKNOWN], 0);
     CHECK_MSG(r.q8[Q8_HOOK] * 200 <= r.q8_n[Q8_HOOK], "Q8d %llu of %llu", (unsigned long long)r.q8[Q8_HOOK], (unsigned long long)r.q8_n[Q8_HOOK]);
-    CHECK_MSG(r.q8[Q8_FILLER] * 1000 <= r.contexts, "Q8e %llu of %llu", (unsigned long long)r.q8[Q8_FILLER], (unsigned long long)r.contexts);
-    CHECK_MSG(r.q8[Q8_CONTENT] * 20 <= r.q8_n[Q8_CONTENT], "Q8b %llu of %llu", (unsigned long long)r.q8[Q8_CONTENT], (unsigned long long)r.q8_n[Q8_CONTENT]);
+    CHECK_MSG(r.q8[Q8_FILLER] == 0, "Q8e %llu of %llu", (unsigned long long)r.q8[Q8_FILLER], (unsigned long long)r.contexts);
+    CHECK_MSG(r.q8[Q8_CONTENT] * 200 <= r.q8_n[Q8_CONTENT], "Q8b %llu of %llu", (unsigned long long)r.q8[Q8_CONTENT], (unsigned long long)r.q8_n[Q8_CONTENT]);
     CHECK_MSG(r.plan_lines * 10 >= r.contexts * 8, "only %llu answer lines have a plan", (unsigned long long)r.plan_lines);
     CHECK_MSG(r.plan_miss * 100 <= r.plan_lines, "soft-filter misses %llu of %llu (over 1%%)", (unsigned long long)r.plan_miss,
               (unsigned long long)r.plan_lines);
@@ -627,6 +626,20 @@ TEST(talk_census_q8_checks)
     CHECK(!(b & (1u << Q8_CONTENT)));
     b = q8_run(&c, TA_TELL, 0, "Interesting. I'm picturing it now, in great detail.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
     CHECK(!(app & (1u << Q8_CONTENT)));                      /* no topic given: not applicable */
+    /* TM2F-Q8: a topic the room may not hear is never said back, so the check does not apply to it */
+    {
+        uint16_t wh = concept_by_key("whiskey");
+        TalkAudience kid = c.aud;
+        CHECK(wh != 0);
+        c.aud.any_minor = 1;
+        if (!talk_gen_concept_ok(wh, &c.aud)) {
+            b = q8_run(&c, TA_TELL, wh, "Interesting. I'm picturing it now, in great detail.", TA_BACKCHANNEL, TST_NEUTRAL, 0, 0xFFFF, &app);
+            CHECK(!(app & (1u << Q8_CONTENT)) && !(b & (1u << Q8_CONTENT)));
+        } else {
+            CHECK(0 && "whiskey must be an adult topic");
+        }
+        c.aud = kid;
+    }
     /* Q8a: a no to what the speaker likes, a yes to what they dislike */
     b = q8_run(&c, TA_ASK_OPINION, pie, "I would skip pie, honestly. Not for me at all.", TA_OPINE_NEG, TST_PRO, pie, 0xFFFF, &app);
     CHECK((app & (1u << Q8_KIND)) && (b & (1u << Q8_KIND)));

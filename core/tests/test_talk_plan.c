@@ -701,3 +701,58 @@ TEST(plan_acts_table_kinds)
     CHECK_EQ(talk_gen_kinds_after(0), 0);
     talk_db_close();
 }
+
+/* ---- TM2F-Q8: the side of an opinion answer ---------------------------------------------------------- */
+TEST(plan_kinds_reply_side)
+{
+    premade_town();
+    CHECK(open_en());
+    /* after a negative opinion an AGREE is a no to the topic and a DISAGREE is a yes; after a positive one the plain reading */
+    CHECK_EQ(talk_gen_reply_side(TA_OPINE_NEG, TA_AGREE), -1);
+    CHECK_EQ(talk_gen_reply_side(TA_OPINE_NEG, TA_DISAGREE), 1);
+    CHECK_EQ(talk_gen_reply_side(TA_OPINE_POS, TA_AGREE), 1);
+    CHECK_EQ(talk_gen_reply_side(TA_OPINE_POS, TA_DISAGREE), -1);
+    CHECK_EQ(talk_gen_reply_side(TA_ASK_OPINION, TA_OPINE_POS), 1);
+    CHECK_EQ(talk_gen_reply_side(TA_ASK_OPINION, TA_OPINE_NEG), -1);
+    CHECK_EQ(talk_gen_reply_side(TA_OPINE_NEG, TA_JOKE), 0);
+    CHECK(talk_gen_kinds_reply(TA_OPINE_NEG, TA_AGREE) & TKM(TK_DENY));
+    CHECK(!(talk_gen_kinds_reply(TA_OPINE_NEG, TA_AGREE) & (TKM(TK_ACCEPT) | TKM(TK_AGREE))));
+    CHECK(talk_gen_kinds_reply(TA_OPINE_NEG, TA_DISAGREE) & TKM(TK_AGREE));
+    CHECK(!(talk_gen_kinds_reply(TA_OPINE_NEG, TA_DISAGREE) & TKM(TK_DENY)));
+    CHECK_EQ(talk_gen_kinds_reply(TA_OPINE_POS, TA_AGREE), talk_gen_kinds_of(TA_AGREE));
+    CHECK_EQ(talk_gen_kinds_reply(TA_OPINE_NEG, TA_JOKE), talk_gen_kinds_of(TA_JOKE));
+    talk_db_close();
+}
+
+/* Q8a on produced lines: an answer to an opinion never takes the side the speaker's own stance is against, close call
+ * or not, unless the plan went against the lean for a reason (design 7.2). Before TM2F-Q8 an open plan filtered nothing
+ * and a "no" after a negative opinion was served by DISAGREE, which says yes to the topic. */
+TEST(plan_stance_line)
+{
+    static const int acts[3] = { TA_OPINE_POS, TA_OPINE_NEG, TA_ASK_OPINION };
+    int a, i, k, checked = 0, clash = 0;
+    premade_town();
+    CHECK(open_en());
+    people();
+    topics();
+    CHECK(nadult >= 4 && npool >= 100);
+    for (a = 0; a < 3; a++)
+        for (k = 1; k < 5; k++)
+            for (i = 0; i < 60; i++) {
+                TalkLine l;
+                TalkTrace tr;
+                uint16_t topic = pool[rnd((uint32_t)npool)];
+                int st;
+                one(adults[k], -1, acts[a], topic, 4100u + (uint32_t)i * 31u, i & 31, &l, &tr);
+                st = l.stance;
+                if (!tr.plan.kind || st == TST_NEUTRAL || (l.flags & (TLF_SINCERE | TLF_FALLBACK)) || (tr.plan.flags & TPL_REASON)) continue;
+                {
+                    int side = talk_gen_reply_side(acts[a], l.act);
+                    checked++;
+                    if ((st == TST_PRO && side < 0) || (st == TST_CON && side > 0)) clash++;
+                }
+            }
+    CHECK_MSG(checked >= 200, "only %d opinion answers had a stance", checked);
+    CHECK_MSG(clash == 0, "%d of %d opinion answers take the side the speaker is against", clash, checked);
+    talk_db_close();
+}

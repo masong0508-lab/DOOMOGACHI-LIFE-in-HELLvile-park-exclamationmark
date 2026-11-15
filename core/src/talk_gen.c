@@ -1637,6 +1637,20 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         if (want) {
             g->hook_now = TH_ACK;
             use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
+            if (use[6]) {                                    /* TM2F-Q8: another acknowledgement that fits before any part is shed */
+                int av[AVOID_MAX], nav = 0, i;
+                for (i = 0; i < AVOID_MAX - 1 && use[6]; i++) {
+                    if (lower) lower_codes(parts[6].text);
+                    join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                    if (fits(line)) break;
+                    av[nav++] = parts[6].alt;
+                    use[6] = make_part_avoid(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6], av, nav);
+                }
+                if (!use[6] || !fits(line)) {                /* none fits whole: the first again, and the optional parts go */
+                    av[0] = -1;
+                    use[6] = make_part_avoid(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6], av, 1);
+                }
+            }
             g->hook_now = 0;
             if (use[6]) {
                 static const uint8_t shed2[] = { 3, 2, 0, 4, 5 };

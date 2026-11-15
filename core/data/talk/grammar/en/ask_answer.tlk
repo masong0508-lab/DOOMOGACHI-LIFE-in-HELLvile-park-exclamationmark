@@ -327,7 +327,7 @@
 @rule core.ask_favor.voice act: yes
   "Certainly! It'd be my pleasure! Do let me know the details." guard: polite
   "Yes. Fine. Don't make a speech." guard: blunt
-  "Okay. Done. Next." guard: blunt
+  "Okay. Done. Next job." guard: blunt
   "Okay. I'll do it. This is me agreeing." guard: flat
   "YES, ABSOLUTELY! COUNT ON ME! CAN I SIT FIRST?!" guard: loud
   "Very well. I shall take it seriously. Please do the same." guard: serious

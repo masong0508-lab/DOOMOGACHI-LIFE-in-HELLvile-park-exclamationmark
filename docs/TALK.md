@@ -31,6 +31,7 @@ Contents:
 [6l The coherence lint and the Q8 census check (TM2b)](#6l-the-coherence-lint-and-the-q8-census-check-tm2b) ·
 [6m The plan: reaction kind and effective voice (TM2c)](#6m-the-plan-reaction-kind-and-effective-voice-tm2c-plan) ·
 [6n Topic depth, hooks and the unknown word (TM2d)](#6n-topic-depth-hooks-and-the-unknown-word-tm2d-depth) ·
+[6o Closing the Q8 budget (TM2F-Q8)](#6o-closing-the-q8-budget-tm2f-q8) ·
 [7 Sizes](#7-sizes-measured) ·
 [8 Tests](#8-tests) ·
 [9 Differences from the design](#9-differences-from-the-design) ·
@@ -1646,6 +1647,62 @@ counter has a hook, `talk_lex_near`, the parser's offsets. The smoke census (20,
 Q8 exchanges with a failure 1,534 (7.67%) -> 254 (1.27%); Q8a 120 of 560 -> 123 of 562 (not at budget: the failing lines carry the bank's own act labels and TM2c's plan leaves a close call to the bank), Q8b 1,071 of 3,992 (26.8%) -> 126 (3.2%), Q8c 0, Q8d 156 of 2,976 (5.2%) -> 0,
 Q8e 104 -> 5 (a three-sentence line cannot take a fourth, lower-case voices), Q8f 91 of 395 (23%) -> 0. Surface 17,094
 -> 17,146 distinct (85.7%), Skeleton 17,033 -> 17,038, Meaning 5,057 -> 5,180; S3 hits 0.
+
+## 6o. Closing the Q8 budget (TM2F-Q8)
+
+Owner decision 2026-11-15; design `docs/design/talk/TALK_MULTILEVEL.md` 7.2. TM2d left the smoke census (20,000
+contexts, seed 20261108) at Q8a 123 of 562, Q8b 3.2%, Q8e 5 of 20,000. Now all of them are inside the budget, and
+`test_talk_census.c` holds the spec numbers (Q8a 0, Q8b and Q8d at most 0.5%, Q8e 0, Q8f 0).
+
+**Q8a: the side of an opinion answer.** Two causes.
+1. The plan's kinds are signed by the topic (agree is a yes to it, deny a no), but AGREE and DISAGREE are signed by
+   the player's claim. After a negative opinion the plan said deny (the speaker dislikes it too) and the core was
+   picked among the rules that serve deny, and DISAGREE is one of them: it says yes to the topic. `talk_gen_kinds_reply
+   (player_act, reply_act)` reads the acts.tsv kinds against the player's act: after an OPINE_NEG an AGREE serves deny and
+   a DISAGREE serves agree. The generator's kind filter and the census use it. `talk_gen_reply_side` is the one
+   definition of "which side of the topic a reply act takes" (the census had a copy).
+2. An open plan (a close call) filtered nothing, so a speaker who dislikes a topic could pick a "yes, I love it" core. A
+   second soft filter, `KF_STANCE`, drops the cores whose reply act takes the side the speaker's stance is against, for an
+   answer to ask_opinion, ask_about, opine_pos and opine_neg, unless the plan went against the lean for a reason
+   (`TPL_REASON`). It applies whether or not the plan is open. It goes first when no rule passes the guards (then the kind
+   filter, then the miss), so a miss is still counted and never leaves a line out. Surface stays 85.7% to 85.9%.
+
+**Q8b: the topic back.**
+* The census asks for the topic only when the room may hear it (`talk_gen_concept_ok`); a kid room cannot be told
+  "tattoo parlour" and the generator rightly drops it.
+* A bridge (`reason.name`) that does not fit is replaced by a shorter one before another core is tried (the same as the
+  hook did already).
+* A story line of three sentences ("Right, so where was I? Ah, yes. The part with the teapot.") cannot take any bridge and
+  stay inside three sentences. Those lines (6 in `rest_talk.tlk`, 2 in `core_other.tlk`, 2 of Lord Vapula's) now carry
+  `guard: !topic`: they are said when there is no topic. The new file `q8_topic.tlk` has the companions for the topic
+  case (9 lines in 5 rules, each names `{x}`, two or three sentences, nothing aimed at the player, one lower-case
+  rule for Lord Vapula).
+* 9 of 3,979 are left (0.23%): single listener lines of two sentences that run out of room for the bridge. Not worth a
+  rule each; the budget is 0.5%.
+
+**Q8e: short replies.** `hook.ack` gets five short lines (16 to 24 characters); the acknowledgement now tries another one
+that fits before it sheds the tag, the callback or the opener (Lord Vapula's `hmph. *a small rumble...*` and a bare
+"Yep." both went out short because the first pick was too long). The hook "And you, {you}?" is now "And what about you,
+{you}?" (with a three-letter name it was under 20). One legacy text was touched: the blunt "Okay. Done. Next." (17
+characters, three sentences, no room for an acknowledgement) is "Okay. Done. Next job.".
+
+| Smoke census, 20,000 contexts | TM2d (before) | TM2F-Q8 |
+|---|---|---|
+| Q8a reaction | 123 of 562 (21.9%) | 0 of 501 |
+| Q8b content | 126 of 3,992 (3.2%) | 9 of 3,979 (0.23%) |
+| Q8d hook | 0 of 2,978 | 0 of 2,978 |
+| Q8e filler | 5 of 20,000 | 0 of 20,000 |
+| Q8f unknown word | 0 of 386 | 0 of 386 |
+| exchanges with a Q8 failure | 254 (1.27%) | 9 (0.04%) |
+| Surface / Skeleton unique | 85.7% / 85.2% | 85.9% / 85.4% |
+| quality failures, S3 hits | 0, 0 | 0, 0 |
+
+`--q8-fails` rows now start with the plan's kind, flags and lean and the line's act and stance. Tests:
+`plan_kinds_reply_side` and `plan_stance_line` (`test_talk_plan.c`), the tightened census test.
+Not changed: `talk_outcome.c`, the sim, `mature_adult_ok`, the kid-cast list. `TALK_en.BIN` 907,644 -> 908,284 B (data, PS1
+does not link it); GBA RAM unchanged (the new code is ROM).
+
+---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
 
