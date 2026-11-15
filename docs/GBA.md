@@ -458,6 +458,7 @@ against the LAST row, not against a figure from an older base.
 | G2-EX | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after LV7a (`cf5e9f27`) | 6,428 B | **6,420 B** | -8 B | 6,272 B | measured on the tip `cf5e9f27` and the tip + G2-EX, both built clean (`make -C gba sizes`, `gba/tools/memreport.py`): `.bss` 254,820 -> 254,828 B (the aura's pointer, 4 B, and the clip box's fifth halfword: `stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding), `.data` 816 B unchanged. **IWRAM resident +16 B** (`plat_rect`'s mode-7 dispatch in `video_loops.s`, `.iwram` 11,272 -> 11,288 B: the main stack's room 6,288 -> 6,272 B, gate 6,144 B; 5,124 B beside the flash routines while saving); the overlay's room group 9,800 -> 9,952 B (+152 B, `stage_clip_rect`; 400 B of the 10,352 B slot left). Not net zero (+8 B EWRAM, +16 B IWRAM): left for the lead to accept (the EWRAM bytes could go if the aura's pointer were derived from the scene's own pointer behind a call; the two bytes made into one elsewhere landed in padding). The exorcism's scene-scratch claim grows 1,672 -> 6,000 B of the 12 KB block (the aura's five lists 3,924 B, the stage's memory 1,240 -> 1,644 B: the pieces and the clip mask), so while the exorcism owns the scratch the arena has 4.3 KB less for the save window; the kitchen's claim grows by the same 404 B of stage memory (its static assert allows 2,048 B). ROM 9,929,752 -> 8,399,980 B (**-1.53 MB**: the wall drips' hold, 19 church pictures baked instead of 59; `.text` +6,696 B). First measured on `0cb159e` (built 2026-11-13: 15,460 -> 15,452 B free). PS1: no resident byte (`_end` 0x801e0610 on the tip and with G2-EX: 129,504 B below the stack top with the boot FMV); the aura's list is not built there, `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group (46 -> 51 KB) |
 | GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after G2-EX | 6,420 B | **50,740 B** | +44,320 B | 6,288 B | measured 2026-11-15 on the tree without and with GBA-500, both built clean (`make -C gba sizes`, `nm`; the same EWRAM delta on every tree it was rebased onto): `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,288 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,832 B, measured before G2-EX (`TOWN_RES` looks the slot up where code read the array, and the old-save scan). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tree's without GBA-500 (sha256, boot FMV linked), `_end` 0x801e4fe0, 110,608 B below the stack top, delta 0 B |
 | 51 | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size; docs: "G2-CO: the concert at 30" below) | after S3-1 (`5879aa3f`) | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured on `1297e931` and that tree + G2-CO, both built clean (`make -C gba sizes`), and again on `5879aa3f` + G2-CO (the same sections): `.bss` 249,084 B (row 50's), `.data` 816 B, `.iwram` 11,272 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 9,740 -> 9,756 B (`plat_beam_rows`; 596 B left in the 10,352 B slot). The choir's smaller singers (16 x 392 B), the half-rate state and the setup's signature live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +3,960 B, `.rodata` +1,152,240 B (30 baked stages of 38,400 B). PS1: no resident byte (the new paths are compiled out; `_end` 0x801ee570 on `1297e931` and 0x801ee550 on `5879aa3f`, before and after: 72,368 B below the stack top with the boot FMV on the latter; docs/PS1.md "The concert (SP6, P-K1)") |
+| G2-CO | G2-CO: the concert at 30 (baked stage, setup hold, flame / 15 Hz trades, the choir's size, the held curtain; docs: "G2-CO: the concert at 30" below) | after G2-EX (row G2-EX) | 6,420 B | **6,420 B** | 0 B | 6,272 B | measured at the landing on the tree without and with G2-CO, both built clean (`make -C gba sizes`): `.bss` 254,828 B, `.data` 816 B, `.iwram` 11,288 B and `.iwram_bss` 4,088 B before and after (no resident EWRAM or IWRAM; `keep.c`'s 2 B of state sit in padding). The IWRAM overlay's UI group 10,100 -> 10,220 B (+120 B: `plat_beam_rows`, the beam loop's cut bands; 132 B left in the 10,352 B slot), the other groups unchanged. The choir's smaller singers (16 x 392 B), the half-rate state, the setup's signature and the intro's prefetch slot live in the concert's scene scratch (`ConcertState` 1,016 -> 7,324 B of its 12 KB); the 15 Hz rows are kept in the OBJ VRAM (16,320 B, owner `OBJV_KEEP`). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked concert stages in `backdrops.bin`). (First built on `1297e931` as row 51, which CR5 holds on origin.) PS1: no resident byte (the new paths are compiled out; 110,608 B below the stack top with the boot FMV, the same as without G2-CO; docs/PS1.md "The concert (SP6, P-K1)") |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2587,17 +2588,18 @@ evidence folder `evidence/G2-CO/`).
 
 | window | before: fps / logic / work avg, max ms / frames over 33 ms | after (with G2-CO) |
 |---|---|---|
-| solo (Nana, Lullabies, star wall) | 21.9 / 30.0 / 37.7, 44.0 / 70 of 95 | **30.0 / 30.0 / 30.0, 33.2 / 0 of 130** |
-| choir, 12 voices (Doom Metal, risers) | 14.5 / 28.2 / 48.4, 52.0 / 67 of 67 | **30.0 / 30.0 / 30.7, 34.9 / 0 of 130** |
+| solo (Nana, Lullabies, star wall) | 21.9 / 30.0 / 37.7, 44.0 / 70 of 95 | **30.1 / 30.1 / 30.2, 33.1 / 0 of 130** |
+| choir, 12 voices (Doom Metal, risers) | 14.5 / 28.2 / 48.4, 52.0 / 67 of 67 | **29.9 / 29.9 / 31.0, 36.0 / 0 of 130** |
 | choir, 16 voices | 14.1 / 25.7 / 50.8, 55.3 / 71 of 71 | **29.9 / 29.9 / 31.2, 35.5 / 0 of 130** (singers at 85 %) |
 | setup screen, idle | 14.3 / 28.6 / 59.9, 62.6 / 45 of 45 | **30.0 / 30.0 / 7.5, 8.7 / 0 of 90** |
 | the closed curtain of the intro (solo) | 15.0 / 30.0 / ~52 a frame / every frame 4 vblanks | **30.0: 4-24 ms a tick, every frame 2 vblanks** |
 | pressing Start (one frame) | 437 ms (solo), 473 (band), 361 (choir) | 105 ms (solo), 59 (band), 46 (choir) |
-| band (Rivet, Doom Metal) | 12.6 / 22.5 / 56.6, 63.1 / 67 of 67 | 20.3 / **30.1** / 38.9, 42.2 / 77 of 81: **not 30** |
+| band (Rivet, Doom Metal) | 12.6 / 22.5 / 56.6, 63.1 / 67 of 67 | 20.5 / **30.0** / 39.1, 43.1 / 78 of 82: **not 30** |
 
 (The 16-voice choir's before is the builder's, on an older tree.) In the speed tour (`make -C gba test-speed`) the
-concert's show window is 29.9 fps with every frame two vblanks (floor raised 12.5 -> 29.5), and a new window gates the
-closed curtain (`expect-fps 29`, `expect-gap 34`; the base ROM fails it at 13.2 fps).
+concert's show window is 29.9 fps, one frame of three vblanks in 130 (floor raised 12.5 -> 29.5), and a new window gates
+the closed curtain (`expect-fps 29`, `expect-gap 34`: 29.5 fps, every frame two vblanks; the base ROM fails it at 13.2
+fps).
 
 The PS1 (P-K1: three shows at 30 on PCSX-Redux) and the Dreamcast draw the same stage as before: every trade below is
 GBA only, so **the GBA concert looks a little simpler than the PS1's** (chunkier flames, a wall, beams and props that
@@ -2609,7 +2611,7 @@ choir). The one change on every port is exact: Start no longer composes the song
   the stage is drawn as still parts (sky, theme props at their phase, the wall frame and the wall's ground, speakers at
   rest, floor, seats, lip, truss) and live parts (the show, sheen, speaker cones on a kick, disco tiles, lava,
   footlights, lamps, disco ball, beams, the Dreamland's clouds). The build bakes the still parts of 31 keys (Sugar Bowl
-  16 phases, Hellfire 12, Graveyard, Disco Inferno, Dreamland without its clouds; 1.19 MB of ROM) and a frame puts
+  16 phases, Hellfire 12, Graveyard, Disco Inferno, Dreamland without its clouds; +845 KB of ROM) and a frame puts
   them back with one DMA (3.6 ms) instead of drawing them (11.7 ms). Nothing still is drawn after anything live that
   covers it: where the synthwave grid's and the bats' lines leave the wall the speakers are drawn again, and a
   Dreamland cloud whose box reaches the wall frame or a speaker box (38 % of the ticks) makes the live pass draw the
@@ -2704,7 +2706,7 @@ frames over 33 ms in 130 ticks; the review's numbers on the package before the l
 | solo, Lo-fi (notes) on the Dreamland | **25.4 / 34.3 / 40** |
 
 **Still short (measured):**
-* *The band*: 20.3 drawn fps, logic 30.1, 38.9 ms of work a drawn tick. Where it goes (temporary `gba_cycles()` marks):
+* *The band*: 20.5 drawn fps, logic 30.0, 39.1 ms of work a drawn tick. Where it goes (temporary `gba_cycles()` marks):
   the stage 11.2 ms, the four band members 6.4 (their instruments ~4), the lead 9.0 (her figure's talk phases re-rendered
   by portrait jobs 3.4-4.8: the 48-block cache holds 19 chibis and two of her 10-block phases; her shadowed blit 5.3),
   the crowd 9.5, karaoke and HUD 4.5. What 30 would take: the lead as hardware sprites (`plat_figure_obj`, a planner
@@ -2722,11 +2724,12 @@ frames over 33 ms in 130 ticks; the review's numbers on the package before the l
 * A changed setup value shows one frame of 5 vblanks (83 ms), and a new genre or take composes the song in that tick
   (183-233 ms, as before): `concert_song_make` spread over ticks is next.
 
-**Memory (ledger row G2-CO):** EWRAM and IWRAM unchanged (`keep.c`'s 2 B sit in padding), the overlay's UI group +16 B
-(`plat_beam_rows`). The choir's smaller singers (16 x 392 B), the half-rate state (12 B), the setup's signature (4 B)
+**Memory (ledger row G2-CO):** EWRAM and IWRAM unchanged (`keep.c`'s 2 B sit in padding), the overlay's UI group +120 B
+(`plat_beam_rows`: the beam loop draws a band cut by the kept rows' edge; 132 B left in the slot). The choir's smaller singers (16 x 392 B), the half-rate state (12 B), the setup's signature (4 B)
 and the intro's prefetch slot (1 B) live in the concert's 12 KB scene scratch (`ConcertState` 1,016 -> 7,324 B on the
-GBA). The kept rows use the OBJ VRAM (no RAM). ROM `.rodata` +1.19 MB (31 baked stages of 38,400 B). PS1 and
-Dreamcast: docs/PS1.md "The concert (SP6, P-K1)", docs/DREAMCAST.md.
+GBA). The kept rows use the OBJ VRAM (no RAM). ROM `.text` +5,960 B, `.rodata` +845,296 B (the 31 baked stages). PS1: docs/PS1.md "The concert
+(SP6, P-K1)". Dreamcast (Flycast, the windows of `concert_profile.txt` through `tools/speed2.py dc`): 1,174 ticks, none
+over 33.3 ms of work (worst 30.0 ms, mean 9.8 ms), 0 failures.
 
 ### Speed wave 2: S2-4d, the dreams (2026-11-15)
 
