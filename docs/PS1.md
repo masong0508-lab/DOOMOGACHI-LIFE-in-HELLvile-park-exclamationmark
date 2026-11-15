@@ -1461,8 +1461,8 @@ G2-CO (2026-11-15, the GBA concert at 30; docs/GBA.md "G2-CO: the concert at 30"
 it was: its trades and kept paths (the baked stage, the 15 Hz rows, the flame trade, the smaller
 choir, `look_run_hash`'s early return, the new weak hooks) are GBA only or compiled out here; the
 concert's code moved into `stage_parts` with the same drawing (`test_concert_gfx.c`'s golden frames
-pass). The EXE built with the boot FMV ends at 0x801ee570 before and after (72,336 B below the stack
-top, 0 B resident); the concert overlay group grew by the restructured code. `perf_concert.txt` on
+pass). The EXE built with the boot FMV ends at 0x801ee570 before and after on `1297e931` (72,336 B
+below the stack top) and at 0x801ee550 before and after on `5879aa3f` (72,368 B): 0 B resident; the concert overlay group grew by the restructured code. `perf_concert.txt` on
 PCSX-Redux: 29.88 fps (2:117 3:2 vsyncs) on the tip `1297e931` and with G2-CO, the same frames;
 `game_smoke` passes. One thing every port shares: the setup menu's rows start one pixel further in
 (the GBA's held setup screen needs its cursor inside the window).
