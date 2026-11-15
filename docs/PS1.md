@@ -1663,6 +1663,67 @@ Wheel at 30.00 with one 3-vsync frame each (as in speed audit 3); `game_smoke.tx
 every game, Candy Catch's moved onto its card): every one 30.00-30.17, the six results cards 30.00-30.17 (the Gallery's and the
 Derby's with the one 3-vsync frame their other windows have), `memory play sweet late` 30.15; `game_smoke.txt` passes.
 
+**S2-10 (saves, loads and town builds with a live screen; built 2026-11-13, landed 2026-11-15, partial).** The PS1's
+free-play save was one long frame: the memory card write (PCSX-Redux's OpenBIOS: about 40 ms a 128-byte sector) plus
+a header peek of a whole 8 KB block after it. Title -> New story was frames of 2.4 s and 1.2 s (the town build, seven
+overlay reads of 314-370 ms), a new island one 1.9 s frame. The work still runs in one tick; the screen no longer
+sits still (`plat_ext.h` "S2-10"):
+
+* **The loading screen follows the work.** `plat_busy(kind)` / `plat_busy_step(done, total)` (`gfx.c`) redraw the
+  full-screen loading screen with its bar at done / total, at most every other vblank and only after the work has run
+  three vblanks (a quick job shows nothing). The core calls them per citizen in `save_game`'s encode, `load_game`'s
+  decode, `town_new`, `sim_init`, and per pass of `rel_normalize` (that step and the relationship runs pass
+  `PLAT_BUSY_KEEP`: the bar stays where it is, so it only moves forward within a pass of the work; a load checks, then
+  applies, so its bar fills twice). A town build says "Getting everything ready..." without the memory card warning.
+* **Card calls two sectors at a time** (`memcard.c`, `CALL_FRAMES`): a write or read with the loading screen up moves
+  two 128-byte frames per BIOS call and shows a picture after each (the bar used to move once per 8 KB block, once a
+  second). One sector a call was 34% slower overall (the BIOS's per-call cost); two sectors a call make the save
+  window **14% longer in total** than one 8 KB block a call (883 vsyncs against 775 on `ee686c74`, +1.8 s), with
+  pictures 70-100 ms apart. A **peek** (the 48-byte save header a menu asks for, the config record) reads the 6-7
+  frames it needs, not the 64 of a block: the 2.3 s the Save/Load screen's refresh took after a save is about 10x
+  less (and every title and menu peek with it). The line under the title says "Writing..." / "Reading..." now
+  ("block N of M" went). **Unverified on a console:** 32 times more BIOS card calls per block, measured on
+  OpenBIOS only.
+* **A spinner over the overlay reads** (`gfx_load_fade`): once the SP5 fade's three darkening passes are done and the
+  drive is still reading (a scene change loads up to three groups; a New story reads seven, 2.4 s), a ring of eight
+  dots turns on the dark picture every other vblank.
+* The harness counts the pictures the game shows outside its loop (`g_busy_pics`: fade passes, spinner steps, loading
+  screens) with the loop's frames (`run.py` `HARNESS_PICS`, `harness.lua` `read_shown`), so `fps` and `gaps` see a live
+  screen. The "before" column counts loop frames only (the old disc has no `g_busy_pics`).
+* The busy banner (`gfx_busy_banner`, the config record's "Saving settings...") keeps its pixels in the other
+  framebuffer since PS1-RAM step 3; the loading screen and the spinner draw into the framebuffer shown, never the
+  other one, so the two do not meet.
+
+| window (`speed2.sh busy`, PCSX-Redux; before on `d3e63e9d`, after on `81542c47`, the same as on `d3e63e9d`) | before | after |
+|---|---|---|
+| title -> New story | 8.4 fps, frames of 2,483 and 1,200 ms | 23.8 fps, worst picture gap **383 ms** |
+| new island -> hub | 16.4 fps, one 1,900 ms frame | 26.6-26.7 fps, worst gap **183-200 ms** |
+| save, a Classic island (16 KB, 3 blocks) | 3.8 fps, one 9,667 ms frame | 16.9 fps, worst gap **367 ms**, 64 pictures 100 ms apart through the write |
+| load, a Classic island | 6.0 fps, one 8,383 ms frame | 21.1 fps, pictures 67 ms apart, worst gap **767 ms** |
+| save / load, the "worst-case" windows (the same island: `town-fill` is GBA-only) | 9,467 / 8,367 ms | 400 / 767 ms |
+
+**Not met** (the package's goal is no gap over ~100 ms): what is left are single blocking calls the game cannot
+slice: the config record's write after a save (367-400 ms, the "Saving settings..." banner), the directory scan of an
+`open` at the start of a load plus the scene's enter after it (767 ms; 683 ms on `ee686c74`), and the scene-enter
+work after a build (183-383 ms). They are one call each in OpenBIOS; on a console the BIOS is faster but not
+measured. A VSync-callback spinner (drawing from the vblank IRQ while the BIOS call blocks) would cover them; it is not
+built (the card driver is touchy about its interrupts, `memcard.c` top). "fps" counts the pictures: the sim is
+stopped for the whole job. `speed2.sh story life`: the same New story and new island numbers (383 / 200 ms), the save
+freeze 400 ms, Save & Load and its cursor 30.2 / 30.5 fps.
+
+**Same bytes.** The 128 KB memory card image of a deterministic island save (seed 1, a tick-exact script, `run.py`) was
+sha256-identical (`5b89b9d2...`) between the old and the new disc on `ee686c74`; `memcard_check.py` reads it
+(`BASLUS-DOOMO1B`, 2 blocks, payload 9,718 B, CRC `1fc29482`). The card writes the same bytes in the same order; only
+the call sizes differ. On the landed tree `game_smoke` writes and `memcard_check.py` reads its card. **Power cut:** not
+tested on the PS1; `write_file` rewrites a file in place when it is big enough (unchanged by S2-10, not atomic).
+
+**Resident RAM: +496 B.** On the tip it landed on (`91479d4c`, after S2-4c; the same on `6e8363ab`) the disc with the boot FMV ends at
+`0x801e0420`, 130,000 B below the stack top; with S2-10 at `0x801e0610`, **129,504 B** (image +480 B, BSS +16 B),
+55,776 B above the 72 KB plan gate. The same +496 B on `167c08ba`, `61728c76`, `81542c47` and `d3e63e9d` (132,608 ->
+132,112 B); +512 B on `262bf2b7` (132,320 -> 131,808 B: the image's 16-byte alignment). (On
+`ee686c74` the package was 320 B *smaller* than its base: it merged the banner's and the loading screen's glyph arrays,
+which PS1-RAM step 3 did on its own since.) The cold busy code is compiled `-Os` by attribute (`COLD` in `gfx.c`).
+
 ## 13. Notes for the core
 
 * The 2D layer is fastest with few, large rectangles: one `plat_rect` per

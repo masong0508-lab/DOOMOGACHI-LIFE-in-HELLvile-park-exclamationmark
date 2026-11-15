@@ -388,6 +388,42 @@ kitchen screen asks once and draws in full as before. Flycast, `speed2.sh fishco
 16.5 ms at tick 3262 (COOKING); on `262bf2b7` (S3-2 in) + S2-4c the same 16 windows, 0 of 3,335 ticks over 33.3 ms, worst
 17.0 ms; speed audit 3 had 18.1 ms.)
 
+**S2-10 (the card over every phase of a save, a load and a build; built 2026-11-13, landed 2026-11-15, partial).**
+The VMU save, load and erase already redraw their card for every block (`vmusave.c`: a picture a vblank at most), so
+the screen was live while the VMU worked; the harness saw one 3-4 s tick, and the gaps it could not see were real:
+
+* `card_draw` counts into the mailbox's `drawn`, so `gaps-reset` / `expect-gap` see the card's pictures;
+  `tools/speed2.py dc` puts `gaps-reset` and a never-failing `expect-gap` round every window and the table has a
+  "worst picture gap ms" column.
+* The VMU's silent phases: `vmu_mount` sends a keep-alive (`progress(0, 0)`) per directory block, and the save's
+  read-back verification reports its blocks like the write did (it was `quiet`: 0.3-0.7 s). `card_progress` makes the
+  two passes one bar (`card_open(..., 2)`).
+* The core's own work: a save encodes the whole island before the VMU is touched (0.2 s), a load decodes it after.
+  `plat_busy` / `plat_busy_step` (`vmusave.c`, `plat_ext.h` "S2-10") draw the same card with a bar at done / total once
+  the work has run 4 vblanks (67 ms; it was 8 when it was built, but a build on the landed tree is one 123-130 ms tick,
+  under the 133 ms fuse, so no card came); `dc_busy_end()` in `plat_end_frame` ends it. A step with no progress of its
+  own (`PLAT_BUSY_KEEP`: a sort pass, a run of relationships) draws the bar where the last step left it.
+
+Flycast, `sh dc/harness/speed2.sh OUT busy` on `81542c47` + S2-10 (the same on `d3e63e9d`) (the "worst-case" windows repeat the Classic island
+here: `town-fill` is GBA-only; "before" is the worst tick of work, which is the picture gap when the card is not
+counted; on `ee686c74` before S2-10 the gaps were 3,203 / 3,470 / 901 / 734 / 134 ms):
+
+| window | worst tick of work (= the gap before) | worst picture gap after |
+|---|---:|---:|
+| save (Classic island) | 3,335 ms | **184 ms** |
+| save again | 3,456 ms | **267 ms** |
+| load | 956 ms | **83 ms** |
+| load again | 876 ms | **83 ms** |
+| title -> New story | 130 ms | **100 ms** |
+| new island | 123 ms | **100 ms** |
+
+Not met for the saves: a save's last 0.2 s is the directory and FAT writes of the atomic replace plus the config
+record's own write, with no picture in between (184-267 ms). The builds and the loads are at or under the 100 ms
+target. The sim is stopped for the whole job here too (the table's logic column, 30.0-31.4, does not show it). The saved bytes are the VMU file system's, untouched (`vms.c` writes the same blocks in the same
+order; the read-back only reports). `dc/tests/vmu` (`make -C dc vmu-test`) checks the images (saves, full, novmu,
+console, input, optvol pass on the landed tree). **Power cut:** the VMU save writes a new file and replaces the old one
+(atomic by design); no test cuts it.
+
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
 The layout is one header shared by the game and the Flycast harness (DC1):

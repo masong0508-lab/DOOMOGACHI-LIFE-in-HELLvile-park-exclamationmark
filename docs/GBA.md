@@ -450,6 +450,7 @@ against the LAST row, not against a figure from an older base.
 | 57 | S3-2: no whole portrait or chibi inside a frame (docs: "Speed wave 3: S3-2" above) | after row 56 | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on the rebased tree: `.bss` 254,828 B (the tip with S2-4b), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B ( no new static data, the hold / lazy mode is one more value of two existing bytes); ROM code only. PS1: +304 B resident (`_end` 0x801ee550 -> 0x801ee680 on the old tree; on the PS1-RAM tree 132,320 B below the stack top). |
 | 58 | CR-SLIDERX: cheat "Slider range x1..x4" (docs/CREATOR.md "CR-SLIDERX") | after S3-2 (row 57) | unchanged | **unchanged** | 0 B | 6,288 B | re-measured on origin `77185ff1` + CR-SLIDERX: `.bss` 254,836, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816, ROM `.text` 1,500,368, `.rodata` 7,694,372 (with A1b) (the package moves none of the RAM sections); first measured 2026-11-15 on `bef8bf12` (clean tip) and the same + CR-SLIDERX (`make -C gba`, `make -C gba sizes`): `.bss` 249,084 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, `.mailbox` 80 B and the overlay slots (ovl_ui 9,740 B) identical; ROM `.text` 1,486,552 -> 1,486,744 B (+192), `.rodata` 7,623,560 -> 7,624,132 B (+572: the 11-row slider table, the option, the Spanish rows). The option's value is one byte of the OPT2 array (`s_opt2` 4 -> 6 B, one hole where the stick bit lives); the linker's padding absorbed it, so `.bss` did not move. No new resident EWRAM or IWRAM. `make -C gba test-creator-sliders` runs the slider walk-through at x1, x2, x3 and x4 in the ROM. |
 | 59 | S2-4c: the kitchen as layers over kept pictures, Granny's baked poses (docs: "Speed wave 2: S2-4c" below) | after CR-SLIDERX and DC10B (`fe410024`) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on `fe410024` and that tree + S2-4c (`make -C gba sizes`, memreport): `.bss` 254,828 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the main stack (6,288 B) unchanged, no resident EWRAM or IWRAM (the stage's records, ~1.2 KB, and the pass state live in the kitchen's scene scratch); the overlay's room group 9,796 -> 9,800 B (`stage_rows`' new span threshold; 552 B free in the slot). ROM 9,502,056 -> 9,822,216 B (+320,160: `.text` +10,272, `.rodata` +309,884: three kept pictures of 38,400 B and Granny's 164 poses, 194,536 B). PS1: compiled out (see the S2-4c section) |
+| 60 | S2-10: the live screen over a save, a load and a build (docs: "Speed wave 2: S2-10" above) | after S2-4c (`91479d4`) | 6,420 B | **6,412 B** | -8 B | 6,288 B | measured on the tip `91479d4c` (and `6e8363ab`) and the tip + S2-10 (both built, `make -C gba sizes`; `.data` 816 B on both: the card's page is a zero-initialized byte), as on `167c08ba` and `262bf2b7`: `.bss` 254,828 -> 254,836 B (the same +8 B on `81542c47` and `61728c76`: 254,836 -> 254,844 B) (`loadfade.c`'s card state: the fuse, the kind, the lit dot, the card's page, the last counted picture and level; 12 -> 20 B); IWRAM unchanged (the hook and the card are THUMB code in ROM; `.iwram` 11,272 B, `.iwram_bss` 4,088 B, the four overlay groups the same sizes); ROM `.text` 1,524,016 -> 1,525,448 B (+1,432), `.rodata` +60 B. (Built on `ee686c7` it was +16 B of `.bss`, on `d3e63e9` +8 B.) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2222,6 +2223,116 @@ PS1: compiled out (`COOK_KEPT` 0); on `5aa25cd1` (PS1-RAM in), `366ee6c1` and `9
 stack top with the boot FMV, delta 0 B), `OVL.BIN` changes (the fishcook group's code), the kitchen's speed tour 2
 table is the tip's, row for row. Dreamcast: no kept backdrop, the full draw as before (Flycast, `speed2.sh fishcook`:
 all 16 windows 30.0, 0 of 3,334 ticks over 33.3 ms, worst 16.5 ms in the kitchen).
+
+### Speed wave 2: S2-10, saves, loads and town builds with a live screen (built 2026-11-13, landed 2026-11-15, partial)
+
+The speed audit 2's cause C7 for the biggest freezes: a free-play save was one 11.4 s tick, a New story 2.07 s, a new
+island 1.99 s. Measured with the harness's profiler (`post 1 1`, `profile`): **95% of a save is not the flash**. The
+codec encodes the island twice (the GBA streams: pass 1 counts, pass 2 writes) and for every citizen it rebuilds the
+premade or random base record to compare against (`gene_get` 21%, `gene_set` 20%, `write_town` 14%, `res_get_look`
+9%, `resident_sanitize` 6%), 5-6 ms a citizen. A load decodes once, a New story builds every record once and then
+runs `sim_init`. mGBA's flash is near instant; on a cartridge the 4 KB sector erase and program add tens of
+milliseconds a sector. On the tree it landed on (`81542c47`) the same work is longer: a Classic save 13.6 s, the
+worst-case save 15.7 s, a load 7.2 s, a build 2.2-2.3 s.
+
+**What changed (pixel-changing).** The work still runs in one tick: the sim must not move while the island is
+encoded, and the codec is a straight-line encoder, so resuming it across ticks would mean rewriting it. The screen no
+longer sits still. `plat_busy(kind)` and `plat_busy_step(done, total)` (`plat_ext.h`) are called by `save_game`,
+`load_game` and `town_new`, then once per citizen in both save passes and the applying decode, every 32 relationships,
+once per pass of `rel_normalize`'s sort, once per citizen in `sim_init` and once per flash sector (the sort and
+relationship steps pass `PLAT_BUSY_KEEP`: a picture when one is due, no progress of their own). `loadfade.c` (SP5's
+fade) does the rest:
+
+* 50 ms into the job (a quick one shows nothing) the VBlank hook starts the hardware fade, as `plat_loading` does:
+  **a save dims to half, a load or a build fades to black** (BLDY 8 and 16, two steps a vblank).
+* The first `plat_busy_step` after that paints a card into the Mode 4 page on screen: a pink 144 x 30 box with
+  **"Saving..." and, under it in red, "Do not switch off!"** (the GBA keeps one copy per slot: see "Power cut"), or
+  **"Loading..."**, and a ring of eight dots (`vid_rect`, `vid_text`, the resident IWRAM primitives; WIN0 keeps the
+  card out of the fade and the OBJs off it).
+* From then on the **VBlank hook turns the ring one dot every second vblank** with eight halfword stores (no call, no
+  DMA, no overlay code: it runs inside whatever the main thread is doing, a flash sector or a scene's enter) and counts
+  each step as a presented frame in the harness mailbox (`drawn`): 30 pictures a second to the end of the wait.
+* The flip that ends the wait lifts the fade as before (two flips for a save, four for a load). The page that had the
+  card is drawn into next: `ld_flipped` copies the card's 30 rows back from the page now shown (a DMA a row), so a
+  frame held in both pages (U4 / I7: the island hub, the menus, `hold.c`) holds again, and the panel and stage
+  trackers start over (as after a tile frame). A frame built over several ticks (`hold_building`, I10) or a tile
+  frame on screen gets the fade only. Nothing happens in a run that hashes every frame (`draw_all`).
+
+Why the main thread paints the card and the IRQ only moves it: an IRQ must not run the drawing primitives (the
+interrupted thread may be inside them, and the overlay slot must not be loaded from an IRQ: `iwram_ovl.h`), but a
+dozen raw halfword stores to the page on screen are safe in mGBA. **Unverified on a console:** `flash_ram.c` keeps
+the flash command sequences off the game pak bus, and the hook is THUMB code in ROM that the VBlank IRQ now runs while
+`save_flash.c` erases and programs (the IRQ's mixer and, since `bf182683`, the music driver read ROM there too); mGBA
+does not model the bus. A cartridge or flash-cart run is still to do.
+
+Why the card's rows are copied back and the hold is not dropped: the first cut told all three trackers that neither
+page keeps a picture. For the hold that is a full redraw: on the landed tree the first frame after a load took
+72.6 ms instead of 14.6 ms and the load windows' worst gap was 84 / 100.5 ms. Keeping the hold without the copy is
+wrong the other way: an autosave on the held hub left the card on every other picture (`test-cardgone` below).
+
+| window (`speed2_busy.txt`, libmgba, on `81542c47` before and after; the same on `d3e63e9d` and, after, on `61728c76`, `167c08ba`, `262bf2b7`, `6e8363ab` and `91479d4c`) | before | after |
+|---|---|---|
+| title -> New story (the build) | 11.2 drawn fps, one 2,310 ms frame | **29.5 fps**, worst picture gap **67 ms** (one, also on the base) |
+| new island -> hub (the build) | 7.5 fps, one 2,210 ms frame | 18.7 fps, worst gap 117 ms (see below) |
+| save, a Classic island (10 KB) | 2.9 fps, one 13,629 ms frame | **30.0 fps**, worst gap **50 ms** |
+| load, a Classic island | 6.8 fps, one 7,166 ms frame | **30.1 fps**, worst gap **50 ms** |
+| save, the worst case (1,000 custom citizens, 58 KB) | 2.5 fps, one 15,688 ms frame | **29.9 fps**, worst gap **50 ms** |
+| load, the worst case | 5.8 fps, one 8,539 ms frame | **29.9 fps**, worst gap **67 ms** |
+
+`make -C gba test-speed2 SPEED2=busy SPEED2_GATES=1` passes (`expect-gap 100` on every window but the new island).
+"Drawn fps" counts the spinner's steps as pictures: **the sim itself is stopped for the whole job** (logic ticks a
+second 2.6-12.5, verdict MISS in `tools/speed2.py`), and a button press or a pause during a save is not seen. The new
+island's remaining 117 ms is not the build: after the card the hub's own first 39 frames take 67-117 ms (map parts,
+`fp_island_gfx.c`): S3-14 in the speed audit 3, the same frames as before. `speed2_life` and `speed2_story` (gated)
+pass too: the save freeze 67 ms worst gap, title -> New story 67 ms, new island 134 ms (the hub's frames again).
+
+**Same bytes.** `core/tests/test_save_golden.c` fixes the length and CRC-32 of the decoded town section of three
+hand-built islands (no roster, no generator, cut where the first extension chunk starts, so content and chunk
+changes do not move it), taken on `ee686c74` before S2-10; it still matches on the landed tree. The 128 KB flash
+image `coresave1.txt` leaves was sha256-identical (`b843ff94...`) between the old ROM and the new one on `ee686c74`;
+`make -C gba test-coresave` still compares the town CRC across a save and a load in two runs.
+
+**Same pixels everywhere else.** The `vhash-seq` windows run with busy arming off (`draw_all`), so they say nothing
+about the card itself. On the landed tree, old ROM against new: `entry_parity.txt` 31 of 32 windows identical (the
+first frame after a new island's build differs: its fade), `speed_tour.txt` 16 of 17 (the exorcism's tools window:
+12 pixels of a moving shine sit at another phase, the same in every S2-10 build; the window's other pixels and fps
+match). The shots `speed2_busy` takes 40-60 ticks after a save or a load and after the New story build are
+pixel-identical to the old ROM's; the hub 30 ticks after a new island's build differs in 994 pixels (its animation and
+held frame restart at another phase after the card).
+
+**Power cut.** `make -C gba test-cutsave` (in `make -C gba test`) stops a save of the worst-case island K video
+frames in (`gba/harness/cutsave.sh`; the harness keeps the flash file in sync as the ROM programs it, so it is what a
+power cut leaves) after a good save of another island, then boots on the file. K = 100 and 300 (the first pass
+writes nothing): the old save is intact and loads. K = 400 to 850 (the trailer sector is erased, the sectors are going
+in): the slot reads as empty, never torn. K = 1,100: the new save verifies and loads with the right town. The script
+fails when the first cut no longer finds the old save or the last one the new save (a longer save moved them once
+already: the old last cut, 800, fell inside the 15.7 s save). This is what the streamed save always did (the trailer
+is written last): **the GBA keeps one copy per slot, so the old save survives only the first ~40% of a save**; the card
+says "Do not switch off!" for that reason. Two copies a slot would fix it (a flash layout change: not done).
+`core/tests/test_busy.c` cuts the host platform's streamed save at the first, second, third, a quarter, half,
+last-but-one and last write: the previous slot is byte for byte what it was. The PS1 and Dreamcast cards are not cut
+by a test (docs/PS1.md, docs/DREAMCAST.md).
+
+**The card is gone after the job.** `make -C gba test-cardgone` (in `make -C gba test`; `gba/harness/cardgone.sh`,
+`cardgone.py`): the island hub with the fastest clock and an hourly autosave; run 1 finds the autosave's tick, run 2
+takes a shot 60 video frames into the save (the card must be there) and one at every tick after it (it must not:
+the card's one-colour border is looked for). It tries eight start offsets until the save lands on a held tick (a tick
+that builds the next frame shows the fade only). Without the row copy and without the old reset it fails (the card
+on every other picture); with either it passes.
+
+Screenshots (scratchpad evidence `S2-10/land/shots_base` and `shots_fix`, the same script on the old and new ROM):
+`c_save_30f.png` (the Save & Load screen frozen / dimmed with the card), `c_save_34f.png` (the ring one dot on),
+`c_newstory_build_30f.png` (the title frozen / black with "Loading..."), `c_load_40f.png`, `c_saved_after.png`
+(identical after the job).
+
+**RAM** (on `91479d4c`, `6e8363ab`, `167c08ba` and `262bf2b7`, `make -C gba sizes`, ledger row 60): `.bss` 254,828 -> 254,836 B (EWRAM +8 B: the card
+state in `loadfade.c`, 12 -> 20 B), `.iwram` 11,272 B and `.iwram_bss` 4,088 B unchanged (the hook and the card are
+THUMB code in ROM), main stack 6,288 B; ROM `.text` +1,432 B, `.rodata` +60 B.
+
+**Left.** The work is still one tick: a pause or a button press during a save is not seen. The 95% is the base-record
+rebuild per citizen: caching one record per citizen between the two passes (or comparing the stored record to the
+premade one without rebuilding it) would halve a save, and a premade citizen's flags could skip the build entirely.
+That is a separate package. The new island's 117 ms is S3-14's.
 
 ## 4b. Retained panels (G7, `src/panel.c`)
 
