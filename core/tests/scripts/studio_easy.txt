@@ -7,6 +7,51 @@ wait 2
 push STUDIO -2
 wait 20
 expect-scene STUDIO
+shot start_card_first
+# B skips the card; every tab once with no edit made: its one-line help is on the bar (checked at both sizes)
+press B
+wait 90
+shot song_help
+press R
+wait 6
+shot edit_help
+down SELECT
+press R
+release
+wait 6
+shot arrange_help
+down SELECT
+press R
+release
+wait 6
+shot words_help
+down SELECT
+press R
+release
+wait 6
+shot choir_help
+down SELECT
+press R
+release
+wait 6
+shot show_help
+down SELECT
+press R
+release
+wait 6
+shot file_help
+# FILE: New song... opens the card again
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 4
+shot file_new_song
+press A
+wait 14
+expect-scene STUDIO
 shot start_card
 press UP
 press UP

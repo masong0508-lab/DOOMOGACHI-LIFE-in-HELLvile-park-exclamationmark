@@ -1,0 +1,84 @@
+# studio_easy_profile.txt - the screens ST-EASY added, on the GBA (docs/STUDIO.md "Easy mode").
+# Same method as studio_profile.txt: `fps` windows (drawn frames/s, average and worst CPU work of a tick in ms) and
+# `profile` (the hottest functions). The studio opens on an empty song (arg -2): the Start card, the control card
+# over it, the song Make it! made (playing), the FILE list and its scrolled end. Reports; run it with
+#   gba/build/harness gba/build/doomogachi.gba --script gba/harness/scripts/studio_easy_profile.txt \
+#       --shots gba/build/shots/studio_easy --nm gba/build/doomogachi.nm --no-fps-gates --worklog --quiet
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -2
+wait 100
+expect-scene STUDIO
+
+# ---- the Start card (the one-line help is on the bar) ----------------------
+fps settle (ignore)
+wait 130
+fps start card
+shot card
+profile 8000000
+
+# ---- the control card over it ----------------------------------------------
+down SELECT
+press UP
+release
+wait 30
+fps settle (ignore)
+wait 10
+fps control card
+shot control_card
+profile 8000000
+press B
+wait 10
+
+# ---- Make it!: the song plays on SONG ---------------------------------------
+press A
+wait 45
+fps settle (ignore)
+wait 130
+fps made song playing
+shot made
+profile 8000000
+press START
+wait 10
+
+# ---- FILE: the list that scrolls --------------------------------------------
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 20
+fps settle (ignore)
+wait 100
+fps file top
+shot file_top
+profile 8000000
+press UP
+wait 20
+fps settle (ignore)
+wait 100
+fps file end
+shot file_end
+profile 8000000

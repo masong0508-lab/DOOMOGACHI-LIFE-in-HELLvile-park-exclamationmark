@@ -145,6 +145,7 @@ void st_card_update(void)
     } else if (btn_pressed(BTN_B)) {
         studio.card = 0;
         audio_sfx(SFX_CANCEL);
+        st_help_arm();                         /* the settings view says what it is for */
         st_msg("A blank page. SEL+Up: help");
         input_eat();
     }

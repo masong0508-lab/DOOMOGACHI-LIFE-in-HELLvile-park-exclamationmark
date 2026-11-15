@@ -378,6 +378,15 @@ Work per drawn tick in ms (average / worst; the budget at 30 fps is 33.3); every
 | LYRICS | 32.4 / 34.3 | 32.0 / 33.9 |
 | CHOIR | 30.5 / 31.9 | 30.5 / 31.7 |
 | PERFORM early / later | 22.3 / 22.8, 22.9 / 32.3 | 22.3 / 22.7, 22.8 / 32.2 |
+The screens ST-EASY added (`gba/harness/scripts/studio_easy_profile.txt`, work avg / worst, drawn fps): the Start card
+21.1 / 22.7, 30.0; the control card over it 13.5 / 13.5, 30.0 (a held frame: only the window repaints); FILE (13 rows,
+scrolled) 21.2 / 22.4 at the top and 21.4 / 23.0 at the end, 30.0 (the old FILE tab: 21.7 / 23.1 in `speed2_studio`, now
+20.9 / 22.3). The Start card's song, playing on the SONG tab, is the one number under the line: 32.7 / 39.0 ms, 28.8
+drawn fps (a Bubblegum Pop song with 12 passes; the same tab with the demo song is 30.0 in the table above): the SONG
+tab with a playing song is the tab the plan already lists at 24-29 fps, its cost is the tab's own, ST-EASY neither adds
+nor removes any of it. `make -C gba test-speed2 SPEED2=studio SPEED2_GATES=1` passes, every window equal or faster than
+on `d979c93` (work ms: file tab 21.7 -> 20.9, templates 29.3 -> 28.9, stage tab 37.8 -> 37.3, still the SPEED
+stream's S3-8 item, untouched here).
 The cursor line costs about 0.4 ms on NOTES; it is paid back (and 0.3 ms more) by three cached things that were rebuilt
 every frame: the tab strip's "110 bpm" text and its two widths (every tab), NOTES' "in Order 2,3,5" list and the
 step numbers (a table instead of `%2d`); the inactive tab pills of the narrow strip draw one glyph instead of an icon.
