@@ -2709,7 +2709,4 @@ change what the options record means, so it is left to the core's UI polish pack
 
 ## Studio ST-EASY (2026-11-15)
 
-Not built or run on KallistiOS / Flycast in this package (the KOS install on the machine was not finished: no `environ.sh`). What was run: the SH4
-compile of every core source with `sh-elf-gcc -Werror` (`core/tools/xcheck.sh`: 429 files OK, the studio sources included) and `make
-dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file
-changed. To check on a machine with KOS: `make -C dc -j2`, `make -C dc/harness`, and `sh dc/harness/speed2.sh OUT studio` against the base.
+Run on KallistiOS / Flycast by the lander (2026-11-15, after the review fix): `make -C dc -j2` builds, `sh dc/harness/speed2.sh OUT studio`: all nine windows 30.0 ticks/s, worst work 12.6 ms (choir / citizen picker), none over 33.3 ms; `dc/tests/boot.txt` on the ELF passes. Also the SH4 compile of every core source (`core/tools/xcheck.sh`: 431 files OK) and `make dc-host-test` (rc 0). The studio's pad names come from `btn_name` (Dreamcast: SELECT is START+Y; the control card says so itself); no `dc/` file changed. The new Start card / control card screens were not timed on Flycast (the speed2 studio group does not visit them).
