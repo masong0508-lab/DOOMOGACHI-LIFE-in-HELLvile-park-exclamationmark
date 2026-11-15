@@ -228,13 +228,14 @@ void et_blit2_test(void)
                 }
         n++;
     }
-    /* (S2-5) the group's any-scale loop (vid_blitn) against the same reference: scales 2..4, flips, silhouettes,
+    /* (S2-5) the group's any-scale loop (vid_blitn) against the same reference: scales 2..4 (S2-4d: and 1, which
+     * plat_image sends here flipped: the dream mirror's reflection), flips, silhouettes,
      * widths up to 80 (lines wider than the screen), odd and even x, every clip (700 cases: the save test boots
      * this ROM too, inside the harness's 60 s boot watchdog) */
     for (i = 0; i < 700 && !bad; i++) {
         DoomoImage im;
         int w = 1 + (int)(next() % (i & 1 ? 80 : 17)), h = 1 + (int)(next() % 14), off = (int)(next() & 3);
-        int dens = (int)(next() % 4), scale = 2 + (int)(next() % 3), flags = (int)(next() % 8) & ~2;
+        int dens = (int)(next() % 4), scale = 1 + (int)(next() % 4), flags = (int)(next() % 8) & ~2;
         int x = (int)(next() % 320) - 70, y = (int)(next() % 240) - 60;
         uint32_t color = 1 + next() % 255;
         int j, y0, y1, r;

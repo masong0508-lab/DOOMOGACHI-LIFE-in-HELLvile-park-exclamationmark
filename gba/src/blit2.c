@@ -138,7 +138,7 @@ BLIT2_ARM void vid_blitn_arm(int x, int y, const DoomoImage *img, int scale, int
     const int iw = img->w, w = iw * scale, h = img->h * scale;
     const int flip = flags & IMG_FLIPX, sil = flags & IMG_SILHOUETTE;
     /* v / scale, as vid_blit_c's 65536 / scale + 1 (no division: the group calls nothing outside itself) */
-    const uint32_t inv = scale == 2 ? 32769u : scale == 3 ? 21846u : 16385u;
+    const uint32_t inv = scale == 1 ? 65537u : scale == 2 ? 32769u : scale == 3 ? 21846u : 16385u;
     int x0 = x, x1 = x + w, y0 = y, y1 = y + h, yy, xa, xb, n, last = -1, lead, mw, nops = 0;
     uint32_t line32[(SCREEN_W + 8) / 4 + 1];
     uint8_t op_s[(SCREEN_W + 8) / 4], op_n[(SCREEN_W + 8) / 4];   /* a run of op_n full words at op_s, or 0: one mixed */
@@ -191,6 +191,12 @@ BLIT2_ARM void vid_blitn_arm(int x, int y, const DoomoImage *img, int scale, int
                     v = src[j];
                     if (sil && v) v = color;
                     o[0] = (uint8_t)v; o[1] = (uint8_t)v;
+                }
+            } else if (scale == 1) {                    /* (S2-4d) a flipped scale-1 image: the dream's mirror */
+                for (; cnt > 0; cnt--, j += step) {
+                    v = src[j];
+                    if (sil && v) v = color;
+                    *o++ = (uint8_t)v;
                 }
             } else {
                 for (; cnt >= 4; cnt -= 4, j += step, o += 4) {

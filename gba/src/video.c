@@ -392,8 +392,9 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
         vid_blit2(x, y, img, (flags & IMG_SILHOUETTE) ? color : 0u);
         return;
     }
-    if (scale > 1 && iwram_ovl_current() == OVL_UI) {
-        /* S2-5: any other scale or a flip, the UI group's ARM loop (blit2.c), the same pixels as vid_blit_c */
+    if ((scale > 1 || (flags & IMG_FLIPX)) && iwram_ovl_current() == OVL_UI) {
+        /* S2-5: any other scale or a flip, the UI group's ARM loop (blit2.c), the same pixels as vid_blit_c
+         * (S2-4d: a flip at scale 1 too, the dream mirror's reflection: 8 ms in vid_blit_c's Os loop) */
         if (flags & IMG_SHADOW) vid_blitn(x + 1, y + 1, img, scale, (flags & IMG_FLIPX) | IMG_SILHOUETTE, PAL_BLACK);
         vid_blitn(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);
         return;
