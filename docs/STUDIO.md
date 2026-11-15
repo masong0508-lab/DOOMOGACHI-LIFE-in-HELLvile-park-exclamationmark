@@ -365,6 +365,26 @@ what tests it. Keys are GBA names; the pads' names are on the control card. "Jou
 Not in the ledger because they did not change: every SONG row, the NOTES keys, ORDER, the CHOIR grid, the PERFORM
 show, the song book pages.
 
+## PLAY on the GBA (ST-PLAY, measured 2026-11-15, libmgba, `make -C gba test-speed2 SPEED2="studio_play"`)
+Base: the clean tip `d979c93`. `gba/harness/scripts/speed2_studio_play.txt` (STUDIO -107, the "Park United!" choir; the pads at
+rest, a held pad, the loop, the count-in, a take with pads pressed, the drum pads). Every window: 30.0 drawn fps, 30.0 logic ticks/s.
+
+| window | work avg ms | work max ms |
+|---|---:|---:|
+| pads at rest | 24.1 | 26.6 |
+| a held pad | 23.5 | 26.4 |
+| the loop (START) | 25.6 | 33.3 |
+| count-in | 26.4 | 31.2 |
+| recording (pads pressed) | 24.5 | 30.3 |
+| drum pads (menu closed / loop) | 27.7 / 27.3 | 30.3 / 32.2 |
+
+`make -C gba profile-studio`, before -> after: SONG idle 31.6 -> 32.0, NOTES idle 27.8 -> 27.7, ORDER 25.5 -> 26.3, LYRICS 32.4 -> 32.3, CHOIR 30.5 -> 30.0
+(noise and the eighth tab pill); new: PLAY idle 23.6, PLAY looping 24.8. What it took: the pad notes (a scale shift is a few divisions each, ~4 ms
+a frame when redone per frame) are computed when a setting changes, when the tab opens and eight times a second, never per frame; a pad is one
+round rect and a shadow line. RAM: GBA `.bss` / IWRAM identical (the player's struct is repacked, the pad state is 64 B of the scene scratch,
+taken from the bake block's pixel pool); PS1 resident 0 (scene scratch). The PS1 and Dreamcast were not measured: their toolchains were
+not installed on the build machine.
+
 ## Budgets
 ST-EASY adds **no `.bss` and no IWRAM** on the GBA (`make -C gba sizes`: `.bss` 254,820 B before and after, `.iwram`
 11,272, `.iwram_bss` 4,088): its state (`StEasy`, 448 B: the redo journal 384 B, the Start card's picks, the cursor

@@ -46,7 +46,10 @@ typedef struct PlayState {
     uint8_t  hold_step, hold_trk;
     uint16_t hold_btn, hold_t;       /* the pad that holds the latest recorded note, ticks held */
     uint16_t cacc;                   /* count-in beat accumulator */
+    uint8_t  stale;                  /* a setting changed: recompute the notes below at the next tick */
     uint8_t  roots[4];               /* the song's chord roots (pitch classes) */
+    uint8_t  notes[8];               /* the notes the melody pads play now (a few divisions each: kept, not redone per frame) */
+    uint8_t  ctri[4][3];             /* the chords' notes: root (low), third, fifth */
 } PlayState;
 DOOMO_STATIC_ASSERT(sizeof(PlayState) <= STUDIO_TABSTATE, play_state_fits_tab_state);
 
@@ -161,12 +164,15 @@ int play_quantize_step(int step, int frac, int q, int from, int to)
 
 /* ====================================================================== */
 /* state                                                                    */
+static void refresh(PlayState *p);
+
 static PlayState *ps(void)
 {
     int fresh = 0;
     PlayState *p = (PlayState *)st_tab_state(&fresh);
     if (p && fresh) {
         p->quant = Q_16;
+        refresh(p);
     }
     return p;
 }
@@ -182,21 +188,36 @@ static uint8_t *take_row(const PlayState *p)
     return SS->notes[studio.pat & 3][p->mode ? 3 : p->trk];
 }
 
-/* the chord roots follow the song as it is edited (a scan of at most 16 x 32 bass cells) */
-static void refresh_roots(PlayState *p)
-{
-    play_song_roots(SS, p->chords, p->roots);
-}
-
-/* ====================================================================== */
-/* the jam: pads -> held notes                                              */
-static int pad_note(const PlayState *p, int k)
+/* One answer to "what do the pads play": the chord roots follow the song as it is edited (a scan of at most 16 x 32
+ * bass cells), and the notes cost a few divisions each. Redone when a setting changes, when the tab opens and eight
+ * times a second; never per frame. */
+static int pad_note_calc(const PlayState *p, int k)
 {
     int deg = k;
 #if defined(DOOMO_PLATFORM_GBA)
     deg = p->row * 4 + k;
 #endif
     return play_degree_note(SS, p->trk, p->oct, deg);
+}
+
+static void refresh(PlayState *p)
+{
+    int k, c;
+    p->stale = 0;
+    play_song_roots(SS, p->chords, p->roots);
+    for (k = 0; k < PLAY_KEYS; k++) p->notes[k] = (uint8_t)pad_note_calc(p, k);
+    for (c = 0; c < 4; c++) {
+        int t[3];
+        play_chord_notes(SS, p->roots[c], p->oct, t);
+        p->ctri[c][0] = (uint8_t)t[0]; p->ctri[c][1] = (uint8_t)t[1]; p->ctri[c][2] = (uint8_t)t[2];
+    }
+}
+
+/* ====================================================================== */
+/* the jam: pads -> held notes                                              */
+static int pad_note(const PlayState *p, int k)
+{
+    return p->notes[k & 7];
 }
 
 static int chord_root_note(const PlayState *p, int c)
@@ -212,9 +233,7 @@ static void jam_sync(PlayState *p)
     if (p->mode) return;
     for (c = 0; c < 4; c++)
         if (btn_down(chord_keys[c])) {
-            int n[3];
-            play_chord_notes(SS, p->roots[c], p->oct, n);
-            want[0] = (uint8_t)n[2]; want[1] = (uint8_t)n[1]; want[2] = (uint8_t)n[0];
+            want[0] = p->ctri[c][2]; want[1] = p->ctri[c][1]; want[2] = p->ctri[c][0];
         }
     for (k = 0; k < PLAY_KEYS; k++)
         if (btn_down(melody_keys[k])) want[p->trk] = (uint8_t)pad_note(p, k);
@@ -350,6 +369,7 @@ static void loop_toggle(PlayState *p)
 /* a tick of the recorder: count-in beats, the loop, a held pad */
 static void service(PlayState *p)
 {
+    if (p->stale || studio.tab_t < 2 || (studio.t & 7) == 0) refresh(p);
     if (p->take_open && !studio.undo_open) {          /* an undo took the open take away */
         p->take_open = 0;
         p->take_n = 0;
@@ -390,6 +410,7 @@ static void play_menu_done(int c)
     case 1:
         if (p->mode) { st_msg("Drum pads record into Drums"); break; }
         p->trk = (uint8_t)((p->trk + 1) % 3);
+        p->stale = 1;
         st_msg("Pads play and record %s", trk_names[p->trk]);
         break;
     case 2:
@@ -410,11 +431,12 @@ static void play_menu_done(int c)
         break;
     case 6:
         p->chords ^= 1;
-        refresh_roots(p);
+        p->stale = 1;
         st_msg(p->chords ? "Chords: I IV V vi" : "Chords: from your song");
         break;
     case 7:
         p->row ^= 1;
+        p->stale = 1;
         say_row(p);
         break;
     default: break;
@@ -427,7 +449,6 @@ static void open_menu(PlayState *p)
                                           "Loop part", "Next pattern", "Chord set", "Notes 1-4 / 5-8" };
     if (p->rec) take_end(p);
     song_jam_off(-1);
-    refresh_roots(p);
     st_popup("Play tools", items, PLAY_KEYS == 4 ? 8 : 7, 0, play_menu_done);   /* the last item is for the 4-pad GBA only */
 }
 
@@ -455,6 +476,7 @@ void tab_play_shift(void)
             audio_sfx(SFX_ERROR);
         } else {
             p->oct = (int8_t)(p->oct + d);
+            p->stale = 1;
             st_msg("Octave %s%d", p->oct > 0 ? "+" : "", p->oct);
             audio_sfx(SFX_CURSOR);
         }
@@ -462,6 +484,7 @@ void tab_play_shift(void)
 #if defined(DOOMO_PLATFORM_GBA)
     if (btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT)) {
         p->row = (uint8_t)(btn_pressed(BTN_RIGHT) ? 1 : 0);           /* RIGHT: the high four, LEFT: the low four */
+        p->stale = 1;
         say_row(p);
         audio_sfx(SFX_CURSOR);
     }
@@ -495,7 +518,7 @@ void tab_play_update(void)
             }
         return;
     }
-    refresh_roots(p);
+    if (btn_pressed(BTN_LEFT | BTN_DOWN | BTN_RIGHT | BTN_UP)) refresh(p);       /* a chord: the song as it is now */
     for (k = 0; k < PLAY_KEYS; k++)
         if (btn_pressed(melody_keys[k])) {
             p->last_k = (uint8_t)(k + 1);
@@ -540,8 +563,8 @@ int play_prompts(UiPrompt *pr)
 static void pad_cell(int x, int y, int w, int h, uint8_t base, int down, const char *key, const char *label)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
-    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
-    ui_round_rect(x + 1, y + 1, w - 2, h - 2, 3, down ? PAL_PAINT(PAINT_ROSE, 1) : base);
+    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 1) : base);        /* one round rect and a shadow line */
+    plat_rect(x + 3, y + h, w - 6, 1, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
     if (key && key[0] && ui_text_width(key) < w / 2) ui_text(x + 3, y + 2, key, down ? PAL_WHITE : st->text_dim);
     if (label && label[0])
         ui_text(x + (w - ui_text_width(label)) / 2, y + h / 2 - 2, label, down ? PAL_WHITE : st->text);
@@ -609,7 +632,6 @@ void tab_play_draw(StRect r)
                                   doomo_song_drum_names[d], st->text_dim);
         }
     } else {
-        refresh_roots(p);
         for (i = 0; i < PLAY_KEYS; i++) {
             int px = x0 + (i & 3) * (cw + gap), py = y + (i >> 2) * (ch + gap);
             song_note_name(pad_note(p, i), nm);
@@ -617,9 +639,8 @@ void tab_play_draw(StRect r)
         }
         y += ((PLAY_KEYS + 3) / 4) * (ch + gap);
         for (i = 0; i < 4; i++) {
-            int px = x0 + i * (cw + gap), tri[3], third;
-            play_chord_notes(SS, p->roots[i], p->oct, tri);
-            third = (tri[1] - tri[0]) % 12;
+            int px = x0 + i * (cw + gap), third;
+            third = (p->ctri[i][1] % 12 + 12 - p->ctri[i][0] % 12) % 12;
             doomo_snprintf(buf, sizeof(buf), "%s%s", doomo_song_key_names[p->roots[i] % 12],
                            third == 3 ? "m" : (third == 6 ? "o" : ""));
             pad_cell(px, y, cw, ch, PAL_PAINT(PAINT_SKY, 2), btn_down(chord_keys[i]), pad_key_name(chord_keys[i]), buf);
