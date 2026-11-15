@@ -59,5 +59,8 @@ expect-talk-page main
 # say goodbye: B on the main page, then the farewell boxes
 talk-leave
 expect-talk off
+# the toast says the bond with its sign ("Chat over. Bond +2"), never a raw format code
+expect-toast "Chat over. Bond"
+expect-no-toast "%"
 wait 40
 shot talk_7_after

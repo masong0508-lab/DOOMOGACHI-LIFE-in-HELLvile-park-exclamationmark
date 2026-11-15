@@ -660,14 +660,16 @@ static void finish(void)
 {
     TalkOutcome o;
     TalkSummary sum;
-    char msg[48];
+    char msg[48], sgn[8];
     int i, bond = 0;
     talk_outcome_end(&T.s, &o, &sum);
     for (i = 0; i < T.s.nparts; i++) bond += o.rel[i];
-    if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %+d", bond);
-    else if (o.dating) doomo_snprintf(msg, sizeof msg, "A new couple! Bond %+d", bond);
+    /* the game's snprintf has no "%+d": the sign goes in by hand (T8: the toast showed "Bond %+d") */
+    doomo_snprintf(sgn, sizeof sgn, "%s%d", bond > 0 ? "+" : "", bond);
+    if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %s", sgn);
+    else if (o.dating) doomo_snprintf(msg, sizeof msg, "A new couple! Bond %s", sgn);
     else if (sum.flags & TDF_K7) doomo_snprintf(msg, sizeof msg, "The chat ended.");
-    else doomo_snprintf(msg, sizeof msg, "Chat over. Bond %+d", bond);
+    else doomo_snprintf(msg, sizeof msg, "Chat over. Bond %s", sgn);
     T.active = 0;
     scene_pop();
     ui_toast(msg);

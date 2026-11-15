@@ -47,7 +47,7 @@ Contents:
 | T5b | the English line banks (about 6,000 alternatives, design 3.6) and the owner's review | in progress: 6,742 alternatives in grammar/en (starter 718 + T5B-WARM 739: warm acts + T5B-COOL 600: cool and rude acts + T5b-ASK 975: questions and answers + T5B-OPEN 648: openers, parts and the rest + T5B-ROM 492: romance, adults only + T5B-TOPIC 771: topic replies + T5B-VOICE 596: the cast voices + T5B- |
 | T6 | the drama manager, outcomes, the talk memory chunk | **memory and chunk done** (T6-MEM, 6e); **drama manager done** (T6-DM, 6f: `talk_dm.c`, `beats.tlk`); **outcomes into the sim done** (T6-OUT, 6g: `talk_outcome.c`) |
 | **T7** | the census (`core/tools/talk_census.c`: the three tiers, Chao1, the quality checks Q1-Q6, the conversation tier), the grid `census_en.tsv`, `make -C core talk-census`, the smoke census in `make test`, the Q7 review sheet `talk_sample.py` | **done** (TK3): the tools and the measurement. The full run's numbers are in 6d: Skeleton, Meaning, conversations and quality meet the design's targets; **Surface does not** (it needs T5b's bank); Q7 (a person rating 300 exchanges) has not been done |
-| T8 | the house mode `HM_TALK` on native, with its UI | to do |
+| T8 | the house mode `HM_TALK` on native, with its UI | the owner's SCENE_TALK is the UI (reached from the Talk action and a house visit's A); **T8-SCRIPTS done**: runner `talk-*` commands, four scripts, press-budget journeys, frame time, the gap list (6j). The in-room `HM_TALK` is not landed |
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
 | TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
 
@@ -953,6 +953,75 @@ reused and forgets its caps (known, accepted; T8 may save the ledger in the TALK
 * **Memory.** Native only (like talk_save.c): 0 B on GBA / PS1 / Dreamcast, GBA
   EWRAM / IWRAM net zero, PS1 margin unchanged.
 
+## 6j. The Talk screen under test (T8-SCRIPTS)
+
+The owner's Talk screen (`core/src/talk_scene.c`, SCENE_TALK: opened by the resident's Talk action and by a house visit's A)
+is played by scripts, journeys and unit tests. Nothing here adds a second UI: the in-room `HM_TALK` of the saved T8A patch
+is not landed; only its runner commands and script ideas were kept.
+
+**Runner commands** (`core/native/runner_main.c`, listed in its header; all press the pad like a player, so a journey counts
+them): `talk-enter WHO`, `talk-party WHO..`, `talk-read` (A until the answer is over; waits for each line to type, so it is
+one A a line), `talk-quick N`, `talk-quick-act ACT`, `talk-say ACT [TOPIC]` (the category page, then the act, then the topic
+page when the act wants one), `talk-type TEXT` (the "Type your own line..." row, the text, OK), `talk-invite WHO` (Options >
+Invite someone), `talk-to WHO|everyone` (SELECT), `talk-page main|more`, `talk-leave`, `talk-rows` (prints the page, for
+script authors), `frame-time N LABEL`, and the checks `expect-talk on|off`, `expect-talk-page`, `expect-talk-to`,
+`expect-talk-row "TEXT" [0|1]`, `expect-talk-act ACT [0|1]` (is the act offered?), `expect-talk-quick ACT [0|1]`,
+`expect-talk-you "TEXT"`, `expect-talk-gate G` (what the safety gate did to the last line), `expect-talk-reply-romance 0|1`.
+They read the screen through `talk_scene_debug()` / `talk_scene_row_debug()` / `talk_scene_act_cat()`; those exist only
+where `DOOMO_TALK_DEBUG` is defined (the native host and the unit tests): 0 bytes in the GBA ROM, the PS1 EXE and the
+Dreamcast build.
+
+**Scripts** (`core/tests/scripts/`, run by `run_scripts.sh` at 240x160 and 320x240, with `--assert-no-stubs`,
+`--check-prompts`): `home_talk_basic` (opener, quick reply, compliment, topic act, typed line, Options, goodbye and its
+toast), `home_talk_group` (invites to four people, "To:", acts that need two people, the invite row gone at four),
+`home_talk_safety` (a typed line about hurting oneself gets the distress answer, no joke row is offered after it, the talk
+goes on; romance toward a child is refused by the gate and never listed; a hug toward a child is a plain hug, the answer is
+never a romance act; the same care for a child's words), `home_talk_visit` (from a house visit, as in `home_visit`).
+Texts of answers vary with the session seed, so the scripts check the gate's verdict (`expect-talk-gate`) and the act of the
+reply, not wording.
+
+**Press budgets** (TALK_DESIGN 2.3; `core/tests/journeys/`, rows in `budgets.tsv`, run by `make -C core journeys`; a journey
+fails when it takes more presses or ticks than its row):
+
+| Journey | Design | Measured (same at 240x160 and 320x240) |
+|---|---|---|
+| `talk_quick`: the top quick reply | 1 | **1** |
+| `talk_compliment_next`: SELECT to the next person, Be nice, You're great | 4 or fewer | **4** (was **8** before this package: see below) |
+| `talk_catch_ask`: the quick reply that steers to the offered topic | 3 or fewer | **3** (row 2: DOWN, DOWN, A; the other rows cost 1, 2, 4) |
+| `talk_topic_ask`: Options > Topic > pie, Ask > "Tell me about pie." | 3 (with catch-the-word) | **11** (a regression guard on the long way) |
+| `talk_exchange`: one quick reply and every box of the answer read | 1 to say | **5 to 7** in six samples; the quick reply is 1, the rest is reading |
+
+The one change to the screen: SELECT on the main page turns to the next person and now puts the cursor on the first
+category (the quick replies answer what was said before, so the cursor no longer waits on them). Before, the cursor went
+back to the top reply, "Be nice" was five rows down and the compliment took 8 presses; with L/R paging it was 5. The price:
+after SELECT a quick reply is 4 UP presses away (UP wraps the other way round the list too). Pixel change: the cursor
+row only (no other pixel). Also fixed: the closing toast said "Chat over. Bond %+d" (the game's `doomo_snprintf` has no
+`%+d`); it now says "Bond +2".
+
+**Frame time of SCENE_TALK, native** (`frame-time`, CPU time of the runner process per frame: update, draw, framebuffer end;
+`ev/T8-SCRIPTS/frame_time_native.txt`): the main page 0.05-0.07 ms on average, 0.24 ms worst of 600 frames; Options 0.04 ms;
+an answer box 0.04 ms. The frame that says a line runs the drama manager and the generator at once: 0.24-0.36 ms (six
+samples, two residents). All far below 33.3 ms: a steady 30 fps on native. **Not measured:** the same screen on the GBA,
+PS1 and Dreamcast (the generator runs in one frame there; a console build of the Talk scene has no speed script yet).
+
+**Gap list against design T8** (what the owner's screen does not have; none of it is a defect of the screen):
+in-room mode (gathering and seats, camera shots, bubbles at the speakers' heads, the portrait inset on the room); emotes and
+postures; catch-the-word (L1) and the tinted words; the composer (act row, topic chips from caught words and likes, tone
+ring, live preview); the addressee ring on L2/R2 (SELECT cycles instead); hold-B to leave; pointer input (T9); the control
+card (the owner took the A/B hints off the screen; the last row says what B does; a card with the pad's buttons is still
+wanted by the comprehensibility rule). Four quick replies where the design says three.
+
+**Findings for the Talk owner** (not changed here):
+1. Reading an answer costs 3 to 6 A presses (one box a line, an answer is two to four lines, then "Anything else on your
+   mind?"). A quick reply is 1 press, an exchange is 5 to 7. Merging a speaker's consecutive lines into one box would halve it.
+2. After the gentle distress answer, the next kind line from the player (comfort, sympathize, offer, encourage) can get a
+   joke from the resident ("Let me guess, it comes with a catch. And a bow."). The gate and the quick replies stay sincere,
+   but `talk_dm_say` has no "care" state that carries K-11 past the one answer. A `TDF_CARE` flag for a few turns that
+   answers with the sincere bank (`TGE_COMFORT`) would fix it; it is the drama manager's file, so it is listed, not done.
+3. The Romance page is listed for adult pairs the gate allows without the Mature option (the gate only needs
+   `talk_safe_romance_ok`; Mature is for explicit scenes). `home_talk_safety` checks the child side and one adult's answer;
+   the positive path with an avatar who is an adult pair is covered by `test_talk_safety.c` (`lovers`).
+
 ---------------------------------------------------------------------------
 
 ## 6h. The multilevel composer (design, TM0-DESIGN, 2026-11-15)
@@ -1325,6 +1394,7 @@ Other measurements:
 | `core/tests/test_talk_census.c` | T7 and T5a over the English banks: the smoke census (6d) and the generator-level property tests P1-P8 (section 2; `DOOMO_TALK_PROPERTY_N` for the design's 200,000) and K-10 (`talk_gen_property_grief`: every act about every grief topic in adults', kids' and pet rooms) |
 | `core/tests/test_talk_save.c` | T6-MEM (6e): the table (find, touch, last two topics, LRU of 24, likes, who may have an entry), the day rollover (refused today only), the flags of a running conversation, the chunk (empty = 0 bytes, worst case 292 B, full save round trip, an old save without the chunk, truncated / too long / wrong version / count over 24, a gone resident, the pet, a double id, a retired concept), and the generator guards and callback through `core/tests/talk_gen/mem.tlk` (K-5 across two conversations) |
 | `core/tests/test_talk_outcome.c` | T6-OUT (6g): the daily caps, mediation, problems, news, romance asked and never forced, 100 greedy sessions, the talk memory write-back, P7 over 1,500 random sessions |
+| `core/tests/test_talk_scene.c` | T8-SCRIPTS (6j): SCENE_TALK through the pad: the debug view, a quick reply is 1 press, turning to the next person and complimenting is 4, no Romance page for a child, a typed distress line gets the distress verdict and the talk goes on, a typed romance line to a child is refused, the goodbye toast has no raw format code |
 | `make -C core talk-check` | `talkc --check` (now also TK1-TK9, the corpora and the grammar compiler) and `--selftest` (51 seeded refusals: 12 lexicon files, 4 bad edges, 13 templates, 2 rule files, 20 grammars; and `core/tests/talk_good.tlk` must lint clean) (part of `make -C core test`) |
 | `make -C core talk-census` | the full census (6d; not in `make test`: about 25-30 minutes) |
 | `python3 core/tools/talk_sample.py selftest` | the Q7 sheet's scoring |

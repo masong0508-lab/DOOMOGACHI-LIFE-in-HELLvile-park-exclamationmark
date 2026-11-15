@@ -144,6 +144,24 @@ TEST(talk_scene_turning_to_the_next_person_and_complimenting_is_four_presses)
     CHECK_EQ(d.to_id, steamy);
 }
 
+TEST(talk_scene_saying_goodbye_ends_with_a_clean_toast)
+{
+    TalkSceneDebug d;
+    int k, found = 0;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("bye", -1, -1));
+    press(BTN_A);
+    for (k = 0; k < 60 && talk_scene_debug(&d); k++) { frames(0, 90); press(BTN_A); }
+    CHECK(!talk_scene_debug(&d));                          /* the talk is over */
+    for (k = 0; ui_toast_text(k); k++) {
+        const char *t = ui_toast_text(k);
+        if (strstr(t, "Bond")) found = 1;
+        CHECK(strchr(t, '%') == NULL);                     /* "Bond %+d" once leaked through: the game's snprintf has no "%+d" */
+    }
+    CHECK(found);
+}
+
 TEST(talk_scene_the_romance_page_is_never_listed_for_a_child)
 {
     TalkSceneDebug d;
