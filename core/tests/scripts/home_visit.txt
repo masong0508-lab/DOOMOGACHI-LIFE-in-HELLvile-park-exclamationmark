@@ -63,9 +63,14 @@ press A
 wait 20
 shot visit_wish
 # the native host opens the live Talk screen (home_talk_enter): its greeting
-# box, the Talk list, then B says bye; four A's page the goodbye box (a fifth
-# would be a new Talk) and hand the visit back
+# box (the resident opens the talk with two lines since 2a54b72: four A's), the
+# Talk list, then B says bye; four A's page the goodbye box (a fifth would be a
+# new Talk) and hand the visit back
 expect-scene DIALOG
+press A
+wait 30
+press A
+wait 30
 press A
 wait 30
 press A
