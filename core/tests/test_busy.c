@@ -41,6 +41,14 @@ static void busy_reset(void)
 }
 
 extern int nat_save_stream, nat_stream_fail_at;
+
+/* (GBA-500) an id with a resident: itself where all 1000 live; with LIVE=500 one of the first 250 of its
+ * district (the island's 500 hold them: the lowest ids fill the default set) */
+static int live_id(int id)
+{
+    return DOOMO_RES_SLOTS ? test_live_id(RES_DISTRICT(id) * DOOMO_DISTRICT_SIZE + id % DOOMO_DISTRICT_SIZE % DOOMO_LIVE_PER_DISTRICT)
+                           : id;
+}
 extern uint32_t nat_stream_writes;
 
 TEST(busy_town_new_steps_every_citizen)
@@ -89,7 +97,7 @@ TEST(busy_save_and_load_step_every_citizen)
         CHECK_EQ(b_calls, 1);
         CHECK_EQ(b_kind, PLAT_BUSY_SAVE);
         CHECK_EQ(b_steps_before_busy, 0);
-        CHECK(b_steps >= DOOMO_MAX_RESIDENTS * (pass ? 2 : 1));      /* every citizen, once per pass */
+        CHECK(b_steps >= DOOMO_LIVE_RESIDENTS * (pass ? 2 : 1));     /* every citizen, once per pass (GBA-500: the live count) */
         CHECK(b_steps <= DOOMO_MAX_RESIDENTS * (pass ? 4 : 2));
         CHECK_EQ(b_bad, 0);
         CHECK_EQ(b_back, pass ? 1 : 0);              /* the bar fills once per pass of the codec */
@@ -100,7 +108,7 @@ TEST(busy_save_and_load_step_every_citizen)
         CHECK_EQ(b_calls, 1);
         CHECK_EQ(b_kind, PLAT_BUSY_LOAD);
         CHECK_EQ(b_steps_before_busy, 0);
-        CHECK(b_steps >= DOOMO_MAX_RESIDENTS);       /* the applying decode rebuilds every citizen */
+        CHECK(b_steps >= DOOMO_LIVE_RESIDENTS);      /* the applying decode rebuilds every citizen */
         CHECK_EQ(b_bad, 0);
         CHECK(b_back <= 1);                          /* the check pass, then the applying one; the sort keeps it */
         CHECK(memcmp(&snap.res, &doomo_town.res, sizeof(snap.res)) == 0);
@@ -115,16 +123,16 @@ TEST(busy_steps_cover_the_relationship_graph)
     int i, edges;
     town_new(TOWN_FREEPLAY, 3, TOWN_POP_PREMADE);
     rng_seed(&r, 5);
-    for (i = 0; i < 1500; i++) rel_adjust(rng_range(&r, 1000), rng_range(&r, 1000), rng_between(&r, -40, 40));
+    for (i = 0; i < 1500; i++) rel_adjust(live_id(rng_range(&r, 1000)), live_id(rng_range(&r, 1000)), rng_between(&r, -40, 40));
     edges = doomo_town.edge_count;
-    CHECK(edges > 1200);
+    CHECK(edges > (DOOMO_RES_SLOTS ? 900 : 1200));   /* (GBA-500: the GBA's graph keeps 1,024) */
     nat_save_stream = 0;
     busy_reset();
     CHECK(save_game(1));
-    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+    CHECK(b_steps >= DOOMO_LIVE_RESIDENTS + edges / 32);
     busy_reset();
     CHECK(load_game(1));
-    CHECK(b_steps >= DOOMO_MAX_RESIDENTS + edges / 32);
+    CHECK(b_steps >= DOOMO_LIVE_RESIDENTS + edges / 32);
     CHECK(b_keeps >= edges / 32);                    /* the relationships step without moving the bar */
     busy_reset();
     rel_normalize();                                 /* the sort alone: a step before each of its 8 passes */
@@ -168,12 +176,12 @@ TEST(save_cut_at_any_write_keeps_the_previous_save)
     uint32_t n0, n;
     DoomoTown a;
     int writes, cuts[7], k;
-    nat_save_stream = 512;
+    nat_save_stream = DOOMO_RES_SLOTS ? 256 : 512;   /* (GBA-500: half the citizens, half the bytes) */
     island(11);
     a = doomo_town;
     CHECK(save_game(1));
     n0 = slot_image(1, keep);
-    CHECK(n0 > 4 * 512);
+    CHECK(n0 > 4 * (uint32_t)nat_save_stream);
     island(12);                                    /* the island that is saved over it */
     nat_stream_writes = 0;
     CHECK(save_game(1));                           /* a clean run counts the writes */

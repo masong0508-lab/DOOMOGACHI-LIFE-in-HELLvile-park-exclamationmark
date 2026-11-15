@@ -719,7 +719,7 @@ void town_new(int mode, uint32_t seed, int population)
     if (doomo_town.population == TOWN_POP_PREMADE) {
         int n = 0;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            if (DOOMO_RES_SLOTS && town_slot(i) < 0) continue;
+            if (DOOMO_RES_SLOTS && town_slot(i) < 0) { plat_busy_step(i, DOOMO_MAX_RESIDENTS); continue; }
             town_premade_record(i, TOWN_RES(i));
             resident_sanitize(TOWN_RES(i));
             plat_busy_step(i, DOOMO_MAX_RESIDENTS);
@@ -733,7 +733,7 @@ void town_new(int mode, uint32_t seed, int population)
         rel_normalize();
     } else if (doomo_town.population == TOWN_POP_RANDOM) {
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            if (DOOMO_RES_SLOTS && town_slot(i) < 0) continue;
+            if (DOOMO_RES_SLOTS && town_slot(i) < 0) { plat_busy_step(i, DOOMO_MAX_RESIDENTS); continue; }
             town_random_record(seed, i, TOWN_RES(i));
             plat_busy_step(i, DOOMO_MAX_RESIDENTS);
         }

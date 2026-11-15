@@ -130,6 +130,7 @@ TEST(save_bytes_golden_custom_citizens_and_relationships)
 {
     uint32_t len = 0, c;
     int i;
+    if (DOOMO_RES_SLOTS) return;     /* LIVE=500: the goldens are of the 1000-resident layout (GBA-500) */
     town_new(TOWN_FREEPLAY, 9, TOWN_POP_EMPTY);
     settle();
     make_residents(300);
@@ -145,6 +146,7 @@ TEST(save_bytes_golden_custom_citizens_and_relationships)
 TEST(save_bytes_golden_story_island)
 {
     uint32_t len = 0, c;
+    if (DOOMO_RES_SLOTS) return;     /* LIVE=500: the goldens are of the 1000-resident layout (GBA-500) */
     town_new(TOWN_STORY, 5, TOWN_POP_EMPTY);
     settle();
     make_residents(40);
