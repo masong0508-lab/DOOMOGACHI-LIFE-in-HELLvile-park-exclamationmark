@@ -1463,7 +1463,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
 {
     TalkConv *c = g->c;
     Part parts[7];               /* opener, core, callback, tag, hand-off, reason, hook */
-    int use[7], try_, k, ok = 0, swears, lower = 0, too_long[AVOID_MAX], ntoo = 0;
+    int use[7], try_, k, ok = 0, bridge_short = 0, swears, lower = 0, too_long[AVOID_MAX], ntoo = 0;
     char line[TALK_LINE_MAX + PART_MAX];
     TalkAltInfo ai;
     int relaxed = 0;             /* every core was set aside for a hook or a bridge: they are no longer required */
@@ -1474,6 +1474,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     for (try_ = 0; try_ < TRIES && !ok; try_++) {
         int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got, hook_req = 0, bridge_req = 0;
         memset(use, 0, sizeof use);
+        bridge_short = 0;
         g->kf = core_filters(g);
         got = make_part_avoid(g, core, 1, &parts[1], too_long, ntoo);
         while (!got && (g->kf & (KF_KIND | KF_STANCE))) {   /* TM2c: the soft filter: no rule of the kind passes the guards */
@@ -1564,12 +1565,32 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
                 }
                 if (ok) break;
             }
-            if (!ok && ((use[6] && hook_req) || (use[5] && bridge_req)) && ntoo < 6 && !relaxed) {
+            if (!ok && use[5] && bridge_req && !use[6] && fits(parts[1].text)) {   /* TM2F-Q8: a shorter bridge before another core */
+                int av[AVOID_MAX], nav = 0, i;
+                uint8_t d = g->dlvl;
+                for (i = 0; i < AVOID_MAX && !ok; i++) {
+                    av[nav++] = parts[5].alt;
+                    g->dlvl = 0;
+                    use[5] = make_part_avoid(g, entry_sym(g, ENT_FIXED, TGE_REASON), 0, &parts[5], av, nav);
+                    g->dlvl = d;
+                    if (!use[5]) break;
+                    join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                    ok = fits(line);
+                }
+                if (ok) break;
+                bridge_short = 1;                                /* no bridge fits this core: another core, or none */
+            }
+            if (!ok && ((use[6] && hook_req) || (use[5] && bridge_req) || bridge_short) && ntoo < 6 && !relaxed) {
                 too_long[ntoo++] = parts[1].alt;                 /* a required hook or bridge does not fit this core: try a shorter one */
                 try_--;
                 continue;
             }
-            if (!ok && use[5]) {                                 /* the reason, then the hook, last */
+            if (!ok && bridge_short) {                           /* cores ran out: the line without the bridge */
+                use[5] = 0;
+                join(line, (int)sizeof line, parts, use, 7, NULL, lower);
+                ok = fits(line);
+            }
+            if (!ok && use[5]) {
                 use[5] = 0;
                 join(line, (int)sizeof line, parts, use, 7, NULL, lower);
                 ok = fits(line);
