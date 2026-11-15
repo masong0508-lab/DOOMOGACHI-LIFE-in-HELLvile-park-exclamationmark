@@ -422,6 +422,7 @@ static int topic_ok(const TalkConv *c, const TalkUtter *u, const TalkLine *l)
 {
     uint16_t ids[TALK_ASSOC_TOP];
     int n, i, k;
+    if (l->flags & TLF_MORE) return 1;                      /* TM2d: a story or a secret is about the speaker, a like of theirs or the thread */
     if (!l->topic || l->topic == u->topic[0] || l->topic == u->topic[1]) return 1;
     for (k = 0; k < 2; k++) {
         if (!u->topic[k]) continue;

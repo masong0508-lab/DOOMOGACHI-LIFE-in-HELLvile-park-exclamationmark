@@ -16,6 +16,8 @@
  *                                   the adversarial and the echo corpus: no hate, register, minor, leet, fuzzy, person,
  *                                   digit or shouted word is ever said back; a kid room says no word over 12 letters
  *   unknown_word_taught             "it's a food": the kind is taken, remembered for the talk, never saved
+ *   unknown_word_dm_flow            the drama manager prepares the unknown word too: it asks, a named word is said once
+ *   depth_census_clean              the census' own checks (Q1 to Q6, K-10) hold for 2,800 exchanges with second lines
  *   hook_after_counter_and_refuse   every counter and every refused request leaves a hook; no hook after a sincere line
  *   lex_near_guess                  talk_lex_near finds a real concept two edits away and flags words one edit from a
  *                                   register word
@@ -32,6 +34,7 @@
 #include "doomo/lang.h"
 #include "doomo/sim.h"
 #include "doomo/resident_acc.h"
+#include "../tools/talk_census.h"
 
 static void premade_town(void)
 {
@@ -152,6 +155,8 @@ TEST(depth_pure_gate_and_step)
     uint8_t b = 0;
     uint16_t tw = 0;
     int t, lv[8];
+    CHECK_MSG(sizeof(TalkState) < 1000, "TalkState %d B (the TM2d budget is under 1,000)", (int)sizeof(TalkState));
+    CHECK_EQ((int)sizeof(TalkUtter), 108);
     /* the gate */
     din(&in, TRB_STRANGER, 100, 100, TA_ASK_OPINION);
     CHECK_EQ(talk_depth_gate(&in, 7), 1);                       /* a stranger never reaches 2 */
@@ -924,5 +929,78 @@ TEST(parse_unknown_offsets)
     /* a leet word is never offered */
     talk_parse("fl0rpbus", &pc, &u, NULL);
     CHECK(u.unk_len == 0 || strncmp(u.shown + u.unk_off, "fl0rpbus", u.unk_len) != 0 || 1);
+    talk_db_close();
+}
+
+/* the drama manager prepares the unknown word too: the answer asks, and a named word is said once */
+TEST(unknown_word_dm_flow)
+{
+    TalkState s;
+    TalkUtter u;
+    int ids[2], t, named = 0, asked = 0;
+    premade_town();
+    CHECK(open_en());
+    people();
+    pctx(0);
+    ids[0] = adults[0]; ids[1] = adults[1];
+    talk_dm_begin(&s, DOOMO_PLAYER_ID, ids, 2, 71u);
+    for (t = 0; t < 3; t++) {
+        int k;
+        talk_parse("snorglewick", &pc, &u, NULL);
+        u.target = 0;
+        talk_dm_say(&s, &u);
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(s.nlines >= 1);
+        CHECK(s.gate == TG_PASS);
+        for (k = 0; k < s.nlines; k++) if (s.line[k].who == s.line[0].who && strchr(s.line[k].text, '?')) { asked++; break; }
+        for (k = 0; k < s.nlines; k++) named += quoted_count(s.line[k].text, "snorglewick");
+    }
+    CHECK_EQ(asked, 3);                                           /* every turn asks what kind of thing it is */
+    CHECK(named <= 1);                                            /* once a talk */
+    talk_db_close();
+}
+
+/* the census' own checks (Q1 to Q6, K-10) hold for every exchange of a long talk with a close friend, second lines included */
+TEST(depth_census_clean)
+{
+    int it, t, more = 0, secrets = 0, bad = 0;
+    static const int acts[] = { TA_ASK_OPINION, TA_ASK_ABOUT, TA_TELL, TA_CONTINUE, TA_AGREE, TA_ASK_FEELING };
+    premade_town();
+    CHECK(open_en());
+    people();
+    for (it = 0; it < 400; it++) {
+        TalkConv c;
+        int ids[3], n = 0, speaker = adults[it % nadult];
+        uint16_t topic = (uint16_t)(1 + rnd((uint32_t)talk_db_nconcepts()));
+        set_rel(speaker, it % 2 ? REL_BEST_FRIEND : REL_FRIEND, 85);
+        ids[n++] = speaker;
+        if (it % 3 == 0) ids[n++] = kids[it % nkid];
+        if (it % 5 == 0) ids[n++] = adults[(it + 1) % nadult];
+        talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, n, 31000u + (uint32_t)it);
+        for (t = 0; t < 7; t++) {
+            TalkUtter u;
+            TalkExchange x;
+            TalkTrace tr[TALK_EXCHANGE_MAX];
+            int q, k;
+            memset(&u, 0, sizeof u);
+            u.act[0] = (uint8_t)acts[(it + t) % 6];
+            u.topic[0] = topic;
+            u.target = 0;
+            u.conf = 15;
+            c.engage = 85;
+            talk_gen_exchange(&c, &u, &x, tr);
+            if (!x.n) continue;
+            q = talk_census_check(&c, &u, &x, tr);
+            if (q != QF_NONE) {
+                bad++;
+                if (bad < 6) printf("      census check %d on act %d: %s | %s\n", q, u.act[0], x.line[0].text, x.n > 1 ? x.line[1].text : "");
+            }
+            for (k = 0; k < x.n; k++)
+                if (x.line[k].flags & TLF_MORE) { more++; secrets += tr[k].plan.content == TCN_SECRET; }
+        }
+    }
+    printf("      %d second lines (%d secrets) in 400 talks, %d exchanges the census check refused\n", more, secrets, bad);
+    CHECK(more > 100 && secrets > 20);
+    CHECK_EQ(bad, 0);
     talk_db_close();
 }
