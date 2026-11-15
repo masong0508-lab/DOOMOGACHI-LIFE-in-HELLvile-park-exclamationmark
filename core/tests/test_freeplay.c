@@ -504,6 +504,22 @@ TEST(freeplay_island_town_hall_rent_once_a_day)
     CHECK(unlock_has(UL_FP_LANDLORD));
 }
 
+/* GBA-500: a full Classic island pays the same rent at 500 residents as at 1,000 (50 + 2 H$ a citizen
+ * of 1,000; the GBA's 500 chip in 4 each), so the GBA's economy is the other platforms' */
+TEST(freeplay_island_rent_of_a_full_town_is_the_same_at_every_size)
+{
+    uint32_t m0;
+    premade_island();
+    CHECK_EQ(town_count(RES_ALIVE), DOOMO_LIVE_RESIDENTS);
+    m0 = doomo_town.money;
+    fp_island_select_kind(LOC_TOWN_HALL);
+    press(BTN_A);
+    CHECK(fp_island_menu_select("Collect rent"));
+    press(BTN_A);
+    close_dialogs();
+    CHECK_EQ_U(doomo_town.money - m0, 2050u);
+}
+
 TEST(freeplay_picker_kinds)
 {
     premade_island();

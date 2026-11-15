@@ -587,7 +587,12 @@ static void collect_rent_now(void)
     char buf[64];
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
         if (TOWN_RES(i)->status == RES_ALIVE || TOWN_RES(i)->status == RES_GHOST) n++;
+#if DOOMO_RES_SLOTS
+    /* GBA-500: half the citizens chip in twice as much, so a full town pays what it pays elsewhere */
+    amount = 50 + n * (2 * DOOMO_MAX_RESIDENTS / DOOMO_LIVE_RESIDENTS);
+#else
     amount = 50 + n * 2;
+#endif
     doomo_town.money += (uint32_t)amount;
     progress_add(PROG_MONEY_EARNED, amount);
     fp_set_rent_day(doomo_town.day + 1);

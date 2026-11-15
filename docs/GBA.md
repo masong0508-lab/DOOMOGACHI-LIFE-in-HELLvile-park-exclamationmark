@@ -574,6 +574,9 @@ homes), "Every Single Door" (500) and "Know-It-All" (250 citizens) say the GBA's
 thresholds follow (seven Spanish rows added). The house's visited bits stay 1,000 bits by id
 (125 B in the `HOME` chunk: its layout is shared with the PS1 and the Dreamcast). Home Row
 (`street.h`, not built yet) keeps its 500 lots a side; `street_is_full` is true once the slots are.
+Rent (`fp_island.c`) is 50 H$ + 4 H$ a citizen on the GBA (2 H$ elsewhere), so a full Classic island
+still brings 2,050 H$ a day and the shops' prices mean the same (Claude's default, owner may
+override; `freeplay_island_rent_of_a_full_town_is_the_same_at_every_size`).
 
 **Saves.** The format is unchanged (version 2; residents by id, an id not in town is an empty run),
 and so is the flash layout (slot 0 at `0x00000`, 40 KB; slot 1 at `0x0A000`, 88 KB), so old saves
@@ -647,7 +650,7 @@ Of the 95 windows of the three groups 10 draw more frames and one fewer (the cha
 vignette, 22.3 -> 22.0 fps, 37.5 -> 37.8 ms: which ticks are drawn shifts); no window's work grows by
 more than 0.3 ms, and the news' third tab drops 32.9 -> 28.1 ms. On the tip it was rebased onto
 (`1297e93`) EWRAM is 56,484 B free with GBA-500 (12,164 B without: the commits between take 160 B),
-ROM +8,456 B, `make -C gba test` and the three groups with their gates pass; there the Almanac
+ROM +8,452 B (with the rent line; `.rodata` 4 B shorter), `make -C gba test` and the three groups with their gates pass; there the Almanac
 list shows one frame of three vblanks (29.8 fps; 30.0 on `1297e93`): its ticks take the same
 32.7-33.2 ms on both builds, right at two vblanks, and the faster load (79 -> 71 ms) shifts their phase. The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
 edge visits a tick (`sim_per_tick_budget`); on the GBA the hub's work 14.5 -> 14.0 ms a drawn tick. The
