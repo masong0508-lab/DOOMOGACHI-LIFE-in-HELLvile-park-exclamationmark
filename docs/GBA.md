@@ -2575,129 +2575,158 @@ THUMB code in ROM), main stack 6,288 B; ROM `.text` +1,432 B, `.rodata` +60 B.
 rebuild per citizen: caching one record per citizen between the two passes (or comparing the stored record to the
 premade one without rebuilding it) would halve a save, and a premade citizen's flags could skip the build entirely.
 That is a separate package. The new island's 117 ms is S3-14's.
-### G2-CO: the concert at 30 (2026-11-15)
+### G2-CO: the concert at 30 (2026-11-15, landed 2026-11-15)
 
 SP6 left the Concert Hall at 13-15 drawn fps (above). Speed audit 3 package S3-9 plus the owner's trades of
 2026-11-13 (`OWNER_DECISIONS.md`: the LED wall and the beams at 15 Hz, fewer and wider flame bars, the crowd's back
-rows as sprites) and the owner's choir experiment. Measured on the tip `1297e931` (the before) and that tip + G2-CO,
-`make -C gba profile-concert` and two scratch scripts (a 16-voice choir; the setup screen under input), libmgba,
-`--worklog` (frames by vblanks: 2 = 33 ms, 3 = 50 ms, 4+ = 67 ms and more; `tools/speed2.py table`).
+rows as sprites) and the owner's choir experiment. Built, reviewed, then finished and measured at the landing
+(the before is the same tree without the package; the same windows). Tools:
+`make -C gba profile-concert` (`concert_profile.txt` with `--worklog`; frames by vblanks: 2 = 33 ms, 3 = 50 ms, 4+ =
+67 ms and more), the speed tour, and scratch scripts (a 16-voice choir, every genre, the stages one by one: the
+evidence folder `evidence/G2-CO/`).
 
-| window | before: fps / logic / work avg, max ms / frames over 33 ms | after |
+| window | before: fps / logic / work avg, max ms / frames over 33 ms | after (with G2-CO) |
 |---|---|---|
-| solo (Nana, Lullabies, star wall) | 21.3 / 30.1 / 38.4, 44.7 / 75 of 92 | **30.0 / 30.0 / 28.9, 35.4 / 0 of 130** |
-| choir, 12 voices (Doom Metal, risers) | 14.6 / 27.5 / 49.1, 52.7 / 69 of 69 | **30.0 / 30.0 / 30.7, 35.0 / 0 of 130** |
+| solo (Nana, Lullabies, star wall) | 21.9 / 30.0 / 37.7, 44.0 / 70 of 95 | **30.0 / 30.0 / 30.0, 33.2 / 0 of 130** |
+| choir, 12 voices (Doom Metal, risers) | 14.5 / 28.2 / 48.4, 52.0 / 67 of 67 | **30.0 / 30.0 / 30.7, 34.9 / 0 of 130** |
 | choir, 16 voices | 14.1 / 25.7 / 50.8, 55.3 / 71 of 71 | **29.9 / 29.9 / 31.2, 35.5 / 0 of 130** (singers at 85 %) |
-| setup screen, idle | 13.9 / 27.3 / 60.8, 65.8 / 46 of 46 | **30.0 / 30.0 / 7.5, 9.0 / 0 of 90** |
-| setup screen, cursor moving | 14.5 / 28.3 / 60.0, 65.8 / 43 of 43 | **30.0 / 30.0 / 6.9, 8.4 / 0 of 84** |
-| setup screen, values changing (5 in 90 ticks) | 11.7 / 21.9 / 68.8, 220.5 / 61 | 26.3 / 28.3 / 13.2, 228.6 / 5 (one frame a change, below) |
-| band (Rivet, Doom Metal) | 12.4 / 22.5 / 57.5, 64.8 / 66 of 66 | 19.3 / **30.1** / 41.4, 50.6 / 77 of 77: **not 30** |
+| setup screen, idle | 14.3 / 28.6 / 59.9, 62.6 / 45 of 45 | **30.0 / 30.0 / 7.5, 8.7 / 0 of 90** |
+| the closed curtain of the intro (solo) | 15.0 / 30.0 / ~52 a frame / every frame 4 vblanks | **30.0: 4-24 ms a tick, every frame 2 vblanks** |
+| pressing Start (one frame) | 437 ms (solo), 473 (band), 361 (choir) | 105 ms (solo), 59 (band), 46 (choir) |
+| band (Rivet, Doom Metal) | 12.6 / 22.5 / 56.6, 63.1 / 67 of 67 | 20.3 / **30.1** / 38.9, 42.2 / 77 of 81: **not 30** |
+
+(The 16-voice choir's before is the builder's, on an older tree.) In the speed tour (`make -C gba test-speed`) the
+concert's show window is 29.9 fps with every frame two vblanks (floor raised 12.5 -> 29.5), and a new window gates the
+closed curtain (`expect-fps 29`, `expect-gap 34`; the base ROM fails it at 13.2 fps).
 
 The PS1 (P-K1: three shows at 30 on PCSX-Redux) and the Dreamcast draw the same stage as before: every trade below is
-GBA only, so **the GBA concert looks a little simpler than the PS1's** (chunkier flames, a wall and beams that move at
-15 Hz, a still stage behind the setup menu, a smaller big choir). PS1 `perf_concert.txt`: 29.88 fps (2:117 3:2 vsyncs)
-before and after, `_end` unchanged (docs/PS1.md). Dreamcast (Flycast, the four windows of `concert_profile.txt` through
-`tools/speed2.py dc`): solo, band, choir and setup 30.0 ticks/s with no tick over 33.3 ms.
-
-The speed tour (`make -C gba test-speed`, `SPEED_BASE` = the before's log): the concert 16.8 -> 30.0 drawn fps (the
-floor is 12.5); 14 of the other 16 scenes frame-identical; the hahaland visit (19 of 30 frames) and invaded (4 of
-30) show their idle-time content (chibis drawn in slices between frames) on other ticks, because a chibi lookup is
-cheaper now (`look_run_hash`): with that one change taken out, hahaland differs in 1 frame and invaded in none.
+GBA only, so **the GBA concert looks a little simpler than the PS1's** (chunkier flames, a wall, beams and props that
+move at 15 Hz, a still stage behind the setup menu, a still playbill while the curtain is closed, a smaller big
+choir). The one change on every port is exact: Start no longer composes the song again (below).
 
 **Exact steps (the same pixels):**
 * *The stage's still parts baked* (`concert_gfx.c` `stage_parts`, a new backdrop family `DOOMO_BACKDROP_CONCERT` = 5):
   the stage is drawn as still parts (sky, theme props at their phase, the wall frame and the wall's ground, speakers at
   rest, floor, seats, lip, truss) and live parts (the show, sheen, speaker cones on a kick, disco tiles, lava,
-  footlights, lamps, disco ball, beams). The build bakes the still parts of 30 keys (Sugar Bowl 16 phases, Hellfire 12,
-  Graveyard, Disco Inferno; 1.15 MB of ROM) and a frame puts them back with one DMA (3.6 ms) instead of drawing them
-  (11.7 ms). Nothing still is drawn after anything live that covers it; where the synthwave grid's and the bats'
-  lines leave the wall the speakers are drawn again. The Dreamland (clouds drift over 840 ticks) is drawn whole as
-  before. `test_concert_gfx.c` `concert_kept_stage_equals_the_full_stage` (2,304 frames, both resolutions) and
-  `concert_stage_keys_cover_every_view`. On the ROM the solo's and the 12-voice choir's hash windows stayed identical
-  through this step (`concert_profile.txt` `vhash-seq`); the band's and the setup's moved because their logic rate
-  changed (the show's beat follows the music driver's clock, not the ticks).
+  footlights, lamps, disco ball, beams, the Dreamland's clouds). The build bakes the still parts of 31 keys (Sugar Bowl
+  16 phases, Hellfire 12, Graveyard, Disco Inferno, Dreamland without its clouds; 1.19 MB of ROM) and a frame puts
+  them back with one DMA (3.6 ms) instead of drawing them (11.7 ms). Nothing still is drawn after anything live that
+  covers it: where the synthwave grid's and the bats' lines leave the wall the speakers are drawn again, and a
+  Dreamland cloud whose box reaches the wall frame or a speaker box (38 % of the ticks) makes the live pass draw the
+  frame, the wall's ground and the speakers again over it. `test_concert_gfx.c`
+  `concert_kept_stage_equals_the_full_stage` (2,304 frames, both resolutions), `concert_dreamland_clouds_over_the_kept_stage`
+  (every cloud position, both resolutions) and `concert_stage_keys_cover_every_view`.
+* *The backdrop lookup keeps the UI group in* (landing fix, `gba/src/stage.c`): S2-4b moved the baked table's search
+  into the room group of the IWRAM overlay; the concert keeps the UI group in for its checkers, scale-2 images and
+  beams, so every `plat_stage_begin` sent the rest of the frame down the slow paths (on S2-4b's tree the solo fell to
+  20.1 fps, 39.6 ms). A backdrop asked while the UI group is in is now searched from the cartridge (~11 steps);
+  stamps still load the room group.
 * *A catch-up tick skips the stage* (it shows nothing): the band's logic 22.5 -> 30.1 ticks/s.
 * *`look_run_hash` skips the resolve for an id with no deep run* (`look_pool.c`, cross-stream; its value is the
-  same, `look_run_hash_is_the_hash_of_the_resolved_run`): `bodyspr_image` cost 2,450 cycles a chibi, now ~1,250; the
-  concert asks for 15-27 chibis a frame (choir -1.9 ms). Not built on the PS1.
+  same, `look_run_hash_is_the_hash_of_the_resolved_run`): a chibi lookup 2,450 -> ~1,250 cycles. Not built on the PS1.
+* *Start keeps the song the setup made* (every port): `start_show()` composed the song again although the setup had
+  made it for this lead, genre and take (180-230 ms of the Start frame). A song made for someone else (the Hit
+  Parade's titles) is made again.
+* *Behind a closed curtain nothing else is drawn* (GBA): the curtain covers every pixel.
+* *The playbill's spotlight* worked out the square roots of two rings it never drew (~3 ms a frame while it shows).
 
-**Pixel-changing steps (SPEED DEFAULTS and the owner's trades; before / after shots in the evidence folder
-`evidence/G2-CO/`):**
+**Pixel-changing steps (SPEED DEFAULTS and the owner's trades; before / after shots in `evidence/G2-CO/` and, for the
+landing's, `evidence/G2-CO/land/`):**
 * *The setup screen held* (S2-1's modal hold): while the setup's values stand still and the star's portrait has a real
-  picture, the dimmed stage, the title, the star's window, the line-up and the hint stay on the held page and only the
-  menu window repaints. The stage behind, the star's blink and the line-up's bob stand still. A changed value draws
-  one full frame (the new light show and line-up under the dim) and is held again. The menu's rows start one pixel
-  further in (every port): the bobbing cursor reached one pixel past the window's left edge, which the held path would
-  have smeared. `test_modal_hold.c` `modal_hold_concert_setup`. Shots: `step4/concert_setup.png` against
-  `base/shots_concert/concert_setup.png`.
-* *Fewer and wider flame bars* (`CLITE_FLAMES`): the flame wall is 6 flames of 4-row bars instead of 9 of 2-row bars
-  (13 -> ~5.6 ms). `concert_lite_flames_draw_fewer_bars`. Shots: `step3/before_after_flames_concert_choir.png`,
-  `..._band.png`.
-* *The LED wall, the truss lamps and the beams at 15 Hz* (`CLITE_HALF`, `plat_keep_rows` in `plat_ext.h`, GBA
-  `src/keep.c`): the stage's rows down to the wall frame's foot (68 at 240x160) are kept in the OBJ VRAM (16,320 B
-  of its 16 KB; a bitmap scene uses no sprites) and drawn anew every other tick, half of the next picture a tick
-  (the bake's rows and the show's first half; the rest of the show, the sheen, the lamps and the beams' top) while
-  `gba_back` points at the buffer; each picture is put into two frames in a row by 16-row DMAs (~1 ms). Below those
-  rows the stage is drawn every tick, its beams at the kept picture's time (`StageView.beam_dt`) so they go on where
-  the kept ones end (`plat_beam_rows`, the UI group's beam loop with a row range, +16 B of the group). A kicked
-  speaker's cone reaches 3 rows into the kept band: the beams over it are drawn again from its top row (the same
-  pixels). Shows whose shapes leave the wall (notes, the synthwave grid, bats) are drawn whole on every tick. The
-  buffer's owner is `OBJV_KEEP` (`postfx.c`): obj.c's OBJs stay off and the overworld's billboards start again, as
-  after a held 3D view; another owner means the buffer is lost and the next frame is drawn whole.
-  `concert_half_rate_wall_and_beams` (the kept rows are the whole stage of the kept tick, each picture on two frames,
-  the rows below exact, a lost buffer, nothing drawn below the kept rows into the buffer: the native platform emulates
-  the buffer, `nat_keep_on`); the engine-test ROM's `blit2test` checks the cut beams (+200 cases, 6,500 in all; the rows a band may touch, the whole page at the end). Shots:
-  `consec_final/choir_10_frames.png` (the wall strip holds a picture for two frames while the crowd moves on).
-* *A big choir's singers at 85 %* (`StageView.choir_pct`, the choir experiment below): choirs of up to 12 voices sing at
-  the full size, bigger ones at 85 % (14x20 instead of 16x24, the formation, risers, songbooks, notes and glow at that
-  size). A smaller singer is a nearest-neighbour copy of its chibi kept per choir slot in the concert's scene scratch
-  (`ChoirMini`, made again when the picture's uid changes; none on the PS1). `concert_choir_singers_drawn_smaller`.
-  Shots: `choir_exp3/concert_choir16_scales_100_85_75_66_50.png`.
+  picture, only the menu window repaints; the dimmed stage, the star's blink and the line-up's bob stand still. A
+  changed value draws one full frame and is held again. The menu's rows start one pixel further in on the GBA (and the
+  native host, its test double; not on the PS1 or the Dreamcast): the bobbing cursor reached one pixel past the
+  window's edge. `modal_hold_concert_setup`. Shots: `step4/concert_setup.png`.
+* *Fewer and wider flame bars* (`CLITE_FLAMES`): 6 flames of 4-row bars instead of 9 of 2-row bars (13 -> ~5.6 ms).
+  `concert_lite_flames_draw_fewer_bars`. Shots: `step3/before_after_flames_concert_choir.png`, `..._band.png`.
+* *The LED wall, the truss lamps, the beams, the theme props and the Dreamland's clouds at 15 Hz* (`CLITE_HALF`,
+  `plat_keep_rows` in `plat_ext.h`, GBA `src/keep.c`): the stage's rows down to the wall frame's foot (68 at 240x160)
+  are kept in the OBJ VRAM (16,320 B; a bitmap scene uses no sprites) and drawn anew every other tick, half of the
+  next picture a tick; each picture is put into two frames in a row by 16-row DMAs (~1 ms). Below those rows the stage
+  is drawn every tick, at the kept picture's time for the props' phase (so the Sugar Bowl's stripes and the Hellfire
+  braziers step at 15 Hz on the whole stage), the clouds and the beams (`StageView.beam_dt`, `plat_beam_rows`). The
+  grid's and the bats' lines are kept too (landing: they were drawn whole every tick, a 12-voice Synthwave choir
+  25.7 fps): the speakers below are drawn whole over them and the beams from the speakers' top row. Only the notes
+  show is drawn whole on every tick (a note at the wall's foot reaches the first row below the buffer). The buffer's
+  owner is `OBJV_KEEP` (`postfx.c`): another owner means the buffer is lost and the next frame is drawn whole.
+  `concert_half_rate_wall_and_beams` (every genre on five stages; the native platform emulates the buffer and counts
+  any pixel drawn below it); the engine-test ROM's `blit2test` checks the cut beams. Shots:
+  `consec_final/choir_10_frames.png`, `land/before_after_choir_synth.png`, `land/before_after_choir16_goth.png`.
+* *A big choir's singers at 85 %* (`StageView.choir_pct`, the choir experiment below): up to 12 voices at the full
+  size, bigger choirs at 85 % (14x20), a nearest-neighbour copy per choir slot in the scene scratch.
+  `concert_choir_singers_drawn_smaller`. Shots: `choir_exp3/concert_choir16_scales_100_85_75_66_50.png`.
+* *The closed curtain held* (landing; S2-1's modal hold with its own key): from the Start frame until the curtain
+  opens the curtain and the playbill stay on both pages and only the hint row under the bill repaints (it blinks;
+  `concert_draw_curtain_rows`). The bill does not bob and its four corner sparkles stand still meanwhile. The time the
+  held frames leave draws the show's pictures ahead (`intro_prefetch`, from the third tick): the lead's figure as a
+  patient sliced job (`portrait_hold(2)`, pumped to ~18 ms of the frame), then one chibi a tick (the band, the choir,
+  the crowd), asking again every tick for the ones drawn before so the cache keeps them. The curtain's opening drew
+  them all in one 290-350 ms frame before. Shots: `land/before_after_curtain_t20.png` .. `_t35.png` (39-47 px differ:
+  the sparkles and the bob).
 * Not needed: the crowd's back rows as sprites (the choir and the solo hold 30 without them; for the band they are one
-  of the missing pieces, below).
+  of the missing pieces, below). **The solo needs no trade on Sugar Bowl:** with the exact steps alone (flames off,
+  15 Hz off: the review's build) Nana's solo is 30.0 fps, 30.5 ms, every frame two vblanks. The 15 Hz trade stays on
+  for every show because the same solo on the Dreamland, on the notes show or with the band's or choir's crowd needs
+  it (below).
 
 **The choir experiment** (the owner, 2026-11-13: "scale the singers in the choir smaller and see if that does
 something"). The singers' size is a parameter (100 % = 16x24 at 240x160). The choir window of `concert_profile.txt`
 (12 voices) and a 16-voice one, Doom Metal on risers, at each size, with no trade (the exact steps only), with the
-flame trade, and with the flame and the 15 Hz trades (drawn fps / work avg ms / frames over 33 ms in 130 ticks):
+flame trade, and with the flame and the 15 Hz trades (drawn fps / work avg ms / frames over 33 ms in 130 ticks; the
+16-voice exact column measured at the landing, the rest by the builder before it):
 
-| singers | 12 voices, exact | 12, flames | 12, flames + 15 Hz | 16 voices, flames | 16, flames + 15 Hz | looks (`choir_exp3/`) |
-|---|---|---|---|---|---|---|
-| 100 % (16x24) | 20.3 / 40.9 / 86 | 27.6 / 33.5 / 21 | **30.0 / 30.5 / 0** | 24.8 / 35.2 / 45 | 29.7 / 32.2 / 3 | as before |
-| 85 % (14x20) | 20.4 / 40.1 / 83 | 28.7 / 32.8 / 11 | 30.0 / 29.7 / 0 | 26.5 / 34.1 / 30 | **29.9 / 31.2 / 0** | faces, hair and colours all clear |
-| 75 % (12x18) | 20.7 / 39.5 / 81 | 29.8 / 32.3 / 2 | 30.0 / 29.2 / 0 | 28.0 / 33.5 / 17 | 29.9 / 30.5 / 0 | clear, small |
-| 66 % (11x16) | 20.7 / 38.9 / 81 | 29.9 / 31.7 / 0 | 30.0 / 28.7 / 0 | 28.5 / 32.8 / 12 | 30.0 / 29.8 / 0 | eyes and hair still read, details go |
-| 50 % (8x12) | 21.7 / 38.4 / 74 | 29.9 / 31.2 / 0 | 30.0 / 28.1 / 0 | 29.8 / 32.1 / 3 | 30.0 / 29.0 / 0 | tiny: colours and hair only |
+| singers | 12 voices, exact | 12, flames | 12, flames + 15 Hz | 16 voices, exact | 16, flames | 16, flames + 15 Hz | looks |
+|---|---|---|---|---|---|---|---|
+| 100 % (16x24) | 20.3 / 40.9 / 86 | 27.6 / 33.5 / 21 | **30.0 / 30.5 / 0** | 20.0 / 42.4 / 87 | 24.8 / 35.2 / 45 | 29.7 / 32.2 / 3 | as before |
+| 85 % (14x20) | 20.4 / 40.1 / 83 | 28.7 / 32.8 / 11 | 30.0 / 29.7 / 0 | 20.1 / 41.3 / 86 | 26.5 / 34.1 / 30 | **29.9 / 31.2 / 0** | faces, hair and colours all clear |
+| 75 % (12x18) | 20.7 / 39.5 / 81 | 29.8 / 32.3 / 2 | 30.0 / 29.2 / 0 | 20.3 / 40.7 / 86 | 28.0 / 33.5 / 17 | 29.9 / 30.5 / 0 | clear, small |
+| 66 % (11x16) | 20.7 / 38.9 / 81 | 29.9 / 31.7 / 0 | 30.0 / 28.7 / 0 | 20.3 / 40.0 / 84 | 28.5 / 32.8 / 12 | 30.0 / 29.8 / 0 | eyes and hair still read, details go |
+| 50 % (8x12) | 21.7 / 38.4 / 74 | 29.9 / 31.2 / 0 | 30.0 / 28.1 / 0 | 20.5 / 39.3 / 82 | 29.8 / 32.1 / 3 | 30.0 / 29.0 / 0 | tiny: colours and hair only |
 
-**What the scaling did on its own:** a little. With no other trade the 12-voice choir's frame went from 40.9 ms at
-the full size to 38.4 ms at half size (-2.5 ms, 20.3 -> 21.7 fps): the singers' blits are a small part of the frame
-(the flame wall was 13 ms, the crowd 9.5, the beams 3.3, the bake's copy 3.6; a singer's blit ~0.2 ms of its ~0.55 ms,
-the rest is its songbook, glow, bob and lookup). With the flame trade the 12-voice choir holds 30 from 66 % down;
-with both trades the 12-voice choir holds 30 at the full size and the 16-voice one from 85 % down. Kept: the full
-size up to 12 voices, 85 % above (`CONCERT_CHOIR_FULL_N`, `CONCERT_CHOIR_PCT`).
+**What the scaling did on its own:** a little. With no other trade the 12-voice choir went from 40.9 ms at the full
+size to 38.4 ms at half size (-2.5 ms, 20.3 -> 21.7 fps) and the 16-voice one from 42.4 to 39.3 ms (-3.1 ms, 20.0 ->
+20.5 fps): the singers' blits are a small part of the frame (the flame wall was 13 ms, the crowd 9.5, the beams 3.3,
+the bake's copy 3.6). With both trades the 12-voice choir holds 30 at the full size and the 16-voice one from 85 %
+down. Kept: the full size up to 12 voices, 85 % above (`CONCERT_CHOIR_FULL_N`, `CONCERT_CHOIR_PCT`).
 
-**Not 30: the band** (19.3 drawn fps, logic 30.1, 41.4 ms of work a drawn tick; the target is under 33). Where its
-41 ms go after this package (temporary `gba_cycles()` marks, not in the tree): the stage 11.2 (the kept rows' copy
-1.0, the bake's lower rows 2.1, half a kept picture ~5, the lower beams ~1.6, cones and floor 0.3), the four band
-members 6.4 (scale-2 chibis ~2, the drum kit, keyboard and guitars ~4), the lead 9.0 (her figure's talk phases
-re-rendered by portrait jobs 3.4-4.8: the 48-block cache holds the band's and the crowd's 19 chibis and only two of
-her 10-block phases; her shadowed blit and mic stand 5.3), the crowd 9.5 (front row 4.8, back rows 4.7), the karaoke
-and HUD 4.5, logic 0.5. What 30 would take, in this order: the lead as hardware sprites (`plat_figure_obj`, a
-planner like the PERFORM choir's for the mic stand, pyro, confetti and the HUD title over her: -5 ms) or her figure's
-phases kept outside the shared cache (4 KB each, no room in EWRAM); the crowd's back rows and front row as sprites
-with the karaoke pill kept in front by a window (WIN0 without OBJ: -6 to -9 ms; the approved trade, not built:
-the front row covers the back rows, so both must be sprites, and the pill and the singer's badge sit over the front
-row); the band's instruments as kept pictures (-3 ms). **Also left:** a changed setup value shows one frame of 5 vblanks
-(83 ms: the full frame under the dim, whose dim alone is 16 ms, and the change's own work), and a new genre or take
-composes the song in that tick (frames of 183-233 ms before and after: `concert_song_make` and the lyrics, to be
-spread over ticks); the Dreamland stage is not baked
-(+7 ms, not measured: no profile reaches it); a solo on the notes, grid or bats shows draws its wall every tick.
+**Other genres and stages** (an experiment ROM with every stage unlocked, at the landing; drawn fps / work avg ms /
+frames over 33 ms in 130 ticks; the review's numbers on the package before the landing in brackets):
 
-**Memory (ledger row 51):** EWRAM `.bss` 249,084 B before and after (`keep.c`'s 2 B of state sit in padding), IWRAM
-resident 11,272 B and `.iwram_bss` 4,088 B unchanged, the overlay's UI group 9,740 -> 9,756 B (596 B left in the
-10,352 B slot). The choir's smaller singers (16 x 392 B), the half-rate state (12 B) and the setup's signature
-(4 B) live in the concert's 12 KB scene scratch (`ConcertState` 1,016 -> 7,324 B on the GBA). The kept rows use the
-OBJ VRAM (no RAM). ROM `.text` +3,960 B, `.rodata` +1,152,240 B (the 30 baked stages).
+| window | after |
+|---|---|
+| 12-voice choir, Synthwave (grid) | 30.1 / 32.0 / 0 (25.7, 37 frames over) |
+| 12-voice choir, Goth Rock (bats) | 30.0 / 31.9 / 1 (29.7, 4 over) |
+| 16-voice choir, Goth Rock | 30.0 / 32.6 / 0 (27.2, 24 over) |
+| 12-voice choir, Hymns (glass) | 30.0 / 28.9 / 0 |
+| solo, Sugar Bowl / Graveyard (Lullabies, picked in the Stage row) | 30.0 / 29.4 / 0, 30.0 / 29.3 / 0 |
+| solo, Dreamland (Lullabies) | **24.9-27.5** / 33.0-34.4 / 22-42 (20.2, every frame 3 vblanks) |
+| 12-voice / 16-voice choir, Dreamland | **26.4 / 33.1 / 30**, **26.1 / 34.1 / 33** (20.0 / 20.1) |
+| solo, Lo-fi (notes) on the Dreamland | **25.4 / 34.3 / 40** |
+
+**Still short (measured):**
+* *The band*: 20.3 drawn fps, logic 30.1, 38.9 ms of work a drawn tick. Where it goes (temporary `gba_cycles()` marks):
+  the stage 11.2 ms, the four band members 6.4 (their instruments ~4), the lead 9.0 (her figure's talk phases re-rendered
+  by portrait jobs 3.4-4.8: the 48-block cache holds 19 chibis and two of her 10-block phases; her shadowed blit 5.3),
+  the crowd 9.5, karaoke and HUD 4.5. What 30 would take: the lead as hardware sprites (`plat_figure_obj`, a planner
+  for the mic stand, pyro, confetti and the HUD title over her: -5 ms) or her phases kept outside the shared cache; the
+  crowd's front and back rows as sprites with the karaoke pill kept in front by WIN0 (-6 to -9 ms; the approved trade,
+  not built); the instruments as kept pictures (-3 ms).
+* *The Dreamland*: ~5 ms more than the other stages with the same show (34.4 against 29.3 ms), so its solo and choirs
+  are 25-27.5 fps (were 20). Its clouds and the redraws under them cost about 1-2 ms of that; the rest was not found
+  in this package (next: the profile of that window; the clouds as baked stamps).
+* *The notes show* draws its wall every tick (a solo on Sugar Bowl holds 30; on the Dreamland 25.4).
+* *The opening*: pressing Start is one frame of 105 ms (solo), 59 (band), 46 (choir): the playbill's big name drawn
+  for the first time (~61 ms on the solo's), the cast and the crowd picked (16 ms) and the full curtain (18 ms). The
+  curtain's opening (32 ticks, ~1 s) runs at 20-25 fps: the stage, the performers and the crowd as in the show plus
+  the curtain's narrow stripes (~13 ms closed) and the bill (frames of 33-61 ms; the solo's first one 80 ms).
+* A changed setup value shows one frame of 5 vblanks (83 ms), and a new genre or take composes the song in that tick
+  (183-233 ms, as before): `concert_song_make` spread over ticks is next.
+
+**Memory (ledger row G2-CO):** EWRAM and IWRAM unchanged (`keep.c`'s 2 B sit in padding), the overlay's UI group +16 B
+(`plat_beam_rows`). The choir's smaller singers (16 x 392 B), the half-rate state (12 B), the setup's signature (4 B)
+and the intro's prefetch slot (1 B) live in the concert's 12 KB scene scratch (`ConcertState` 1,016 -> 7,324 B on the
+GBA). The kept rows use the OBJ VRAM (no RAM). ROM `.rodata` +1.19 MB (31 baked stages of 38,400 B). PS1 and
+Dreamcast: docs/PS1.md "The concert (SP6, P-K1)", docs/DREAMCAST.md.
 
 ### Speed wave 2: S2-4d, the dreams (2026-11-15)
 
