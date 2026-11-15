@@ -1,5 +1,5 @@
 #!/bin/sh
-# mkcdi.sh ELF IP_TXT WORKDIR CDI [PACK [INTRO]] - build the self-booting Dreamcast disc
+# mkcdi.sh ELF IP_TXT WORKDIR CDI [PACK [INTRO [TALKDIR]]] - build the self-booting Dreamcast disc
 # image from the linked ELF (owner: dreamcast). Called by `make -C dc disc`.
 #
 #   ELF --objcopy--> doomogachi.bin --scramble--> WORKDIR/cd/1ST_READ.BIN
@@ -10,13 +10,16 @@
 #   doomogachi.iso --cdi4dc--> CDI (audio/data image, MSINFO 11702)
 # An optional PACK (a DMPK pack for port dc, E10) is copied to the disc root as PACK.DMP.
 # An optional INTRO (the boot FMV, dc/tools/mkfmv.py, DC9C) is copied there as INTRO.DMV.
+# An optional TALKDIR (core/build/talk, TD1) gives the disc Talk's databases: every TALK_<code>.BIN in
+# it is copied to the disc root in capitals (TALK_EN.BIN), which dc/src/talkdisc.c reads; the test
+# bank TALK_gentest.BIN stays off the disc.
 # 1ST_READ.BIN and IP.BIN are also copied next to the CDI.
 #
 # Tools: the KOS sh-elf objcopy, and scramble, makeip, cdi4dc from
 # dc/tools/setup_kos.sh (DC_TOOLS_BASE or <prefix>/bin), genisoimage or
 # mkisofs (or xorriso -as mkisofs) from the host.
 set -eu
-elf=$1; iptxt=$2; work=$3; cdi=$4; pack=${5:-}; intro=${6:-}
+elf=$1; iptxt=$2; work=$3; cdi=$4; pack=${5:-}; intro=${6:-}; talkdir=${7:-}
 tools=${DC_TOOLS_BASE:-}
 need() {
     for c in "$@"; do
@@ -47,6 +50,16 @@ fi
 if [ -n "$intro" ]; then
     [ -f "$intro" ] || die "intro $intro does not exist"
     cp "$intro" "$work/cd/INTRO.DMV"
+fi
+if [ -n "$talkdir" ]; then
+    n=0
+    for f in "$talkdir"/TALK_??.BIN "$talkdir"/TALK_??-??.BIN; do
+        [ -f "$f" ] || continue
+        b=$(basename "$f" | tr '[:lower:]' '[:upper:]')
+        cp "$f" "$work/cd/$b"
+        n=$((n + 1))
+    done
+    [ "$n" -gt 0 ] || die "no TALK_<code>.BIN in $talkdir (make -C core talk)"
 fi
 "$makeip" -f "$iptxt" "$work/IP.BIN" >/dev/null
 # -C 0,11702: the data session starts after cdi4dc's audio track (MSINFO)

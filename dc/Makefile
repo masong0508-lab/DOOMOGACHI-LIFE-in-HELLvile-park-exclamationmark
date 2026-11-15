@@ -60,6 +60,8 @@
 #   make -C dc PACK=/path/pack.dmpk disc
 #                         the mature disc: the pack (built with `mpack.py build`, port dc) goes on
 #                         the disc as PACK.DMP and dc/src/packdisc.c is linked (E10)
+#   make -C dc check-talkdisc
+#                         TD1 on the host: dc/src/talkdisc.c and core/src/talk_db.c over a real TALK_en.BIN
 #   make -C dc clean
 #
 # Toolchain: KallistiOS and its sh-elf gcc (dc/tools/setup_kos.sh, see
@@ -116,6 +118,8 @@ CDI   := $(BUILD)/doomogachi.cdi
 # KOS_LDFLAGS + KOS_LIBS to the link.
 # The core keeps to C99 (ARCHITECTURE.md); gnu99 is for the KOS headers.
 DEFS   := -DDOOMO_PLATFORM_DC=1
+# TD1: Talk is built in; its database TALK_en.BIN goes on the disc (dc/src/talkdisc.c)
+DEFS   += -DDOOMO_HAS_TALK=1
 # DC5b: MUSIC_IRQ=0 builds the music engine's legacy bridge instead of its IRQ tier
 MUSIC_IRQ ?= 1
 DEFS   += -DDC_MUSIC_IRQ=$(MUSIC_IRQ)
@@ -135,7 +139,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -168,6 +172,14 @@ $(PACKSTAMP): FORCE
 	echo "$$p $$c" | cmp -s - $@ || echo "$$p $$c" > $@
 $(OBJ)/dc/src/packdisc.o: $(PACKSTAMP)
 
+# TD1: Talk's database (the full English bank, core/tools/talkc.py) goes on the disc root as TALK_EN.BIN
+TALK_DIR := $(ROOT)/core/build/talk
+TALK_BIN := $(TALK_DIR)/TALK_en.BIN
+TALK_SRC := $(wildcard $(ROOT)/core/tools/talkc*.py) $(ROOT)/core/include/doomo/talk.h $(ROOT)/core/gen/txt_dict.c \
+            $(ROOT)/core/data/story/register.tsv $(shell find $(ROOT)/core/data/talk -type f 2>/dev/null)
+$(TALK_BIN): $(TALK_SRC)
+	@$(MAKE) --no-print-directory -C $(ROOT)/core $(TALK_BIN)
+
 # DC9C: the boot FMV, INTRO.DMV on the disc root (dc/tools/mkfmv.py encodes
 # trailer/assets/dippinn_logo.mp4; needs ffmpeg and numpy). Without them the
 # disc is built without an intro, with a warning; INTRO_REQUIRED=1 fails instead.
@@ -194,9 +206,9 @@ $(INTRO_DMV): $(INTRO_SRC) $(DC)/tools/mkfmv.py
 	@mkdir -p $(BUILD)
 	$(PYTHON) -I $(DC)/tools/mkfmv.py $(INTRO_SRC) $@
 
-$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE)
+$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE) $(TALK_BIN)
 	@if [ -n "$(strip $(PACK))" ]; then $(PYTHON) -I $(ROOT)/tools/mpack/mpack.py validate "$(strip $(PACK))" --port dc || exit 1; fi
-	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)"
+	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)" $(TALK_DIR)
 
 # ---- checks ------------------------------------------------------------------------
 sizes: $(ELF)
@@ -314,6 +326,10 @@ harness-test: $(BUILD)/doomogachi.nm
 check-packdisc:
 	@sh $(DC)/tests/packdisc_host.sh
 
+# TD1: the disc Talk reader against a real TALK_en.BIN (talk_db.c on top), host cc only
+check-talkdisc:
+	@sh $(DC)/tests/talkdisc_host.sh
+
 # DC3: the portable 2D layer against the native runner, on the host
 # (dc/tests/gfx2d: unit tests + the UI scripts through the software PVR);
 # DC4: the VMU file system, the icons and the controls (dc/tests/vmu);
@@ -326,7 +342,7 @@ host-test:
 	@$(MAKE) --no-print-directory -C $(DC)/tests/vmu test
 	@$(MAKE) --no-print-directory -C $(DC)/tests/audio test
 
-test: all-disc check-elf check-packdisc host-test harness-test
+test: all-disc check-elf check-packdisc check-talkdisc host-test harness-test
 
 clean:
 	rm -rf $(BUILD)

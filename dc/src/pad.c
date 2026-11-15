@@ -91,11 +91,14 @@ uint32_t dc_read_pad(void)
 
 /* What the core may count on (plat_ext.h): the machine config record on
  * the VMU (vmusave.c) always; the rumble pack and a keyboard while they
- * are plugged in. */
+ * are plugged in; Talk (TD1) with the disc's TALK file. */
 uint32_t plat_features(void)
 {
     uint32_t f = PLATF_CONFIG;
     if (dc_rumble_present()) f |= PLATF_RUMBLE;
     if (dc_keyboard_present()) f |= PLATF_KEYBOARD;
+#ifdef DOOMO_HAS_TALK
+    f |= PLATF_TALK;                     /* TD1: the Talk bank is read from the disc (talkdisc.c) */
+#endif
     return f;
 }
