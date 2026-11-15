@@ -1254,7 +1254,7 @@ TEST(studio_start_plays_from_the_cursor_and_names_its_target)
     for (t = 0; t < STAB_COUNT; t++) {
         UiPrompt pr[UI_PROMPTS_MAX];
         int n, k, found = 0;
-        if (t == STAB_STAGE) continue;                      /* the show has its own curtain */
+        if (t == STAB_STAGE || t == STAB_PLAY) continue;    /* the show has its own curtain; PLAY's START loops (test_studio_play.c) */
         st_set_tab(t);
         n = tab_prompts(t, pr);
         for (k = 0; k < n; k++)
@@ -1338,6 +1338,7 @@ TEST(studio_tab_help_and_control_cards_fit_the_screen)
     /* the card: opens with SELECT + UP, shows the tab's buttons, closes with B, and never covers the way out */
     for (t = 0; t < STAB_COUNT; t++) {
         int x, y, w, h;
+        if (t == STAB_PLAY) continue;                       /* SELECT+UP is the octave pad there; its bar has the prompts */
         st_set_tab(t);
         frames(1, BTN_SELECT);
         frames(1, BTN_SELECT | BTN_UP);

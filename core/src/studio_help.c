@@ -1,6 +1,6 @@
 /* studio_help.c - ST-EASY: say what a tab is for and which buttons do what (owner: studio).
  *
- *  - st_tab_label():  the tab strip's names (plan 2.2: Start, Edit, Arrange, Words, Choir, Show, File)
+ *  - st_tab_label():  the tab strip's names (plan 2.2: Start, Edit, Play, Arrange, Words, Choir, Show, File)
  *  - st_tab_help():   one line per tab (tab_help[]), at most 36 glyphs so it fits a 240 px bar. It replaces the
  *                     prompt bar when a tab opens, until the first button press on it (or 30 s), and not at all
  *                     once an edit was made in this session
@@ -11,13 +11,14 @@
  */
 #include "studio_int.h"
 
-static const char *const tab_label[STAB_COUNT] = { "Start", "Edit", "Arrange", "Words", "Choir", "Show", "File" };
+static const char *const tab_label[STAB_COUNT] = { "Start", "Edit", "Play", "Arrange", "Words", "Choir", "Show", "File" };
 
 const char *st_tab_label(int tab) { return tab_label[(tab + STAB_COUNT) % STAB_COUNT]; }
 
 static const char *const tab_help[STAB_COUNT] = {
     "Name, tempo, key and sounds here.",
     STR_ICON_A " places a note, " STR_ICON_B " erases it.",
+    "Play the pads: no wrong notes!",
     "The order the patterns play in.",
     STR_ICON_A " writes the selected line.",
     "Choose who sings; " STR_ICON_A " edits one.",
