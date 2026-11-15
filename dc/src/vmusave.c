@@ -145,17 +145,20 @@ static void card_error(int err, const char *what)
 
 /* ---- S2-10: the card over the core's own long work (plat_ext.h plat_busy / plat_busy_step) -------------------------
  * A save encodes the whole island before the VMU is touched (0.2 s), a load decodes it after the VMU is read (0.25 s),
- * a New story builds it in ~100 ms. The core calls plat_busy_step per citizen; once the work has run BUSY_LATE
- * vblanks (so a ~100 ms build shows nothing) the card below is drawn with its bar at done / total, a picture a vblank at
- * most. While a VMU card is up (card_title) that one is the picture. dc_busy_end() (plat_end_frame) ends it. */
-#define BUSY_LATE 8
+ * a New story builds it in ~125 ms. The core calls plat_busy_step per citizen; once the work has run BUSY_LATE
+ * vblanks (67 ms: 8 let a 125 ms build leave a 150-167 ms gap between pictures, 4 makes it 100 ms) the card below is
+ * drawn with its bar at done / total, a picture a vblank at most. While a VMU card is up (card_title) that one is the
+ * picture. dc_busy_end() (plat_end_frame) ends it. */
+#define BUSY_LATE 4
 static uint8_t busy_kind;
 static uint32_t busy_v0;
+static int busy_done, busy_total;       /* the bar's last step (a PLAT_BUSY_KEEP step keeps it) */
 
 void plat_busy(int kind)
 {
     busy_kind = (uint8_t)kind;
     busy_v0 = dc_vblanks;
+    busy_done = busy_total = 0;
 }
 
 void dc_busy_end(void) { busy_kind = 0; }
@@ -163,10 +166,11 @@ void dc_busy_end(void) { busy_kind = 0; }
 void plat_busy_step(int done, int total)
 {
     static const char *const title[] = { "", "Saving your game...", "Loading your game...", "Getting everything ready..." };
+    if (done >= 0) { busy_done = done; busy_total = total; }
     if (!busy_kind || card_title || (int32_t)(dc_vblanks - busy_v0) < BUSY_LATE || dc_vblanks == card_vbl) return;
     card_title = title[busy_kind];
     card_line = busy_kind == PLAT_BUSY_BUILD ? NULL : "Do not remove the VMU or switch off the power";
-    card_draw(done, total);
+    card_draw(busy_done, busy_total);
     card_title = card_line = NULL;
 }
 
