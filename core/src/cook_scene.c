@@ -627,6 +627,15 @@ static void cook_update(void)
 enum { KS_COOKING = 1, KS_RESULT, KS_COUNTER, KS_BOOK };
 enum { KV_COUNTER = 0, KV_BOOK = 1, KV_BOOK_NIGHT = 2 };   /* the pictures: the counter at counter_y(), the book */
 
+/* the book's Granny: where and how big */
+static void book_granny(int *gx, int *gy, int *s)
+{
+    int big = fc_big();
+    *gx = big ? 24 : 17;
+    *gy = H() - (big ? 12 : 8) + 6;
+    *s = big ? 12 : 9;
+}
+
 #if COOK_KEPT
 static uint32_t kh(uint32_t h, uint32_t v)
 {
@@ -692,15 +701,6 @@ static void granny_layer(int id, int cx, int cy, int s, int t, int mood, int cy_
         return;
     }
     if (L(id, b, granny_key(s, t, mood))) plat_cook_pose(granny_key(s, t, mood), cx, cy, cy_counter, s, t, mood, NULL);
-}
-
-/* the book's Granny: where and how big */
-static void book_granny(int *gx, int *gy, int *s)
-{
-    int big = fc_big();
-    *gx = big ? 24 : 17;
-    *gy = H() - (big ? 12 : 8) + 6;
-    *s = big ? 12 : 9;
 }
 
 void cook_poses(void (*fn)(void *ctx, int cx, int cy, int clip, int s, int t, int mood), void *ctx)
