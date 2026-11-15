@@ -2549,7 +2549,8 @@ before Talk opens (0 ticks over 33.3 ms).
 
 Not a hand-drawn 10x16 font: that would be a design job for the owner (the smoothing keeps the look of the 5x8 font).
 Cost: 64 KB video RAM, 64 KB of `.bss` on the Dreamcast only; GBA and PS1 are untouched (the core change is a weak
-function and a one-line strong one in a file only the Talk builds compile).
+function and a one-line strong one in a file only the Talk builds compile). The warming-up call in `home_draw.c` sits
+behind `DOOMO_HAS_TALK`, so the PS1 build gets no new call site; `talk_text_hd` is weak and unreferenced there.
 
 ## Talk on the Dreamcast (TD1)
 
