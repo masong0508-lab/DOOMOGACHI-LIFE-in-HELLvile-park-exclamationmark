@@ -454,6 +454,7 @@ against the LAST row, not against a figure from an older base.
 | 61 | LV11: content notes (the card's note page, the select's badge, two bit options; docs/LEVELS.md "LV11") | after S2-10 (row 60) | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured 2026-11-15 on the tip (`9dc5e39a`) and the tip + LV11 (`make -C gba`, `make -C gba sizes`, `make -C gba test` clean): `.bss` 254,836 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the four overlay groups identical; ROM `.text` +1,384 B, `.rodata` +1,828 B. The two options are bits in the byte the Stick option already uses. |
 | 62 | LV7a: 7 shared textures, 3 skies, the texture bank format (docs/LEVELS.md "LV7a") | origin tip `fe410024` | 6,420 B | **6,436 B** | -16 B | 6,288 B | measured on `fe410024` and the same + LV7a (clean `make -C gba`, `make -C gba sizes`): `.bss` 254,828 -> 254,812 B (the overworld's `frame_tex_ok[TEX_COUNT]` flag array is gone, a NULL pointer means "not looked up yet"; it paid for the 7 new `frame_tex` pointers), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the four overlay slots identical; `.text` 1,524,016 -> 1,524,080 B (+64), `.rodata` 8,246,748 -> 8,349,684 B (**+102,936 B ROM**: 7 x 4,096 + 3 x 24,576 of pixels and tables). The texture bank reader (`texbank.c`) and the sample bank are compiled out on the GBA (`DOOMO_TEXBANK_ACTIVE` 0): no byte. `make -C gba test` passes. |
 | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
+| S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the held wake-up choice; docs: "Speed wave 2: S2-4d" below) | `1297e93` | 12,164 B | **12,164 B** | 0 B | 6,288 B | measured on `1297e93` and that tree + S2-4d, both built clean (`make -C gba sizes`): `.bss` 249,084 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical (the tip is 160 B under row 48: TM1-TRAITS' explicit trait sets, no row of their own). The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** grows 9,740 -> 10,260 B of the 3D group's 10,352 B slot (92 B left; `hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B, compiled `Os`), so a later package that needs UI-group code must make room first; `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM: `.text` +6,040 B, `.rodata` +32 B, the overlay's copy +520 B (+6,592 B). PS1: `_end` 0x801ee570 -> 0x801ee550 (-32 B of code; 72,320 -> 72,352 B below `elf2exe`'s stack top 0x801FFFF0 with the boot FMV; the tip is 1,408 B under the 72 KB gate until PS1-RAM lands, this tree 1,376 B) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2368,7 +2369,7 @@ caption 10.5, vignette 9-34, badge 3.
 package's evidence, `pixel_changes/`):
 
 * **A simpler sky** (the owner's second trade for the dreams): straight bands at their resting rows, one full-width
-  rect a band and one checker a seam. With S2-9's weld slices the UI group had 608 B left, so the wave's per-column
+  rect a band and one checker a seam. With S2-9's weld slices the UI group had 612 B left, so the wave's per-column
   ARM pass (424 B) no longer fit, and from ROM it was 3 ms slower than in ARM: the nightmare's frames missed again.
   The PS1, the Dreamcast and the native build keep the wave.
 * **The wake-up choice is held** (S2-1's `ui_modal_hold`): after one full frame the platform keeps the dimmed rows
@@ -2399,29 +2400,38 @@ while the disc covers it); the held choice (holds happen, nothing outside its ba
 frame's, a cursor moved away and back leaves the band as it was). Engine test `blit2test`: `plat_hshapes`' span fill,
 `plat_tile_rows` and the outline pass against their reference fills. GBA frames: with portrait slices made eager in
 both builds (a proof build) and the GBA-only pixel changes off, 1,498 of the 1,500 frames of both dreams (every tick,
-`vhash-seq`) are identical to the base; two differ in the portrait's sparkle phase only.
+`vhash-seq`) were identical to the base; two differ in the portrait's sparkle phase only. That proof ran on
+`d530565` + S2-4d, before the rebase onto S2-9; the ROM floor rows and the compact outline pass came after it, and `blit2test`
+and the host tests above check them.
 
 | window (`speed2_dream.txt`, libmgba) | before: logic / drawn fps, work avg / max, frames over 33 ms | after |
 |---|---|---|
 | dream: bedroom | 30.0 / 30.0, 24.7 / 31.0 ms, 0 | 30.0 / **30.0**, 19.8 / 26.0 ms, 0 |
-| dream: thought bubble | 27.9 / 22.3, 32.6 / 80.4 ms, 14 | 29.8 / **29.8**, 18.7 / 27.9 ms, 0 |
+| dream: thought bubble | 27.9 / 22.3, 32.6 / 80.3 ms, 14 | 29.8 / **29.8**, 18.7 / 27.9 ms, 0 |
 | dream: vignette 1 cute | 22.8 / 12.4, 62.1 / 64.3 ms, 60 | 30.0 / **30.0**, 23.6 / 24.8 ms, 0 |
 | dream: vignette 1 twist | 24.2 / 12.8, 63.5 / 69.7 ms, 53 | 30.2 / **30.2**, 24.2 / 27.6 ms, 0 |
 | dream: vignette 2 | 22.9 / 12.5, 63.9 / 67.4 ms, 71 | 30.1 / **30.1**, 28.7 / 31.5 ms, 0 |
-| dream: nightmare vignette 1 | 20.1 / 11.4, 72.0 / 90.8 ms, 74 | 30.0 / **30.0**, 27.8 / 33.4 ms, 0 |
-| dream: nightmare vignette 2 | 22.3 / 12.2, 65.2 / 80.1 ms, 71 | 30.0 / **30.0**, 28.1 / 32.6 ms, 0 |
+| dream: nightmare vignette 1 | 20.0 / 11.5, 71.8 / 90.8 ms, 75 | 30.0 / **30.0**, 27.7 / 33.4 ms, 0 |
+| dream: nightmare vignette 2 | 22.5 / 12.3, 64.8 / 80.1 ms, 71 | 30.0 / **30.0**, 28.1 / 32.6 ms, 0 |
 | dream: nightmare vignette 3 (cute, then red) | 17.6 / 10.6, 82.0 / 88.8 ms, 60 | 30.0 / **30.0**, 6.1 / 6.5 ms, 0 |
-| dream: wake-up choice | 17.6 / 10.6, 82.6 / 86.9 ms, 36 | 30.0 / **30.0**, 6.3 / 6.9 ms, 0 |
+| dream: wake-up choice | 17.6 / 10.6, 82.2 / 86.8 ms, 36 | 30.0 / **30.0**, 6.3 / 6.9 ms, 0 |
 
-Before: `d530565`; after: `b232be8` + S2-4d. Every frame of every window is two vblanks; each window closes with
-`expect-fps 29.5` and `expect-gap 34`. The margins are thin in the nightmare (a work maximum of 33.4 ms still flips on
-its second vblank). Left: the choice's first frame is one full frame (the dim and the dream, ~45 ms) before the hold
-starts; the first frame of a vignette whose chibi was not asked for in time comes a few ticks late.
+Before: the tip `1297e93` (within 0.4 ms of `d530565`, where the work started); after: that tree + S2-4d. The
+windows keep the script's names: on today's timing "nightmare vignette 2" is already the last vignette (cute, then
+red, with the roar and its unlock) and "vignette 3" already shows the choice. Every frame of every window is two
+vblanks; each window closes with `expect-fps 29.5` and `expect-gap 34`. The margins are thin in the nightmare (a work
+maximum of 33.4 ms still flips on its second vblank).
+
+**Left.** The choice's first frame, between two windows, is one frame of 110 ms (before: two frames, 138 and 111 ms):
+the vignette under it, the full-screen dim (15 ms), the band copy, and the first draw of the big title and the buttons
+into the text cache (~35 ms of text; profiled with `profile`). An unlock toast over the nightmare (three unlocks at
+once when a run starts in the nightmare) adds 3-5 ms: frames of 34-36 ms while it shows. A chibi that was not asked for
+in time shows a few ticks late.
 
 **Memory.** EWRAM and resident IWRAM unchanged (the dream's state gains the held choice's row in a padding byte:
 `D` 184 B before and after; the main stack 6,288 B). The IWRAM overlay's UI group 9,740 -> 10,260 B of the 3D group's
 10,352 B slot (92 B left: `hshapes_fill` +172 B, the outline pass 344 B). PS1: the hooks are not built there (weak),
-the exact steps are; resident RAM 16 B smaller.
+the exact steps are; the EXE 32 B smaller (ledger row 51).
 
 
 ## 4b. Retained panels (G7, `src/panel.c`)
