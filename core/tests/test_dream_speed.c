@@ -8,6 +8,7 @@
  *   - the shape helpers (dream_circles, dream_ellipses) against ui_fill_circle / ui_fill_ellipse;
  *   - the rim (its bumps made once) against the old rim, kept here verbatim;
  *   - the thought bubble: what it hides when it fills the screen;
+ *   - the caption's cloud box (the bump rows its rects cover left out) against the old box, kept here verbatim;
  *   - the held wake-up choice: holds happen, a held tick changes nothing outside its band (but the toast's lane,
  *     which S2-1 puts back and draws again), the buttons' insides are the full frame's, and a cursor moved away and
  *     back leaves the band as it was (nothing piles up). */
@@ -120,6 +121,16 @@ static void old_bubble(int t, int total, uint32_t clock)
             ui_sparkle(cx + (int)((fx_cos(k * 682 + t * 40) * r) >> 17), cy + (int)((fx_sin(k * 682 + t * 40) * r) >> 17),
                        (int)(clock / 2 + (uint32_t)k * 3) & 15, PAL_WHITE);
     }
+}
+
+/* the caption's cloud box before S2-4d (d5305653, dream.c caption_box), verbatim */
+static void old_cloud(int x, int y, int w, int h, uint8_t ol, uint8_t bg)
+{
+    int k;
+    for (k = 0; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 1, 7, ol);
+    ui_round_rect(x - 1, y - 1, w + 2, h + 2, 8, ol);
+    for (k = 0; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 2, 6, bg);
+    ui_round_rect(x, y, w, h, 7, bg);
 }
 
 static uint8_t ref_fb[NAT_MAX_W * NAT_MAX_H];
@@ -333,6 +344,63 @@ TEST(dream_shapes_are_ui_fill_shapes)
         }
     }
     nat_fast2d = 0;
+}
+
+/* (LAND) a circle wider than 256 on a 320-wide screen: a half-width cut to 255 from a centre near one edge does not
+ * reach the other (the review's probe): the one-call path must leave such circles to ui_fill_circle */
+TEST(dream_circles_wider_than_256)
+{
+    static const int16_t cx[6] = { 10, 60, 160, 260, 310, -40 };
+    int fast, i, r;
+    res(320, 240);
+    for (fast = 0; fast < 2; fast++) {
+        nat_fast2d = fast;
+        for (i = 0; i < 6; i++)
+            for (r = 250; r <= 330; r += 20) {
+                int16_t xy[2];
+                int d;
+                xy[0] = cx[i]; xy[1] = (int16_t)(i * 47 - 20);
+                memset(nat_fb, 0, sizeof(nat_fb));
+                ui_fill_circle(xy[0], xy[1], r, 7);
+                keep();
+                memset(nat_fb, 0, sizeof(nat_fb));
+                dream_circles(xy, 1, r, 7);
+                d = differs(nat_h);
+                CHECK_MSG(d < 0, "fast %d centre (%d, %d) r %d: pixel (%d, %d)", fast, xy[0], xy[1], r, d % nat_w,
+                          d / nat_w);
+            }
+    }
+    nat_fast2d = 0;
+    res(240, 160);
+}
+
+/* (LAND) the caption's cloud box: the old box's pixels for every width the captions use and more (the bumps near the
+ * corners drawn whole, the others only above their rects), on and off the screen, with and without the one-call path;
+ * and the rows it leaves out are real (the one-call path draws fewer rows than the old box) */
+TEST(dream_caption_cloud_is_the_old_box)
+{
+    int r, fast, w, h, y, x;
+    for (r = 0; r < 2; r++)
+        for (fast = 0; fast < 2; fast++) {
+            res(r ? 320 : 240, r ? 240 : 160);
+            nat_fast2d = fast;
+            for (w = 1; w <= nat_w + 40; w += (w < 60 ? 3 : 17))
+                for (h = 1; h <= 60; h += (h < 20 ? 1 : 13))
+                    for (y = -12; y < nat_h + 8; y += 37)
+                        for (x = -20; x < nat_w; x += 61) {
+                            int d;
+                            memset(nat_fb, 0, sizeof(nat_fb));
+                            old_cloud(x, y, w, h, 77, 141);
+                            keep();
+                            memset(nat_fb, 0, sizeof(nat_fb));
+                            dream_caption_cloud(x, y, w, h, 77, 141);
+                            d = differs(nat_h);
+                            CHECK_MSG(d < 0, "%dx%d fast %d box (%d, %d) %d x %d: pixel (%d, %d)", nat_w, nat_h, fast,
+                                      x, y, w, h, d % nat_w, d / nat_w);
+                        }
+        }
+    nat_fast2d = 0;
+    res(240, 160);
 }
 
 /* the swelling bubble: the same picture as before, with the bedroom and the ring left out once the disc fills the

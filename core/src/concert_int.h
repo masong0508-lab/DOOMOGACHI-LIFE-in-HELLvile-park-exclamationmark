@@ -291,6 +291,9 @@ void dream_circles(const int16_t *xy, int n, int r, uint8_t c);
 void dream_circles_rows(const int16_t *xy, int n, int r, uint8_t c, int y0, int y1);
 /* (S2-4d) n filled ellipses of one colour, (cx, cy, rx, ry) in e[4k .. 4k + 3]: ui_fill_ellipse's pixels. */
 void dream_ellipses(const int16_t *e, int n, uint8_t c);
+/* (S2-4d) The caption's cloud-shaped box at (x, y), w x h (its bumps along the top, the outline, the fill): the
+ * pixels of the box dream.c drew before, with each bump's rows that its own rounded rect covers left to the rect. */
+void dream_caption_cloud(int x, int y, int w, int h, uint8_t ol, uint8_t bg);
 void dream_draw_frame(int creep, int nightmare, uint32_t t);
 /* The sleeper's night bedroom (sleeper's portrait under a quilt). */
 void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int shake);

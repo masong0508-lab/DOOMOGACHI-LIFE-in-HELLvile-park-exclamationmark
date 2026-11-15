@@ -426,8 +426,6 @@ static void caption_box(const char *text, int split, int t, int creep, int night
     uint8_t bg = creep >= 12 ? (nightmare ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_RAMP(RAMP_VAPE, 0)) : PAL_RAMP(RAMP_VAPE, 7);
     uint8_t ink = creep >= 12 ? PAL_WHITE : PAL_RAMP(RAMP_VAPE, 0);
     uint8_t ol = creep >= 12 ? (nightmare ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_VAPE, 3)) : PAL_RAMP(RAMP_VAPE, 4);
-    int k, n;
-    int16_t xy[2 * 32];
     /* the box fits the whole line (it grows upwards) */
     lines = ui_text_wrap(x + 8, 0, w - 16, text, ink, 0);
     if (lines < 1) lines = 1;
@@ -440,15 +438,8 @@ static void caption_box(const char *text, int split, int t, int creep, int night
     if (shown > len) shown = len;
     memcpy(buf, text, (size_t)shown);
     buf[shown] = 0;
-    /* a cloud-shaped box (S2-4d: each row of bumps in one dream_circles call) */
-    for (k = 0, n = 0; k < w && n < 32; k += 14, n++) { xy[2 * n] = (int16_t)(x + 7 + k); xy[2 * n + 1] = (int16_t)(y + 1); }
-    dream_circles(xy, n, 7, ol);
-    for (; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 1, 7, ol);
-    ui_round_rect(x - 1, y - 1, w + 2, h + 2, 8, ol);
-    for (k = 0; k < n; k++) xy[2 * k + 1] = (int16_t)(y + 2);
-    dream_circles(xy, n, 6, bg);
-    for (k = n * 14; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 2, 6, bg);
-    ui_round_rect(x, y, w, h, 7, bg);
+    /* a cloud-shaped box (S2-4d: dream_gfx.c dream_caption_cloud, its bumps in dream_circles calls) */
+    dream_caption_cloud(x, y, w, h, ol, bg);
     ui_text_wrap(x + 8, y + 5, w - 16, buf, ink, 1);
     if (shown >= len && ((t / 10) & 1)) plat_text(x + w - 12, y + h - 10, STR_ICON_ARROW_D, ink);
 }

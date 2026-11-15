@@ -49,8 +49,8 @@ static void circle_rows(int r, int n, uint8_t *dx)
  * (a row of a circle is the span of its half-width: the union of ui_fill_ellipse's nested bands for r <= 15, its
  * row spans above), in one plat_hshapes call per 16 where the platform has it (the GBA: an ARM loop of row fills
  * instead of a THUMB call per band or row), else ui_fill_circle each. Only the rows on the screen are tabled; a
- * half-width over 255 is cut to 255, which still covers every column when the centre is on the screen (else the
- * circles are drawn one by one). dream_circles_rows draws only rows [y0, y1) of them on that path: for a caller
+ * half-width over 255 is cut to 255, which still covers every column when the centre is within 255 of both edges
+ * (always on a screen up to 256 wide with the centre on it; else the circles are drawn one by one). dream_circles_rows draws only rows [y0, y1) of them on that path: for a caller
  * that has just filled the other rows of every one of them with the same colour (else every row is drawn). */
 #define DC_ROWS 256
 void dream_circles_rows(const int16_t *xy, int n, int r, uint8_t c, int y0, int y1)
@@ -62,7 +62,8 @@ void dream_circles_rows(const int16_t *xy, int n, int r, uint8_t c, int y0, int 
     for (i = 0; i < n; i++) {                        /* the table's length: the on-screen rows of the farthest */
         int cy = xy[2 * i + 1], top = DOOMO_CLAMP(cy, 0, r), bot = DOOMO_CLAMP(sh - 1 - cy, 0, r);
         rows = DOOMO_MAX(rows, DOOMO_MAX(top, bot) + 1);
-        if (r > 255 && (xy[2 * i] < 0 || xy[2 * i] >= sw)) rows = DC_ROWS + 1;
+        if (r > 255 && (xy[2 * i] < 0 || xy[2 * i] >= sw || xy[2 * i] - 255 > 0 || xy[2 * i] + 255 < sw - 1))
+            rows = DC_ROWS + 1;                      /* a half-width cut to 255 would not reach both edges */
     }
     if (rows <= DC_ROWS) {
         DoomoHShape hs[16];
@@ -150,6 +151,34 @@ void dream_ellipses(const int16_t *e, int n, uint8_t c)
         hs[m].c = c;
         rxs[m++] = (int16_t)rx;
     }
+}
+
+/* (S2-4d) The caption's cloud box (dream.c caption_box drew it so before): bumps of radius 7 along its top, the
+ * rounded rect (x - 1, y - 1, w + 2, h + 2, 8) in the outline colour, the same bumps of radius 6 one row lower and the
+ * rect (x, y, w, h, 7) in the fill. Each rect comes right after its bumps in their colour, so a bump's rows that lie
+ * inside the rect need not be drawn: for a bump at least 7 pixels clear of the rect's corners (no inset there is over
+ * 8) and a box at least 9 rows tall, only its rows above the rect are drawn (dream_circles_rows; the platform that
+ * cannot draws them all). Two thirds of the caption's bump rows, ~1.7 ms of every dream frame on the GBA. */
+void dream_caption_cloud(int x, int y, int w, int h, uint8_t ol, uint8_t bg)
+{
+    int16_t in[2 * 32], cut[2 * 32];
+    int k, n = 0, ni = 0, nc = 0;
+    in[0] = in[1] = cut[0] = cut[1] = 0;            /* (a box under 1 pixel wide has no bumps) */
+    for (k = 0; k < w && n < 32; k += 14, n++) {
+        int cx = x + 7 + k;
+        int16_t *q = h >= 9 && cx >= x + 14 && cx <= x + w - 15 ? in + 2 * ni++ : cut + 2 * nc++;
+        q[0] = (int16_t)cx; q[1] = (int16_t)(y + 1);
+    }
+    dream_circles(cut, nc, 7, ol);
+    dream_circles_rows(in, ni, 7, ol, 0, y - 1);
+    for (; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 1, 7, ol);
+    ui_round_rect(x - 1, y - 1, w + 2, h + 2, 8, ol);
+    for (k = 0; k < nc; k++) cut[2 * k + 1] = (int16_t)(y + 2);
+    for (k = 0; k < ni; k++) in[2 * k + 1] = (int16_t)(y + 2);
+    dream_circles(cut, nc, 6, bg);
+    dream_circles_rows(in, ni, 6, bg, 0, y);
+    for (k = n * 14; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 2, 6, bg);
+    ui_round_rect(x, y, w, h, 7, bg);
 }
 
 /* eyes + mouth on a snack / fear; creep 0..16 */
