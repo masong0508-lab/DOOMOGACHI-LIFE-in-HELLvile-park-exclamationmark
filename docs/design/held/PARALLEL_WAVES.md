@@ -90,6 +90,17 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
 3. Run **all** gates on the rebased tree (the list is in `tools/agents/wave-runner.js`), then
    `git push origin HEAD:claude/nice-allen-gr6czm`. Fast-forward only. Rejected: fetch, rebase,
    re-run what the incoming commits could affect, push again. Never force-push.
+3b. **Few pushes, and re-run only what the incoming commits can break** (2026-11-15: landers on a
+   loaded machine spent hours re-running every gate because the tip moved under them every few minutes).
+   * One push per package: the code, its docs, its status-file lines and the patch-folder removal go in
+     the same push. No standalone status or "numbers" pushes while other streams are landing; correct a
+     status line in your next landing push.
+   * After a rejected push (or a rebase onto new commits): look at `git diff --stat OLD..origin/<branch>`.
+     If the incoming commits touch only docs, status files, another stream's data (`core/data/talk/**`,
+     part data, maps) or `dc/**` and nothing your package changed or calls, re-run only the fast gates
+     (`make -C core -j2 test`, `make -C core check-gen`) and push. If they touch shared code you build on
+     (core sources, `gba/src`, `ps1/src`, the registries), re-run the gates of the platforms that code
+     reaches. The full set is for your first rebase, not for every retry.
 4. Never revert another stream's commit. If a clean checkout of origin fails a gate because of
    someone else's landing: tell the coordinator, and fix it forward yourself only when the fix is
    small and plainly right (its own commit, message starting `tip repair:`).
