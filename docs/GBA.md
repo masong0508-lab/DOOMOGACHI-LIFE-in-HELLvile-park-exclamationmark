@@ -456,7 +456,7 @@ against the LAST row, not against a figure from an older base.
 | 63 | CR10: the PS1 draws scripted parts (docs/CREATOR.md "CR10"; shared code: the part store hooks `DOOMO_PARTS_SPU(_TEST)`, the packed icon set made complete) | after LV7a (row 62) | 6,436 B | **6,436 B** | 0 B | 6,288 B | measured on the rebased tree (`make -C gba`, `make -C gba sizes`): `.bss` 254,820 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, the same as row 55. The new code is `#if`ed on PS1-only macros (no GBA object changes); the packed part icons (`part_icons_rle.c`, now every icon: 121,577 B instead of the painted parts' only) are `const` ROM the GBA does not read: ROM only. PS1 side (not GBA RAM): 21,024 B resident, none in an overlay group: portraits are drawn in almost every scene and from resident code, and the one-group slot would swap the renderer in and out on every scene change (docs/PS1.md "CR10"). |
 | S2-4d | S2-4d: the dreams (sky, shapes, floor and outlined text on faster paths, the mirror's flipped face in ARM, the caption's cloud trimmed, the held wake-up choice, the concert's beam calling the checker; docs: "Speed wave 2: S2-4d" below) | after S2-10 (`8fe2134f`) | 6,412 B | **6,412 B** | 0 B | 6,288 B | measured 2026-11-15 on `8fe2134f` and that tree + S2-4d, both built clean (`make -C gba sizes`, memreport): `.bss` 254,836 B, `.data` 816 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, all identical; 6,412 B of EWRAM free on both. The dream's state `D` stays 184 B (the held choice's top row is a padding byte). No resident IWRAM: the overlay's **UI group** 10,124 -> 10,100 B of the 3D group's 10,352 B slot (252 B left): the dreams add 584 B (`hshapes_fill`'s inline span fill +172 B, the outline pass `vid_text_dil_ui` 344 B compiled `Os`, `vid_blitn`'s scale-1 line +72 B) and `vid_beam_ui` calling `vid_checker_ui` instead of inlining S2-4b's checker a second time gives back 608 B (without it the link stops at the 6 KB main stack); `plat_tile_rows` is ROM code (a 240 B row on the stack, DMA copies). ROM 9,823,708 -> 9,830,056 B (+6,348: `.text` +6,328, `.rodata` +44, the overlay's copy -24; 48 B of it the cross-stream fix to S2-10's hold below). PS1: `_end` 0x801e0610 -> 0x801e05f0 (32 B less code; 129,504 -> 129,536 B below `elf2exe`'s stack top with the boot FMV) |
 | G2-EX | G2-EX: clipped redraw in the retained stage, the exorcism's aura list (docs: "Speed wave 2: G2-EX" below, `docs/EXORCISM_SPEED.md`) | after LV7a (`cf5e9f27`) | 6,428 B | **6,420 B** | -8 B | 6,272 B | measured on the tip `cf5e9f27` and the tip + G2-EX, both built clean (`make -C gba sizes`, `gba/tools/memreport.py`): `.bss` 254,820 -> 254,828 B (the aura's pointer, 4 B, and the clip box's fifth halfword: `stage_box[5]`, the old `trk[4]` plus the saved `gba_nodraw`; padding), `.data` 816 B unchanged. **IWRAM resident +16 B** (`plat_rect`'s mode-7 dispatch in `video_loops.s`, `.iwram` 11,272 -> 11,288 B: the main stack's room 6,288 -> 6,272 B, gate 6,144 B; 5,124 B beside the flash routines while saving); the overlay's room group 9,800 -> 9,952 B (+152 B, `stage_clip_rect`; 400 B of the 10,352 B slot left). Not net zero (+8 B EWRAM, +16 B IWRAM): left for the lead to accept (the EWRAM bytes could go if the aura's pointer were derived from the scene's own pointer behind a call; the two bytes made into one elsewhere landed in padding). The exorcism's scene-scratch claim grows 1,672 -> 6,000 B of the 12 KB block (the aura's five lists 3,924 B, the stage's memory 1,240 -> 1,644 B: the pieces and the clip mask), so while the exorcism owns the scratch the arena has 4.3 KB less for the save window; the kitchen's claim grows by the same 404 B of stage memory (its static assert allows 2,048 B). ROM 9,929,752 -> 8,399,980 B (**-1.53 MB**: the wall drips' hold, 19 church pictures baked instead of 59; `.text` +6,696 B). First measured on `0cb159e` (built 2026-11-13: 15,460 -> 15,452 B free). PS1: no resident byte (`_end` 0x801e0610 on the tip and with G2-EX: 129,504 B below the stack top with the boot FMV); the aura's list is not built there, `exorcism_gfx.c` and `backdrop.c` stay in the exorcism overlay group (46 -> 51 KB) |
-| GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | `b232be8` | 12,324 B | **56,644 B** | +44,320 B | 6,288 B | measured on `b232be8` and that tree + GBA-500, both built clean (`make -C gba sizes`): `.bss` 248,924 -> 204,604 B. `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and counters; the scan's scores live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,272 B, `.iwram_bss` 4,088 B, main stack 6,288 B); the empty record `doomo_res_none` (76 B) is in ROM. ROM +8,460 B (`.text`: `TOWN_RES` looks the slot up where code read the array). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the base's (sha256), `_end` 0x801ee570, delta 0 B |
+| GBA-500 | GBA-500: the GBA keeps 500 residents (an id -> slot table; docs: "500 residents (GBA-500)" below) | after S3-1 (`2bc6130`) | 12,164 B | **56,484 B** | +44,320 B | 6,288 B | measured 2026-11-15 on `2bc6130` and that tree + GBA-500, both built clean (`make -C gba sizes`, `nm`): `.bss` 249,084 -> 204,764 B. `doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id / slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B (its per-resident arrays by slot), the apartments' "seen" bits 125 -> 63 B, the old-save rule's state +134 B (`save.c` `sv_keep` and four counters; the scan's scores, households and the save's graph live in the record array). The 44,320 B are not spent here: the coordinator says what they are for (OWNER_DECISIONS GBA 500 RESIDENTS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident 11,272 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots); the empty record `doomo_res_none` (76 B) is in ROM. ROM +11,640 B (`.text` +10,624 B: `TOWN_RES` looks the slot up where code read the array, and the old-save scan; `.rodata` +1,016 B). PS1: `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN`, `SFX.BIN` byte for byte the tip's (sha256, boot FMV linked), `_end` 0x801ee550, 72,368 B below the stack top, delta 0 B |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -564,8 +564,9 @@ shop keepers) and writes the list to `TMP/gba500_live.txt` (`build/testtmp`).
 was 2,048: the sim fills whatever room the graph has, 2,000 edges in 10 game days at either size,
 so 1,024 keeps the edges per resident of the 1,000-resident town), the sim's per-resident arrays
 (`sim_int.h` `SIM_IX`, by slot: stamps, feelings, jobs, the taken / crush bits), the Almanac's list
-(`lib_int.h`), the apartments' "seen" bits. The sim's round robin walks the slots and updates half
-the batch per tick (16), so a resident is updated as often as before. A district is full at 250:
+(`lib_int.h`), the apartments' "seen" bits. The sim's pass (S3-1's, `sim_int.h` `SIM_PASS_NUM`) walks
+the 500 slots at 500 per 15 game minutes (about 0.45 a tick at the default clock), so a resident is
+updated once per interval, as with 1,000. A district is full at 250:
 Town Hall's locked row says "Full: 250 of 250 homes. Someone must move out.", an empty apartment
 says "This side is full: 250 neighbours." when no slot is left, the apartments' header counts n/250 and
 the No Vacancy achievements need 250. The new-island cards, the Almanac's line, the first-citizen
@@ -580,95 +581,140 @@ override; `freeplay_island_rent_of_a_full_town_is_the_same_at_every_size`).
 
 **Saves.** The format is unchanged (version 2; residents by id, an id not in town is an empty run),
 and so is the flash layout (slot 0 at `0x00000`, 40 KB; slot 1 at `0x0A000`, 88 KB), so old saves
-are found where they were. The worst case (500 random custom citizens and 1,024 random edges) is
-31,076 B (61,800 B on `b232be8` with 1,000 and 2,048 edges): it fits the story slot too; a lived-in
-story island is 6,049 B (13,130 B). `make -C gba test-coresave` (libmgba,
-emulated time): the worst case saves in 7,296 ms (base 14,396), loads in 4,051 ms (7,821); a
-lived-in story island saves in 6,562 ms (13,175) and loads in 3,557 ms (6,930); `town-fill` of the
-worst case 3,516 ms (8,406).
+are found where they were. `make -C gba test-coresave` (libmgba, emulated time), measured on the
+landing tip `2bc6130` and that tree + GBA-500: the worst case (random custom citizens and random
+edges: 500 and 1,024 against 1,000 and 2,048) is 61,788 -> **31,116 B** and now fits the story slot
+too; it saves in 14,392 -> 7,297 ms and loads in 7,822 -> 4,054 ms, its `town-fill` takes 4,577 ->
+2,589 ms. A lived-in story island is 13,130 -> **6,049 B**; it saves in 13,175 -> 6,562 ms and loads
+in 6,930 -> 3,559 ms.
 
 **An old save with 1,000.** A save with more people in a district than its slots (a GBA save made
 before GBA-500) loads like this (`save.c`, "more residents in a save than the slots"): the dry run
-counts the residents; a scan pass decodes every record and scores it (MUST: never dropped; the
-household from the `LIFE` chunk, the partner and family edges with the player, the play-as avatar
-from the `PLAY` chunk; a made-over (RF_CUSTOM) or favourite citizen; then points for the player's
-edge (value, best friend, friend, crush, rival), the friendship level, a visited house (`HOME`), the
-living, and the default set as the last tie-break, so an untouched old Classic island keeps exactly
-the default 500); the apply pass keeps the best 250 of each district. The others move away: their
-records, their edges and their graves go, and when the sim starts the news says "N neighbours moved
-away. The park feels cosier." Edges beyond 1,024 keep the strongest (`town.c`'s eviction rule:
-married and family, dating, best friends and nemeses, the avatar's ties first). The scores live in
-the record array during the scan (the apply pass that follows overwrites it), the kept set in 125 B.
-`core/tests/fixtures/gba500_old_1000.dmoo` is such a save (9,893 B: 1,000 residents, 1,551 edges,
-two graves, a housemate, a partner, friends, a rival, friendship levels, a made-over citizen, a
-favourite and two visited houses, all outside the default 500), made by
-`core/tests/fixtures/gba500_old_save.c` with the build before GBA-500;
-`save_old_1000_island_keeps_the_500_closest` loads it at 500 (all of those stay, every MUST citizen
-stays, the stranger's grave goes, 500 move away) and at 1,000 (everybody stays). `make -C gba
-test-oldsave` (part of `make -C gba test`) does the same on the GBA with a flash file the ROM before
-GBA-500 wrote (`harness/fixtures/gba500_old.flash`, made by `scripts/oldsave_make.txt` on `b232be8`: a
-lived-in story island in slot 0, the old worst case of 1,000 random custom citizens in slot 1): both
-slots load with 500 residents and 500 moved away (such a load decodes the save three times: 10.0 s of
-emulated time, once), save again (6,049 B and 29,655 B) and load in 3.6 / 4.0 s with nobody else
-leaving.
+counts the residents; a scan pass decodes every record, keeps the save's graph as it was read and
+reads the `LIFE`, `HOME`, `PLAY` and `PROF` chunks; then every resident is scored, in tiers:
+7 the MUST set (never dropped); 6 "the players" (the hero, the villager the hero plays as from
+`PLAY`, the villagers the guests play from `PROF`), the household (`LIFE`), family memorials, and
+anyone with a FAMILY, DATING or MARRIED edge to one of the players; 5 a made-over (RF_CUSTOM) or
+favourite citizen; 4 a MUST citizen's household (a FAMILY, MARRIED or DATING edge: `gba_live.py`'s
+step 2). Inside a tier the points decide: the players' edges (value, best friend, friend, crush,
+rival), a guest's own ties, the friendship level, a visited house (`HOME`), the living, and the
+default set as the last tie-break, so an untouched old Classic island keeps exactly the default 500.
+A child's family moves as one: the residents joined by FAMILY edges with a minor end (the record's
+stage, or the roster's: a kid, their parents, siblings, a grandparent) are one household when they
+are 2..16 (a union-find in the scan's scratch); each member gets the household's best score (a MUST
+kid's household tier 6, so the parents stay), the cut's tie takes a household whole or not at all, a
+household the two districts' cuts split moves away (but a MUST citizen), and the room left goes to
+the next best residents in no household. A bigger knot of FAMILY edges (the old worst case of random
+citizens has one through most of the town) is no household: its people are scored one by one. The
+apply pass keeps the 250 chosen in each district. The others move away: their records, their edges and their graves go, and when the sim
+starts the news says "N neighbours moved away. The park feels cosier." ("A neighbour moved away."
+for one); `town_new` forgets that news, so a new island started after a load never shows it. Edges
+beyond 1,024 keep the strongest (`town.c`'s eviction rule: married and family, dating, best friends
+and nemeses, the avatar's ties first). The scan's state (scores, the households, the minor bits, the
+graph, the players: 20,550 B) lives in the record array (38,000 B; the apply pass that follows overwrites it),
+the kept set in 125 B. The fixtures are made by `core/tests/fixtures/gba500_old_save.c` with the
+1,000-resident build (`core/tests/test_res_live.c` loads each at 500 and at 1,000):
 
-**Memory** (`make -C gba sizes`, `memreport`; `b232be8` and that tree + GBA-500, both built clean;
-ledger row 49): EWRAM `.bss` 248,924 -> 204,604 B, free 12,324 -> **56,644 B** (+44,320 B: `doomo_town`
-89,504 -> 47,360 B, `sim_s` 5,032 -> 2,784 B, the apartments' bits 125 -> 63 B, the old-save rule's
-state +134 B). The freed room is not spent here: what it is used for is the coordinator's call
+- `gba500_old_1000.dmoo` (9,893 B; made on `ae1bd94d`, and the landing tree's 1,000 build writes
+  it byte for byte): 1,000 residents, 1,551 edges, two graves, a housemate, a partner, friends, a
+  rival, friendship levels, a made-over citizen, a favourite and two visited houses, all outside the
+  default 500. `save_old_1000_island_keeps_the_500_closest`: all of those stay, every MUST citizen
+  stays, every premade kid who stays keeps their roster family, the stranger's grave goes, 500 move
+  away (at 1,000 everybody stays);
+- `gba500_old_players.dmoo` (10,183 B): the hero plays as villager 330 (married to 331, best friends
+  with 332), two guests play 320 and 720 (Ann's own tie: 321), two sim-born babies with their
+  parents (334 + 335 -> 336, 334 the hero's best friend; 337 + 338 -> 339). The avatar, the spouse,
+  the friend, both guests, their villagers and Ann's tie stay, the best friend's family stays, the
+  other family stays or goes as one;
+- `gba500_old_251.dmoo` (15,793 B): an Empty island with 251 made citizens in Hillvile: one moves
+  away, the news says it once and in the singular, and a new island after a load has no such news.
+
+Without the landing's fixes (the branch's `save.c` before them) six of these checks fail: a kid
+without a parent (Tadpole without Coral Reef: 11 broken kid bonds), the avatar's spouse and friend
+gone, both guests deleted, the best friend's baby gone, no singular line, the news on a new island.
+`make -C gba test-oldsave` (part of `make -C gba test`) loads a flash file the ROM before GBA-500 wrote
+(`harness/fixtures/gba500_old.flash`, made by `scripts/oldsave_make.txt` on `b232be8`: a lived-in story
+island in slot 0, the old worst case of 1,000 random custom citizens in slot 1): both slots load with
+500 residents and 500 moved away (such a load decodes the save three times: 10,120 / 10,227 ms of
+emulated time, once), save again (6,049 B in 6,562 ms; the worst case in 7,172 ms) and load in 3,559 /
+3,973 ms with nobody else leaving. `test_res_live`'s `save_old_gba_flash_slots_keep_250_a_side` loads
+the same file natively.
+
+**Memory** (`make -C gba sizes` and `nm`; the landing tip `2bc6130` and that tree + GBA-500, both
+built clean; ledger row 51): EWRAM `.bss` 249,084 -> 204,764 B, free 12,164 -> **56,484 B** (+44,320 B:
+`doomo_town` 89,504 -> 47,360 B (the records 76,000 -> 38,000 B, the edges 12,288 -> 6,144 B, + the id /
+slot tables 2,000 B), `sim_s` 5,032 -> 2,784 B, the apartments' bits 125 -> 63 B, the old-save rule's
+state +134 B: `sv_keep` 125 B and four counters; everything else it needs lives in the record array during
+the scan). The freed room is not spent here: what it is used for is the coordinator's call
 (OWNER_DECISIONS: first candidates the Talk trait fields and the creator). IWRAM unchanged (resident
-11,272 B, `.iwram_bss` 4,088 B, main stack 6,288 B). ROM +8,460 B (`TOWN_RES` looks the slot up where
-code read the array). **PS1:** `doomogachi.exe`, `OVL.BIN`, `TEXT.BIN` and `SFX.BIN` are byte for byte the
-base's (sha256, both built with the boot FMV): `_end` 0x801ee570, 72,336 B below the stack top, delta 0 B.
-**Dreamcast:** the same code (all 1,000 live); its Spanish table carries the seven GBA-only rows, never
-looked up there.
+11,272 B, `.iwram_bss` 4,088 B, main stack 6,288 B, the overlay slots the same). ROM `__rom_end`
+0x088bc97c -> 0x088bf6f4, **+11,640 B** (`.text` +10,624 B: `TOWN_RES` looks the slot up where code read
+the array, and the old-save scan; `.rodata` +1,016 B; `doomo_res_none`, 76 B, is in ROM). **PS1:**
+`doomogachi.exe`, `OVL.BIN`, `TEXT.BIN` and `SFX.BIN` byte for byte the tip's (sha256, both built with the
+boot FMV): `_end` 0x801ee550 on both, 72,368 B below the stack top, delta 0 B (the tip is 1,360 B
+under the 72 KB plan gate; this package adds nothing there). **Dreamcast:** the same code (all 1,000 live); its Spanish table carries the seven
+GBA-only rows, never looked up there.
 
-**Speed** (libmgba, emulated time; `make -C gba test-speed2 SPEED2="life library story" SPEED2_GATES=1`
-and `make -C gba test-life`, on `b232be8` and that tree + GBA-500; drawn fps, work avg / max ms per drawn
-tick):
+**Speed** (libmgba, emulated time; `make -C gba test-speed2 SPEED2="life library story sim" SPEED2_GATES=1`
+and `make -C gba test-life`, on the landing tip `2bc6130` (S3-1's spread pass in) and that tree +
+GBA-500; drawn fps, work avg / max ms per drawn tick; all four groups pass their gates):
 
 | window | before | after |
 |---|---|---|
-| life tour: island hub (the sim runs) | 30.1, 14.5 / 33.7 | 30.1, **14.0 / 29.5** |
-| life tour: news | 29.1, 32.5 / 37.0 | **30.0**, 27.9 / 32.7 |
-| life tour: island menu | 30.0, 29.0 / 35.1 | 30.0, 28.8 / 34.5 |
-| life tour: roster | 29.8, 31.5 / 40.2 | 29.9, 31.2 / 39.8 |
-| life tour: resident | 29.4, 31.2 / 42.0 | 29.8, 31.0 / 39.1 |
-| life tour: apartments | 25.2, 33.5 / 51.8 | **28.2**, 32.2 / 40.7 |
-| life: new island -> hub (the load) | 7.5, 111.9 / 2,233 | 8.9, 92.3 / **1,339** |
-| story: title -> new story (the load) | 11.2, 86.2 / 2,309 | 14.7, 65.5 / **1,419** |
-| life: saving (the save freeze) | 2.9, 337.6 / 13,675 | 5.3, 182.7 / **6,869** |
-| life: options page turn to accessibility | 23.7, 31.9 / 47.5 | 29.3, 29.1 / 35.7 |
-| life: options accessibility | 28.2, 28.2 / 43.0 | **30.0**, 27.2 / 32.3 |
-| life: shop gifts tab | 21.2, 36.0 / 61.9 | 22.7, 35.1 / 47.7 |
-| life: citizen picker | 23.1, 35.5 / 64.9 | 25.8, 33.7 / 51.3 |
-| library: almanac list / move / profile / face | 30.0 / 24.8 / 30.2 / 30.0 | the same (32.8 / 35.2 / 26.0 / 28.5 ms) |
-| story: credits | 28.5, 32.9 / 48.7 | 28.5, 31.3 / 48.9 |
-| story: credits parade | 24.1, 37.6 / 52.3 | **24.9**, 35.8 / 51.0 |
+| life tour: island hub (the sim runs) | 30.1, 14.1 / 33.3 | 30.1, **13.8 / 29.3** |
+| life tour: news | 29.2, 32.3 / 36.8 | **30.0**, 27.8 / 32.7 |
+| life tour: island menu | 30.0, 29.0 / 38.0 | 30.0, 28.6 / 34.6 |
+| life tour: roster | 29.9, 31.6 / 40.6 | 29.9, 31.1 / 40.4 |
+| life tour: resident | 29.5, 31.4 / 42.3 | 29.7, 30.9 / 39.5 |
+| life tour: apartments | 30.0, 31.3 / 33.6 | 30.0, 30.9 / 32.6 |
+| sim: island hub, one interval | 30.0, 14.9 / 33.5 | 30.0, 14.3 / 31.1 |
+| sim: shop gifts tab, one interval | 30.0, 29.3 / 37.8 (0 frames over 33 ms) | the same |
+| sim: citizen picker, one interval | 29.9, 30.6 / 39.7 (9 over 33 ms) | 29.9, 30.4 / 39.4 (6) |
+| sim: pet main, one interval | 29.8, 29.5 / 51.5 (16) | **29.9**, 28.9 / 50.0 (10) |
+| life: new island -> hub (the load) | 7.6, 111.7 / 2,233 | 8.9, 93.4 / **1,339** |
+| story: title -> new story (the load) | 11.2, 86.2 / 2,309 | 14.7, 66.3 / **1,419** |
+| life: saving (the save freeze) | 2.9, 335.9 / 13,604 | 5.3, 178.1 / **6,818** |
+| life: news third tab | 28.3, 33.5 / 36.7 | **30.0**, 28.6 / 30.1 |
+| life: shop cursor move | 28.0, 33.4 / 37.1 | **30.0**, 33.2 / 35.1 |
+| life: shop gifts tab | 29.5, 29.8 / 36.3 | **30.0**, 29.7 / 35.6 |
+| life: black market | 29.0, 33.5 / 46.0 | 29.7, 32.6 / 40.8 |
+| life: citizen picker | 29.5, 31.9 / 46.0 | 29.7, 31.6 / 45.0 |
+| library: almanac list | 30.0, 32.8 / 34.6 (2:90) | 29.8, 32.8 / 34.6 (2:89 3:1) |
+| library: almanac list move / profile / face | 24.8 / 30.2 / 30.0 | the same (35.3 / 26.0 / 28.5 ms) |
+| story: credits | 28.4, 32.9 / 48.6 | 28.5, 31.4 / 49.2 |
+| story: credits parade | 24.1, 37.5 / 53.9 | **24.9**, 35.8 / 51.0 |
 
-Of the 95 windows of the three groups 10 draw more frames and one fewer (the chapter card 4
-vignette, 22.3 -> 22.0 fps, 37.5 -> 37.8 ms: which ticks are drawn shifts); no window's work grows by
-more than 0.3 ms, and the news' third tab drops 32.9 -> 28.1 ms. On the tip it was rebased onto
-(`1297e93`) EWRAM is 56,484 B free with GBA-500 (12,164 B without: the commits between take 160 B),
-ROM +8,452 B (with the rent line; `.rodata` 4 B shorter), `make -C gba test` and the three groups with their gates pass; there the Almanac
-list shows one frame of three vblanks (29.8 fps; 30.0 on `1297e93`): its ticks take the same
-32.7-33.2 ms on both builds, right at two vblanks, and the faster load (79 -> 71 ms) shifts their phase.
-With the rent line the life group's shops, purse and Unlocks count are the base's again (the shots
-match `1297e93`); its windows against `1297e93`: black market 29.3 -> 29.8 fps, unlocks row moves
-28.9 -> 28.8 (one more three-vblank frame, work 32.4 -> 32.3 ms), the rest as in the table. The sim itself: natively 2.25 -> 1.42 us and at most 88 -> 46 resident /
-edge visits a tick (`sim_per_tick_budget`); on the GBA the hub's work 14.5 -> 14.0 ms a drawn tick. The
-credits parade marches the 250 ranks of the GBA's two districts (half as long), its ticker counts to 500.
+Of the 99 windows of the four groups 12 draw more frames and 5 fewer. Four of the five are not steady
+windows and keep their work: add member role 26.8 -> 26.5 fps (34.9 -> 34.8 ms), care reaction 17.9 ->
+17.8, citizen picker move 25.4 -> 25.2 (35.5 -> 35.2 ms), the eruption vignette 16.8 -> 16.6 (54.0 ->
+54.9 ms, the only window whose work grows by more than 0.3 ms: the town on screen is another). **The
+fifth is a steady-30 window:** the Almanac list draws one frame of three vblanks in 90 (30.0 -> 29.8),
+its ticks take the same 32.8 ms on average on both builds, right at two vblanks, and the faster load
+shifts their phase (known, left: trimming the list's tick under 33 ms is the fix). The life tour's
+"hub -> town hall menu" latency reads 1 -> 7 video frames, but it moves with the press (pressed 2 or 3
+ticks later: 1 / 3 frames on the tip, 5 / 7 with GBA-500, 4 on both 2 ticks earlier): the menu's first
+12 ticks take 64-103 ms on both builds (79.4 ms on average with GBA-500, 86.4 without), and which of
+them the press lands before is phase. The sim itself (`sim_per_tick_budget`, natively, on the rebased tree with S3-1's
+pass): at most 58 -> 31 resident / edge visits a tick, 3.70 -> 1.70 us a tick (a busy host: the
+visits are the steady number). The credits parade marches
+the 250 ranks of the GBA's two districts (half as long), its ticker counts to 500.
 
-**Tests.** `make -C core test` (1,000) and `make -C core unit LIVE=500 BUILD=build-500` both green.
-In the 500 build a test that writes into the record of an id with no slot fails (`test_main.c`
-checks `doomo_res_none` after every test); the tests that fill all 1,000 ids or count 1,000 use
-the live count, and the goldens of the 1,000-resident town (concert frames, homes, the news stream,
-X4's town hash) are compared in the 1,000 build only.
+**Tests.** `make -C core test` (1,000), `make -C core test LIVE=500 BUILD=build-500` and
+`make -C core unit SAN=1 LIVE=500 BUILD=build-san500` (the slot and old-save code compiles only at
+500, so the sanitizers must run there too) are all green. In the 500 build a test that writes into
+the record of an id with no slot fails (`test_main.c` checks `doomo_res_none` after every test); the
+tests that fill all 1,000 ids or count 1,000 use the live count, and the goldens of the 1,000-resident
+town (concert frames, homes, the news stream, X4's town hash) are compared in the 1,000 build only.
 
 **Left.** The story's own lines still say "a thousand citizens" in a few places (Ep 4.7's "one
 thousand and one", the side scripts k_vex / x_solo2, the cutscene's "1000 CITIZENS.") and the S143
 title "Population 1000": the story stream's text, the same on every platform. The `HOME` chunk's
-visited bits could be by slot on the GBA (62 B) only with a GBA layout of the chunk.
+visited bits could be by slot on the GBA (62 B) only with a GBA layout of the chunk. The apartment
+building keeps 500 rooms a side (`fp_apartments.c` FLOORS x ROOMS, and the creator's home panel draws
+all 500) although 250 can be lived in on the GBA (an empty room in a full district says "This side is
+full: 250 neighbours."): a smaller building there is the coordinator's or the owner's call. The Almanac
+list's one three-vblank frame (above). Fewer residents may also mean fewer sim news items and problems a
+day: not measured.
 
 ## 4. The 2D layer
 
