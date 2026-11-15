@@ -703,8 +703,9 @@ TEST(save_version1_loads_with_life_stages)
     /* (+ U0: the OPT2 chunk's header and its OPT2_COUNT value bytes, written for everyone) */
     /* (+ MP0: the empty PROF chunk's header, written for everyone) */
     /* (+ T6: the empty TALK chunk's header, + LV0: the empty BRCH chunk's header, both written on the native host) */
+    /* (+ LV11: OPT2_COUNT grew by two bytes, which can cross a 128-byte literal run in the chunk's LZ: one more length byte) */
     CHECK(n <= sizeof(save_v1_classic) + 32 + SAVE_BUDGET_CHUNK_HDR + 8 + SAVE_BUDGET_CHUNK_HDR +
-               SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + OPT2_COUNT +
+               SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + SAVE_BUDGET_CHUNK_HDR + OPT2_COUNT + 1 +
                SAVE_BUDGET_LZ_WORST(doomo_save_ext_life->size()));
     CHECK_EQ(RES_STAGE(town_res(V1A_BABY)), LIFE_BABY);
     CHECK_EQ(RES_STAGE(town_res(V1A_KID_MADEOVER)), LIFE_CHILD);
