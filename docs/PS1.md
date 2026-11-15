@@ -1645,7 +1645,7 @@ const in a minigame file lands in the resident `.data` (the overlay group moves 
 `_end` is 0x801efe60 as on the base (`411d9812`), 64 KB below the stack top with the boot FMV, the overlay slot unchanged (168 KB).
 PCSX-Redux `speed2_fair` (23 windows): the fps and the vsync histograms are those of speed audit 3 in every window, i.e. the
 title cards, Whack, Dodge, Memory and Candy Catch at 30.12-30.17 with every frame at 2 vsyncs, the Gallery, the Derby and the
-Wheel at 30.00 with one 3-vsync frame each (as in speed audit 3); `game_smoke.txt` passes. **Landing (2026-11-15, on `5aa25cd`, with PS1-RAM and TM2d-DEPTH; the same on `cb9df1c`):**
+Wheel at 30.00 with one 3-vsync frame each (as in speed audit 3); `game_smoke.txt` passes. **Landing (2026-11-15, on `366ee6c`, with PS1-RAM, TM2d-DEPTH and CR5-FIX; the same on `5aa25cd` and `cb9df1c`):**
 `_end` 0x801df9f0, the same as the tip's (both built, the image 1,247,068 B in both): **132,608 B below the stack top with the boot FMV,
 +0 B** (before PS1-RAM, on `b9e74a5`, `2bc6130` and `0cce022`: 0x801ee550 = the tip's each time, 72,368 B). The results card's hold that came with the landing is GBA-only (`mg.c` builds it under `#if
 !defined(DOOMO_PLATFORM_PS1)`; `ui_modal_hold` is a macro that returns 0 here). `speed2_fair` now has 30 windows (a results window for
