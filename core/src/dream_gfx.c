@@ -9,7 +9,7 @@
  * chibis and a few of the demon sprites.
  */
 #include "concert_int.h"
-#include "doomo/plat_ext.h"     /* S2-4d: plat_sky_bands, plat_hshapes */
+#include "doomo/plat_ext.h"     /* S2-4d: plat_hshapes, plat_tile_rows */
 #include "ui_internal.h"        /* S2-4d: ui_circle_dx */
 
 static int SW(void) { return plat_screen_w(); }
@@ -656,29 +656,38 @@ static uint8_t sky_col(int i, int tier, int nightmare)
 
 /* (S2-4d) The bands with soft wavy borders, rows [0, y1) (the rest is drawn over by the caller). Border i of the
  * 8-px column j sits at i * band + ui_wave(t + 16j + 40i, 160, 3 + tier): the phases are all t + 8m, m = (2j + 5i)
- * mod 20, so a frame needs 20 waves, not one per column and border. The platform may paint every band in one pass
- * (plat_sky_bands, the same pixels); else one rect per band and column and its checker seam, as before. */
-#define SKY_COLS 40                                     /* 320 / 8: wider screens draw the rects */
+ * mod 20, so a frame needs 20 waves, not one per column and border; then one rect per band and column and its
+ * checker seam, as before. The GBA draws straight bands (below). */
 static void sky_bands(int sw, int sh, int tier, int nightmare, uint32_t t, int y1)
 {
-    int band = sh / 6 + 1, i, j, m, wv[20];
+    int band = sh / 6 + 1, i;
     uint8_t col[6];
     for (i = 0; i < 6; i++) col[i] = sky_col(i, tier, nightmare);
-    for (m = 0; m < 20; m++) wv[m] = ui_wave((int)(t % 160u) + 8 * m, 160, 3 + tier);
-    if (sw % 8 == 0 && sw / 8 <= SKY_COLS) {
-        int16_t ys[SKY_COLS * 5];
-        for (i = 1; i < 6; i++)
-            for (j = 0, m = 5 * i % 20; j < sw / 8; j++, m = m >= 18 ? m - 18 : m + 2)   /* m = (2j + 5i) mod 20 */
-                ys[j * 5 + i - 1] = (int16_t)(i * band + wv[m]);
-        if (plat_sky_bands(ys, sw / 8, 5, col, y1)) return;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* S2-4d (pixel-changing, GBA only: the owner's trade of 2026-11-13, "a simpler sky, straight bands instead of
+     * the wave"): every border at its resting row i * band, so a band is one full-width rect (a DMA fill) and its
+     * seam one checker across the screen. The wave's per-column pass (~2 ms in ARM) no longer fits the IWRAM
+     * overlay slot, and from ROM it was too slow for the nightmare's frames */
+    (void)t; (void)tier;
+    for (i = 0; i < 6; i++) {
+        int top = i ? i * band : 0, bot = i < 5 ? (i + 1) * band : sh;
+        if (bot > y1) bot = y1;
+        if (bot > top) plat_rect(0, top, sw, bot - top, col[i]);
+        if (i && i * band - 2 < y1) cspan(0, sw, i * band - 2, 2, col[i]);
     }
-    plat_rect(0, 0, sw, DOOMO_MIN(band + 8, y1), col[0]);
-    for (i = 1; i < 6; i++)
-        for (j = 0; j * 8 < sw; j++) {
-            int x = j * 8, y0 = i * band + wv[(2 * j + 5 * i) % 20];
-            plat_rect(x, y0, 8, DOOMO_MIN(i == 5 ? sh : (i + 1) * band + 6, y1) - y0, col[i]);
-            cspan(x, x + 8, y0 - 2, 2, col[i]);
-        }
+#else
+    {
+        int j, m, wv[20];
+        for (m = 0; m < 20; m++) wv[m] = ui_wave((int)(t % 160u) + 8 * m, 160, 3 + tier);
+        plat_rect(0, 0, sw, DOOMO_MIN(band + 8, y1), col[0]);
+        for (i = 1; i < 6; i++)
+            for (j = 0, m = 5 * i % 20; j * 8 < sw; j++, m = m >= 18 ? m - 18 : m + 2) {   /* m = (2j + 5i) mod 20 */
+                int x = j * 8, y0 = i * band + wv[m];
+                plat_rect(x, y0, 8, DOOMO_MIN(i == 5 ? sh : (i + 1) * band + 6, y1) - y0, col[i]);
+                cspan(x, x + 8, y0 - 2, 2, col[i]);
+            }
+    }
+#endif
 }
 
 /* the sky rows a vignette leaves visible: none when it paints the whole screen itself (the endless doors' wall),

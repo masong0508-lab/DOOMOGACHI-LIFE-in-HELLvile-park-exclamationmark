@@ -197,32 +197,10 @@ void plat_shade_rect(int x, int y, int w, int h, int level)
     nat_panel_op_end();
 }
 
-/* (S2-4d) the GBA's one-call 2D paths (plat_ext.h plat_sky_bands, plat_tile_rows, plat_hshapes) as the header documents them, for
+/* (S2-4d) the GBA's one-call 2D paths (plat_ext.h plat_tile_rows, plat_hshapes) as the header documents them, for
  * the tests that compare them with the core's own rects: off unless a test sets nat_fast2d (the core then draws its
  * rects, as on the PS1 and the Dreamcast) */
 int nat_fast2d;
-
-int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1)
-{
-    int j, x, y;
-    if (!nat_fast2d || ncol * 8 != nat_w || y1 > nat_h) return 0;
-    if (y1 <= 0) return 1;
-    nat_panel_op(NP_RECT, 0, 0, nat_w, y1);
-    for (j = 0; j < ncol; j++) {
-        const int16_t *b = ys + j * nb;
-        for (y = 0; y < y1; y++) {
-            int k = 0;
-            while (k < nb && b[k] <= y) k++;                 /* the band: the borders at or above the row */
-            for (x = 8 * j; x < 8 * j + 8; x++) {
-                int seam = k < nb && y >= b[k] - 2 && ((x + y) & 1) == 0 &&
-                           !((b[k] & 1) && y == b[k] - 1 && x == 8 * j);   /* an odd border's seam starts at 8j + 1 */
-                nat_fb[y * nat_w + x] = seam ? col[k + 1] : col[k];
-            }
-        }
-    }
-    nat_panel_op_end();
-    return 1;
-}
 
 int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
 {

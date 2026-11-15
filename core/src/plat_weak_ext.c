@@ -97,12 +97,6 @@ WEAK int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t col
     return 0;
 }
 
-WEAK int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1)
-{
-    (void)ys; (void)ncol; (void)nb; (void)col; (void)y1;
-    return 0;
-}
-
 WEAK int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
 {
     (void)y; (void)h; (void)x0; (void)tw; (void)ca; (void)cb;

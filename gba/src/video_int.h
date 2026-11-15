@@ -33,7 +33,8 @@ void vid_pixel(int x, int y, uint32_t color) IWRAM_CALL;
 void vid_text(int x, int y, const char *s, uint32_t color) IWRAM_CALL;
 /* the outline pass of plat_text_outline (video.c, ROM) */
 void vid_text_dil(int x, int y, const char *s, uint32_t color);
-/* (S2-4d) the same in the UI group (blit2.c): only while iwram_ovl_current() == OVL_UI */
+/* (S2-4d) the same in the UI group (blit2.c), for a line on the screen whole: only while iwram_ovl_current() ==
+ * OVL_UI, no newline, x >= 1, y >= 1, every glyph's 7 x 11 box inside the screen */
 void vid_text_dil_ui(int x, int y, const char *s, uint32_t color) __attribute__((long_call));
 extern const uint32_t gba_nibmask[16];     /* bit i set = byte i of a word */
 void vid_blit(int x, int y, const DoomoImage *img, int scale, int flags, uint32_t color) IWRAM_CALL;

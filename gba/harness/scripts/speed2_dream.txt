@@ -2,6 +2,8 @@
 # window rules are in speed2_fair.txt). Nana Puddin's dream (-2: the night bedroom, the thought
 # bubble, the first vignette cute then its twist, the second vignette) and Vex's forced
 # nightmare (-3666: the red turn and the wake-up choice).
+# S2-4d: every window holds 30 on the GBA; each closes with expect-fps 29.5 and expect-gap 34 (no frame over two
+# vblanks). The bedroom held 30 before; its floor keeps it there.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -11,26 +13,31 @@ scene DREAM -2
 wait 20
 fps start
 wait 90
-fps dream: bedroom
+expect-fps 29.5 dream: bedroom
+expect-gap 34
 shot dream_bedroom
 press A
 wait 2
 fps start
 wait 60
-fps dream: thought bubble
+expect-fps 29.5 dream: thought bubble
+expect-gap 34
 shot dream_bubble
 wait 10
 fps start
 wait 110
-fps dream: vignette 1 cute
+expect-fps 29.5 dream: vignette 1 cute
+expect-gap 34
 shot dream_v1_cute
 fps start
 wait 100
-fps dream: vignette 1 twist
+expect-fps 29.5 dream: vignette 1 twist
+expect-gap 34
 shot dream_v1_twist
 fps start
 wait 130
-fps dream: vignette 2
+expect-fps 29.5 dream: vignette 2
+expect-gap 34
 shot dream_v2
 
 seed 1
@@ -40,20 +47,24 @@ press A
 wait 120
 fps start
 wait 130
-fps dream: nightmare vignette 1
+expect-fps 29.5 dream: nightmare vignette 1
+expect-gap 34
 shot dream_nm_v1
 wait 190
 fps start
 wait 130
-fps dream: nightmare vignette 2
+expect-fps 29.5 dream: nightmare vignette 2
+expect-gap 34
 shot dream_nm_v2
 wait 100
 fps start
 wait 100
-fps dream: nightmare vignette 3 (cute, then red)
+expect-fps 29.5 dream: nightmare vignette 3 (cute, then red)
+expect-gap 34
 shot dream_nm_v3
 wait 60
 fps start
 wait 60
-fps dream: wake-up choice
+expect-fps 29.5 dream: wake-up choice
+expect-gap 34
 shot dream_nm_choice

@@ -24,6 +24,9 @@
 #include "doomo/palette.h"
 
 #define BLIT2_ARM IWRAM_UI_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
+/* (S2-4d) the outline pass, compiled for size: the group shares the 3D group's slot (10,352 B) with S2-9's weld
+ * slices, and every byte over the slot is a byte off the main stack */
+#define BLIT2_ARM_S IWRAM_UI_CODE __attribute__((optimize("Os", "no-tree-loop-distribute-patterns")))
 
 #define LINE (SCREEN_W / 2)
 
@@ -329,179 +332,68 @@ int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
     return 1;
 }
 
-/* (S2-4d) plat_sky_bands (plat_ext.h): the dream sky's wavy bands, one 8-px column at a time down the page. A column
- * is two aligned words, so every row is two word stores (no read of the page): its band's colour in all four bytes,
- * or on a seam row the checker word, seam[3 * i + (y & 1)] (bytes 0 and 2 the lower band on an even row, 1 and 3 on
- * an odd one: (x + y) even, x = 8j + byte). The core's seam is cspan(): plat_checker over the column from 8j, or
- * from 8j + 1 when the seam's first row is odd, so on an odd border's second (even) row the column's first pixel
- * keeps the band above: that word is seam[3 * i + 2]. The core drew a rect per band and column (over the band
- * above) and a checker per seam: ~5,000 masked rows and ~330 calls a frame (dream_gfx.c sky_bands). */
-BLIT2_ARM void vid_sky_cols(const int16_t *ys, int ncol, int nb, const uint32_t *solid, const uint32_t *seam, int y1)
-{
-    int j;
-    for (j = 0; j < ncol; j++, ys += nb) {
-        volatile uint32_t *p = (volatile uint32_t *)(void *)gba_back + 2 * j;
-        int y = 0, i;
-        for (i = 0; i <= nb; i++) {
-            int e = i < nb ? ys[i] - 2 : y1, n;
-            uint32_t w = solid[i];
-            if (e > y1) e = y1;
-            n = e - y;
-            for (; n >= 4; n -= 4, p += 4 * (SCREEN_W / 4)) {
-                p[0] = w; p[1] = w;
-                p[SCREEN_W / 4] = w; p[SCREEN_W / 4 + 1] = w;
-                p[2 * (SCREEN_W / 4)] = w; p[2 * (SCREEN_W / 4) + 1] = w;
-                p[3 * (SCREEN_W / 4)] = w; p[3 * (SCREEN_W / 4) + 1] = w;
-            }
-            for (; n > 0; n--, p += SCREEN_W / 4) { p[0] = w; p[1] = w; }
-            if (e > y) y = e;
-            if (i < nb && y < y1) {                  /* the seam: rows ys[i] - 2 and ys[i] - 1 */
-                uint32_t m = seam[3 * i + (y & 1)];
-                p[0] = m; p[1] = m;
-                y++; p += SCREEN_W / 4;
-                if (y < y1) {
-                    m = seam[3 * i + (y & 1)];
-                    p[0] = (ys[i] & 1) ? seam[3 * i + 2] : m;
-                    p[1] = m;
-                    y++; p += SCREEN_W / 4;
-                }
-            }
-        }
-    }
-}
-
-int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1)
-{
-    uint32_t solid[8], seam[21];
-    int i;
-    if (ncol != SCREEN_W / 8 || nb < 1 || nb > 6 || y1 > SCREEN_H) return 0;   /* the core's rects */
-    if (gba_nodraw == 1 || y1 <= 0) return 1;      /* a skipped tick: nothing is drawn */
-    if (gba_nodraw == GBA_NODRAW_CANVAS) return 0;  /* a tile frame: the rects go to the canvas */
-    if (gba_nodraw) {                               /* the slow paths (the frame's first call, panels), as one rect */
-        int k;
-        pn_op = PN_OP_RECT;
-        k = vid_route(0, 0, SCREEN_W, y1);
-        pn_op = PN_OP_OTHER;
-        if (k != 1) return k == 0;
-    }
-    for (i = 0; i <= nb; i++) {
-        uint32_t c = col[i] ? col[i] : PAL_BLACK;
-        solid[i] = c * 0x01010101u;
-        if (i > 0) {
-            uint32_t a = col[i - 1] ? col[i - 1] : PAL_BLACK;   /* seam i - 1: the band above, checkered with c */
-            seam[3 * (i - 1)] = (c | a << 8) * 0x00010001u;     /* even row: bytes 0, 2 */
-            seam[3 * (i - 1) + 1] = (a | c << 8) * 0x00010001u; /* odd row: bytes 1, 3 */
-            seam[3 * (i - 1) + 2] = (a | a << 8) | (c | a << 8) << 16;   /* even row from 8j + 1: byte 2 */
-        }
-    }
-    iwram_ovl_use(OVL_UI);
-    vid_sky_cols(ys, ncol, nb, solid, seam, y1);
-    return 1;
-}
-
-/* (S2-4d) plat_tile_rows (plat_ext.h): the dream floor's rows. The row's 240 pixels are made once in IWRAM (bytes:
- * the stack takes byte stores) and copied word by word to each of its rows; the core drew one rect per tile and
- * row band (~114 calls and ~500 masked rows a frame). */
-BLIT2_ARM void vid_tile_rows(int y, int h, int x0, int tw, uint32_t ca, uint32_t cb)
+/* (S2-4d) plat_tile_rows (plat_ext.h): the dream floor's rows. The row's 240 pixels are made once on the stack
+ * (IWRAM: it takes byte stores) and copied to each of its rows with one DMA; the core drew one rect per tile and
+ * row band (~114 calls and ~500 masked rows a frame). ROM code: the UI group has no room left (its slot is the
+ * 3D group's, shared with S2-9's weld slices), and the copies are DMA anyway. */
+int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
 {
     uint32_t line[SCREEN_W / 4];
     uint8_t *b = (uint8_t *)line;
-    int x = x0, k = 0, i, y1 = y + h;
-    for (; x < SCREEN_W; x += tw, k++) {
-        int a = x < 0 ? 0 : x, e = x + tw > SCREEN_W ? SCREEN_W : x + tw;
-        uint8_t c = (uint8_t)((k & 1) ? cb : ca);
-        for (i = a; i < e; i++) b[i] = c;
-    }
+    int x, k, i, y1 = y + h;
+    if (x0 > 0 || tw < 1) return 0;                 /* (the pixels left of x0 would be drawn: the core's rects) */
+    if (gba_nodraw == 1 || h <= 0 || y >= SCREEN_H || y1 <= 0) return 1;
+    if (gba_nodraw == GBA_NODRAW_CANVAS) return 0;  /* a tile frame: the rects go to the canvas */
     if (y < 0) y = 0;
     if (y1 > SCREEN_H) y1 = SCREEN_H;
-    for (; y < y1; y++) {
-        volatile uint32_t *d = (volatile uint32_t *)(void *)gba_back + y * (SCREEN_W / 4);
-        for (i = 0; i < SCREEN_W / 4; i += 4) {
-            d[i] = line[i]; d[i + 1] = line[i + 1]; d[i + 2] = line[i + 2]; d[i + 3] = line[i + 3];
-        }
-    }
-}
-
-int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
-{
-    if (x0 > 0 || tw < 1) return 0;                 /* (the pixels left of x0 would be drawn: the core's rects) */
-    if (gba_nodraw == 1 || h <= 0 || y >= SCREEN_H || y + h <= 0) return 1;
-    if (gba_nodraw == GBA_NODRAW_CANVAS) return 0;  /* a tile frame: the rects go to the canvas */
     if (gba_nodraw) {                               /* the slow paths, as one rect over the rows */
-        int k;
+        int r;
         pn_op = PN_OP_RECT;
-        k = vid_route(0, y < 0 ? 0 : y, SCREEN_W, y + h > SCREEN_H ? SCREEN_H : y + h);
+        r = vid_route(0, y, SCREEN_W, y1);
         pn_op = PN_OP_OTHER;
-        if (k != 1) return k == 0;
+        if (r != 1) return r == 0;
     }
-    iwram_ovl_use(OVL_UI);
-    vid_tile_rows(y, h, x0, tw, ca ? ca : PAL_BLACK, cb ? cb : PAL_BLACK);
+    if (!ca) ca = PAL_BLACK;
+    if (!cb) cb = PAL_BLACK;
+    for (x = x0, k = 0; x < SCREEN_W; x += tw, k++) {
+        int e = x + tw > SCREEN_W ? SCREEN_W : x + tw;
+        uint8_t c = (k & 1) ? cb : ca;
+        for (i = x < 0 ? 0 : x; i < e; i++) b[i] = c;
+    }
+    for (; y < y1; y++) dma3_copy32((uint8_t *)gba_back + y * SCREEN_W, line, SCREEN_W / 4);
     return 1;
 }
 
-/* (S2-4d) plat_text_outline's outline pass (video.c vid_text_dil: vid_glyph_dilate, glyph_dil) as ARM code of the UI
- * group, for a frame that has the group in (the dream's vignette name and journal badge, the Zzz, the floating
- * letters): the same code and pixels, ARM from IWRAM instead of THUMB from ROM (an outlined glyph was ~0.15 ms). */
-static inline __attribute__((always_inline)) void dil_glyph(const uint8_t *g, uint16_t out[11])
-{
-    int r;
-    for (r = 0; r < 11; r++) {
-        uint32_t m = 0;
-        int gr;
-        for (gr = r - 2; gr <= r; gr++) {               /* glyph rows r-1-1 .. r-1+1 */
-            if (gr < 0 || gr >= 8) continue;
-            m |= g[gr] | ((uint32_t)g[gr] << 1) | ((uint32_t)g[gr] << 2);  /* cols -1, 0, +1 */
-        }
-        gr = r - 3;                                       /* (+1, +2) */
-        if (gr >= 0 && gr < 8) m |= (uint32_t)g[gr] << 2;
-        out[r] = (uint16_t)m;
-    }
-}
-
-static inline __attribute__((always_inline)) void dil_put(const uint16_t *g, int x, int y, uint32_t c4)
-{
-    volatile uint32_t *w = (volatile uint32_t *)(void *)((uint8_t *)gba_back + y * SCREEN_W + (x & ~3));
-    const int sh = x & 3;
-    int r;
-    for (r = 0; r < 11; r++, w += SCREEN_W / 4) {
-        uint32_t m = (uint32_t)g[r] << sh, k;
-        if (!m) continue;
-        k = gba_nibmask[m & 15];
-        if (k == 0xFFFFFFFFu) w[0] = c4;
-        else if (k) w[0] = (w[0] & ~k) | (c4 & k);
-        k = gba_nibmask[(m >> 4) & 15];
-        if (k == 0xFFFFFFFFu) w[1] = c4;
-        else if (k) w[1] = (w[1] & ~k) | (c4 & k);
-        k = gba_nibmask[m >> 8];
-        if (k) w[2] = (w[2] & ~k) | (c4 & k);
-    }
-}
-
-BLIT2_ARM void vid_text_dil_ui(int x, int y, const char *s, uint32_t color)
+/* (S2-4d) plat_text_outline's outline pass (video.c vid_text_dil, its glyph_dilate and glyph_dil) for a line that is
+ * on the screen whole (no newline; the caller checks), as ARM code of the UI group: the dream's vignette name and
+ * journal badge, its Zzz. The same masks and stores, from IWRAM instead of THUMB from ROM (an outlined glyph was
+ * ~0.15 ms of a frame). */
+BLIT2_ARM_S void vid_text_dil_ui(int x, int y, const char *s, uint32_t color)
 {
     const uint32_t c4 = color * 0x01010101u;
-    int cx = x, cy = y;
-    for (; *s; s++) {
+    for (; *s; s++, x += FONT_ADVANCE) {
         unsigned ch = (unsigned char)*s;
-        if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
-        if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' &&
-            cx > -FONT_ADVANCE - 1 && cx < SCREEN_W + 1 && cy > -10 && cy < SCREEN_H + 1) {
-            uint16_t g[11];
-            int bx = cx - 1, by = cy - 1, r;
-            dil_glyph(vid_glyph_rows(ch), g);
-            if (bx >= 0 && bx + 7 <= SCREEN_W && by >= 0 && by + 11 <= SCREEN_H) {
-                dil_put(g, bx, by, c4);
-            } else {
-                for (r = 0; r < 11; r++) {
-                    int py = by + r, c;
-                    if ((unsigned)py >= SCREEN_H || !g[r]) continue;
-                    for (c = 0; c < 7; c++)
-                        if ((g[r] >> c) & 1 && (unsigned)(bx + c) < SCREEN_W)
-                            vid_pixel(bx + c, py, color);
-                }
-            }
+        const uint8_t *g;
+        volatile uint32_t *w;
+        int r, sh = (x - 1) & 3;
+        if (ch < FONT_FIRST || ch > FONT_LAST || ch == ' ') continue;
+        g = vid_glyph_rows(ch);
+        w = (volatile uint32_t *)(void *)((uint8_t *)gba_back + (y - 1) * SCREEN_W + ((x - 1) & ~3));
+        for (r = 0; r < 11; r++, w += SCREEN_W / 4) {
+            uint32_t m = 0, k;
+            int gr;
+            for (gr = r - 2; gr <= r; gr++)          /* glyph rows r-1-1 .. r-1+1, columns -1, 0, +1 */
+                if ((unsigned)gr < 8) m |= (uint32_t)g[gr] | (uint32_t)g[gr] << 1 | (uint32_t)g[gr] << 2;
+            if ((unsigned)(r - 3) < 8) m |= (uint32_t)g[r - 3] << 2;   /* (+1, +2) */
+            if (!m) continue;
+            m <<= sh;
+            k = gba_nibmask[m & 15];
+            if (k) w[0] = (w[0] & ~k) | (c4 & k);
+            k = gba_nibmask[(m >> 4) & 15];
+            if (k) w[1] = (w[1] & ~k) | (c4 & k);
+            k = gba_nibmask[m >> 8];
+            if (k) w[2] = (w[2] & ~k) | (c4 & k);
         }
-        cx += FONT_ADVANCE;
     }
 }
 

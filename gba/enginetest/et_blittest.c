@@ -188,8 +188,8 @@ void et_blit_test(void)
  * against the same verbatim reference at scale 2 without a flip: odd and even x (the odd case merges two source
  * pixels per halfword), clipping on all four sides, silhouette on and off, over a random background; then the
  * group's word-at-a-time checker (vid_checker_ui) against plat_checker_m4, and its whole-beam loop (plat_beam)
- * against the concert's old per-band beam; (S2-4d) the dream sky's bands (plat_sky_bands) and plat_hshapes' span
- * fill against their documented pixels, the group's outline-text pass against video.c's. Logs
+ * against the concert's old per-band beam; (S2-4d) plat_hshapes' span fill and the floor's tile rows against their
+ * documented pixels, the group's outline pass against video.c's. Logs
  * "ET blit2test ok (N cases)" or "ET blit2test FAIL ...". */
 void et_blit2_test(void)
 {
@@ -304,45 +304,6 @@ void et_blit2_test(void)
                 }
         n++;
     }
-    /* (S2-4d) plat_sky_bands (vid_sky_cols) against the pixels plat_ext.h gives it (the core's rects and cspan seams):
-     * random borders 2+ rows apart, odd and even, random colours (0 too: black), random y1 (rows below untouched) */
-    for (i = 0; i < 24 && !bad; i++) {                /* (a whole page each: few, for the 60 s boot watchdog) */
-        int16_t ys[30 * 5];
-        uint8_t col[6];
-        int nb = 1 + (int)(next() % 5), y1 = (int)(next() % 170), j, r, x;
-        if (y1 > 160) y1 = 160;
-        for (j = 0; j <= nb; j++) col[j] = (uint8_t)(j && (next() % 9) == 0 ? 0 : 1 + next() % 255);
-        for (j = 0; j < 30; j++) {
-            int y = 2 + (int)(next() % 20);
-            for (r = 0; r < nb; r++) { ys[j * nb + r] = (int16_t)y; y += 2 + (int)(next() % 40); }
-        }
-        gba_back = PAGE_A;
-        if (!plat_sky_bands(ys, 30, nb, col, y1)) { gba_logf("ET blit2test FAIL sky not drawn"); bad = 1; break; }
-        gba_back = PAGE_B;
-        for (r = 0; r < y1; r++)
-            for (x = 0; x < SCREEN_W; x += 2) {
-                uint32_t px[2];
-                int q;
-                for (q = 0; q < 2; q++) {
-                    const int16_t *b = ys + ((x + q) / 8) * nb;
-                    int k2 = 0, xx = x + q, seam;
-                    while (k2 < nb && b[k2] <= r) k2++;
-                    seam = k2 < nb && r >= b[k2] - 2 && ((xx + r) & 1) == 0 && !((b[k2] & 1) && r == b[k2] - 1 && xx % 8 == 0);
-                    px[q] = seam ? col[k2 + 1] : col[k2];
-                    if (!px[q]) px[q] = 1u;                      /* PAL_BLACK */
-                }
-                PAGE_B[r * LINE + x / 2] = (uint16_t)(px[0] | px[1] << 8);
-            }
-        for (r = 0; r < 160 && !bad; r++)
-            for (j = 0; j < LINE; j++)
-                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
-                    gba_logf("ET blit2test FAIL sky case %d nb %d y1 %d row %d hw %d: %x vs %x", i, nb, y1, r, j,
-                             PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
-                    bad = 1;
-                    break;
-                }
-        n++;
-    }
     /* (S2-4d) plat_hshapes' inline span fill (dots.c hshapes_fill) against one plat_rect a row, its documented pixels:
      * random half-width tables, centres off every side, colour 0 too */
     for (i = 0; i < 150 && !bad; i++) {
@@ -395,15 +356,16 @@ void et_blit2_test(void)
                 }
         n++;
     }
-    /* (S2-4d) the UI group's outline pass (vid_text_dil_ui) against video.c's vid_text_dil: random strings (newlines,
-     * spaces, characters outside the font) placed off every side */
-    for (i = 0; i < 60 && !bad; i++) {               /* (a whole page each: few, for the 60 s boot watchdog) */
+    /* (S2-4d) the UI group's outline pass (vid_text_dil_ui) against video.c's vid_text_dil: random one-line strings
+     * (spaces, characters outside the font) whose glyph boxes are on the screen */
+    for (i = 0; i < 60 && !bad; i++) {           /* (a whole page each: few, for the 60 s boot watchdog) */
         char str[12];
-        int len = 1 + (int)(next() % 11), j, r, x = (int)(next() % 270) - 20, y = (int)(next() % 190) - 15;
+        int len = 1 + (int)(next() % 11), j, r, x, y = 1 + (int)(next() % 150);
         uint32_t color = next() % 256;
+        x = 1 + (int)(next() % (uint32_t)(240 - 7 - (len - 1) * FONT_ADVANCE));
         for (j = 0; j < len; j++) {
-            uint32_t v = next() % 40;
-            str[j] = (char)(v == 0 ? '\n' : v == 1 ? ' ' : v == 2 ? 1 : 33 + (int)(next() % 94));
+            uint32_t v = next() % 30;
+            str[j] = (char)(v == 0 ? ' ' : v == 1 ? 1 : 33 + (int)(next() % 94));
         }
         str[len] = 0;
         gba_back = PAGE_A; vid_text_dil_ui(x, y, str, color);

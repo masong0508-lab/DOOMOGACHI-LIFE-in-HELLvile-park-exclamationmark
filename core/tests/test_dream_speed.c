@@ -3,8 +3,8 @@
  * Every drawing step of the package is exact, so each is played against the drawing it replaced:
  *   - the sky's wave table and its rows cut at the floor (dream_draw_sky_rows) against the old sky (one ui_wave per
  *     column and border, kept here verbatim), and the sky's skipped rows against what the vignettes paint over them;
- *   - the platform's one-call paths (plat_sky_bands, plat_hshapes: the native platform draws them as plat_ext.h says
- *     when nat_fast2d is set, as the GBA does in ARM) against the core's own rects;
+ *   - the platform's one-call paths (plat_hshapes, plat_tile_rows: the native platform draws them as plat_ext.h says
+ *     when nat_fast2d is set, as the GBA does) against the core's own rects;
  *   - the shape helpers (dream_circles, dream_ellipses) against ui_fill_circle / ui_fill_ellipse;
  *   - the rim (its bumps made once) against the old rim, kept here verbatim;
  *   - the thought bubble: what it hides when it fills the screen;

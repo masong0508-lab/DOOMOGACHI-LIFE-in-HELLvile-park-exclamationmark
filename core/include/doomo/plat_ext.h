@@ -34,7 +34,7 @@
  *                            E9 (PS1 disc file), E2 (native loader)
  *   plat_dots, plat_hshapes  SP4 (GBA: the pet's LCD and egg in ARM passes)
  *   plat_view_hold           S2-2 (GBA: the 3D view held under a card)
- *   plat_sky_bands, plat_tile_rows  S2-4d (GBA: the dream sky's bands, its floor's rows in ARM passes)
+ *   plat_tile_rows           S2-4d (GBA: the dream floor's rows, one made, the others copied)
  */
 #ifndef DOOMO_PLAT_EXT_H
 #define DOOMO_PLAT_EXT_H
@@ -332,15 +332,6 @@ int plat_ui_loops(void);
  * pixels), 0 to have the core draw them. Weak default: 0. GBA: one ARM call
  * of the UI group while plat_ui_loops() has it in. */
 int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color);
-/* (S2-4d) The dream sky's wavy bands (dream_gfx.c sky_bands()) in one call: ncol columns of 8 pixels (column j is
- * x = 8j .. 8j + 7), rows [0, y1). Column j has nb borders ys[j * nb + i], i < nb, with ys[j * nb] >= 2 and every
- * border at least 2 rows below the one before. A row above border 0 is col[0], a row from border i down to the
- * next border col[i + 1]; on the two rows just above border i the pixels with (x + y) even are col[i + 1] (the
- * checker seam: plat_checker from x = 8j, or from 8j + 1 when border i is odd, so then the column's first pixel on
- * the second row keeps the colour above), the others the colour above. Rows from y1 down are not touched; colour
- * 0 is PAL_BLACK as in plat_rect. Returns 1 when the platform drew every pixel (or the tick draws nothing), 0 to have the core draw its
- * rects and seams. Weak default: 0. GBA: one ARM call of the UI group, columns of word stores. */
-int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1);
 /* (S2-4d) Rows [y, y + h) of tiles tw (>= 1) pixels wide in two alternating colours, from x0 (<= 0) across the
  * screen: exactly plat_rect(x0 + k * tw, y, tw, h, k is even ? ca : cb) for k = 0, 1, ... while x0 + k * tw < the
  * screen width (the dream floor's rows). Returns 1 when the platform drew them (or the tick draws nothing), 0 to
