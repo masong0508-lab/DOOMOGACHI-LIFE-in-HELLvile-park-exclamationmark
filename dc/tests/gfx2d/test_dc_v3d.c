@@ -597,6 +597,73 @@ static void test_tick_budget(void)
     dc3d_test_tick_us = 0;
 }
 
+/* DC6D: with a work feed (the console) the view leaves 15 ms for what comes after it, and a tick that has no
+ * room for even the shortest view (10 cells, 1.3 x K us a cell) shows the last tick's picture again, once; with
+ * nothing to show again (the one before was a repeat, or no view at all) it draws the backdrop alone */
+static void test_view_hold(void)
+{
+    DoomoView3D v, w;
+    uint32_t segs0, held0, bare0, cut0;
+    int i, same = 1, same_bare = 1;
+    map_load(MAPID_ARENA);
+    view_of(&v, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
+    view_of(&w, doomo_map.w / 2, doomo_map.h / 2, 2, 0);          /* another heading: a different picture */
+    dc_view3d_gov_reset();
+    dc3d_test_step = 10000; dc3d_test_tick_us = 0;
+    both(&v, rgb); both(&v, rgb);                                 /* K = 312 us a cell; no feed yet: nothing is held */
+    CHECK(dc3d_stats.held_n == 0 && dc3d_stats.bare_n == 0, "hold: no work feed, but %u held %u bare", dc3d_stats.held_n, dc3d_stats.bare_n);
+    dc3d_test_tick_us = 33000;
+    dc3d_test_step = DC_V3D_DIST_MIN * 312;                      /* (the shortest view costs what the model says) */
+    both(&v, rgb);
+    dc3d_test_step = 10000;
+    CHECK(dc3d_stats.held_n == 0 && dc3d_stats.bare_n == 0, "hold: no work feed and 33 ms gone: %u held %u bare (the shortest view is built)",
+          dc3d_stats.held_n, dc3d_stats.bare_n);
+    dc3d_test_tick_us = 0;
+    dc_view3d_work(10000);                                        /* the feed is on */
+    both(&v, rgb);
+    segs0 = dc3d_stats.segs; held0 = dc3d_stats.held_n; bare0 = dc3d_stats.bare_n; cut0 = dc3d_stats.cut_n;
+    CHECK(dc2d_view3d_cells() > 0, "hold: an idle tick builds nothing");
+    memcpy(rgb2, rgb, sizeof(rgb));
+    dc3d_test_tick_us = 12000;                                    /* 33.3 - 15 - 12 = 6.3 ms left: the shortest view costs 4.1 */
+    dc3d_test_step = 15 * 312;
+    both(&w, rgb);
+    dc3d_test_step = 10000;
+    CHECK(dc3d_stats.segs == segs0 + 1 && dc3d_stats.held_n == held0 && dc3d_stats.bare_n == bare0,
+          "hold: 12 ms gone must still build a view (segments %u -> %u, held %u, bare %u)", segs0, dc3d_stats.segs, dc3d_stats.held_n, dc3d_stats.bare_n);
+    CHECK(dc3d_stats.cut_n == cut0 + 1, "hold: ... a cut one");
+    memcpy(rgb2, rgb, sizeof(rgb));                               /* the picture of the last built view */
+    segs0 = dc3d_stats.segs;
+    dc3d_test_tick_us = 16000;                                    /* 2.3 ms left: no room */
+    both(&v, rgb);                                                /* (the eye turned: a built view would differ) */
+    CHECK(dc3d_stats.held_n == held0 + 1 && dc3d_stats.segs == segs0 && dc3d_stats.bare_n == bare0,
+          "hold: 16 ms gone must show the last view again (held %u, segments %u -> %u, bare %u)", dc3d_stats.held_n, segs0, dc3d_stats.segs, dc3d_stats.bare_n);
+    for (i = 0; i < DC2D_W * DC2D_H * 3; i++) if (rgb[i] != rgb2[i]) { same = 0; break; }
+    CHECK(same, "hold: the repeated view is not the last picture (byte %d differs)", i);
+    held0 = dc3d_stats.held_n;
+    dc3d_test_tick_us = 16000;                                    /* again: the one before was a repeat, nothing to show */
+    both(&v, rgb);
+    CHECK(dc3d_stats.bare_n == bare0 + 1 && dc3d_stats.held_n == held0 && dc3d_stats.segs == segs0 + 1,
+          "hold: a second late tick in a row must draw the backdrop (bare %u, held %u)", dc3d_stats.bare_n, dc3d_stats.held_n);
+    CHECK(dc2d_view3d_cells() == 0, "hold: the backdrop alone has %d cells", dc2d_view3d_cells());
+    for (i = 0; i < DC2D_W * DC2D_H * 3; i++) if (rgb[i] != rgb2[i]) { same_bare = 0; break; }
+    CHECK(!same_bare, "hold: the backdrop alone looks like the last view");
+    dc3d_test_tick_us = 0;                                        /* and an idle tick builds again */
+    segs0 = dc3d_stats.segs; held0 = dc3d_stats.held_n; bare0 = dc3d_stats.bare_n;
+    both(&v, rgb);
+    CHECK(dc3d_stats.segs == segs0 + 1 && dc3d_stats.held_n == held0 && dc3d_stats.bare_n == bare0 && dc2d_view3d_cells() > 0,
+          "hold: the next idle tick must build the view (cells %d)", dc2d_view3d_cells());
+    /* another map or viewport is not "the last picture": the backdrop */
+    map_load(MAPID_VAPE_CELLAR);
+    view_of(&w, doomo_map.w / 2, doomo_map.h / 2, 0, 0);
+    dc3d_test_tick_us = 16000;
+    bare0 = dc3d_stats.bare_n; held0 = dc3d_stats.held_n;
+    both(&w, rgb);
+    CHECK(dc3d_stats.bare_n == bare0 + 1 && dc3d_stats.held_n == held0, "hold: a view of another map must not show the old picture");
+    dc3d_test_step = 0;
+    dc3d_test_tick_us = 0;
+    dc_view3d_gov_reset();
+}
+
 /* a sprite the cache has not seen costs an upload: a view makes at most V3D_SPR_BUDGET new ones, the rest
  * wait a tick (nine uploads in one tick were a 38 ms tick on Flycast) */
 static void test_sprite_budget(void)
@@ -807,6 +874,11 @@ int main(void)
     }
     test_tintfit();
     test_tick_budget();
+    test_view_hold();
+    if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "hold")) {      /* the budget tests alone (seconds) */
+        printf("dc6 view3d tests: %d checks, %d failed\n", checks, fails);
+        return fails ? 1 : 0;
+    }
     test_sprite_budget();
     if (getenv("DC6_ONLY") && !strcmp(getenv("DC6_ONLY"), "sprites")) {
         test_edge_wall();

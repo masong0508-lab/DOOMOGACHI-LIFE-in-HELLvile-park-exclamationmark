@@ -146,8 +146,20 @@ static int      s_gov_seen;
 static int      s_tex_budget = 4;            /* new textures a view may make (below) */
 static int      s_tex_force = -1;            /* tests: a fixed budget */
 
+/* DC6D: what a tick spends AFTER the view (the HUD and the weapon the core draws over it, the sound, the
+ * PVR hand-off). The budget used a fixed 7 ms; on Flycast it is 4-6 ms on most ticks but 10-16.6 ms on
+ * the tick a weapon picture is composed (weld_view_image), a first sighting uploads textures, or the HUD
+ * changes, and nothing tells the view beforehand. With a work feed (the console, the harness) the view
+ * leaves the worst seen; without one (the host tests) it keeps the old 7 ms. */
+#define V3D_AFTER_US      7000
+#define V3D_AFTER_FED_US  15000
+
 void dc_view3d_work(uint32_t us) { s_gov_work = us; s_gov_fed = 1; }
-void dc_view3d_gov_reset(void) { s_gov_fed = s_gov_seen = 0; s_gov_dist = DC_V3D_DIST_MAX; }
+void dc_view3d_gov_reset(void)
+{
+    s_gov_fed = s_gov_seen = 0;
+    s_gov_dist = DC_V3D_DIST_MAX;
+}
 
 /* the distance of the view about to be built */
 static void gov_begin(uint32_t frame)
@@ -493,6 +505,11 @@ static void emit_cell(int cx, int cy)
     if (s_ex > X0) edge(cx - 1, cy, cx, cy + 1, cx, cy, fz, cz, sky, light);
 }
 
+/* the last built view, for the tick that has no time to build one (view_unaffordable) */
+static uint32_t       s_built_frame = 0xFFFFFFFFu;
+static int            s_built_slot, s_built_seg, s_built_vp[4];
+static const DoomoMapDef *s_built_def;                /* (doomo_map is one struct: the level is its def) */
+
 /* ---- the tick's budget --------------------------------------------------------------------
  * A tick has 33.3 ms; the core's own work before the view varies (a path search takes 16 ms on a
  * tick of a bot's plan), and the HUD, the PVR hand-off and the sound after it take about 5. The
@@ -500,12 +517,27 @@ static void emit_cell(int cx, int cy)
  * tick sets how far the rays go; the fog stays at the draw distance, the cut is only where the
  * light is out. The distance never goes under DC_V3D_DIST_MIN, and never over the draw distance. */
 #define V3D_TICK_US   33333
-#define V3D_AFTER_US  7000
 #define V3D_COST_EXP  1.0f
+#define V3D_COST_K0   350.0f   /* us per cell before any view has been timed (Flycast: 290-330) */
 #define V3D_COST_SAFE 1.3f     /* the estimate is a peak of the last views, a busier one costs more */
+static int view_left(void)
+{
+    return V3D_TICK_US - (s_gov_fed ? V3D_AFTER_FED_US : V3D_AFTER_US) - (int)dc3d_be_tick_us();
+}
+
+/* DC6D: with a work feed (the console, the harness) a tick that has no room for even the shortest view
+ * (the core's own plan or load took the time, or the sound and the HUD after it will) does not build one:
+ * the last tick's picture is shown again if there is one for this map and viewport (the weapon, the HUD and
+ * the rest are the core's 2D calls and stay live), else the backdrop alone; the next tick builds as usual. */
+static int view_unaffordable(void)
+{
+    float k = s_cost_k > 0.0f ? s_cost_k : V3D_COST_K0;
+    return s_gov_fed && (float)view_left() < k * V3D_COST_SAFE * (float)DC_V3D_DIST_MIN;
+}
+
 static int view_budget(void)
 {
-    int left = V3D_TICK_US - V3D_AFTER_US - (int)dc3d_be_tick_us();
+    int left = view_left();
     float d;
     if (s_cost_k <= 0.0f) return s_view_dist;
     d = left > 0 ? powf((float)left / (s_cost_k * V3D_COST_SAFE), 1.0f / V3D_COST_EXP) : 0.0f;
@@ -808,7 +840,7 @@ void dc2d_view3d_draw(const DoomoView3D *v)
 void plat_view3d(const DoomoView3D *v)
 #endif
 {
-    int vx, vy, vw, vh, fov, plane_fx, focal, horizon, i, poly0;
+    int vx, vy, vw, vh, fov, plane_fx, focal, horizon, i, poly0, bare = 0;
     float plane;
     uint32_t t0;
     if (!v) return;
@@ -829,6 +861,15 @@ void plat_view3d(const DoomoView3D *v)
     s_new_tex = 0;
     s_new_spr = 0;
     gov_begin(dc3d_frame_no());
+    if (view_unaffordable()) {                       /* DC6D: no room for a view this tick */
+        if (s_built_frame + 1u == dc3d_frame_no() && s_built_def == v->map->def && s_built_vp[0] == vx &&
+            s_built_vp[1] == vy && s_built_vp[2] == vw && s_built_vp[3] == vh &&
+            dc3d_seg_repeat(s_built_slot, s_built_seg)) {
+            dc3d_stats.held_n++;
+            return;
+        }
+        bare = 1;
+    }
     M = v->map;
     s_time = v->time;
     if (++s_stamp == 0) {
@@ -885,10 +926,15 @@ void plat_view3d(const DoomoView3D *v)
     if (!dc3d_seg_begin(vx, vy, vw, vh)) return;
     poly0 = dc3d_batch(dc3d_cur_slot())->np;
     s_any_sky = 0;
-    s_cast_dist = view_budget();
-    if (s_cast_dist < s_view_dist) dc3d_stats.cut_n++;
-    if (!dc3d_stats.cast_min || s_cast_dist < dc3d_stats.cast_min) dc3d_stats.cast_min = (uint16_t)s_cast_dist;
-    visibility(plane, vw);
+    s_cast_dist = bare ? 0 : view_budget();
+    if (bare) {
+        dc3d_stats.bare_n++;
+        s_nvis = 0;                                  /* the backdrop alone: no walls, no sprites */
+    } else {
+        if (s_cast_dist < s_view_dist) dc3d_stats.cut_n++;
+        if (!dc3d_stats.cast_min || s_cast_dist < dc3d_stats.cast_min) dc3d_stats.cast_min = (uint16_t)s_cast_dist;
+        visibility(plane, vw);
+    }
     /* the backdrop goes FIRST: on the console the list is drawn in order and
      * the backdrop's far z does not keep it behind the walls (Flycast, the
      * translucent list), so a backdrop emitted last painted over everything */
@@ -907,9 +953,17 @@ void plat_view3d(const DoomoView3D *v)
     dc3d_sort_from(poly0);               /* the opaque world: one header per texture */
     /* billboards over it, far to near (DC6 part 2: the player's model,
      * the weapon and the effects join here) */
-    if (v->sprites && v->sprite_count > 0) billboards(v);
+    if (!bare && v->sprites && v->sprite_count > 0) billboards(v);
     dc3d_seg_end();
-    {
+    s_built_frame = 0xFFFFFFFFu;
+    if (!bare) {                                     /* a picture the next tick may show again */
+        s_built_frame = dc3d_frame_no();
+        s_built_slot = dc3d_cur_slot();
+        s_built_seg = dc3d_batch(s_built_slot)->nseg - 1;
+        s_built_def = v->map->def;
+        s_built_vp[0] = vx; s_built_vp[1] = vy; s_built_vp[2] = vw; s_built_vp[3] = vh;
+    }
+    if (!bare) {
         uint32_t us = dc3d_be_us() - t0;
         dc3d_stats.us_last = us;
         if (us > 0) {                                    /* the cost model: us = K * dist, K a decaying peak */

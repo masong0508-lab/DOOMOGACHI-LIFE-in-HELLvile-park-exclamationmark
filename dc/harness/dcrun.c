@@ -1649,6 +1649,9 @@ int main(int argc, char **argv)
     if (mb && mb_up && mb->g3d_n && mb->g3d_dist_min)   /* DC6B: the tick's budget */
         printf("dcrun: first-person views cut short by the tick's budget %u of %u, shortest ray distance %u cells\n",
                mb->g3d_cut, mb->g3d_n, mb->g3d_dist_min);
+    if (mb && mb_up && (mb->g3d_held || mb->g3d_bare))   /* DC6D: ticks with no time to build a view */
+        printf("dcrun: first-person views shown again from the last tick %u, drawn as the backdrop alone %u "
+               "(the tick had no room for the shortest view)\n", mb->g3d_held, mb->g3d_bare);
     if (mb && mb_up && mb->room_n)      /* DC8: the house */
         printf("dcrun: house views %u drawn, mean %u us max %u us; shells %u (slowest %u us), "
                "sprites decoded %u, prims max %u\n",

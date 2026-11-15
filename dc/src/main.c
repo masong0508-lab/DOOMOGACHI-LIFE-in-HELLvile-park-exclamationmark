@@ -131,6 +131,8 @@ void plat_end_frame(void)
         dc_mailbox.g3d_dropped = dc3d_stats.dropped;
         dc_mailbox.g3d_cut = dc3d_stats.cut_n;
         dc_mailbox.g3d_dist_min = dc3d_stats.cast_min;
+        dc_mailbox.g3d_held = dc3d_stats.held_n;          /* DC6D */
+        dc_mailbox.g3d_bare = dc3d_stats.bare_n;
         dc_mailbox.room_us = dc_room_stats.us_last;      /* DC8: the house */
         dc_mailbox.room_us_max = dc_room_stats.us_max;
         dc_mailbox.room_us_sum = dc_room_stats.us_sum;
