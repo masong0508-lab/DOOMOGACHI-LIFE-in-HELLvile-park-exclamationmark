@@ -10,6 +10,7 @@
 #include "doomo/exorcism.h"
 #include "doomo/profiles.h"
 #include "doomo/playas.h"
+#include "doomo/look_pool.h"
 
 int home_visited(int id);              /* home_int.h */
 
@@ -351,6 +352,27 @@ TEST(save_old_players_island_keeps_the_guests)
     CHECK(town_alive(320) && town_alive(720));
     CHECK_EQ(prof_rel(1, 321), 200);
     CHECK(in_town(321));
+}
+
+/* whoever moves away leaves nothing a module keeps by their id: CR5's look pool held a deep run
+ * for every 7th id; the runs of those who stay are there, those who left have none (a newcomer
+ * who gets the id later would wear their deep parts) */
+TEST(save_old_players_island_leavers_take_their_look_runs)
+{
+    int id, len, kept = 0, gone = 0;
+    CHECK(load_players());
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id += 7) {
+        const uint8_t *run = look_pool_find(id, RUN_DEEP, &len);
+        if (in_town(id)) {
+            CHECK_MSG(run != NULL && len == 4, "the run of %d, who stays", id);
+            kept++;
+        } else {
+            CHECK_MSG(run == NULL, "the run of %d, who moved away", id);
+            gone++;
+        }
+    }
+    CHECK(kept > 0);
+    CHECK_EQ(gone > 0, DOOMO_RES_SLOTS);
 }
 
 /* a child's family moves as one: the hero's best friend's baby and its other parent stay with

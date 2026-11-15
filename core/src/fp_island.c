@@ -261,7 +261,7 @@ static void add_activities(int actloc, int soon)
 static void build_menu(const Loc *L)
 {
     Entry *e;
-    int free_hill = town_alloc(0) >= 0, free_hell = town_alloc(1) >= 0;
+    int free_hill = town_alloc_peek(0) >= 0, free_hell = town_alloc_peek(1) >= 0;
     I.nent = 0;
     switch (L->kind) {
     case LOC_TOWERS: case LOC_PITS: {

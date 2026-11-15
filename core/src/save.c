@@ -1191,18 +1191,18 @@ static void sv_select(void)
     }
 }
 
-/* after the apply pass: the graves of people who moved away go; the news waits for the
- * sim (save_moved_away_news, from sim_init: a load starts nothing itself) */
+/* after the apply pass: whoever moved away leaves as town_free has a resident leave (their
+ * graves, anything a module keeps by their id: the creator's look pool), so a newcomer who
+ * gets the id later starts clean; the news waits for the sim (save_moved_away_news, from
+ * sim_init: a load starts nothing itself) */
 static uint16_t sv_news;
 static void sv_moved_away(void)
 {
-    int i, n;
+    int id;
     sv_news = sv_moved;
     if (!sv_moved) return;
-    for (i = 0, n = 0; i < doomo_town.grave_count; i++)
-        if (doomo_town.graves[i].resident < DOOMO_MAX_RESIDENTS && town_slot(doomo_town.graves[i].resident) >= 0)
-            doomo_town.graves[n++] = doomo_town.graves[i];
-    doomo_town.grave_count = (uint16_t)n;
+    for (id = 0; id < DOOMO_MAX_RESIDENTS; id++)
+        if (!sv_kept(id) && town_slot(id) < 0) town_free(id);
 }
 
 void save_moved_away_news(void)

@@ -120,6 +120,7 @@ static void town_fill(uint32_t seed)
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         uint8_t run[2 * DF_POOL_N];
         int k;
+        if (TOWN_RES(i)->status == RES_EMPTY) continue;    /* GBA-500: the citizens in town */
         for (k = 0; k < DF_POOL_N; k++) { run[2 * k] = (uint8_t)(DF_POOL_FIRST + k); run[2 * k + 1] = (uint8_t)(1 + rng_range(&r, 3)); }
         if (!look_pool_put(i, RUN_DEEP, run, (int)sizeof(run))) break;
     }

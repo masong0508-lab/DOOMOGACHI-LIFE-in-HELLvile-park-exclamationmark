@@ -308,6 +308,14 @@ void town_new(int mode, uint32_t seed, int population);
 DoomoResident *town_res(int id);          /* NULL if out of range; accepts
                                              DOOMO_PLAYER_ID                */
 int  town_alloc(int district);            /* free slot id in district or -1 */
+/* (GBA-500) the id town_alloc(district) would give, without giving it a slot: a question
+ * ("is there a home?", "which home will it be?") changes nothing. Where all 1000 live
+ * town_alloc changes nothing either and this is the same call. */
+#if DOOMO_RES_SLOTS
+int  town_alloc_peek(int district);
+#else
+#define town_alloc_peek(district) town_alloc(district)
+#endif
 void town_free(int id);                   /* slot -> RES_EMPTY, drop edges */
 int  town_count(int status);              /* count residents with status (-1 = any non-empty) */
 int  town_count_district(int district, int status);

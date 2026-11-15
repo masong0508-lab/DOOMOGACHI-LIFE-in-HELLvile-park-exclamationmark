@@ -419,7 +419,7 @@ void cr_home_floor_room(int id, int *floor, int *room)
 static void refresh_home(void)
 {
     if (cr.mode == CR_NEW)
-        cr.home_id = (int16_t)(cr.target >= 0 ? cr.target : town_alloc(cr.district));
+        cr.home_id = (int16_t)(cr.target >= 0 ? cr.target : town_alloc_peek(cr.district));
     else
         cr.home_id = cr.target;
 }
@@ -1441,7 +1441,7 @@ static int write_town(void)
     resident_sanitize(&rec);
     part_age_filter_resident(&rec, -1);         /* CR12: never store a part above their stage */
     /* CR5: the deep choices go to the look pool first; a full pool refuses the whole commit */
-    pid = cr.mode == CR_NEW ? (cr.target >= 0 ? cr.target : town_alloc(cr.district)) :
+    pid = cr.mode == CR_NEW ? (cr.target >= 0 ? cr.target : town_alloc_peek(cr.district)) :   /* (GBA-500: no slot yet) */
           cr.mode == CR_PLAYER ? DOOMO_PLAYER_ID : cr.target;
     if (pid >= 0 && pid <= DOOMO_PLAYER_ID && town_res(pid) &&
         (cr.mode != CR_NEW || town_res(pid)->status == RES_EMPTY) && !deep_commit(pid))

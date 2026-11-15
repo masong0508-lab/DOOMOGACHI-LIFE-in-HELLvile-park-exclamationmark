@@ -90,13 +90,19 @@ int town_district_free(int district)
     return n;
 }
 
-int town_alloc(int district)
+int town_alloc_peek(int district)
 {
     int i, base = district ? DOOMO_DISTRICT_SIZE : 0;
     if (!town_district_free(district ? 1 : 0)) return -1;
     for (i = 0; i < DOOMO_DISTRICT_SIZE; i++)
-        if (TOWN_RES(base + i)->status == RES_EMPTY) return town_bind(base + i) >= 0 ? base + i : -1;
+        if (TOWN_RES(base + i)->status == RES_EMPTY) return base + i;
     return -1;
+}
+
+int town_alloc(int district)
+{
+    int id = town_alloc_peek(district);
+    return id >= 0 && town_bind(id) >= 0 ? id : -1;
 }
 
 void town_free(int id)
@@ -110,6 +116,9 @@ void town_free(int id)
         if (doomo_town.graves[i].resident != id) doomo_town.graves[n++] = doomo_town.graves[i];
     doomo_town.grave_count = (uint16_t)n;
     portrait_invalidate(id);
+#if LOOK_POOL_SAVED
+    look_pool_drop(id);                         /* CR5: the deep parts of whoever was there */
+#endif
 }
 
 int town_count(int status)

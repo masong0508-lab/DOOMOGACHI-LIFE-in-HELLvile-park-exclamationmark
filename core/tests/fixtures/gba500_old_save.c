@@ -9,7 +9,8 @@
  *                            the hero: the hero plays as villager 330 (married to 331, best
  *                            friends with 332), two guests play villagers 320 and 720 (Ann's
  *                            own tie: 321), and two sim-born babies with their parents (334 +
- *                            335 -> 336, 334 the hero's best friend; 337 + 338 -> 339)
+ *                            335 -> 336, 334 the hero's best friend; 337 + 338 -> 339), and a
+ *                            deep look run (CR5's pool) for every 7th id
  *   oldsave OUT one-over     gba500_old_251.dmoo: an Empty island with 251 made citizens in
  *                            Hillvile (one more than the GBA's slots) and 3 in Hellvile
  * The last two were made 2026-11-15 by the GBA-500 landing with the 1000-resident native
@@ -35,6 +36,8 @@
 #include "doomo/unlock_ids.h"
 #include "doomo/ending.h"
 #include "doomo/playas.h"
+#include "doomo/look_pool.h"
+#include "doomo/look_fields.h"
 
 static int baby(int pa, int pb, int free_id)
 {
@@ -62,6 +65,12 @@ static void players(void)
     baby(334, 335, 336);
     rel_adjust(334, DOOMO_PLAYER_ID, 90);
     baby(337, 338, 339);
+    {   /* CR5's look pool: a deep run for every 7th id (some of them move away at 500) */
+        static const uint8_t run[4] = { DF_POOL_FIRST, 1, DF_POOL_FIRST + 1, 2 };
+        int id;
+        for (id = 0; id < DOOMO_MAX_RESIDENTS; id += 7)
+            if (!look_pool_put(id, RUN_DEEP, run, 4)) { fprintf(stderr, "look pool %d\n", id); exit(1); }
+    }
 }
 
 /* an Empty island, 251 made citizens in Hillvile and 3 in Hellvile */
