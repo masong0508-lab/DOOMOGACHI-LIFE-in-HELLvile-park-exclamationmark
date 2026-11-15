@@ -1972,8 +1972,9 @@ at 2 vblanks (the Gallery, the Derby, the Dodge's first hit) is a tick that borr
 frame at 2 vblanks (the vblank histogram has no 3 in it); the 0.1 is the window's tick count. (The table's "catch results" window stood
 in the last 100 ticks of the round, not on the card: see the landing below.)
 
-**Landing (2026-11-15): the results card held, and the numbers on the tree it landed on.** The package lands on `41df852` (PS1-RAM, DC9C,
-TM2d-DEPTH, TD1, CR5-FIX, CR4 A1b and TM2F-Q8 on top of `b9e74a5`; the fair group on `5aa25cd`, `366ee6c` and `41df852` + S2-4b reads the same as the table below, measured on `b9e74a5`, but for
+**Landing (2026-11-15): the results card held, and the numbers on the tree it landed on.** The package lands on `e587f9c`, measured on `41df852` (PS1-RAM,
+DC9C, TM2d-DEPTH, TD1, CR5-FIX, CR4 A1b and TM2F-Q8 on top of `b9e74a5`; TD2 and TM2E-ACTIONS landed after it, Talk and sim code
+the fair does not call, so only the core tests and check-gen ran again; the fair group on `5aa25cd`, `366ee6c` and `41df852` + S2-4b reads the same as the table below, measured on `b9e74a5`, but for
 0.1 ms in two work figures). It was rebased onto `b9e74a5`
 (S2-9, S3-1, CR-BODY, CR4 A5, CR5, TM2c-PLAN, TUI-TALK, DC9B, DC6D, the owner's Talk screen on the ROM and the music driver on a 240 Hz
 timer IRQ among the commits since; on `2bc6130` and `0cce022` every window read within 0.2 fps of the table below, the Derby's Sweet
