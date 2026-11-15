@@ -152,7 +152,9 @@ The work is the game's own `timer_us_gettime64()` from the start of
 `plat_begin_frame` to the end of `plat_end_frame`'s submit, in emulated time.
 With 3D views (DC7) the run also ends with `dcrun: 3D views N built, build
 mean / max, polygons last / max, TA bytes max, polygons left out` (the
-mailbox's `g3d_*` words), and with the house (DC8) with `dcrun: house views
+mailbox's `g3d_*` words; DC6D: `first-person views shown again from the last
+tick N, drawn as the backdrop alone M`, the ticks that had no room for the
+shortest view, `g3d_held` / `g3d_bare`), and with the house (DC8) with `dcrun: house views
 N drawn, mean / max, shells (slowest), sprites decoded, prims max` (the
 `room_*` words).
 

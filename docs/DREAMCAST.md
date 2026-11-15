@@ -2089,6 +2089,92 @@ and the first ticks of a level start with a nearer fog that opens up. Evidence: 
 in the repo; the scripts are `dc/harness/scripts/gen_detail.sh`). Memory: DC `.bss` +32 B, `.text` +472 B;
 no core, GBA or PS1 file changed.
 
+### The first-person misses (DC6D, on top of DC6B and DC6C)
+
+Goal: no tick over 33.3 ms in the seven `breach_*` scripts and the autopilot demo. **Not fully reached:
+1 tick of the breach scripts and 1 / 1 / 2 ticks of the demo (Balanced / Smooth / Max detail) stay over, the worst
+34.1 ms (0.8 ms over).** Measured on Flycast (emulated time, `dcrun` on the nodebug ELF, same machine, same
+scripts, before = origin 17d5e17f, after = this package):
+
+| script | ticks over 33.3 ms | worst tick | work mean | 3D view build mean | views cut by the budget |
+|---|---|---|---|---|---|
+| factory | 0 -> 0 | 32.7 -> 31.9 ms | 12.0 -> 11.2 ms | 5.8 -> 5.0 ms | 3 -> 145 of 1891 |
+| sewers | 0 -> 0 | 31.9 -> 27.8 ms | 12.5 -> 11.6 ms | 6.5 -> 5.5 ms | 2 -> 68 |
+| cathedral | 2 -> 0 | 40.0 -> 31.1 ms | 10.4 -> 9.7 ms | 6.4 -> 5.4 ms | 28 -> 77 |
+| graveyard | 3 -> 0 | 35.3 -> 29.2 ms | 14.3 -> 13.2 ms | 8.5 -> 7.7 ms | 67 -> 19 |
+| underbelly | 0 -> 0 | 31.6 -> 30.8 ms | 11.2 -> 10.7 ms | 5.3 -> 4.8 ms | 0 -> 36 |
+| vape cellar | 0 -> 0 | 23.0 -> 22.6 ms | 7.5 -> 7.3 ms | 2.7 -> 2.5 ms | 0 -> 0 |
+| cloud nine | 1 -> 1 | 36.0 -> 34.1 ms | 13.5 -> 12.7 ms | 6.9 -> 6.5 ms | 85 -> 15 |
+| **seven scripts** | **6 -> 1** | **40.0 -> 34.1 ms** | | | |
+| `demo`, Balanced | 3 -> 1 | 36.2 -> 34.0 ms | 12.2 -> 11.6 ms | 5.7 -> 5.4 ms | 176 -> 124 of 6654 |
+| `demo`, Smooth | 1 -> 1 | 36.3 -> 34.0 ms | | | 54 of 6639 |
+| `demo`, Max detail | 8 -> 2 | 37.3 -> 34.0 ms | | | 768 of 6649 |
+| `walk`, Balanced (a pad, 6986 ticks) | 0 -> 0 | 27.8 -> 26.7 ms | 7.2 -> 6.8 ms | 3.2 -> 2.8 ms | 0 -> 0 |
+| `walk`, Max detail | 0 -> 0 | 31.7 -> 29.3 ms | 9.3 -> 8.4 ms | 5.2 -> 4.3 ms | 1 -> 221 of 6907 |
+| `combat` (`COMBAT 0 1 2 4 6`), Balanced | 0 -> 0 | 26.8 -> 26.7 ms | 14.2 -> 13.4 ms | 10.1 -> 9.1 ms | 0 -> 4 of 754 |
+
+(Raw logs and the breakdowns: `/tmp/claude-0/ev/DC6D/`, not in the repo; the scripts are the same ones: `breach_*.txt`,
+`gen_detail.sh MODE 1 demo|walk|combat`.)
+
+Where the time of a late tick goes (a profile build that times the parts, about 0.4 ms slower than the plain
+build, so it shows 11 late ticks in the three scripts where the plain build shows 6; ms; ticks are numbered as that
+build counts them, dcrun's count is one higher):
+
+| tick | core before the view | the view | after the view | late by |
+|---|---|---|---|---|
+| cathedral 126 | 13.3 | 8.6 | 11.9 | 0.4 |
+| cathedral 216 | 14.0 | 10.4 | 15.9 | 7.0 |
+| cathedral 229 | 3.3 | 14.0 | 16.6 | 0.6 |
+| graveyard 126, 289, 372, 444, 1728 | 16.0, 16.3, 16.6, 17.1, 16.8 | 8.7, 6.0, 8.1, 7.7, 5.7 | 10.6, 11.1, 9.1, 10.8, 13.0 | 0.1 to 2.3 |
+| cloud nine 126, 397, 840 | 22.6, 25.6, 23.0 | 2.9, 2.9, 3.8 (the shortest view) | 11.0, 5.3, 6.8 | 0.2 to 3.2 |
+
+"After the view" is the core's weapon and HUD calls (a weapon picture is composed there, `weld_view_image`:
+4-8 ms the tick a new frame of it is needed), the sound (1-3 ms) and the PVR hand-off (`dc2d_end`, 1.2-3.9 ms).
+Before the view it is the core: the demo bot's path search on every 12th tick (13-25 ms, the biggest on
+cloud nine) and a level's load. The view is the only part the Dreamcast code decides. The budget of DC6B
+reserved a fixed 7 ms for "after", so on those ticks it built a view the tick could not pay for.
+
+What changed (`dc/src/view3d.c`, `dc3d.c`):
+
+- **The budget leaves 15 ms for what comes after the view** when the work feed runs (the console and the harness;
+  without it, the host tests, 7 ms as before). The distance of the view is cut to what the rest allows, as before.
+- **A tick that has no room for even the shortest view (10 cells at 1.3 x the measured cost) does not build one.**
+  It shows the segment of the last drawn frame again through a marker (`dc3d_seg_repeat`): the HUD, the weapon and
+  the effects are the core's 2D calls and stay live, only the world and its sprites are one tick old. If there
+  is nothing to show again (the tick before was a repeat, another level or another viewport) it draws the
+  backdrop alone (no walls, no sprites). Never two repeats in a row. dcrun prints
+  `first-person views shown again from the last tick N, drawn as the backdrop alone M`.
+  Counts: shown again 2 (cathedral), 77 (graveyard) and 128 (cloud nine) of about 1,890 ticks, none in the other four
+  scripts, and 3 and 5 backdrops (graveyard, cloud nine); the demo (Balanced) 155 repeats and 4 backdrops of 6,986
+  ticks. They are the bot's plan ticks (the bot is only in the demo and the breach scripts); `walk` and `combat` (a
+  pad plays) have none.
+- **A segment's texture list is a stamp per slot** (`seg_textures` scanned up to 64 entries for every polygon: 2.7 ms
+  of a 14 ms view). The same list in the same order; the view's build mean is 6-16 % lower in every script.
+- No resident RAM on the GBA and the PS1 (no core, GBA or PS1 file changed). Dreamcast `.bss` +8.5 KB (the stamp table).
+
+Pixels: the repeat is byte for byte the last picture (`test_view_hold`); on the 2 % of the ticks of a demo that
+show it (4 to 7 % on graveyard and cloud nine) the world is one tick old, the bot's plan ticks (before, those ticks
+ran over 33.3 ms and the whole frame came a vblank late). The
+15 ms reserve cuts the ray distance a little more often (the fog scale stays, the cut ends in the dark): Max detail
+`walk` 221 of 6907 views, `demo` 768 of 6649, the other modes at most 2 %. Flycast's shots are not byte equal
+before and after (18 of 21 breach shots are; the rest differ because the bot and the governor depend on the speed of
+the tick: another position or fog scale, not another picture). Evidence pairs: `/tmp/claude-0/ev/DC6D/pics/`.
+
+**Gap, not solved:** the ticks left are 22-23 ms of core before the view (the bot's plan on the first tick of a
+level in the demo, a plan on cloud nine) plus 11 ms after it with nothing of the view left to take out (the weapon
+picture composed, the sound, `dc2d_end`). They are 0.8 ms over (cloud nine tick 126: 34.1 ms; demo tick 1736, the first tick of a level: 34.0 ms
+at every mode; one more tick at Max detail, 34.05 ms). What would close them, none of it in this package: the
+planner's search spread over several ticks (core, the speed stream's: it is 13-25 ms of one tick), the weapon
+picture composed in slices as on the GBA and the PS1 (`weld_view_image_sliced`, weld.h), or the sound mix of a late tick done in the next
+(DC5's `audio.c`, about 2 ms). Not tried: a direct-render submission in `pvr3d.c` (the 120 KB of a repeated view cost
+1.1 ms in `dc2d_end`). Real hardware is not measured.
+
+Host: `make -C dc v3d-test` 188 checks (new: `test_view_hold`: no feed never holds, 12 ms builds a cut view, 16 ms
+shows the last picture byte for byte, twice in a row the backdrop with no cells, the next idle tick builds,
+another level the backdrop), `dc3d_test` 593 (new: `test_seg_textures`, `test_seg_repeat`), parity unchanged
+(level views, sprites: the same numbers as DC6B). `ui-compare` 94 of 94; `ow-test` as on origin (`side_sample_a`);
+`room-test`'s `home_visit` fails on origin 249a0282 as well (`expect-scene DIALOG`, not this package).
+
 ## Rumble (X2)
 
 `plat_rumble(strength 0..255, ticks)` (plat_ext.h) is the core's rumble hook.
