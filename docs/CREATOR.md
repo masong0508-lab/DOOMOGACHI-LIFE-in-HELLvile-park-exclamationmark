@@ -1024,7 +1024,7 @@ build sliders and are not scaled.
 * **Memory.** PS1: +272 B resident (`_end` 0x801ee550 -> 0x801ee660; 72,352 -> 72,080 B below the stack top with the boot FMV; inside
   CREATOR's 4 KB share, docs/PS1.md "CR-SLIDERX"): the slider loop 216 B, the table 44 B, the option rows and the int8 loads, minus 260 B from `sanitize`; measured on the tip `5879aa3f` and the tip + CR-SLIDERX.
   GBA: `.bss`, `.iwram`, `.iwram_bss`, `.data` identical (free EWRAM unchanged at 6,404 B after CR5, ROM `.text` +192 B, `.rodata` +572 B; the option's byte replaced a bit, docs/GBA.md ledger
-  row 55). On the final tree (origin `5aa25cd1`) the PS1 margin is 132,352 B below the stack top (the package costs 256 B of it); GBA `.bss` 254,836, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 (free EWRAM 6,412 B, unchanged by the package). Old saves load with x1.
+  row 57). On the final tree (origin `5aa25cd1`) the PS1 margin is 132,352 B below the stack top (the package costs 256 B of it); GBA `.bss` 254,836, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816 (free EWRAM 6,412 B, unchanged by the package). Old saves load with x1.
 * **Not done here.** Only the build sliders scale; the voice, personality and enum rows do not. A resident drawn by a script that
   reads a slider (none does today) would need the same table. The cheat acts only on the paths that go through
   `look_for_stage` (portraits, figures, fighters, chibis, the creator preview). A few direct readers of the saved look
