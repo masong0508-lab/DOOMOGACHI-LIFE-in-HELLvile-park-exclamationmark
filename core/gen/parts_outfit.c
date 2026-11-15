@@ -36,7 +36,7 @@ static const PartList lists[] = {
     { 34, 0, 25 },
     { 42, 25, 2 },
 };
-#ifndef DOOMO_PARTS_LZ
+#if !defined(DOOMO_PARTS_LZ) && !defined(DOOMO_PARTS_SPU)
 static const uint8_t ops[] = {
     0x01, 0x01, 0x7f, 0x1c, 0x01, 0x01, 0x02, 0x2b, 0x00, 0x03, 0x00, 0x04, 0x00, 0x15, 0xab, 0x9c,
     0x55, 0x50, 0x22, 0x0f, 0x07, 0x0a, 0x02, 0x2b, 0x01, 0x04, 0x02, 0x17, 0x3c, 0x37, 0x1e, 0x0a,
@@ -198,6 +198,8 @@ const PartLz doomo_parts_outfit_lz = { z, zofs, rofs, 1 };
 #endif
 #ifdef DOOMO_PARTS_LZ
 const PartSet doomo_parts_outfit = { refs, 27, 0, stamps, 0, bits, &doomo_parts_outfit_lz, lists, 2 };
+#elif defined(DOOMO_PARTS_SPU)   /* the PS1: the raw scripts are in SPU RAM (PARTS.BIN, ps1/tools/partsbin.py) */
+const PartSet doomo_parts_outfit = { refs, 27, 0, stamps, 0, bits, 0, lists, 2 };
 #elif defined(DOOMO_PARTS_LZ_TEST)   /* host tests: the raw form, and the LZ form to check */
 const PartSet doomo_parts_outfit = { refs, 27, ops, stamps, 0, bits, &doomo_parts_outfit_lz, lists, 2 };
 #else

@@ -476,6 +476,7 @@ def parse(path, fields, templates=None):
 
 
 PART_BLK = 2048
+PART_ENTRY_WIN = 256            # parts.h: the most bytes one script entry may take (the PS1 reads it in one go)
 
 
 def lz_pack(raw):
@@ -534,6 +535,9 @@ def lz_blocks(refs, ops, dirname):
     for s, e in zip(starts, ends):
         if e - s > PART_BLK:
             raise PartError("%s: a script of %d B is over the %d B LZ block" % (dirname, e - s, PART_BLK))
+        if e - s > PART_ENTRY_WIN:
+            raise PartError("%s: a script of %d B is over the %d B entry window of the PS1 part store (parts.h)"
+                            % (dirname, e - s, PART_ENTRY_WIN))
         if e - b0 > PART_BLK:
             blocks.append((b0, bytes(ops[b0:s])))
             b0 = s
@@ -612,7 +616,7 @@ def emit(dirname, fields):
     L += ["    { %d, %d, %d }," % (r[1], min(255, (tops[(r[0], r[1])] + 7) // 8), r[2]) for r in refs] or ["    { 0, 0, 0 },"]
     L += ["};", "static const PartList lists[] = {"]
     L += ["    { %d, %d, %d }," % tuple(x) for x in lists] or ["    { 0xFFFF, 0, 0 },"]
-    L += ["};", "#ifndef DOOMO_PARTS_LZ", "static const uint8_t ops[] = {", arr(ops), "};", "#endif",
+    L += ["};", "#if !defined(DOOMO_PARTS_LZ) && !defined(DOOMO_PARTS_SPU)", "static const uint8_t ops[] = {", arr(ops), "};", "#endif",
           "static const StampRef stamps[] = {"]
     L += ["    { %d, %d, %d }," % r for r in srefs] or ["    { 0, 0, 0 },"]
     L += ["};", "static const uint8_t bits[] = {", arr(bits), "};", "",
@@ -624,6 +628,8 @@ def emit(dirname, fields):
           "const PartLz doomo_parts_%s_lz = { z, zofs, rofs, %d };" % (dirname, len(blocks)),
           "#endif", "#ifdef DOOMO_PARTS_LZ",
           "const PartSet doomo_parts_%s = { refs, %d, 0, stamps, %d, bits, &doomo_parts_%s_lz, lists, %d };" % (dirname, len(refs), len(srefs), dirname, len(lists)),
+          "#elif defined(DOOMO_PARTS_SPU)   /* the PS1: the raw scripts are in SPU RAM (PARTS.BIN, ps1/tools/partsbin.py) */",
+          "const PartSet doomo_parts_%s = { refs, %d, 0, stamps, %d, bits, 0, lists, %d };" % (dirname, len(refs), len(srefs), len(lists)),
           "#elif defined(DOOMO_PARTS_LZ_TEST)   /* host tests: the raw form, and the LZ form to check */",
           "const PartSet doomo_parts_%s = { refs, %d, ops, stamps, %d, bits, &doomo_parts_%s_lz, lists, %d };" % (dirname, len(refs), len(srefs), dirname, len(lists)),
           "#else",

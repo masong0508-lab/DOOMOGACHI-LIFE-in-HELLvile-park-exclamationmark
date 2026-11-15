@@ -84,6 +84,17 @@ if(DOOMO_CORE)
 		VERBATIM)
 	set(DOOMO_ISO_SFX "<file name=\"SFX.BIN\" type=\"data\" source=\"SFX.BIN\" />")
 	set(DOOMO_SFX_DEP ${CMAKE_CURRENT_BINARY_DIR}/SFX.BIN)
+	# CR10: PARTS.BIN, the raw part scripts (core/gen/parts_*.c) for src/partstore.c: uploaded to SPU RAM at boot
+	file(GLOB DOOMO_PARTS_GEN CONFIGURE_DEPENDS ${CORE_DIR}/gen/parts_*.c)
+	add_custom_command(
+		OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/PARTS.BIN
+		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/partsbin.py
+		        ${CORE_DIR}/gen ${CMAKE_CURRENT_BINARY_DIR}/PARTS.BIN
+		DEPENDS ${DOOMO_PARTS_GEN} ${CMAKE_CURRENT_SOURCE_DIR}/tools/partsbin.py
+		COMMENT "Packing the part scripts (tools/partsbin.py -> PARTS.BIN)"
+		VERBATIM)
+	set(DOOMO_ISO_SFX "${DOOMO_ISO_SFX}<file name=\"PARTS.BIN\" type=\"data\" source=\"PARTS.BIN\" />")
+	set(DOOMO_SFX_DEP ${DOOMO_SFX_DEP} ${CMAKE_CURRENT_BINARY_DIR}/PARTS.BIN)
 endif()
 # --- end S2 ---
 
@@ -253,12 +264,13 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 		${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
 	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
-	# P1.M1: the part scripts link as 2 KB LZ blocks behind an 8 KB LRU (core/src/part_lru.c), not raw
-	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_LZ=1)
-	# CR2: the part-script VM (slot hooks, macro ops, LZ blocks + per-render arena) is ~22 KB resident
-	# once painters call it, more than the headroom above the stack reserve: off on the PS1 until CR10
-	# (SPEC P3 reclaims, SPU-RAM part store) lands. Scripted parts are drawn as their slot's default.
-	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_VM=0)
+	# CR10: the part-script VM is built in (it was off while the PS1 had no room: PS1-RAM landed). The part scripts
+	# and the packed part icons are RAW bytes in SPU RAM (PARTS.BIN, src/partstore.c, core/src/part_lru.c), a script
+	# read into a 2 KB per-render arena, an icon onto the stack: neither is linked.
+	target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_VM=1)
+	if(DOOMO_CORE)
+		target_compile_definitions(${_t} PRIVATE DOOMO_PARTS_SPU=1)
+	endif()
 	target_compile_definitions(${_t} PRIVATE DOOMO_ICONS_RLE=1)   # CR7: part_icons.h
 	if(DOOMO_ENGINE_TEST)
 		target_compile_definitions(${_t} PRIVATE DOOMO_ENGINE_TEST=1)

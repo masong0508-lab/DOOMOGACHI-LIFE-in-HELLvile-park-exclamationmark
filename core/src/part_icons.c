@@ -43,8 +43,17 @@ int part_icon_unpack(int i, uint8_t *dst)
     uint8_t *nib;
     int o = 0, k, n;
     if (i < 0 || i >= (int)doomo_part_icon_rle_count || !dst) return 0;
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+    /* CR10: the packed bytes are in SPU RAM on the PS1: one icon's (at most PART_ICON_PACK_MAX) onto the stack */
+    uint8_t zb[PART_ICON_PACK_MAX];
+    uint32_t n0 = doomo_part_icon_rle_ofs[i + 1] - doomo_part_icon_rle_ofs[i];
+    if (n0 == 0 || n0 > sizeof(zb) || !plat_part_icon_read(doomo_part_icon_rle_ofs[i], zb, (unsigned)n0)) return 0;
+    p = zb;
+    e = zb + n0;
+#else
     p = doomo_part_icon_rle + doomo_part_icon_rle_ofs[i];
     e = doomo_part_icon_rle + doomo_part_icon_rle_ofs[i + 1];
+#endif
     if (p >= e || (k = *p++) > 15 || p + k > e) return 0;
     pal = p;
     p += k;

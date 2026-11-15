@@ -145,7 +145,7 @@ void pctx_init(PCtx *c, const DoomoLook *l, int status, int expr, int anim)
     }
     if (p_shape) shape_materials(c);
     pf_material_init(c);
-#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST) || defined(DOOMO_PARTS_SPU)
     part_arena_begin();                     /* CR2: each worn script decoded once per render */
 #endif
 }

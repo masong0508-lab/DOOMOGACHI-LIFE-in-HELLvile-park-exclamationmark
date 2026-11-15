@@ -46,9 +46,9 @@ TEST(part_icons_one_per_live_part)
         int want = (icon_list(m->list) || deep_icon_list(m)) && PMF_STATE(m->flags) == PSTATE_LIVE;
         CHECK_MSG((part_icon_index_in(i, 0) >= 0) == want, "%s \"%s\": icon %s", doomo_part_slots[m->slot].key,
                   part_meta_name(m), want ? "missing" : "for a part that is not live");
-        /* CR3: the PS1's packed set has exactly the ones it can draw (no part scripts there) */
-        CHECK_MSG((part_icon_index_in(i, 1) >= 0) == (want && (m->list >= 128 || m->value < doomo_part_minv[m->list])),
-                  "%s \"%s\": packed icon wrong", doomo_part_slots[m->slot].key, part_meta_name(m));
+        /* CR10: the PS1 draws scripted parts now: its packed set is the raw set */
+        CHECK_MSG((part_icon_index_in(i, 1) >= 0) == want, "%s \"%s\": packed icon wrong",
+                  doomo_part_slots[m->slot].key, part_meta_name(m));
         n += want;
     }
     CHECK_EQ(n, doomo_part_icon_count);
@@ -82,7 +82,23 @@ TEST(part_icons_packed_equal_raw)
     }
     CHECK(!part_icon_unpack(-1, buf));
     CHECK(!part_icon_unpack((int)doomo_part_icon_rle_count, buf));
+    CHECK_EQ((int)doomo_part_icon_rle_count, (int)doomo_part_icon_count);
+    for (i = 0; i < (int)doomo_part_icon_rle_count; i++)             /* CR10: one icon fits the PS1's stack read */
+        CHECK_MSG(doomo_part_icon_rle_ofs[i + 1] - doomo_part_icon_rle_ofs[i] <= PART_ICON_PACK_MAX,
+                  "packed icon %d is %u bytes", i, (unsigned)(doomo_part_icon_rle_ofs[i + 1] - doomo_part_icon_rle_ofs[i]));
 }
+
+#if defined(DOOMO_PARTS_SPU_TEST)
+TEST(part_icons_without_the_store_unpack_nothing)
+{
+    static uint8_t buf[PART_ICON_PIX];
+    CHECK(part_icon_unpack(0, buf));
+    part_store_test_fail = 1;                       /* PARTS.BIN missing: no icon, no crash (the grid shows "?") */
+    CHECK(!part_icon_unpack(0, buf));
+    part_store_test_fail = 0;
+    CHECK(part_icon_unpack(0, buf));
+}
+#endif
 
 TEST(part_icons_image_kept_unpacks_a_row_once_per_buffer)
 {

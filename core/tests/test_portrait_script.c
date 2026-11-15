@@ -653,3 +653,86 @@ TEST(wave2_halos_are_appended_after_the_live_count_and_every_one_is_distinct)
         }
     }
 }
+
+/* ---- CR10: the PS1's raw part store (part_lru.c part_store_ops). The host build draws every part through it
+ * (DOOMO_PARTS_SPU_TEST: PART_OPS is part_store_ops, the "store" is the linked raw array), so the whole
+ * portrait suite above is the proof that drawing through it is the same picture. These check the store itself. */
+#if defined(DOOMO_PARTS_SPU_TEST)
+static unsigned entry_len(const uint8_t *p)
+{
+    const uint8_t *q = p;
+    while (q[0] != PH_END) q += 4 + q[3];
+    return (unsigned)(q - p) + 4;
+}
+
+TEST(part_store_entries_of_the_real_sets_equal_the_raw_scripts)
+{
+    int s;
+    unsigned r;
+    CHECK(doomo_part_script_count >= 1);
+    for (s = 0; s < doomo_part_script_count; s++) {
+        const PartSet *set = doomo_part_scripts[s];
+        part_store_reset();
+        for (r = 0; r < set->n; r++) {
+            const uint8_t *raw = set->ops + set->ref[r].ofs, *got;
+            part_arena_begin();                        /* one entry at a time: always a fresh read */
+            got = part_store_ops(set, set->ref[r].ofs);
+            CHECK(entry_len(raw) <= PART_ENTRY_WIN);
+            CHECK(memcmp(got, raw, entry_len(raw)) == 0);
+        }
+        CHECK_EQ(part_store_fills(), (uint32_t)set->n);
+    }
+}
+
+TEST(part_store_arena_keeps_each_entry_once_per_render_and_spills_when_full)
+{
+    const PartSet *set = NULL;
+    unsigned r, total = 0, first = 0;
+    int s;
+    for (s = 0; s < doomo_part_script_count; s++)       /* the biggest set: it overflows the arena */
+        if (!set || doomo_part_scripts[s]->n > set->n) set = doomo_part_scripts[s];
+    CHECK(set != NULL);
+    for (r = 0; r < set->n; r++) total += entry_len(set->ops + set->ref[r].ofs);
+    CHECK(total > PART_STORE_ARENA || set->n > PART_STORE_SLOTS);   /* or this test spills nothing */
+    part_store_reset();
+    part_arena_begin();
+    first = set->ref[0].ofs;
+    {
+        const uint8_t *a = part_store_ops(set, first), *b = part_store_ops(set, first);
+        CHECK(a == b);                                    /* the same pointer, one read */
+        CHECK_EQ(part_store_fills(), 1u);
+    }
+    for (r = 0; r < set->n; r++) {                        /* every entry, in one render: more than fits */
+        const uint8_t *raw = set->ops + set->ref[r].ofs;
+        CHECK(memcmp(part_store_ops(set, set->ref[r].ofs), raw, entry_len(raw)) == 0);
+    }
+    CHECK(part_store_spills() > 0);
+    CHECK_EQ(part_store_fills(), (uint32_t)set->n);       /* the first one was a hit */
+    part_arena_begin();                                   /* the next render reads again */
+    {
+        uint32_t f0 = part_store_fills();
+        (void)part_store_ops(set, first);
+        CHECK_EQ(part_store_fills(), f0 + 1u);
+    }
+}
+
+TEST(part_store_missing_draws_nothing_and_a_set_pointer_that_is_not_a_set_is_refused)
+{
+    static uint8_t a[PORTRAIT_W * PORTRAIT_H], b[PORTRAIT_W * PORTRAIT_H];
+    DoomoLook l;
+    PartSet fake;
+    const uint8_t *p;
+    memset(&l, 0, sizeof(l));
+    l.eye_style = EYE_ROUND; l.eye_size = 12;
+    l.hat = (uint8_t)doomo_part_minv[GF_HAT];            /* a scripted hat */
+    CHECK(l.hat != 255);
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, a);
+    part_store_test_fail = 1;                             /* PARTS.BIN missing: the VM runs an empty entry */
+    portrait_render(&l, RES_ALIVE, EXPR_NEUTRAL, 0, b);
+    part_store_test_fail = 0;
+    CHECK(px_diff(a, b) > 0);                             /* the hat is gone, nothing crashed */
+    memset(&fake, 0, sizeof(fake));
+    p = part_store_ops(&fake, 0);
+    CHECK_EQ(p[0], PH_END);
+}
+#endif

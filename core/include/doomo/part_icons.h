@@ -6,8 +6,9 @@
  * at build time from the real renderer by core/tools/part_icons.c (`make -C core gen`, checked by
  * `make check-gen`) into core/gen/part_icons_data.c (raw pixels: GBA and native read them straight
  * from ROM, so browsing the creator's grid renders no portrait) and core/gen/part_icons_rle.c (the
- * same icons run-length packed: the PS1 links only these, in the creator overlay group, and
- * unpacks one into the caller's buffer before plat_image uploads it to the VRAM image cache).
+ * same icons run-length packed: the PS1 links only the tables of these, in the creator overlay group,
+ * keeps the packed bytes in SPU RAM (CR10: PARTS.BIN) and unpacks one into the caller's buffer before
+ * plat_image uploads it to the VRAM image cache).
  *
  * Palette indices are the game's master palette; 0 is transparent. docs/CREATOR.md "Part icons". */
 #ifndef DOOMO_PART_ICONS_H
@@ -18,19 +19,26 @@
 #define PART_ICON_W   20
 #define PART_ICON_PIX (PART_ICON_W * PART_ICON_W)
 
-/* generated (core/gen/part_icons_*.c). CR3: the packed set holds only the parts the PS1 can draw
- * (no part scripts there until CR10), so each file has its own rows. */
+/* generated (core/gen/part_icons_*.c). CR10: the packed set holds the same icons as the raw one (the PS1 draws
+ * scripted parts now); each file keeps its own rows and indices. */
 extern const uint16_t doomo_part_icon_count;                      /* part_icons_data.c (raw)         */
 extern const uint16_t doomo_part_icon_rows[];                     /* doomo_part_meta rows, ascending */
 extern const uint8_t  doomo_part_icon_pix[][PART_ICON_PIX];
 extern const uint16_t doomo_part_icon_rle_count;                  /* part_icons_rle.c (packed)       */
 extern const uint16_t doomo_part_icon_rle_rows[];                 /* doomo_part_meta rows, ascending */
 extern const uint32_t doomo_part_icon_rle_ofs[];                  /* count + 1                       */
-extern const uint8_t  doomo_part_icon_rle[];
+extern const uint8_t  doomo_part_icon_rle[];                      /* not linked on the PS1 (DOOMO_PARTS_SPU) */
+
+/* The longest packed icon (the tool refuses a longer one): part_icon_unpack reads one into the stack. */
+#define PART_ICON_PACK_MAX 256
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+/* The platform: copy `n` (at most PART_ICON_PACK_MAX) bytes of the packed icon bytes, from byte offset `ofs`
+ * (doomo_part_icon_rle_ofs), to dst. 0 when they are not there (PARTS.BIN missing). */
+int plat_part_icon_read(uint32_t ofs, uint8_t *dst, unsigned n);
+#endif
 
 /* The icon index of doomo_part_meta row `row` in this build's set (the packed one on DOOMO_ICONS_RLE
- * builds), or -1 when it has none (not live, a slot the icon tool does not draw, a scripted part on
- * the PS1). */
+ * builds), or -1 when it has none (not live, a slot the icon tool does not draw). */
 int part_icon_index(int row);
 /* The same in a given set (tests): packed != 0 the packed rows, else the raw rows. */
 int part_icon_index_in(int row, int packed);

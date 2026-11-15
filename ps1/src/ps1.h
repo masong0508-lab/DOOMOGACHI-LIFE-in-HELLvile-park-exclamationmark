@@ -287,6 +287,11 @@ uint32_t pad_stick_mask(void);           /* BTN_ bits mirrored from the left sti
 extern volatile int32_t g_pad_force[5];
 void     audio_hw_init(void);
 void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU RAM */
+/* CR10: PARTS.BIN (the part scripts) -> SPU RAM, right after the effects (partstore.c). The store lives from
+ * SPU_PARTS_BASE up; the effects stop below it (spu.c SPU_SFX_END). */
+#define SPU_PARTS_BASE 0x50000u
+void     partstore_boot(void);
+uint32_t partstore_reads(void);
 void     audio_hw_frame(void);
 void     audio_hw_hush(int on);      /* silence the SPU while the BIOS blocks the loop */
 int      audio_selftest(void);       /* SPU checks, PASS/FAIL on the TTY */

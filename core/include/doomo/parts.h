@@ -118,20 +118,49 @@ extern const uint8_t doomo_part_minv[128];
  * decoded once per render, whatever the number of layer groups and hooks that run it. The arena is
  * reset by part_arena_begin() (pctx_init); a pointer stays valid until the next reset, or, for an
  * entry that does not fit the arena, until another block is fetched (one entry's run never does).
- * The compressed bytes come through part_lz_src(): ROM / RAM by default; a PS1 build that keeps the
- * blocks in SPU RAM (DOOMO_PARTS_SPU, CR10) provides its own (DMA into `stage`). */
+ * The compressed bytes come through part_lz_src(): ROM / RAM by default. (The PS1 does not use this
+ * form since CR10: see PART_STORE_ARENA below.) */
 #if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
 #define PART_SLOTS 2
 #define PART_ARENA 4096
 const uint8_t *part_lz_ops(const PartLz *z, unsigned ofs);
 const uint8_t *part_arena_ops(const PartLz *z, unsigned ofs);
-void part_arena_begin(void);
 const uint8_t *part_lz_src(const PartLz *z, unsigned blk, uint8_t *stage, unsigned cap);
 uint32_t part_lru_loads(void);       /* blocks decoded since the last reset (tests, bench) */
 uint32_t part_arena_fills(void);     /* entries copied into the arena since the last reset    */
 void part_lru_reset(void);
 #endif
-#if defined(DOOMO_PARTS_LZ)
+/* CR10 (the PS1): the scripts are RAW bytes in SPU RAM (PARTS.BIN on the disc, uploaded at boot like the
+ * sound effects: ps1/src/partstore.c). An entry is read into a per-render arena by the platform's
+ * plat_part_read() (SPU DMA) the first time a render needs it, so the PS1 keeps no script bytes, no LZ
+ * decoder and no block LRU resident: only the PartRef tables, the stamps and the arena. `PART_ENTRY_WIN`
+ * is the most bytes one entry may take (tools/parts_build.py refuses a longer one). DOOMO_PARTS_SPU_TEST
+ * builds the same code on the host over the linked raw arrays so the tests can check it. */
+#define PART_ENTRY_WIN 256
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+#define PART_STORE_ARENA 2048
+#define PART_STORE_SLOTS 24
+/* The entry of set `set` (its index in doomo_part_scripts[]) at raw offset `ofs`: up to its PH_END header,
+ * at most PART_ENTRY_WIN bytes. Valid until the next part_arena_begin(), or, when the arena is full, until
+ * the next call. */
+const uint8_t *part_store_ops(const PartSet *set, unsigned ofs);
+uint32_t part_store_fills(void);       /* entries read from the store since the last reset (tests, bench) */
+uint32_t part_store_spills(void);      /* entries that did not fit the arena since the last reset         */
+/* The platform: copy `n` bytes of set `set`'s raw scripts, from raw offset `ofs`, to `dst`. n is at most
+ * PART_ENTRY_WIN; reading past the set's end is allowed (the caller stops at the entry's PH_END). 0 when the
+ * store is not loaded (the caller then draws nothing). */
+int plat_part_read(unsigned set, unsigned ofs, uint8_t *dst, unsigned n);
+void part_store_reset(void);
+#if defined(DOOMO_PARTS_SPU_TEST)
+extern int part_store_test_fail;   /* tests: the store reads nothing, as when PARTS.BIN is missing */
+#endif
+#endif
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST) || defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+void part_arena_begin(void);       /* a render starts: the per-render arenas are emptied */
+#endif
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+#define PART_OPS(set, ofs) part_store_ops((set), (ofs))   /* the host tests draw through the store too */
+#elif defined(DOOMO_PARTS_LZ)
 #define PART_OPS(set, ofs) part_arena_ops((set)->lz, (ofs))
 #else
 #define PART_OPS(set, ofs) ((set)->ops + (ofs))

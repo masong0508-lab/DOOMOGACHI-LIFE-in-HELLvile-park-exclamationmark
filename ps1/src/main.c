@@ -106,6 +106,9 @@ static void plat_init_hw(void)
     audio_hw_init();
     overlay_init();      /* CD + OVL.BIN header: scene code comes from the disc */
     audio_hw_sfx_preload();   /* SFX.BIN (PCM is not in the EXE) -> SPU RAM */
+#if defined(DOOMO_HAVE_CORE) && defined(DOOMO_PARTS_SPU) && !defined(DOOMO_ENGINE_TEST)
+    partstore_boot();         /* CR10: PARTS.BIN (the part scripts) -> SPU RAM above the effects */
+#endif
     dbg("ps1: hardware ready (%s)\n", plat_name());
 }
 

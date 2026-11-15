@@ -7,14 +7,17 @@
  * one render: part_arena_begin() (pctx_init) empties it, so each worn entry is decoded once per
  * render however many layer groups and hooks run it. 8 KB in all, as the old 4-slot LRU.
  *
- * The compressed bytes come through part_lz_src(): straight from the linked array by default. A
- * build that keeps the blocks in SPU RAM (DOOMO_PARTS_SPU, the PS1's CR10) defines its own, which
- * copies block `blk` into `stage` (DMA) and returns it.
+ * The compressed bytes come through part_lz_src(): straight from the linked array.
  *
- * Only DOOMO_PARTS_LZ builds (PS1) read through it; host unit builds compile it with
- * DOOMO_PARTS_LZ_TEST to check it against the raw arrays. */
+ * Only DOOMO_PARTS_LZ builds read through it; host unit builds compile it with
+ * DOOMO_PARTS_LZ_TEST to check it against the raw arrays.
+ *
+ * CR10: the PS1 no longer uses the LZ form. Its scripts are RAW bytes in SPU RAM and an entry is read
+ * straight into the per-render arena (part_store_ops, below): no LZ decoder, no 4 KB of block slots, no
+ * staging buffer. */
 #include "doomo/doomo.h"
 #include "doomo/parts.h"
+#include "doomo/part_icons.h"
 
 #if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
 
@@ -27,24 +30,16 @@ static uint32_t slot_use[PART_SLOTS];
 static uint32_t use_clock, loads, fills;
 
 static uint8_t arena[PART_ARENA];
-#if defined(DOOMO_PARTS_SPU)
-static uint8_t stage[PART_BLK + PART_BLK / 128 + 8];     /* a compressed block fetched from SPU RAM */
-#define STAGE stage
-#define STAGE_CAP ((unsigned)sizeof(stage))
-#else
 #define STAGE NULL
 #define STAGE_CAP 0u
-#endif
 static struct { const PartLz *z; uint16_t ofs, at; } ae[ARENA_ENTRIES];
 static uint16_t arena_used, arena_n;
 
-#if !defined(DOOMO_PARTS_SPU)
 const uint8_t *part_lz_src(const PartLz *z, unsigned blk, uint8_t *stage, unsigned cap)
 {
     (void)stage; (void)cap;
     return z->z + z->zofs[blk];
 }
-#endif
 
 static void unlz(const uint8_t *s, uint8_t *d, unsigned n)
 {
@@ -93,7 +88,7 @@ const uint8_t *part_lz_ops(const PartLz *z, unsigned ofs)
     return buf[v] + (ofs - z->rofs[b]);
 }
 
-void part_arena_begin(void)
+static void lz_arena_begin(void)
 {
     arena_used = 0;
     arena_n = 0;
@@ -128,7 +123,103 @@ void part_lru_reset(void)
     for (i = 0; i < PART_SLOTS; i++) { slot_lz[i] = NULL; slot_use[i] = 0; }
     loads = 0;
     fills = 0;
-    part_arena_begin();
+    lz_arena_begin();
 }
 
+#endif
+
+/* ---- CR10: the raw part store (SPU RAM on the PS1) ----------------------------------------------- */
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+
+typedef struct { const PartSet *set; uint16_t ofs, at, len; } StoreEnt;
+static uint8_t  st_arena[PART_STORE_ARENA];
+static StoreEnt st_ent[PART_STORE_SLOTS];
+static uint8_t  st_win[PART_ENTRY_WIN] __attribute__((aligned(4)));   /* the entry being read / the spill */
+static uint16_t st_used, st_n;
+static uint32_t st_fills, st_spills;
+
+#if defined(DOOMO_PARTS_SPU_TEST)
+/* host: the store is the linked raw array; `part_store_test_fail` makes it read nothing (store not loaded) */
+int part_store_test_fail;
+int plat_part_read(unsigned set, unsigned ofs, uint8_t *dst, unsigned n)
+{
+    const PartSet *ps;
+    unsigned i, total;
+    if (part_store_test_fail || set >= doomo_part_script_count) return 0;
+    ps = doomo_part_scripts[set];
+    if (!ps->ops) return 0;
+    total = (unsigned)ps->ref[ps->n - 1].ofs;
+    {   /* the raw size is the last entry's end: walk it */
+        const uint8_t *q = ps->ops + total;
+        while (q[0] != PH_END) q += 4 + q[3];
+        total = (unsigned)(q - ps->ops) + 4;
+    }
+    for (i = 0; i < n; i++) dst[i] = ofs + i < total ? ps->ops[ofs + i] : 0;
+    return 1;
+}
+
+/* the packed part icons' bytes: the linked array here, SPU RAM on the PS1 (ps1/src/partstore.c) */
+int plat_part_icon_read(uint32_t ofs, uint8_t *dst, unsigned n)
+{
+    uint32_t total = doomo_part_icon_rle_ofs[doomo_part_icon_rle_count];
+    unsigned i;
+    if (part_store_test_fail || n > PART_ICON_PACK_MAX) return 0;
+    for (i = 0; i < n; i++) dst[i] = ofs + i < total ? doomo_part_icon_rle[ofs + i] : 0;
+    return 1;
+}
+#endif
+
+void part_store_reset(void)
+{
+    st_used = 0;
+    st_n = 0;
+    st_fills = 0;
+    st_spills = 0;
+}
+
+const uint8_t *part_store_ops(const PartSet *set, unsigned ofs)
+{
+    static const uint8_t none[4] = { PH_END, 0, 0, 0 };
+    const uint8_t *q;
+    unsigned i, len, si;
+    for (i = 0; i < st_n; i++)
+        if (st_ent[i].set == set && st_ent[i].ofs == ofs) return st_arena + st_ent[i].at;
+    for (si = 0; si < doomo_part_script_count; si++)
+        if (doomo_part_scripts[si] == set) break;
+    if (si >= doomo_part_script_count || !plat_part_read(si, ofs, st_win, PART_ENTRY_WIN)) return none;
+    for (q = st_win; q < st_win + PART_ENTRY_WIN - 3 && q[0] != PH_END; q += 4 + q[3]) {}
+    if (q >= st_win + PART_ENTRY_WIN - 3) return none;      /* no end inside the window: a damaged store */
+    len = (unsigned)(q - st_win) + 4;
+    st_fills++;
+    if (st_n >= PART_STORE_SLOTS || st_used + len > PART_STORE_ARENA) {   /* full: the window itself */
+        st_spills++;
+        return st_win;
+    }
+    memcpy(st_arena + st_used, st_win, len);
+    st_ent[st_n].set = set;
+    st_ent[st_n].ofs = (uint16_t)ofs;
+    st_ent[st_n].at = st_used;
+    st_ent[st_n].len = (uint16_t)len;
+    st_n++;
+    st_used = (uint16_t)(st_used + len);
+    return st_arena + st_ent[st_n - 1].at;
+}
+
+uint32_t part_store_fills(void) { return st_fills; }
+uint32_t part_store_spills(void) { return st_spills; }
+
+#endif
+
+/* a render starts: every per-render arena is emptied (pctx_init) */
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST) || defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+void part_arena_begin(void)
+{
+#if defined(DOOMO_PARTS_LZ) || defined(DOOMO_PARTS_LZ_TEST)
+    lz_arena_begin();
+#endif
+#if defined(DOOMO_PARTS_SPU) || defined(DOOMO_PARTS_SPU_TEST)
+    st_used = 0;
+    st_n = 0;
+#endif
+}
 #endif

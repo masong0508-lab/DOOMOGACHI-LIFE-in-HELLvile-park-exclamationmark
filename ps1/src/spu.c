@@ -14,7 +14,8 @@
  * SPU RAM map (512 KB):
  *   0x00000-0x00fff  capture buffers (reserved by hardware)
  *   0x01000-0x01fff  silent block + waveforms
- *   0x02000-0x7dfff  sound effects (bump allocator)
+ *   0x02000-0x4ffff  sound effects (bump allocator; about 35 KB used)
+ *   0x50000-0x7dfff  the part scripts (CR10, partstore.c: PARTS.BIN, about 18 KB today)
  *   0x7e000-0x7ffff  (reverb work area, unused)
  */
 #include <string.h>
@@ -26,7 +27,7 @@
 
 #define SPU_WAVE_BASE   0x1000
 #define SPU_SFX_BASE    0x2000
-#define SPU_SFX_END     0x7e000
+#define SPU_SFX_END     SPU_PARTS_BASE      /* CR10: the part store (partstore.c) is above the effects */
 #define TONE_VOICES     4
 #define SFX_VOICE0      4
 #define SFX_VOICES      20
