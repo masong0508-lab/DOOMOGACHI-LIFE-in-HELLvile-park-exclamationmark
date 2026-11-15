@@ -1,0 +1,33 @@
+# assert-no-stubs
+# T8: Talk from a house visit (HOME_ARG_VISIT: the host's house, A in front of the host opens Talk, as in
+# home_visit): walk up to Nana, A, the greeting box, the Talk list, a quick reply and a compliment, B
+# says goodbye, the house comes back. Shots at the start, in Talk and back in the house.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+push HOME 3
+wait 40
+expect-scene HOME
+shot tv_0_visit
+hold DOWN 24
+hold LEFT 14
+press A
+wait 20
+expect-scene DIALOG
+shot tv_1_greeting
+talk-read
+expect-talk on
+expect-scene TALK
+shot tv_2_talk
+talk-quick 0
+talk-read
+talk-say compliment
+talk-read
+shot tv_3_talk_after
+talk-leave
+expect-talk off
+wait 40
+shot tv_4_back

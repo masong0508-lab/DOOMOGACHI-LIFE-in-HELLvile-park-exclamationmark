@@ -1081,11 +1081,31 @@ const TalkLine *talk_quick_thread(const TalkState *s, int *slot);
 int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt,
                         TalkSugg *out);
 
+/* ---- the runner's eyes on SCENE_TALK (talk_scene.c; only where DOOMO_TALK_DEBUG is defined: the native
+ * host and the unit tests, never a console) -------------------------------------------------------
+ * talk_scene_debug fills `o` and returns 1 while a talk is running (the dialogue box can be the top scene), else 0. A row is
+ * described by its kind ("quick" "cat" "act" "topic" "type" "to" "invite" "bye" "pick" "notopic" "more"),
+ * an argument (the quick reply number, the category, the act, 1 for a person in the invite list), a value
+ * (the act of a quick reply, the topic or the resident id of a pick) and the text the list shows. */
+typedef struct TalkSceneDebug {
+    int active, busy, sel, nrows, nparts, to, to_id, tension;
+    int gate;                           /* TG_* of the player's last line                */
+    int reply_act, nlines;              /* the act of the last resident line, and how many lines the answer had */
+    const char *page;                   /* "main" "acts" "topic" "invite" "more" */
+    int ids[TALK_PARTS_MAX];
+    char you[TALK_SHOWN_MAX];
+} TalkSceneDebug;
+int  talk_scene_debug(TalkSceneDebug *o);
+int  talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text);
+int  talk_scene_act_cat(int act);
+
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
  * Start Talk with resident `who` in the room: 1 started, 0 not available
  * (no PLATF_TALK, or not built: the default). The house reaches Talk only
  * through this and the feature test, so --gc-sections drops it all on the
  * GBA. */
 int  home_talk_enter(int who);
+/* Others to bring into the next talk (up to TALK_PARTS_MAX - 1; consumed by it): talk_scene.c, DOOMO_HAS_TALK. */
+void talk_scene_party(const int *ids, int n);
 
 #endif

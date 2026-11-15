@@ -1,0 +1,15 @@
+# talk_topic_ask (T8): the long way to ask about a chosen word, for the record: Options > Topic > pie, then
+# Ask > "Tell me about pie." The design wants 3 (catch the word, L1); this screen takes the measured number
+# in budgets.tsv talk_topic_ask. It is a regression guard on the long way, not the goal.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+journey-begin talk_topic_ask
+talk-say ask_about pie
+journey-end talk_topic_ask
+expect-talk-you "pie"

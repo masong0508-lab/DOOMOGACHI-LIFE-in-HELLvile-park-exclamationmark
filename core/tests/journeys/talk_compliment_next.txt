@@ -1,0 +1,19 @@
+# talk_compliment_next (T8, TALK_DESIGN 2.3): turn to the next person and compliment them, 4 presses or
+# fewer: SELECT turns to Steamy (the cursor then waits on the categories), DOWN to "Be nice >", A opens it,
+# A says "You're great." Budget: budgets.tsv talk_compliment_next.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+talk-invite Steamy
+talk-read
+journey-begin talk_compliment_next
+talk-to Steamy
+talk-say compliment
+journey-end talk_compliment_next
+expect-talk-to Steamy
+expect-talk-you "You're great"

@@ -1,0 +1,16 @@
+# talk_exchange (T8): one whole exchange, as a patient reader plays it: a quick reply, then every box of the
+# answer read with A (one A a line; the text is allowed to finish typing first). The design says one press says
+# a reply; reading what comes back is the rest. Budget: budgets.tsv talk_exchange (the measured worst case).
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+journey-begin talk_exchange
+talk-quick 0
+talk-read
+journey-end talk_exchange
+expect-talk-page main

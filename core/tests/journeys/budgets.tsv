@@ -31,3 +31,8 @@ life_add_member		-	-	F2: hub -> a new household member (reserved; target 6)
 life_care_all		-	-	F2: hub -> everyone in the household cared for (reserved; target 1)
 j10_family		17	162	F2: island START menu -> Family -> Remembered -> add wizard -> back
 j11_family_care		13	240	F2: island START menu -> Family -> Care for everyone -> Check on everyone -> back
+talk_quick		1	4	T8: SCENE_TALK, say the top quick reply (design 2.3: 1)
+talk_compliment_next	4	10	T8: turn to the next person (SELECT) and compliment them (design 2.3: 4 or fewer)
+talk_catch_ask		3	8	T8: steer to the offered topic by quick reply (no catch-the-word yet; design 2.3: 3 or fewer)
+talk_topic_ask		11	30	T8: Options > Topic > pie, Ask > Tell me about pie (the long way; design wants 3 with catch-the-word)
+talk_exchange		7	140	T8: one quick reply plus reading every box of the answer (one A a line; measured 5 to 7)

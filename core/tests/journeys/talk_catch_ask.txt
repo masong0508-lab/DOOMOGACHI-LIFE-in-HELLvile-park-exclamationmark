@@ -1,0 +1,14 @@
+# talk_catch_ask (T8, TALK_DESIGN 2.3): the screen has no catch-the-word yet, so "catch a word and ask about
+# it" is the quick reply that steers the talk to the topic the screen offers ("Random, but... music?"): 3
+# presses or fewer (row 2: DOWN, DOWN, A). Budget: budgets.tsv talk_catch_ask.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+journey-begin talk_catch_ask
+talk-quick-act change_topic
+journey-end talk_catch_ask

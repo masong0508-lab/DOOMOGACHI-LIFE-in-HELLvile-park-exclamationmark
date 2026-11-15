@@ -1,0 +1,71 @@
+# assert-no-stubs
+# T8: the Talk screen and the hard content rules (CLAUDE.md; docs/TALK.md section 2, TALK_DESIGN 7):
+#  * a typed line about hurting oneself gets the gentle line, no joke row is offered after it, and
+#    Talk goes on;
+#  * romance toward a child is refused: the Romance page is never listed for a child, and a typed
+#    line gets a plain "no";
+#  * a hug toward a child stays a plain hug the child may decline (Pip answers in kind either way);
+#  * romance with an adult is deflected by the adult's own character, never forced.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+# --- an adult (Steamy): the romance page exists, a flirt is answered in character, a typed ask-out too
+talk-enter Steamy
+talk-read
+expect-talk-row "Romance >"
+talk-type "will you go out with me"
+expect-talk-gate pass
+expect-talk-reply-romance 0
+talk-read
+# --- self-harm, typed: the gentle line, then the talk goes on calmly
+talk-type "i want to hurt myself"
+expect-talk-gate distress
+wait 10
+shot safety_0_gentle
+talk-read
+expect-talk on
+expect-talk-page main
+# what is offered next is kindness only: no joke, tease, mock, insult, gossip or flirt reply
+expect-talk-quick joke 0
+expect-talk-quick tease 0
+expect-talk-quick mock 0
+expect-talk-quick insult 0
+expect-talk-quick gossip 0
+wait 4
+shot safety_1_calm_replies
+talk-quick 0
+talk-read
+expect-talk on
+talk-leave
+expect-talk off
+wait 60
+# --- a child (Pip, id 42): no Romance page at all, a typed ask is refused, a hug is a plain hug
+talk-enter 42
+talk-read
+expect-talk-row "Romance" 0
+expect-talk-act flirt 0
+expect-talk-act confess 0
+expect-talk-act ask_out 0
+expect-talk-act hug 1
+talk-type "will you be my girlfriend"
+expect-talk-gate refuse_minor
+expect-talk-reply-romance 0
+wait 10
+shot safety_2_child_refuses
+talk-read
+talk-say hug
+expect-talk-gate pass
+expect-talk-reply-romance 0
+wait 10
+shot safety_3_child_hug
+talk-read
+# a child's own words about hurting oneself: the same care
+talk-type "i want to die"
+expect-talk-gate distress
+talk-read
+expect-talk on
+talk-leave
+expect-talk off

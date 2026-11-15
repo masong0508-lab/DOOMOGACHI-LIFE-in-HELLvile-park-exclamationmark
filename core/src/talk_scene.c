@@ -913,7 +913,15 @@ static void talk_update(void)
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
         T.to = (int8_t)(T.to + 1 >= T.n ? -1 : T.to + 1);
         if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
-        else if (T.page == PG_MAIN) build_main();
+        else if (T.page == PG_MAIN) {
+            int c;
+            build_main();
+            /* You turned to someone else: the quick replies answer what was said before, so the cursor
+             * waits on the first category instead. A kind word to them is then 4 presses (SELECT, down to
+             * "Be nice", A, A): the budget of docs/design/talk/TALK_DESIGN.md 2.3 (T8). */
+            for (c = 0; c < T.nrows; c++)
+                if (T.row[c].kind == K_CAT) { T.list.sel = c; break; }
+        }
         return;
     }
     r = ui_list_update(&T.list);
@@ -979,6 +987,56 @@ static void talk_draw(void)
 }
 
 const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw, 1 };
+
+/* ---- the runner's eyes (DOOMO_TALK_DEBUG: native host and tests only; TALK_DESIGN T8, docs/TALK.md 6j) ----
+ * Read-only views of the screen so scripts can press the pad the way a player does (talk-quick, talk-say,
+ * talk-type in core/native/runner_main.c) and the journeys can count the presses. Nothing here changes
+ * the talk, and no console build defines the macro (no bytes in the GBA ROM, the PS1 EXE or the DC). */
+#ifdef DOOMO_TALK_DEBUG
+int talk_scene_debug(TalkSceneDebug *o)
+{
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more" };
+    int i;
+    memset(o, 0, sizeof *o);
+    o->to_id = -1;
+    if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
+    o->active = 1;
+    o->busy = T.busy;
+    o->page = pages[T.page < 5 ? T.page : 0];
+    o->sel = T.list.sel;
+    o->nrows = T.nrows;
+    o->nparts = T.n;
+    o->to = T.to;
+    o->to_id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    o->tension = T.s.tension;
+    o->gate = T.s.gate;
+    o->reply_act = T.s.nlines > 0 ? T.s.line[T.s.nlines - 1].act : 0;
+    o->nlines = T.s.nlines;
+    for (i = 0; i < T.n && i < TALK_PARTS_MAX; i++) o->ids[i] = T.ids[i];
+    doomo_snprintf(o->you, sizeof o->you, "%s", T.you);
+    return 1;
+}
+
+int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
+{
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick" };
+    if (i < 0 || i >= T.nrows) return 0;
+    if (kind) *kind = kinds[T.row[i].kind];
+    if (arg) *arg = T.row[i].arg;
+    if (v) *v = T.row[i].kind == K_QUICK && T.row[i].arg < T.nquick ? T.quick[T.row[i].arg].act : T.row[i].v;   /* a quick reply: its act */
+    if (text) row_text(i, text);
+    return 1;
+}
+
+int talk_scene_act_cat(int act)
+{
+    int c, i;
+    for (c = 0; c < C_COUNT; c++)
+        for (i = 0; i < cats[c].n; i++)
+            if (cats[c].acts[i] == act) return c;
+    return -1;
+}
+#endif /* DOOMO_TALK_DEBUG */
 
 /* ---- the house hook ------------------------------------------------------------------------------ */
 static int talk_ready(void)

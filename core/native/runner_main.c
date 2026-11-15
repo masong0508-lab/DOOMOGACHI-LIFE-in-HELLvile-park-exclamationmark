@@ -90,6 +90,38 @@
  *                       security code come up as on a new console
  *   expect-hero NAME    (CL2) fail unless the protagonist (the save's hero,
  *                       town_res(DOOMO_PLAYER_ID)) is called NAME
+ *   talk-enter WHO      (T8) open the Talk screen (SCENE_TALK) with resident WHO (a name or an id) the way the
+ *                       house's Talk action does (home_talk_enter); fails when Talk is not available. A setup
+ *                       command (not allowed inside a journey)
+ *   talk-party WHO..    (T8) the others to bring into the next talk-enter (names or ids, three at most)
+ *   talk-read [MAX]     (T8) press A until the resident's answer is over and the list is back (default 30), waiting for each line to finish
+ *                       typing first, as a reader does: one A a line
+ *   talk-quick N        (T8) say quick reply N (0 is the top row): the pad moves the cursor (UP / DOWN, the
+ *                       shorter way round) and presses A; counted like every press
+ *   talk-quick-act ACT  (T8) the quick reply whose act is ACT (ask_about, laugh, ...), as talk-quick; fails when none is offered
+ *   talk-say ACT [TOPIC] (T8) say act ACT from its category page (compliment, hug, flirt, greet ...; the names
+ *                       are the TA_ names without TA_, lower case) through the pad; a topic page, when the
+ *                       act wants one, takes TOPIC (default: Any topic). Fails when the screen does not offer
+ *                       the act (a romance act that the safety gate hides)
+ *   talk-type TEXT      (T8) the "Type your own line..." row, the typed text and OK, through the pad
+ *   talk-invite WHO     (T8) Options > Invite someone > WHO (fails when WHO is not on the list)
+ *   talk-rows           (T8) print the rows of the page (for script authors)
+ *   talk-page main|more (T8) go to the main page (B) or to Options (the row below the categories)
+ *   talk-to WHO         (T8) SELECT until the talk is spoken to WHO (a name or id, or "everyone")
+ *   talk-leave          (T8) back out and say goodbye (B, A) until the Talk screen is gone
+ *   expect-talk on|off  (T8) fail unless the Talk screen is (not) the top scene
+ *   expect-talk-page P  (T8) the page is main acts topic invite more
+ *   expect-talk-to WHO  (T8) the talk is spoken to WHO / "everyone"
+ *   expect-talk-row "TEXT" [0|1]  (T8) a row of the current page shows TEXT (1, default) / no row does (0)
+ *   expect-talk-act ACT [0|1]     (T8) the screen offers act ACT (1, default) or does not (0): looks in
+ *                       its category page, then goes back
+ *   expect-talk-quick ACT [0|1]  (T8) a quick reply with act ACT is (1, default) / is not (0) offered
+ *   expect-talk-gate G  (T8) what the safety gate did to the player's last line: pass refuse refuse_minor deflect hate
+ *                       distress k7 (the typed line's parse is S2's gate, docs/TALK.md section 2)
+ *   expect-talk-reply-romance 0|1  (T8) the answer's last line is (1) / is not (0) a romance act
+ *   expect-talk-you "TEXT" [0|1]  (T8) the header's "You: ..." line shows (1) / does not show (0) TEXT
+ *   frame-time N [LABEL] (T8) run N frames (at most 4,000) and print the CPU time one frame took (update, draw
+ *                       and the framebuffer end, no PNG): "frame-time: LABEL N frames avg A ms p99 P ms max M ms"
  * Buttons: UP DOWN LEFT RIGHT A B L R START SELECT X Y L2 R2.
  * Exit status: 0 ok, 1 script failure, 2 stubs ran with --assert-no-stubs.
  */
@@ -98,6 +130,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/stat.h>
 #include "native.h"
 #include "plat_music_native.h"            /* music: --wav (musrender) */
@@ -108,6 +141,7 @@
 #include "doomo/tips.h"               /* CL4: tips on, expect-tip */
 #include "doomo/items.h"              /* M0: item, problem (journey setups) */
 #include "doomo/sim.h"
+#include "doomo/talk.h"             /* T8: talk-* (SCENE_TALK) */
 #include "doomo/plat_ext.h"           /* CL2: first-boot (the config record) */
 #include "doomo/options_store.h"
 void story_verbs_cell(int cx, int cy);    /* S4: "cell", "skip-talk" (core/src/story_int.h) */
@@ -218,7 +252,7 @@ static int jr_setup_cmd(const char *cmd)
     static const char *const setup[] = {
         "scene", "push", "save", "load", "seed", "lang", "story-fp", "side",
         "talk", "cell", "home-room", "clock", "money", "item", "problem",
-        "first-boot", "tips",
+        "first-boot", "tips", "talk-enter", "talk-party",
     };
     size_t k;
     for (k = 0; k < sizeof(setup) / sizeof(setup[0]); k++)
@@ -399,6 +433,300 @@ static int split(char *line, char **argv, int max)
     }
     return n;
 }
+
+/* --- T8: the Talk screen played through the pad ---
+ * Every command here presses buttons with tk_press, so a journey counts what a player would press;
+ * the screen's own state is read through talk_scene_debug (core/src/talk_scene.c). */
+static void tk_press(uint32_t b)
+{
+    jr_press();
+    held |= b;
+    step(1);
+    held &= ~b;
+    step(1);
+}
+
+static int tk_who(const char *nm)
+{
+    int who;
+    if (strcmp(nm, "everyone") == 0 || strcmp(nm, "all") == 0) return -1;
+    if (isdigit((unsigned char)nm[0])) return atoi(nm);
+    who = res_named(nm);
+    if (who < 0) {                                   /* a first name: "Nana" for "Nana Puddin" */
+        size_t n = strlen(nm);
+        int i;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS && who < 0; i++)
+            if (doomo_town.res[i].status != RES_EMPTY && strncmp(doomo_town.res[i].name, nm, n) == 0 &&
+                (doomo_town.res[i].name[n] == ' ' || !doomo_town.res[i].name[n])) who = i;
+    }
+    return who < 0 ? -2 : who;
+}
+
+static const char *const tk_act_names[] = {
+    "greet", "farewell", "thank", "apologize", "introduce", "ask_about", "ask_opinion", "ask_feeling", "ask_fact",
+    "ask_who", "ask_advice", "ask_favor", "tell", "opine_pos", "opine_neg", "agree", "disagree", "yes", "no",
+    "compliment", "praise_other", "comfort", "encourage", "sympathize", "joke", "laugh", "offer", "invite", "promise",
+    "insult", "criticize", "tease", "mock", "complain", "blame", "dismiss", "threaten", "gossip", "defend",
+    "accuse", "take_side", "mediate", "change_topic", "flirt", "confess", "ask_out", "wave", "nod", "shake_head",
+    "hug", "give", "walk_away", "high_five"
+};
+static const int tk_act_ids[] = {
+    TA_GREET, TA_FAREWELL, TA_THANK, TA_APOLOGIZE, TA_INTRODUCE, TA_ASK_ABOUT, TA_ASK_OPINION, TA_ASK_FEELING,
+    TA_ASK_FACT, TA_ASK_WHO, TA_ASK_ADVICE, TA_ASK_FAVOR, TA_TELL, TA_OPINE_POS, TA_OPINE_NEG, TA_AGREE, TA_DISAGREE,
+    TA_YES, TA_NO, TA_COMPLIMENT, TA_PRAISE_OTHER, TA_COMFORT, TA_ENCOURAGE, TA_SYMPATHIZE, TA_JOKE, TA_LAUGH,
+    TA_OFFER, TA_INVITE, TA_PROMISE, TA_INSULT, TA_CRITICIZE, TA_TEASE, TA_MOCK, TA_COMPLAIN, TA_BLAME, TA_DISMISS,
+    TA_THREATEN, TA_GOSSIP, TA_DEFEND, TA_ACCUSE, TA_TAKE_SIDE, TA_MEDIATE, TA_CHANGE_TOPIC, TA_FLIRT, TA_CONFESS,
+    TA_ASK_OUT, TA_WAVE, TA_NOD, TA_SHAKE_HEAD, TA_HUG, TA_GIVE, TA_WALK_AWAY, TA_HIGH_FIVE
+};
+
+static int tk_act(const char *nm)
+{
+    size_t k;
+    char low[24];
+    for (k = 0; nm[k] && k < sizeof(low) - 1; k++) low[k] = (char)tolower((unsigned char)nm[k] == '-' ? '_' : (unsigned char)nm[k]);
+    low[k] = 0;
+    if (strncmp(low, "ta_", 3) == 0) memmove(low, low + 3, strlen(low + 3) + 1);
+    for (k = 0; k < sizeof(tk_act_names) / sizeof(tk_act_names[0]); k++)
+        if (strcmp(low, tk_act_names[k]) == 0) return tk_act_ids[k];
+    return -1;
+}
+
+/* the row of the current page: kind, and arg / v when >= 0 (-1 any); -1 when none */
+static int tk_find(const char *kind, int arg, int v)
+{
+    TalkSceneDebug d;
+    int i;
+    if (!talk_scene_debug(&d)) return -1;
+    for (i = 0; i < d.nrows; i++) {
+        const char *k = "";
+        int a = 0, vv = 0;
+        talk_scene_row_debug(i, &k, &a, &vv, NULL);
+        if (strcmp(k, kind) == 0 && (arg < 0 || a == arg) && (v < 0 || vv == v)) return i;
+    }
+    return -1;
+}
+
+/* move the cursor to row `to` with UP / DOWN, the shorter way round the list */
+static void tk_goto(int to)
+{
+    TalkSceneDebug d;
+    int guard;
+    for (guard = 0; guard < 80; guard++) {
+        int down, up;
+        if (!talk_scene_debug(&d) || d.sel == to) return;
+        down = (to - d.sel + d.nrows) % d.nrows;
+        up = d.nrows - down;
+        tk_press(down <= up ? BTN_DOWN : BTN_UP);
+    }
+}
+
+static int tk_pick(int row)
+{
+    if (row < 0) return 0;
+    tk_goto(row);
+    tk_press(BTN_A);
+    return 1;
+}
+
+/* the answer's dialogue box: A until the list is back */
+static int tk_read(int max)
+{
+    TalkSceneDebug d;
+    int k;
+    for (k = 0; k < max; k++) {
+        UiDialogDebug dd;
+        int w, last = -1, still = 0;
+        if (!talk_scene_debug(&d)) return 1;            /* the talk is over */
+        if (!d.busy) return 1;
+        /* a patient reader: wait for the line to finish typing, so one A turns the page (an A during the
+         * typing only finishes the line, and a second one is needed) */
+        for (w = 0; w < 150 && still < 4; w++) {
+            memset(&dd, 0, sizeof dd);
+            ui_dialog_debug(&dd);
+            still = dd.shown == last ? still + 1 : 0;
+            last = dd.shown;
+            step(1);
+        }
+        tk_press(BTN_A);
+    }
+    return talk_scene_debug(&d) ? !d.busy : 1;
+}
+
+/* back to the main page with B (a press each) */
+static int tk_main(void)
+{
+    TalkSceneDebug d;
+    int k;
+    for (k = 0; k < 6; k++) {
+        if (!talk_scene_debug(&d)) return 0;
+        if (d.busy) { if (!tk_read(30)) return 0; continue; }
+        if (strcmp(d.page, "main") == 0) return 1;
+        tk_press(BTN_B);
+    }
+    return 0;
+}
+
+static void talk_cmd(const char *cmd, int argc, char **argv)
+{
+    TalkSceneDebug d;
+    const char *a1 = argc > 1 ? argv[1] : "";
+    int ok = talk_scene_debug(&d);
+    if (strcmp(cmd, "talk-enter") == 0) {
+        int who = tk_who(a1);
+        if (who < 0) { fail("talk-enter: nobody called", a1); return; }
+        if (!home_talk_enter(who)) { fail("Talk did not start with", a1); return; }
+        step(3);
+        if (!talk_scene_debug(&d)) fail("Talk is not the top scene after talk-enter", a1);
+    } else if (strcmp(cmd, "talk-party") == 0) {
+        int ids[3], n = 0, i;
+        for (i = 1; i < argc && n < 3; i++) {
+            ids[n] = tk_who(argv[i]);
+            if (ids[n] < 0) { fail("talk-party: nobody called", argv[i]); return; }
+            n++;
+        }
+        talk_scene_party(ids, n);
+    } else if (strcmp(cmd, "frame-time") == 0) {
+        static double ms[4000];
+        int n = argc > 1 ? atoi(argv[1]) : 300, k, j;
+        double tot = 0;
+        if (n < 1) n = 1;
+        if (n > 4000) n = 4000;
+        for (k = 0; k < n; k++) {
+            struct timespec a, b;
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &a);
+            step(1);
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &b);
+            ms[k] = (double)(b.tv_sec - a.tv_sec) * 1000.0 + (double)(b.tv_nsec - a.tv_nsec) / 1e6;
+            tot += ms[k];
+        }
+        for (k = 1; k < n; k++) {
+            double v = ms[k];
+            for (j = k - 1; j >= 0 && ms[j] > v; j--) ms[j + 1] = ms[j];
+            ms[j + 1] = v;
+        }
+        printf("frame-time: %s %d frames avg %.3f ms p99 %.3f ms max %.3f ms\n", argc > 2 ? argv[2] : "", n, tot / n,
+               ms[(n * 99 - 1) / 100], ms[n - 1]);
+    } else if (strcmp(cmd, "expect-talk") == 0) {
+        int want = argc > 1 && strcmp(a1, "off") != 0;
+        if (ok != want) fail(want ? "the Talk screen is not up" : "the Talk screen is still up", "");
+    } else if (strcmp(cmd, "talk-read") == 0) {
+        if (!ok) { fail("talk-read: no Talk screen", ""); return; }
+        if (!tk_read(argc > 1 ? atoi(a1) : 30)) fail("the answer never ended", "");
+    } else if (strcmp(cmd, "talk-quick") == 0) {
+        int n = atoi(a1);
+        if (!ok || d.busy) { fail("talk-quick: the list is not up", ""); return; }
+        if (!tk_pick(strcmp(d.page, "main") == 0 ? tk_find("quick", n, -1) : -1)) fail("no quick reply number", a1);
+    } else if (strcmp(cmd, "talk-quick-act") == 0) {     /* the quick reply that says act ACT (ask_about, ...) */
+        int act = tk_act(a1);
+        if (!ok || d.busy || act < 0) { fail("talk-quick-act: the list is not up or no such act", a1); return; }
+        if (!tk_pick(strcmp(d.page, "main") == 0 ? tk_find("quick", -1, act) : -1)) fail("no quick reply says", a1);
+    } else if (strcmp(cmd, "talk-say") == 0) {
+        int act = tk_act(a1), c, row;
+        if (!ok || act < 0) { fail(ok ? "talk-say: no such act" : "talk-say: no Talk screen", a1); return; }
+        c = talk_scene_act_cat(act);
+        if (!tk_main()) { fail("talk-say: cannot get to the main page", ""); return; }
+        if (!tk_pick(tk_find("cat", c, -1))) { fail("the screen has no category for", a1); return; }
+        row = tk_find("act", act, -1);
+        if (row < 0) { fail("the screen does not offer", a1); return; }
+        tk_pick(row);
+        if (talk_scene_debug(&d) && strcmp(d.page, "topic") == 0) {      /* the act wants a topic */
+            int i, t = tk_find("notopic", -1, -1);
+            for (i = 0; argc > 2 && i < d.nrows; i++) {
+                char tx[48];
+                const char *k = "";
+                talk_scene_row_debug(i, &k, NULL, NULL, tx);
+                if (strcmp(k, "pick") == 0 && strcmp(tx, argv[2]) == 0) t = i;
+            }
+            tk_pick(t);
+        }
+    } else if (strcmp(cmd, "talk-type") == 0) {
+        const char *s;
+        if (!ok || !tk_main()) { fail("talk-type: no main page", ""); return; }
+        if (!tk_pick(tk_find("type", -1, -1))) { fail("the screen has no typing row", ""); return; }
+        step(2);
+        for (s = a1; *s; s++) {
+            if (!ui_text_entry_feed((unsigned char)*s)) { fail("no text entry open for", a1); return; }
+            if (jr.on) jr.typed++;
+            step(1);
+        }
+        if (!ui_text_entry_feed('\n')) { fail("no text entry open for OK", a1); return; }
+        jr_press();
+        step(3);
+    } else if (strcmp(cmd, "talk-invite") == 0) {
+        int who = tk_who(a1);
+        if (!ok || who < 0 || !tk_main()) { fail("talk-invite: no talk or nobody called", a1); return; }
+        if (!tk_pick(tk_find("more", -1, -1)) || !tk_pick(tk_find("invite", -1, -1))) { fail("the screen offers no invite", ""); return; }
+        if (!tk_pick(tk_find("pick", 1, who))) fail("the invite list does not offer", a1);
+    } else if (strcmp(cmd, "talk-rows") == 0) {          /* for script authors: what the page offers */
+        int i;
+        if (!ok) { fail("talk-rows: no Talk screen", ""); return; }
+        printf("talk-rows: page %s busy %d to %d sel %d\n", d.page, d.busy, d.to_id, d.sel);
+        for (i = 0; i < d.nrows; i++) {
+            char tx[64];
+            const char *k = "";
+            int a = 0, v = 0;
+            talk_scene_row_debug(i, &k, &a, &v, tx);
+            printf("  %2d %-7s arg %d v %d  %s\n", i, k, a, v, tx);
+        }
+    } else if (strcmp(cmd, "talk-page") == 0) {         /* main | more: Options is one row off the main page */
+        if (!ok || !tk_main()) { fail("talk-page: no main page", ""); return; }
+        if (strcmp(a1, "more") == 0 && !tk_pick(tk_find("more", -1, -1))) fail("the screen has no Options row", "");
+        else if (strcmp(a1, "main") != 0 && strcmp(a1, "more") != 0) fail("talk-page is main or more, not", a1);
+    } else if (strcmp(cmd, "talk-to") == 0) {
+        int who = tk_who(a1), k;
+        if (!ok || who == -2) { fail("talk-to: no talk or nobody called", a1); return; }
+        for (k = 0; k < 6 && talk_scene_debug(&d) && d.to_id != who; k++) tk_press(BTN_SELECT);
+        if (!talk_scene_debug(&d) || d.to_id != who) fail("the talk cannot be spoken to", a1);
+    } else if (strcmp(cmd, "talk-leave") == 0) {
+        int k;
+        for (k = 0; k < 40 && talk_scene_debug(&d); k++) tk_press(d.busy ? BTN_A : BTN_B);
+        step(2);
+        if (talk_scene_debug(&d)) fail("Talk did not end", "");
+    } else if (strcmp(cmd, "expect-talk-page") == 0) {
+        if (!ok || strcmp(d.page, a1) != 0) fail("expected the Talk page " , ok ? d.page : "(no talk)");
+    } else if (strcmp(cmd, "expect-talk-to") == 0) {
+        int who = tk_who(a1);
+        if (!ok || who == -2 || d.to_id != who) fail("the talk is not spoken to", a1);
+    } else if (strcmp(cmd, "expect-talk-row") == 0) {
+        int want = argc > 2 ? atoi(argv[2]) : 1, i, found = 0;
+        for (i = 0; ok && i < d.nrows; i++) {
+            char tx[64];
+            talk_scene_row_debug(i, NULL, NULL, NULL, tx);
+            if (strstr(tx, a1)) found = 1;
+        }
+        if (found != want) fail(want ? "no row of the page shows" : "a row of the page shows", a1);
+    } else if (strcmp(cmd, "expect-talk-quick") == 0) {   /* is a quick reply with this act on the page? */
+        int act = tk_act(a1), want = argc > 2 ? atoi(argv[2]) : 1;
+        if (!ok || act < 0) { fail("expect-talk-quick: no talk or no such act", a1); return; }
+        if ((strcmp(d.page, "main") == 0 && tk_find("quick", -1, act) >= 0) != (want != 0))
+            fail(want ? "no quick reply says" : "a quick reply says", a1);
+    } else if (strcmp(cmd, "expect-talk-gate") == 0) {    /* what the safety gate did to the player's last line */
+        static const char *const gates[] = { "pass", "refuse", "refuse_minor", "deflect", "hate", "distress", "k7" };
+        const char *got = ok && d.gate >= 0 && d.gate < 7 ? gates[d.gate] : "(no talk)";
+        if (!ok || strcmp(got, a1) != 0) { char m[64]; snprintf(m, sizeof m, "expected the gate to say %s but it says", a1); fail(m, got); }
+    } else if (strcmp(cmd, "expect-talk-reply-romance") == 0) {   /* is the last resident line a romance act? */
+        int want = argc > 1 ? atoi(a1) : 0;
+        if (!ok || (TA_IS_ROMANCE(d.reply_act) != 0) != (want != 0)) fail(want ? "the reply is not a romance act" : "the reply is a romance act", "");
+    } else if (strcmp(cmd, "expect-talk-you") == 0) {
+        int want = argc > 2 ? atoi(argv[2]) : 1;
+        if (!ok || (strstr(d.you, a1) != NULL) != (want != 0)) fail(want ? "the header does not say" : "the header says", ok ? d.you : "(no talk)");
+    } else if (strcmp(cmd, "expect-talk-act") == 0) {
+        int act = tk_act(a1), want = argc > 2 ? atoi(argv[2]) : 1, c, found = 0, row;
+        if (!ok || act < 0) { fail("expect-talk-act: no talk or no such act", a1); return; }
+        c = talk_scene_act_cat(act);
+        if (!tk_main()) { fail("expect-talk-act: cannot get to the main page", ""); return; }
+        row = tk_find("cat", c, -1);
+        if (row >= 0) {
+            tk_pick(row);
+            found = tk_find("act", act, -1) >= 0;
+            tk_press(BTN_B);
+        }
+        if (found != want) fail(want ? "the screen does not offer" : "the screen offers", a1);
+    } else {
+        fail("unknown talk command", cmd);
+    }
+}
+/* --- end T8 --- */
 
 static void run_line(char *line)
 {
@@ -661,6 +989,10 @@ static void run_line(char *line)
     } else if (strcmp(cmd, "money") == 0) {
         doomo_town.money = (uint32_t)strtoul(argc > 1 ? argv[1] : "0", NULL, 0);
     /* --- end H4 --- */
+    /* --- T8: SCENE_TALK through the pad (see the command list above; docs/TALK.md 6j) --- */
+    } else if (strncmp(cmd, "talk-", 5) == 0 || strncmp(cmd, "expect-talk", 11) == 0 || strcmp(cmd, "frame-time") == 0) {
+        talk_cmd(cmd, argc, argv);
+    /* --- end T8 --- */
     /* --- music: render and hash commands (MU1, SPEC sec.16.3, row 39) ---
      *   music N | music-once N | music-dual A B   audio_music*() by SONG_* number
      *   mute N | duck Q8 N | tapestop N | resume  S1's comic-timing hooks

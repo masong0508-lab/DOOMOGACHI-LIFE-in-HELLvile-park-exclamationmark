@@ -1,0 +1,13 @@
+# talk_quick (T8, TALK_DESIGN 2.3): a quick reply is one press. The Talk screen is opened and the resident's
+# greeting read first (setup: not counted); the journey is the player's reply. Budget: budgets.tsv talk_quick.
+scene TITLE
+wait 10
+push HOME 3
+wait 4
+press B
+wait 10
+talk-enter Nana
+talk-read
+journey-begin talk_quick
+talk-quick 0
+journey-end talk_quick
