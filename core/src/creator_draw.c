@@ -8,6 +8,7 @@
  */
 #include "creator_int.h"
 #include "doomo/look_pool.h"
+#include "doomo/options_store.h"
 #include "doomo/plat_ext.h"             /* G2-CR: plat_strip (the button bar's rows on the held frame); S3-3: plat_ui_loops */
 
 CrLayout crl;
@@ -947,7 +948,7 @@ static void draw_value(const CrRow *row, int vx_right, int y, int maxw, int sel)
         const CrSlider *sl = cr_slider_of(row);
         int def = sl ? sl->def : 0;
         int dist = idx - def;
-        if (RES_F_IS_LOOK(row->field)) dist *= look_slider_range_get();   /* CR-SLIDERX: the build sliders' effect under the cheat ("+9" at x3); voice and personality are not scaled */
+        if (RES_F_IS_LOOK(row->field)) dist *= opt2_get(OPT_SLIDER_RANGE) + 1;   /* CR-SLIDERX: the build sliders' effect under the cheat ("+9" at x3); voice and personality are not scaled */
         doomo_snprintf(buf, sizeof(buf), "%s%d", dist > 0 ? "+" : "", dist);
         mini_slider(vx_right - sw - 14, y, sw, idx, n - 1, sel, def);
         ui_text(vx_right - 12, y, buf, vc);

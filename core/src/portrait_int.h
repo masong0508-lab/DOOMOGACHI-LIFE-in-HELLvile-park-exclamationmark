@@ -377,7 +377,4 @@ void motion_pose(PCtx *c, int dir, int frame); /* P3: bodyspr_render(), after pc
  * phead_set() done; draws nothing of the body, outfit or effects. */
 void ph_head_only(PCtx *c, int lod);
 
-/* CR-SLIDERX: the slider range changed (portrait_age.c): forget the memoised look hashes of the bodies (portrait.c) */
-void portrait_slider_range_changed(void);
-
 #endif

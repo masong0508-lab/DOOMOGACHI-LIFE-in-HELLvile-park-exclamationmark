@@ -24,6 +24,7 @@
 #include "portrait_int.h"
 #include "doomo/resident.h"
 #include "doomo/part_meta.h"
+#include "doomo/options_store.h"
 
 /* CR-SLIDERX: the cheat "Slider range" (portrait.h). One row per build slider, in creator_data.c CR_SLIDERS' order:
  * the DoomoLook byte, the slider's default (test_cr_sliderx.c checks both against CR_SLIDERS) and the range the
@@ -35,40 +36,36 @@ const LookSlider look_sliders[LOOK_SLIDERS] = {
     LS(eye_spacing, 7, -8, 27), LS(eye_height, 8, -10, 27), LS(eye_tilt, 8, -8, 23), LS(brow_height, 7, -10, 22),
     LS(nose_size, 6, -2, 27), LS(mouth_size, 6, -2, 27), LS(horn_size, 7, -10, 27)
 };
-static uint8_t s_mult = 1;
-
-void look_slider_range_set(int m)
-{
-    if (m < 1 || m > 4) m = 1;
-    if (m == s_mult) return;
-    s_mult = (uint8_t)m;
-    portrait_slider_range_changed();
-}
-
-int look_slider_range_get(void) { return s_mult; }
-
-void look_slider_range(DoomoLook *l)
+/* One loop for both jobs (one body in the PS1's resident bytes). scale = 0: the sanitizer's clamp (portrait.c), so a
+ * saved 0..15 look is as it always was and a look drawn under the cheat holds each slider within its safe range;
+ * scale = 1: the look to draw for a grown-up, each slider def + (value - def) * m, then the same clamp. */
+__attribute__((noinline)) void look_sliders_fix(DoomoLook *l, int scale)   /* noinline: one body, not one per caller */
 {
     uint8_t *b = (uint8_t *)l;
-    int i;
-    if (!l || s_mult <= 1) return;
+    int i, m = opt2_get(OPT_SLIDER_RANGE) + 1;
+    if (scale && m == 1) return;
     for (i = 0; i < LOOK_SLIDERS; i++) {
         const LookSlider *s = &look_sliders[i];
-        int v = b[s->off], e;
-        if (v > 15) v = 15;
-        e = s->def + (v - s->def) * s_mult;
-        b[s->off] = (uint8_t)(int8_t)DOOMO_CLAMP(e, s->lo, s->hi);
+        int lo = 0, hi = 15, v = b[s->off];
+        if (m > 1) {
+            lo = s->lo; hi = s->hi;
+            v = scale ? s->def + (DOOMO_MIN(v, 15) - s->def) * m : (int8_t)v;
+        }
+        b[s->off] = (uint8_t)DOOMO_CLAMP(v, lo, hi);
     }
 }
 
+/* the stages work on the saved 0..15 values: zero-extended maths (the fields are int8_t for the cheat: a signed divide or compare costs resident bytes) */
+#define UB(x) ((int)(uint8_t)(x))
+#define RAWB(f) (*(uint8_t *)&(f))      /* and stores the byte as is: no sign extension */
 #define AGE_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define AGE_MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static void young_face_(DoomoLook *o, int eye_min, int nose_max, int mouth_max, int fangs_max)
 {
-    o->eye_size = (uint8_t)AGE_MAX(o->eye_size, eye_min);
-    o->nose_size = (uint8_t)AGE_MIN(o->nose_size, nose_max);
-    o->mouth_size = (uint8_t)AGE_MIN(o->mouth_size, mouth_max);
+    RAWB(o->eye_size) = (uint8_t)AGE_MAX(UB(o->eye_size), eye_min);
+    RAWB(o->nose_size) = (uint8_t)AGE_MIN(UB(o->nose_size), nose_max);
+    RAWB(o->mouth_size) = (uint8_t)AGE_MIN(UB(o->mouth_size), mouth_max);
     o->fangs = (uint8_t)AGE_MIN(o->fangs, fangs_max);
     o->facial_hair = FHAIR_NONE;
 }
@@ -80,37 +77,37 @@ void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out)
     switch (stage) {
     case LIFE_BABY:
         out->height = 0;
-        out->build = (uint8_t)((in->build + 13) / 2);
+        RAWB(out->build) = (uint8_t)((UB(in->build) + 13) / 2);
         out->head_size = 15;
         young_face_(out, 13, 1, 3, 0);
         out->cheeks = (uint8_t)((out->cheeks | CHEEK_BLUSH) & ~CHEEK_SCAR);
         break;
     case LIFE_TODDLER:
-        out->height = (uint8_t)AGE_MIN(in->height / 4 + 1, 3);
-        out->build = (uint8_t)((in->build + 11) / 2);
-        out->head_size = (uint8_t)AGE_MAX(in->head_size, 14);
+        RAWB(out->height) = (uint8_t)AGE_MIN(UB(in->height) / 4 + 1, 3);
+        RAWB(out->build) = (uint8_t)((UB(in->build) + 11) / 2);
+        RAWB(out->head_size) = (uint8_t)AGE_MAX(UB(in->head_size), 14);
         young_face_(out, 12, 2, 5, 0);
         out->cheeks = (uint8_t)((out->cheeks | CHEEK_BLUSH) & ~CHEEK_SCAR);
         break;
     case LIFE_CHILD:
-        out->height = (uint8_t)(in->height / 4 + 3);          /* 3..6 */
-        out->build = (uint8_t)((in->build + 8) / 2);
-        out->head_size = (uint8_t)AGE_MAX(in->head_size, 11);
+        RAWB(out->height) = (uint8_t)(UB(in->height) / 4 + 3);          /* 3..6 */
+        RAWB(out->build) = (uint8_t)((UB(in->build) + 8) / 2);
+        RAWB(out->head_size) = (uint8_t)AGE_MAX(UB(in->head_size), 11);
         young_face_(out, 10, 4, 8, 1);
         out->cheeks |= CHEEK_BLUSH;
         break;
     case LIFE_TEEN:
-        out->height = (uint8_t)(in->height - in->height / 4 + 1);   /* 1..12 */
-        out->head_size = (uint8_t)AGE_MAX(in->head_size, 8);
-        out->eye_size = (uint8_t)AGE_MAX(in->eye_size, 8);
+        RAWB(out->height) = (uint8_t)(UB(in->height) - UB(in->height) / 4 + 1);   /* 1..12 */
+        RAWB(out->head_size) = (uint8_t)AGE_MAX(UB(in->head_size), 8);
+        RAWB(out->eye_size) = (uint8_t)AGE_MAX(UB(in->eye_size), 8);
         out->facial_hair = FHAIR_NONE;
         out->fangs = (uint8_t)AGE_MIN(in->fangs, 2);
         break;
     case LIFE_ELDER:
         out->hair_color = PAINT_SILVER;
         out->hair_highlight = PAINT_WHITE;
-        out->height = (uint8_t)(in->height > 1 ? in->height - 1 : in->height);
-        out->nose_size = (uint8_t)AGE_MIN(in->nose_size + 2, 15);
+        RAWB(out->height) = (uint8_t)(UB(in->height) > 1 ? UB(in->height) - 1 : UB(in->height));
+        RAWB(out->nose_size) = (uint8_t)AGE_MIN(UB(in->nose_size) + 2, 15);
         break;
     default:                      /* ADULT and anything unknown: as saved */
         break;
@@ -118,7 +115,7 @@ void look_for_stage(const DoomoLook *in, int stage, DoomoLook *out)
     /* CR12: a minor is never drawn in a part above their stage (catalog age class), whoever
      * made the look: the part is drawn as the slot's default. A no-op for adults and elders. */
     part_age_filter_look(out, stage);
-    if (LIFE_IS_ADULT(stage)) look_slider_range(out);        /* CR-SLIDERX: grown-ups only, never a minor */
+    if (LIFE_IS_ADULT(stage)) look_sliders_fix(out, 1);        /* CR-SLIDERX: grown-ups only, never a minor */
 }
 
 const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, int expr)

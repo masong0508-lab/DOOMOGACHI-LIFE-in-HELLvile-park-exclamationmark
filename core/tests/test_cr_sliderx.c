@@ -95,6 +95,16 @@ static const CrRow *slider_row(int i)        /* the row of look slider i (the ta
     return NULL;
 }
 
+/* the range the drawing code is working at: eye size 9 is one step under its default 10, so it lands m under it */
+static int mult_in_force(void)
+{
+    DoomoLook l;
+    memset(&l, 0, sizeof l);
+    l.eye_size = 9;
+    look_slider_range(&l);
+    return 10 - l.eye_size;
+}
+
 /* the look as the world draws a grown-up of this record at the current range */
 static void drawn_look(const DoomoResident *r, DoomoLook *out)
 {
@@ -139,15 +149,15 @@ TEST(crsx_option_is_the_next_opt2_id_and_a_cheat)
     CHECK_STR(oi->values[3], "x4");
     test_reset();
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
-    CHECK_EQ(look_slider_range_get(), 1);
+    CHECK_EQ(mult_in_force(), 1);
     opt_set(OPT_SLIDER_RANGE, 2);
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 2);
-    CHECK_EQ(look_slider_range_get(), 3);
+    CHECK_EQ(mult_in_force(), 3);
     opt_set(OPT_SLIDER_RANGE, 99);                       /* clamped to x4 */
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 3);
-    CHECK_EQ(look_slider_range_get(), 4);
+    CHECK_EQ(mult_in_force(), 4);
     opt_defaults();                                      /* Defaults puts it back to x1 */
-    CHECK_EQ(look_slider_range_get(), 1);
+    CHECK_EQ(mult_in_force(), 1);
     CHECK_EQ(opt_get(OPT_STICK_MODE), STICK_TURN);       /* its neighbour in the same byte is untouched */
     opt_set(OPT_STICK_MODE, STICK_STRAFE);
     opt_set(OPT_SLIDER_RANGE, 3);
@@ -171,24 +181,24 @@ TEST(crsx_saved_in_opt2_and_an_old_save_reads_x1)
     opt_set(OPT_SLIDER_RANGE, 0);
     CHECK(ext->read(buf, n, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 2);
-    CHECK_EQ(look_slider_range_get(), 3);                /* and the draw follows the load */
+    CHECK_EQ(mult_in_force(), 3);                /* and the draw follows the load */
     /* a chunk written before this option (one byte shorter): x1 */
     memcpy(old, buf, n);
     k = n - 1;
     CHECK(ext->read(old, k, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
-    CHECK_EQ(look_slider_range_get(), 1);
+    CHECK_EQ(mult_in_force(), 1);
     /* a byte past the choices reads the default, never a wild range */
     opt_set(OPT_SLIDER_RANGE, 3);
     buf[n - 1] = 9;
     CHECK(ext->read(buf, n, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
-    CHECK_EQ(look_slider_range_get(), 1);
+    CHECK_EQ(mult_in_force(), 1);
     /* a save with no chunk at all */
     opt_set(OPT_SLIDER_RANGE, 3);
     ext->reset();
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
-    CHECK_EQ(look_slider_range_get(), 1);
+    CHECK_EQ(mult_in_force(), 1);
     opt_defaults();
 }
 

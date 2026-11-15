@@ -41,21 +41,15 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
 };
 
 #define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
-static uint8_t s_opt2[STICK_IDX] = { MATURE_OFF, 1, 1, 1 };    /* the ids before OPT_STICK_MODE */
+#define SRANGE_IDX (OPT_SLIDER_RANGE - OPT2_FIRST)
+/* the ids before OPT_STICK_MODE, a hole where the stick bit lives, then OPT_SLIDER_RANGE (CR-SLIDERX: x1..x4 as 0..3) */
+static uint8_t s_opt2[SRANGE_IDX + 1] = { MATURE_OFF, 1, 1, 1 };
 /* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
  * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
-static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1, srange : 2; } s_fl;   /* stick = OPT_STICK_MODE's value, srange = OPT_SLIDER_RANGE's (CR-SLIDERX: same byte, no EWRAM) */
-typedef char opt2_srange_is_the_last_id[OPT2_END == OPT_SLIDER_RANGE + 1 && OPT_SLIDER_RANGE == OPT_STICK_MODE + 1 ? 1 : -1];   /* a later id grows s_opt2 */
-static int o2_load(int i)
-{
-    return i == STICK_IDX ? s_fl.stick : i == STICK_IDX + 1 ? s_fl.srange : s_opt2[i];
-}
-static void o2_store(int i, int v)
-{
-    if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;            /* anything else reads Turn */
-    else if (i == STICK_IDX + 1) s_fl.srange = (unsigned)v & 3u;   /* 0..3 (opt2_set clamps, a chunk byte is checked by the count) */
-    else s_opt2[i] = (uint8_t)v;
-}
+static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
+typedef char opt2_srange_is_the_last_id[OPT2_END == SRANGE_IDX + OPT2_FIRST + 1 && SRANGE_IDX == STICK_IDX + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
+static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
 
 static int is_machine(int opt)
 {
@@ -67,7 +61,7 @@ static void apply2(int opt)
 {
     int v = o2_load(opt - OPT2_FIRST);
     if (opt == OPT_LOSS) family_loss_set(v);
-    if (opt == OPT_SLIDER_RANGE) look_slider_range_set(v + 1);      /* (CR-SLIDERX) x1..x4; drops the portraits drawn at the old range */
+    if (opt == OPT_SLIDER_RANGE) look_slider_range_changed();      /* (CR-SLIDERX) x1..x4; drops the portraits drawn at the old range */
     if (opt == OPT_RUMBLE && !s_fl.quiet) plat_option_changed(opt, v);
 }
 

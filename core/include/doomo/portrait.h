@@ -224,10 +224,10 @@ const DoomoImage *figure_image_stage(const DoomoLook *l, int stage, int status, 
  * each of the 11 build sliders (look_sliders[], same table as creator_data.c CR_SLIDERS) goes
  * def + (value - def) * m, then is clamped to the range its renderers draw safely, which is wider than 0..15
  * (the DoomoLook fields are signed for it). m = 1 changes nothing, bit for bit. Minors are never scaled.
- * look_slider_range_set drops the cached portraits (their keys do not know the range) when m changes. */
-void look_slider_range_set(int m);               /* 1..4; anything else is 1 */
-int  look_slider_range_get(void);
-void look_slider_range(DoomoLook *l);            /* in place; l's sliders are the saved 0..15 */
+ * look_slider_range_changed drops the memoised body hashes when m changes (the cache keys carry the look as drawn). */
+void look_slider_range_changed(void);            /* options_store.c: the option changed (the m is the option's value + 1) */
+#define look_slider_range(l) look_sliders_fix((l), 1)     /* in place; l's sliders are the saved 0..15 */
+void look_sliders_fix(DoomoLook *l, int scale);  /* scale 0: the renderer's clamp (portrait.c sanitize) */
 typedef struct LookSlider { uint8_t off; int8_t def, lo, hi; } LookSlider;   /* DoomoLook byte, default, safe range */
 extern const LookSlider look_sliders[];
 #define LOOK_SLIDERS 11
