@@ -222,6 +222,46 @@ void nat_stage_frame_end(void)
     if (nat_stage_buffers == 2) cur_buf ^= 1;
 }
 
+/* ---- (G2-CO) rows kept at half rate (plat_ext.h plat_keep_rows) ---------------------------------------------- */
+int nat_keep_on, nat_keep_overflow;
+static uint8_t keep_buf[NAT_MAX_W * NAT_MAX_H], keep_save[NAT_MAX_W * NAT_MAX_H];
+static int keep_drawing, keep_have, keep_n;
+
+void nat_keep_lose(void) { keep_have = 0; }
+
+int plat_keep_rows(int op, int rows)
+{
+    size_t n = (size_t)nat_w * (size_t)nat_h, k = (size_t)nat_w * (size_t)(rows > 0 ? rows : 0);
+    if (!nat_keep_on || rows <= 0 || rows > nat_h) return 0;
+    switch (op) {
+    case PLAT_KEEP_DRAW:
+        if (keep_drawing) return 0;
+        memcpy(keep_save, nat_fb, n);                 /* the frame aside, the kept rows in its place */
+        if (!keep_have) memset(keep_buf, 0xC3, k);    /* a lost buffer holds garbage */
+        memcpy(nat_fb, keep_buf, k);
+        keep_drawing = 1;
+        keep_have = 1;
+        keep_n = rows;
+        return 1;
+    case PLAT_KEEP_END:
+        if (!keep_drawing) return 0;
+        memcpy(keep_buf, nat_fb, k);
+        if (memcmp(nat_fb + k, keep_save + k, n - k) != 0) nat_keep_overflow++;
+        memcpy(nat_fb, keep_save, n);
+        keep_drawing = 0;
+        return 1;
+    case PLAT_KEEP_PUT:
+        if (!keep_have || keep_drawing || rows > keep_n) return 0;
+        memcpy(nat_fb, keep_buf, k);
+        return 1;
+    case PLAT_KEEP_HELD:
+        return keep_have && !keep_drawing && rows <= keep_n;
+    default:
+        keep_have = 0;
+        return 0;
+    }
+}
+
 /* (S2-4) 1 when the frame last presented was drawn over a kept backdrop (tests) */
 int nat_stage_kept(void) { return last_kept; }
 

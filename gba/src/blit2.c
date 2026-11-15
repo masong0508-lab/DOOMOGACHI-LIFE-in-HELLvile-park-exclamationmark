@@ -317,27 +317,46 @@ BLIT2_ARM void vid_checker_ui(int x, int y, int w, int h, uint32_t color)
  * when (x0 + y) is odd, exactly concert_gfx.c's beam() + cspan(). (S2-4d landing: each band is an ARM-to-ARM call of
  * vid_checker_ui instead of a second inlined copy of the checker loop: ~560 B of the group for one call a band, so
  * the fair's ldm / stm checker and the dreams' loops both fit the slot.) */
-BLIT2_ARM void vid_beam_ui(int ax, int ay, int ty, int dx, int hw0, int dhw, int dy, int q, int r, uint32_t color)
+BLIT2_ARM void vid_beam_ui(int ax, int ay, int ty, int dx, int hw0, int dhw, int dy, int q, int r, uint32_t color,
+                            int ylo, int yhi)
 {
     int y, f = 0, rem = 0;
     for (y = ay; y < ty; y += 3) {
         int cx = ax + dx * f / 256, hw = hw0 + dhw * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
         if ((x0 + y) & 1) x0++;
-        if (x1 > x0) vid_checker_ui(x0, y, x1 - x0, 3, color);
+        if (x1 > x0) {
+            if (y >= ylo && y + 3 <= yhi) {
+                vid_checker_ui(x0, y, x1 - x0, 3, color);
+            } else if (y + 3 > ylo && y < yhi) {
+                /* (G2-CO) a band cut by [ylo, yhi): its rows one by one, each with the parity of the band's first
+                 * row (concert_gfx.c beam()) */
+                int j;
+                for (j = 0; j < 3; j++)
+                    if (y + j >= ylo && y + j < yhi && x1 > x0 + (j & 1))
+                        vid_checker_ui(x0 + (j & 1), y + j, x1 - x0 - (j & 1), 1, color);
+            }
+        }
         f += q;
         rem += r;
         if (rem >= dy) { rem -= dy; f++; }
     }
 }
 
-int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
+/* (G2-CO) plat_beam_rows (plat_ext.h): the same bands, only their rows in [y0, y1) */
+int plat_beam_rows(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color, int y0, int y1)
 {
     int dy = ty - ay, q;
     if (gba_nodraw || iwram_ovl_current() != OVL_UI) return 0;   /* the core draws the bands (plat_checker) */
     if (dy <= 0) return 1;
     q = 768 / dy;
-    vid_beam_ui(ax, ay, ty, tx - ax, hw0, hw1 - hw0, dy, q, 768 - q * dy, color);
+    vid_beam_ui(ax, ay, ty, tx - ax, hw0, hw1 - hw0, dy, q, 768 - q * dy, color, y0 < 0 ? 0 : y0,
+                y1 > SCREEN_H ? SCREEN_H : y1);
     return 1;
+}
+
+int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
+{
+    return plat_beam_rows(ax, ay, tx, ty, hw0, hw1, color, 0, SCREEN_H);
 }
 
 /* (S2-4d) plat_tile_rows (plat_ext.h): the dream floor's rows. The row's 240 pixels are made once on the stack

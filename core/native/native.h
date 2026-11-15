@@ -87,6 +87,12 @@ void nat_stage_reset(void);
 int  nat_stage_kept(void);          /* (S2-4) the last frame was drawn over a kept backdrop */
 int  nat_stage_pics(uint32_t *out, int cap);   /* (S2-4b) the pictures asked for since nat_stage_reset: id << 24 | key */
 int  nat_stage_stamps(void);        /* (S2-4b) stamps drawn since nat_stage_reset */
+/* (G2-CO) plat_keep_rows as the GBA keeps rows in its OBJ VRAM: off by default (0: the call says "cannot");
+ * tests turn it on. A DRAW sets the frame aside and lets the 2D calls land on the kept rows; END takes them
+ * back (and counts in nat_keep_overflow any pixel drawn below them, which on the GBA would have hit other
+ * memory); nat_keep_lose() forgets the rows, as another user of that memory would. */
+extern int nat_keep_on, nat_keep_overflow;
+void nat_keep_lose(void);
 int  nat_bake_backdrops(const char *path);
 int  nat_bake_poses(const char *path);    /* (S2-4c) Granny's poses, cookpose_native.c */
 int  nat_cook_pose_unlisted(int *asked);  /* (S2-4c, tests) poses drawn that the baker would not bake */

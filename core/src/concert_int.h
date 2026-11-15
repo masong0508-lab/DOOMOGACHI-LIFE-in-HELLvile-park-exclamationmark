@@ -234,7 +234,14 @@ typedef struct StageView {
     int lite;                 /* (G2-CO) CLITE_* trades of the GBA, 0 elsewhere */
     int choir_pct;            /* (G2-CO) the choir's singers at this % of their size (0 / 100: full; 240x160) */
     struct ChoirMini *minis;  /* (G2-CO) where the smaller singers are kept (NULL: full size) */
+    struct ConcertKeep *keep; /* (G2-CO, CLITE_HALF) the half-rate rows' state (NULL: none) */
+    int beam_dt;              /* (G2-CO) the beams are drawn at tick t - beam_dt (0: t) */
 } StageView;
+/* (G2-CO, CLITE_HALF) the top rows of the stage (the LED wall and its frame, the truss and its lamps, the beams
+ * down to the wall's foot) kept in a platform buffer (plat_keep_rows) and drawn anew every other tick, one half of
+ * the next picture a tick: `have` a whole picture of tick `tc`, `puts` the frames it was put into, `half` the first
+ * half of the picture of tick `tb` is in the buffer. In the concert's scene scratch. */
+typedef struct ConcertKeep { uint32_t tb, tc; uint8_t have, puts, half, pad; } ConcertKeep;
 /* (G2-CO) a choir singer drawn smaller: a nearest-neighbour copy of the chibi, made again only when its picture
  * (the image uid) or the size changes. One a choir slot, in the concert's scene scratch (none on the PS1). */
 typedef struct ChoirMini {
@@ -245,8 +252,9 @@ typedef struct ChoirMini {
 #define CHOIR_MINI_N SONG_SINGERS
 /* (G2-CO) the owner's approved trades for the GBA (docs/GBA.md "G2-CO"; OWNER_DECISIONS 2026-11-13): the scene
  * sets them on the GBA only, so the PS1, the Dreamcast and the native goldens draw the full stage.
- *   CLITE_FLAMES  the flame wall in 6 wider flames of 4-row bars (9 flames of 2-row bars) */
-enum { CLITE_FLAMES = 1 };
+ *   CLITE_FLAMES  the flame wall in 6 wider flames of 4-row bars (9 flames of 2-row bars)
+ *   CLITE_HALF    the LED wall, the lamps and the beams at 15 Hz, kept between their steps (StageView.keep) */
+enum { CLITE_FLAMES = 1, CLITE_HALF = 2 };
 
 /* layout for this resolution */
 typedef struct StageLayout {

@@ -376,6 +376,35 @@ void et_blit2_test(void)
                 if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
                     gba_logf("ET blit2test FAIL outline case %d x %d y %d row %d hw %d: %x vs %x", i, x, y, r, j,
                              PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
+    /* (G2-CO) the same beams cut to rows [y0, y1) (plat_beam_rows) against the core's row-by-row cut of each band
+     * (concert_gfx.c beam(): a cut band's rows one at a time, each with the parity of the band's first row) */
+    for (i = 0; i < 400 && !bad; i++) {
+        int ax = (int)(next() % 280) - 20, ay = (int)(next() % 40) - 8, tx = (int)(next() % 400) - 80;
+        int ty = ay + (int)(next() % 170) - 10, hw0 = (int)(next() % 4), hw1 = hw0 + (int)(next() % 20);
+        int y0 = (int)(next() % 180) - 10, y1 = y0 + (int)(next() % 120);
+        uint32_t color = next() % 256;
+        int j, r, y, dy = ty - ay;
+        gba_back = PAGE_A;
+        if (!plat_beam_rows(ax, ay, tx, ty, hw0, hw1, (uint8_t)color, y0, y1)) {
+            gba_logf("ET blit2test FAIL beam rows not drawn");
+            bad = 1;
+            break;
+        }
+        gba_back = PAGE_B;
+        if (dy > 0)
+            for (y = ay; y < ty; y += 3) {
+                int f = (y - ay) * 256 / dy;
+                int cx = ax + (tx - ax) * f / 256, hw = hw0 + (hw1 - hw0) * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
+                if ((x0 + y) & 1) x0++;
+                for (j = 0; j < 3; j++)
+                    if (y + j >= y0 && y + j < y1 && x1 > x0 + (j & 1))
+                        plat_checker_m4(x0 + (j & 1), y + j, x1 - x0 - (j & 1), 1, (uint8_t)color);
+            }
+        for (r = 0; r < 160 && !bad; r++)
+            for (j = 0; j < LINE; j++)
+                if (PAGE_A[r * LINE + j] != PAGE_B[r * LINE + j]) {
+                    gba_logf("ET blit2test FAIL beam rows case %d a %d,%d t %d,%d rows %d..%d row %d hw %d: %x vs %x", i,
+                             ax, ay, tx, ty, y0, y1, r, j, PAGE_A[r * LINE + j], PAGE_B[r * LINE + j]);
                     bad = 1;
                     break;
                 }

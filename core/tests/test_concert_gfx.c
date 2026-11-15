@@ -294,6 +294,91 @@ TEST(concert_choir_singers_drawn_smaller)
     portrait_cache_reset();
 }
 
+/* (G2-CO, CLITE_HALF) the LED wall, the lamps and the beams at 15 Hz: with a kept backdrop and kept rows (the native
+ * platform emulates both), the first frame is drawn whole and from then on the rows down to the wall's foot are the
+ * whole stage of tick tc (each picture on two frames in a row: tc = t, then t - 1); below them the stage is tick
+ * t's, its beams tick tc's (exact for the themes without a prop phase; for the others the rows above are checked).
+ * Nothing is drawn below the kept rows into the buffer; a lost buffer draws one frame whole and goes on; the
+ * shows that leave the wall (notes, grid, bats) are drawn whole on every frame. */
+static void ref_stage(const StageView *v, const StageLayout *L, uint32_t t, int beam_dt, uint8_t *out)
+{
+    StageView r = *v;
+    r.lite &= ~CLITE_HALF;
+    r.keep = NULL;
+    r.t = t;
+    r.beam_dt = beam_dt;
+    memset(nat_fb, 0x33, (size_t)(L->w * L->h));
+    concert_draw_stage(&r, L);
+    memcpy(out, nat_fb, (size_t)(L->w * L->h));
+}
+
+TEST(concert_half_rate_wall_and_beams)
+{
+    static ConcertCast cast;
+    static ConcertKeep K;
+    static uint8_t ref[240 * 160], out[240 * 160];
+    static const int stages[4] = { STAGE_GRAVEYARD, STAGE_DISCO_INFERNO, STAGE_SUGAR_BOWL, STAGE_HELLFIRE };
+    int g, si, j, bad = 0, kept = 0, R;
+    StageView v;
+    StageLayout L;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    nat_w = 240; nat_h = 160;
+    portrait_cache_reset();
+    nat_stage_on = 1;
+    nat_stage_buffers = 2;
+    nat_keep_on = 1;
+    nat_keep_overflow = 0;
+    concert_cast_make(&cast, 3, CMODE_SOLO, 1, 0);
+    concert_layout(&L);
+    R = L.wall_y + L.wall_h + 3;
+    for (g = 0; g < MUSIC_COUNT && !bad; g++)
+        for (si = 0; si < 4 && !bad; si++) {
+            int show = concert_genres[g].show, whole_only = show == SHOW_NOTES || show == SHOW_GRID || show == SHOW_BATS;
+            uint32_t t0 = 300u + (uint32_t)(g * 31 + si * 7);
+            memset(&v, 0, sizeof(v));
+            memset(&K, 0, sizeof(K));
+            v.cast = &cast;
+            v.genre = g;
+            v.stage = stages[si];
+            v.lights = 16;
+            v.kick = 3;
+            v.sec = SEC_CHORUS1;
+            v.lite = CLITE_HALF | CLITE_FLAMES;
+            v.keep = &K;
+            for (j = 0; j < 14 && !bad; j++) {
+                uint32_t t = t0 + (uint32_t)j, tc = t;
+                int lost = j == 9;
+                if (lost) nat_keep_lose();                       /* tick t0 + 9: drawn whole, then as from t0 */
+                if (!whole_only && j > 0 && j != 9) tc = ((j < 9 ? j : j - 9) & 1) ? t : t - 1u;
+                v.t = t;
+                memset(nat_fb, 0x5A, sizeof(out));
+                concert_draw_stage(&v, &L);
+                memcpy(out, nat_fb, sizeof(out));
+                if (tc != t) kept++;
+                ref_stage(&v, &L, tc, 0, ref);
+                if (memcmp(out, ref, (size_t)(R * 240)) != 0) bad = 1;
+                if (si < 2) {                                    /* no prop phase: the rows below are exact too */
+                    ref_stage(&v, &L, t, (int)(t - tc), ref);
+                    if (memcmp(out + R * 240, ref + R * 240, (size_t)((160 - R) * 240)) != 0) bad = 2;
+                }
+                if (bad) {
+                    char m[160];
+                    snprintf(m, sizeof(m), "half rate: genre %d stage %d tick %u (kept tick %u): %s differ", g,
+                             v.stage, (unsigned)t, (unsigned)tc, bad == 1 ? "the kept rows" : "the rows below");
+                    test_fail(__FILE__, __LINE__, m);
+                }
+            }
+        }
+    CHECK(nat_keep_overflow == 0);
+    CHECK(kept > 100);
+    nat_keep_on = 0;
+    nat_stage_on = 0;
+    nat_stage_reset();
+    portrait_cache_reset();
+    portrait_cache_clock(0, 0);
+}
+
 /* (G2-CO) the baker's keys are every key a view can ask for */
 TEST(concert_stage_keys_cover_every_view)
 {

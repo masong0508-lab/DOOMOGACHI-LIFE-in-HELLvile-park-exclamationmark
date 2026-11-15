@@ -183,7 +183,8 @@ static uint32_t objv_r3d_frame = 0xFFFFFF00u;
 int gba_objvram_claim(int who)
 {
     int prev = objv_owner;
-    if (who == OBJV_R3D || who == OBJV_HOLD) objv_r3d_frame = gba_frames;   /* (a held view counts as one) */
+    /* (a held view counts as one, and G2-CO's kept rows: obj.c keeps its OBJs off, the billboards start again) */
+    if (who == OBJV_R3D || who == OBJV_HOLD || who == OBJV_KEEP) objv_r3d_frame = gba_frames;
     objv_owner = (uint8_t)who;
     return prev;
 }

@@ -102,3 +102,17 @@ WEAK int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb)
     (void)y; (void)h; (void)x0; (void)tw; (void)ca; (void)cb;
     return 0;
 }
+
+#if !defined(DOOMO_PLATFORM_PS1)   /* (G2-CO) the PS1 never calls them: no resident bytes there */
+WEAK int plat_beam_rows(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color, int y0, int y1)
+{
+    (void)ax; (void)ay; (void)tx; (void)ty; (void)hw0; (void)hw1; (void)color; (void)y0; (void)y1;
+    return 0;
+}
+
+WEAK int plat_keep_rows(int op, int rows)
+{
+    (void)op; (void)rows;
+    return 0;
+}
+#endif

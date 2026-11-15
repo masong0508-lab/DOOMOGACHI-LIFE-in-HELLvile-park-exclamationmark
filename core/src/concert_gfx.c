@@ -351,7 +351,9 @@ static void wall_skull(const Wall *W, int cx, int cy, int s, uint8_t c, uint8_t 
     wall_rect(W, cx, cy + s / 2, 1, 2, dark);
 }
 
-static void draw_show(const StageView *v, const Wall *W, int m)
+/* part: 0 the whole show; (G2-CO, CLITE_HALF: the kept picture is built over two ticks) 1 its first half, 2 the
+ * rest: the flames split by flame, any other show is drawn whole in part 1; the dim comes last */
+static void draw_show_part(const StageView *v, const Wall *W, int m, int part)
 {
     const ConcertGenre *g = &concert_genres[v->genre];
     uint8_t c0 = PAL_PAINT(g->c0, 1), c1 = PAL_PAINT(g->c1, 2), c2 = PAL_PAINT(g->c2, 2);
@@ -361,6 +363,7 @@ static void draw_show(const StageView *v, const Wall *W, int m)
     int cx = W->x + W->w / 2, cy = W->y + W->h / 2;
     if (STILL(m)) plat_rect(W->x, W->y, W->w, W->h, bg);
     if (lit <= 0 || !LIVE(m)) return;
+    if (part == 2 && g->show != SHOW_FLAMES) return;
     switch (g->show) {
     case SHOW_HEARTS: {
         int s = W->h / 6 + (pulse > 2 ? 2 : 0);
@@ -512,7 +515,7 @@ static void draw_show(const StageView *v, const Wall *W, int m)
         /* (G2-CO, CLITE_FLAMES) fewer and wider flames of taller bars: 6 flames, a bar every 4 rows */
         int lite = (v->lite & CLITE_FLAMES) != 0, nf = lite ? 6 : 9, st = lite ? 4 : 2;
         int fw = W->w / nf, kw = fw / 2 + 1, t3 = t / 3, h3 = W->h / 3, h23 = W->h * 2 / 3;
-        for (i = 0; i < nf; i++) {
+        for (i = part == 2 ? nf / 2 : 0; i < (part == 1 ? nf / 2 : nf); i++) {
             int fx = W->x + fw * i + fw / 2;
             int fh = h23 + (int)(hash2((uint32_t)t3, (uint32_t)i) % (uint32_t)h3) + pulse;
             int yy, hq, hr, dq, dr, f = 0, fr = 0, fq, frr, amp = 1, d10 = 0;
@@ -609,8 +612,13 @@ static void draw_show(const StageView *v, const Wall *W, int m)
     default: break;
     }
     /* dim the wall while the lights come up */
-    if (lit < 16) plat_shade_rect(W->x, W->y, W->w, W->h, 15 - (16 - lit) * 3 / 4);
+    if (lit < 16 && !(part == 1 && g->show == SHOW_FLAMES)) plat_shade_rect(W->x, W->y, W->w, W->h, 15 - (16 - lit) * 3 / 4);
     (void)c0d;
+}
+
+static void draw_show(const StageView *v, const Wall *W, int m)
+{
+    draw_show_part(v, W, m, 0);
 }
 
 /* ====================================================================== */
@@ -805,27 +813,40 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
  * beams' cost on the GBA): each step adds 3 * 256 to the numerator, i.e. q
  * to the quotient and r to the remainder, carrying once when the remainder
  * reaches dy (r < dy). Same f on every span, so the same spans. */
-static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c)
+static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c, int y0, int y1)
 {
-    int y, step = 3, dy = ty - ay, f = 0, rem = 0, q, r;
+    int y, step = 3, dy = ty - ay, f = 0, rem = 0, q, r, whole = y0 <= ay && y1 >= ty;
     if (dy <= 0) return;
-    if (plat_beam(ax, ay, tx, ty, hw0, hw1, c)) return;   /* the platform drew these same bands */
+    if (whole && plat_beam(ax, ay, tx, ty, hw0, hw1, c)) return;   /* the platform drew these same bands */
+#if !defined(DOOMO_PLATFORM_PS1)
+    if (!whole && plat_beam_rows(ax, ay, tx, ty, hw0, hw1, c, y0, y1)) return;
+#endif
     q = step * 256 / dy;
     r = step * 256 - q * dy;
     for (y = ay; y < ty; y += step) {
         int cx = ax + (tx - ax) * f / 256, hw = hw0 + (hw1 - hw0) * f / 256;
-        cspan(cx - hw, cx + hw + 1, y, step, c);
+        if (whole || (y >= y0 && y + step <= y1)) {
+            cspan(cx - hw, cx + hw + 1, y, step, c);
+        } else if (y + step > y0 && y < y1) {
+            /* (G2-CO) a band cut by [y0, y1): its rows one by one, each with the parity of the band's first row */
+            int x0 = cx - hw, x1 = cx + hw + 1, j;
+            if ((x0 + y) & 1) x0++;
+            for (j = 0; j < step; j++)
+                if (y + j >= y0 && y + j < y1 && x1 > x0 + (j & 1))
+                    plat_checker(x0 + (j & 1), y + j, x1 - x0 - (j & 1), 1, c);
+        }
         f += q;
         rem += r;
         if (rem >= dy) { rem -= dy; f++; }
     }
 }
 
+static void draw_beams(const StageView *v, const StageLayout *L, int y0, int y1);
+
 static void stage_parts(const StageView *v, const StageLayout *L, int m)
 {
     StagePal p;
     Wall W;
-    const ConcertGenre *g = &concert_genres[v->genre];
     int i;
     stage_pal(v->stage, &p);
     draw_backdrop(v, L, &p, m);
@@ -841,24 +862,32 @@ static void stage_parts(const StageView *v, const StageLayout *L, int m)
     draw_speakers(v, L, m);
     draw_floor(v, L, &p, m);
     draw_truss(v, L, m);
-    /* beams sweep with the music */
-    if (v->lights > 6 && LIVE(m)) {
+    if (LIVE(m)) draw_beams(v, L, 0, L->h);
+}
+
+/* beams sweep with the music: the rows [y0, y1) of them */
+static void draw_beams(const StageView *v, const StageLayout *L, int y0, int y1)
+{
+    const ConcertGenre *g = &concert_genres[v->genre];
+    uint32_t bt = v->t - (uint32_t)v->beam_dt;           /* (G2-CO) the beams' own time */
+    int i;
+    if (v->lights > 6) {
         /* SP6: lamp x, the two sweeps (2t + 70i on even lamps, 3t + 70i on
          * odd ones) and i % 3 stepped; the same targets and colours */
         int n = v->sec == SEC_CHORUS1 || v->sec == SEC_CHORUS2 || v->encore ? 6 : 4;
-        int fast = STEP_T_OK(v->t), i3 = 0;
+        int fast = STEP_T_OK(bt), i3 = 0;
         DivStep lxs;
         WaveStep sw[2];
         memset(sw, 0, sizeof(sw));
         ds_init(&lxs, L->w, 12, 2 * L->w);
-        if (fast) { ws_init(&sw[0], (int)v->t * 2, 260, 140); ws_init(&sw[1], (int)v->t * 3 + 70, 260, 140); }
+        if (fast) { ws_init(&sw[0], (int)bt * 2, 260, 140); ws_init(&sw[1], (int)bt * 3 + 70, 260, 140); }
         for (i = 0; i < 6; i++, ds_next(&lxs), i3 = i3 == 2 ? 0 : i3 + 1) {
             int lx = lxs.q, ly = L->truss_h - 1, tx, c, wv = 0;
             if (fast) { wv = ws_val(&sw[i & 1], L->w / 2 - 10); ws_next(&sw[i & 1]); }
             if (n == 4 && (i == 1 || i == 4)) continue;
-            tx = L->w / 2 + (fast ? wv : ui_wave((int)v->t * (i & 1 ? 3 : 2) + i * 70, 260, L->w / 2 - 10));
+            tx = L->w / 2 + (fast ? wv : ui_wave((int)bt * (i & 1 ? 3 : 2) + i * 70, 260, L->w / 2 - 10));
             c = i3 == 0 ? PAL_PAINT(g->c0, 2) : i3 == 1 ? PAL_PAINT(g->c1, 2) : PAL_PAINT(g->c2, 2);
-            beam(lx, ly + 1, tx, L->stage_front, 1, L->big ? 14 : 10, (uint8_t)c);
+            beam(lx, ly + 1, tx, L->stage_front, 1, L->big ? 14 : 10, (uint8_t)c, y0, y1);
         }
     }
 }
@@ -904,6 +933,92 @@ static int concert_stage_keys(uint32_t *out, int cap)
 const DoomoBackdrop concert_backdrop_family = { DOOMO_BACKDROP_CONCERT, concert_stage_still, concert_stage_keys, NULL };
 #endif
 
+#if !defined(DOOMO_PLATFORM_PS1)
+/* ---- (G2-CO, CLITE_HALF) the LED wall, the truss's lamps and the beams above the wall's foot at 15 Hz ----------
+ * The rows [0, R) (R: the wall frame's foot) of the stage are kept in the platform's buffer (plat_keep_rows) and
+ * drawn anew every other tick, half of the next picture on each tick (the bake's rows and the show's first half; the
+ * show's rest, the sheen, the lamps and the beams' top), so every tick costs about the same. Each picture is put
+ * into two frames (the GBA's two pages); the rows below are drawn on every tick, their beams at the kept picture's
+ * time so they go on where the kept ones end. Shows whose shapes leave the wall (notes, the synthwave grid, bats)
+ * are drawn whole on every tick. Pixel-changing (SPEED DEFAULTS, the owner's 2026-11-13 trade): the wall, the
+ * lamps and the beams move at 15 Hz. */
+static int keep_rows(const StageLayout *L) { return L->wall_y + L->wall_h + 3; }
+
+static int keep_ok(const StageView *v, const StageLayout *L)
+{
+    int show = concert_genres[v->genre].show;
+    return (v->lite & CLITE_HALF) && v->keep && keep_rows(L) * L->w <= 16384 && show != SHOW_NOTES &&
+           show != SHOW_GRID && show != SHOW_BATS;
+}
+
+/* half 1 or 2 of the kept picture of tick tb (v's other fields: this tick's) into the platform's buffer */
+static int keep_half(const StageView *v, const StageLayout *L, int half, uint32_t tb)
+{
+    StageView b = *v;
+    PlatStageInfo info;
+    uint32_t key;
+    Wall W;
+    int R = keep_rows(L), i;
+    b.t = tb;
+    if (!concert_stage_key(&b, &key) || !plat_stage_begin(DOOMO_BACKDROP_CONCERT, key, concert_stage_still, &info) ||
+        !plat_keep_rows(PLAT_KEEP_DRAW, R))
+        return 0;
+    W.x = L->wall_x; W.y = L->wall_y; W.w = L->wall_w; W.h = L->wall_h;
+    if (half == 1) {
+        plat_stage_restore(0, 0, L->w, R);
+        draw_show_part(&b, &W, SP_LIVE, 1);
+    } else {
+        draw_show_part(&b, &W, SP_LIVE, 2);
+        for (i = W.y + 1; i < W.y + W.h; i += 3) cspan(W.x, W.x + W.w, i, 1, PAL_RAMP(RAMP_STONE, 1));
+        draw_truss(&b, L, SP_LIVE);
+        draw_beams(&b, L, 0, R);
+    }
+    plat_keep_rows(PLAT_KEEP_END, R);
+    return 1;
+}
+
+/* the stage of a kept frame: the kept rows put back, the rows below drawn; 0 when nothing is kept (yet) */
+static int keep_stage(const StageView *v, const StageLayout *L)
+{
+    ConcertKeep *K = v->keep;
+    StageView c;
+    StagePal p;
+    PlatStageInfo info;
+    uint32_t key;
+    int R = keep_rows(L);
+    if (K->half) {                                       /* the rest of the next picture: then it is shown */
+        K->half = 0;
+        K->have = (uint8_t)(plat_keep_rows(PLAT_KEEP_HELD, R) && keep_half(v, L, 2, K->tb));
+        K->puts = 0;
+        K->tc = K->tb;
+    }
+    if (!K->have || !plat_keep_rows(PLAT_KEEP_PUT, R)) {
+        K->have = 0;
+        return 0;
+    }
+    K->puts++;
+    c = *v;
+    c.t = K->tc;                                         /* the kept picture's time: the still rows below too */
+    if (!concert_stage_key(&c, &key) || !plat_stage_begin(DOOMO_BACKDROP_CONCERT, key, concert_stage_still, &info)) {
+        K->have = 0;
+        return 0;
+    }
+    plat_stage_restore(0, R, L->w, L->h - R);
+    stage_pal(v->stage, &p);
+    draw_speakers(v, L, SP_LIVE);
+    draw_floor(v, L, &p, SP_LIVE);
+    c = *v;
+    c.beam_dt = (int)(v->t - K->tc);                     /* the beams go on below the kept ones */
+    {
+        /* a kicked speaker's cone reaches up into the kept rows: the beams over it from its top row on (the
+         * kept rows there already hold these same beams, which draw the same pixels again) */
+        int sh = L->big ? 26 : 18, top = L->floor_y - 2 * sh + sh / 2 - (sh / 3 + 1);
+        draw_beams(&c, L, top < R ? top : R, L->h);
+    }
+    return 1;
+}
+#endif
+
 void concert_draw_stage(const StageView *v, const StageLayout *L)
 {
     PlatStageInfo info;
@@ -913,8 +1028,21 @@ void concert_draw_stage(const StageView *v, const StageLayout *L)
     /* (G2-CO) a platform that keeps the still parts puts them back in one copy; only what moves is drawn. The
      * whole picture is put back on every frame, so nothing drawn over it needs a record (no plat_stage_end) */
     if (concert_stage_key(v, &key) && plat_stage_begin(DOOMO_BACKDROP_CONCERT, key, concert_stage_still, &info)) {
+        int keep = keep_ok(v, L);
+        if (keep && keep_stage(v, L)) {
+            ConcertKeep *K = v->keep;
+            /* both frames have the kept picture: begin the next one (tick t + 1's) */
+            if (K->puts >= 2 && keep_half(v, L, 1, v->t + 1u)) { K->tb = v->t + 1u; K->half = 1; K->have = 0; }
+            return;
+        }
+        if (!plat_stage_begin(DOOMO_BACKDROP_CONCERT, key, concert_stage_still, &info)) {
+            stage_parts(v, L, SP_ALL);
+            return;
+        }
         plat_stage_restore(0, 0, L->w, L->h);
         stage_parts(v, L, SP_LIVE);
+        /* nothing kept yet (the show's first frame, or the buffer was taken): drawn whole; the next picture begins */
+        if (keep && keep_half(v, L, 1, v->t + 1u)) { v->keep->tb = v->t + 1u; v->keep->half = 1; v->keep->have = 0; }
         return;
     }
 #else

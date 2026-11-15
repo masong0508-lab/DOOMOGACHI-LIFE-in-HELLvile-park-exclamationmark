@@ -53,6 +53,7 @@ typedef struct ConcertState {
     uint32_t setup_sig;         /* (G2-CO) what the setup's backdrop shows (setup_draw's hold) */
 #if !defined(DOOMO_PLATFORM_PS1)
     ChoirMini minis[CHOIR_MINI_N];   /* (G2-CO) the choir's smaller singers (StageView.choir_pct) */
+    ConcertKeep keep;                /* (G2-CO) the stage's rows kept at half rate (CLITE_HALF) */
 #endif
 } ConcertState;
 DOOMO_STATIC_ASSERT(sizeof(ConcertState) <= DOOMO_SCENE_SCRATCH, concert_state_fits_the_scratch);
@@ -199,7 +200,7 @@ static int fans_in_crowd(void)
 static int concert_lite(void)
 {
 #if defined(DOOMO_PLATFORM_GBA)
-    return CLITE_FLAMES;
+    return CLITE_FLAMES | CLITE_HALF;
 #else
     return 0;
 #endif
@@ -301,6 +302,10 @@ static void stage_begin(void)
 {
     memset(&C.v, 0, sizeof(C.v));
     view_trades();
+#if !defined(DOOMO_PLATFORM_PS1)
+    memset(&C.keep, 0, sizeof(C.keep));
+    if (C.v.lite & CLITE_HALF) C.v.keep = &C.keep;     /* the show's stage, not the setup's (that one is held) */
+#endif
     C.v.cast = &C.cast;
     C.v.genre = C.genre;
     C.v.stage = C.stage;

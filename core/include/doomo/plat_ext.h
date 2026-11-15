@@ -345,6 +345,24 @@ int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color);
  * screen width (the dream floor's rows). Returns 1 when the platform drew them (or the tick draws nothing), 0 to
  * have the core draw the rects. Weak default: 0. GBA: one row made in IWRAM, copied to every row (the UI group). */
 int plat_tile_rows(int y, int h, int x0, int tw, uint8_t ca, uint8_t cb);
+/* (G2-CO) The same beam, only the rows [y0, y1) of its bands (each band keeps the parity of its first row).
+ * Returns 1 when the platform drew them, 0 to have the core draw them. Weak default: 0 (not on the PS1). */
+int plat_beam_rows(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color, int y0, int y1);
+
+/* ---- (G2-CO) rows kept at half rate (the GBA concert's LED wall and beams at 15 Hz) -------------------------------
+ * A scene keeps the top `rows` rows of its picture in a buffer the platform owns (GBA: the OBJ VRAM, free in a
+ * bitmap scene; rows * 240 <= 16 KB) and builds the next picture of them over two ticks:
+ *   PLAT_KEEP_DRAW  the next 2D calls draw into the buffer instead of the frame (only rows [0, rows), and only
+ *                   after the frame's first 2D call); returns 1 when they do, 0 when the platform cannot
+ *   PLAT_KEEP_END   the 2D calls draw into the frame again
+ *   PLAT_KEEP_PUT   copy the buffer's rows [0, rows) into the frame; returns 1 when done, 0 when the buffer was
+ *                   lost since the last DRAW (another user of that memory): the scene draws those rows itself
+ *   PLAT_KEEP_HELD  1 when the buffer still holds what was drawn into it (asked before going on with a picture
+ *                   begun on an earlier tick), 0 when it was lost
+ *   PLAT_KEEP_DROP  forget the buffer (always 0)
+ * A skipped tick (plat_draw_skipped) does nothing and returns 0. Weak default: 0 (not on the PS1). */
+enum { PLAT_KEEP_DROP = 0, PLAT_KEEP_DRAW = 1, PLAT_KEEP_END = 2, PLAT_KEEP_PUT = 3, PLAT_KEEP_HELD = 4 };
+int plat_keep_rows(int op, int rows);
 
 /* ---- (S2-2) the 3D view held under a card -----------------------------------
  * A scene whose 3D view stands still (an intro card, a pause menu, a results or death screen: the world does not
