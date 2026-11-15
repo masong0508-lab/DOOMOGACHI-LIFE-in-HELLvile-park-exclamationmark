@@ -325,16 +325,12 @@ BLIT2_ARM void vid_beam_ui(int ax, int ay, int ty, int dx, int hw0, int dhw, int
         int cx = ax + dx * f / 256, hw = hw0 + dhw * f / 256, x0 = cx - hw, x1 = cx + hw + 1;
         if ((x0 + y) & 1) x0++;
         if (x1 > x0) {
-            if (y >= ylo && y + 3 <= yhi) {
-                vid_checker_ui(x0, y, x1 - x0, 3, color);
-            } else if (y + 3 > ylo && y < yhi) {
-                /* (G2-CO) a band cut by [ylo, yhi): its rows one by one, each with the parity of the band's first
-                 * row (concert_gfx.c beam()) */
-                int j;
-                for (j = 0; j < 3; j++)
-                    if (y + j >= ylo && y + j < yhi && x1 > x0 + (j & 1))
-                        vid_checker_ui(x0 + (j & 1), y + j, x1 - x0 - (j & 1), 1, color);
-            }
+            /* (G2-CO) only the band's rows in [ylo, yhi). The checker's parity is the band's first row's (concert_gfx.c
+             * beam()): a cut that starts on the band's odd row draws that row alone one pixel in; the rows after it
+             * start on an even row again, so one call keeps the parity. */
+            int lo = y < ylo ? ylo : y, hi = y + 3 > yhi ? yhi : y + 3;
+            if (lo < hi && ((lo - y) & 1)) { vid_checker_ui(x0 + 1, lo, x1 - x0 - 1, 1, color); lo++; }
+            if (lo < hi) vid_checker_ui(x0, lo, x1 - x0, hi - lo, color);
         }
         f += q;
         rem += r;
