@@ -1859,6 +1859,66 @@ int talk_gen_more(TalkConv *c, TalkLine *out, TalkTrace *tr)
 
 #ifndef TALK_NO_UNK
 /* ---- the unknown word (design 4) -------------------------------------------------------------------------- */
+/* A wider stem net for the word that would be said back or guessed at (review of TM2d: the lexicon's one-edit
+ * fence missed misspelt slurs, sexual and fetish words and self-harm words). Word and stems are both folded
+ * (k->c, z->s, y->i, repeats collapsed, apostrophe and hyphen dropped) and the word is searched for the stems;
+ * a leading '^' anchors a stem to the start, a trailing '$' to the end. A false hit only costs a plain ask
+ * (no echo, no guess), so the net is wide on purpose. */
+static const char *const unk_stems[] = {
+    "^nig", "niga", "nigr", "nigu", "nega", "negr", "spic", "chink", "gook", "cunt", "twat", "tit", "pussy", "^cock", "fag", "^dick",
+    "retard", "mong", "gyps", "gypo", "pikey", "darkie", "jihad", "maoist", "nazi", "hitler", "paki", "wetback", "beaner",
+    "coon", "dago", "kike", "tranny", "shemale", "ladyboy", "halfbreed", "mulatto", "injun", "redskin", "eskimo",
+    "porn", "sex", "xvid", "vore", "bestial", "zoophil", "necro", "pedo", "paedo", "loli", "shota", "incest",
+    "rape", "rapist", "molest", "^cum", "wank", "fap", "dildo", "^anal", "anus", "boob", "nippl", "arse", "asshol",
+    "slut", "whor", "hore", "bitch", "fuck", "shit", "piss", "vagin", "vulva", "penis", "ejacul", "orgas", "horny",
+    "hentai", "fetish", "bdsm", "bondage", "cuck", "milf", "gangbang", "blowjo", "handjo", "rimjo", "sperm", "testic",
+    "scrot", "bollock", "dong$", "jizz", "jism", "creampie", "squirt", "onanis", "mastur",
+    "anorex", "bulim", "suicid", "overdos", "noose", "slitwrist", "selfharm", "^kys$", "^kms$",
+    "isis", "terror", "bomb", "genocid", "holocaust", "lynch", "slave", "^abo$", "^jap$", "^wop$", "^pak$",
+    "^gyp$", "^tard$", "^spaz", "^homo$", "^nip$", "^chin$", "^kik$", "^fats$", 0
+};
+
+static int unk_fold(const char *src, char *dst, int max)
+{
+    int n = 0;
+    for (; *src && n < max - 1; src++) {
+        char ch = *src;
+        if (ch == '\'' || ch == '-') continue;
+        if (ch == '^' || ch == '$') { dst[n++] = ch; continue; }
+        if (ch == 'k') ch = 'c';
+        else if (ch == 'z') ch = 's';
+        else if (ch == 'y') ch = 'i';
+        if (n && dst[n - 1] == ch) continue;
+        dst[n++] = ch;
+    }
+    dst[n] = 0;
+    return n;
+}
+
+static int unk_stem_bad(const char *w)
+{
+    char f[24], st[24];
+    int n, k;
+    n = unk_fold(w, f, (int)sizeof f);
+    for (k = 0; unk_stems[k]; k++) {
+        const char *p;
+        int l, a = 0, z = 0;
+        l = unk_fold(unk_stems[k], st, (int)sizeof st);
+        p = st;
+        if (*p == '^') { a = 1; p++; l--; }
+        if (l > 0 && p[l - 1] == '$') { z = 1; l--; }
+        if (l <= 0 || l > n) continue;
+        if (a && z) { if (n == l && strncmp(f, p, (size_t)l) == 0) return 1; }
+        else if (a) { if (strncmp(f, p, (size_t)l) == 0) return 1; }
+        else if (z) { if (strncmp(f + n - l, p, (size_t)l) == 0) return 1; }
+        else {
+            int i;
+            for (i = 0; i + l <= n; i++) if (strncmp(f + i, p, (size_t)l) == 0) return 1;
+        }
+    }
+    return 0;
+}
+
 /* E1 to E6 on the word the parser pointed at, from the bubble text only (E2); the kid-room length rule. 0: do not echo */
 int talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18])
 {
@@ -1885,6 +1945,7 @@ int talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18])
     w[n] = 0;
     if (kid && n > 12) return 0;                                          /* a kid room echoes nothing long */
     if (talk_safe_hate_word(w, 1)) return 0;                              /* E4 */
+    if (unk_stem_bad(w)) return 0;                                        /* E4: the wide stem net */
     if (talk_lex_known(w, NULL)) return 0;                                /* E1: it is not a word the lexicon knows */
     (void)talk_lex_near(w, &cid, &unsafe);
     if (unsafe) return 0;                                                 /* E4: within one edit of a register, minor, hate word */
@@ -1930,7 +1991,7 @@ void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u)
     raw[n] = 0;
     TC_SET_UNK_MODE(c, TU_NOECHO);
     /* step 1: a guess is a real concept, so only for a word that is itself harmless (E4) in a room that may say it */
-    if (valid && !talk_safe_hate_word(raw, 1) && talk_lex_near(raw, &cid, &unsafe) && !unsafe && talk_gen_concept_ok(cid, &c->aud)) {
+    if (valid && !talk_safe_hate_word(raw, 1) && !unk_stem_bad(raw) && talk_lex_near(raw, &cid, &unsafe) && !unsafe && talk_gen_concept_ok(cid, &c->aud)) {
         TalkConcept tc;
         if (talk_db_concept(cid, &tc) && !(tc.flags & TCF_GRIEF)) { c->unk_guess = cid; TC_SET_UNK_MODE(c, TU_GUESS); }
     }

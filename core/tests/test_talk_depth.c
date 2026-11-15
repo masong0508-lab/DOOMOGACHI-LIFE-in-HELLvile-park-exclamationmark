@@ -664,7 +664,7 @@ TEST(unknown_word_named)
 }
 
 typedef struct Echo { char text[80]; int yes; int kid; } Echo;
-static Echo echo[160];
+static Echo echo[400];
 static int necho;
 
 static int load_echo(const char *rel)
@@ -672,7 +672,7 @@ static int load_echo(const char *rel)
     FILE *f = fopen(rel, "r");
     char buf[256];
     if (!f) return 0;
-    while (fgets(buf, sizeof buf, f) && necho < 160) {
+    while (fgets(buf, sizeof buf, f) && necho < 400) {
         char *a, *b, *c;
         size_t n = strlen(buf);
         while (n && (buf[n - 1] == '\n' || buf[n - 1] == '\r')) buf[--n] = 0;
@@ -699,7 +699,7 @@ static int load_adv(const char *rel)
     FILE *f = fopen(rel, "r");
     char buf[256];
     if (!f) return 0;
-    while (fgets(buf, sizeof buf, f) && necho < 160) {
+    while (fgets(buf, sizeof buf, f) && necho < 400) {
         char *a;
         size_t n = strlen(buf);
         while (n && (buf[n - 1] == '\n' || buf[n - 1] == '\r')) buf[--n] = 0;
@@ -752,6 +752,8 @@ TEST(unknown_word_never_echoed_when_unsafe)
         CHECK_EQ(k, 0);
         if (c.unk[0]) printf("      '%.60s' has an echo word set: %.17s\n", echo[i].text, c.unk);
         CHECK_EQ((int)c.unk[0], 0);
+        if (c.unk_guess) printf("      '%.60s' is guessed at: concept %d\n", echo[i].text, (int)c.unk_guess);
+        if (echo[i].text[0] >= 'a') CHECK_EQ((int)c.unk_guess, 0);                  /* a flagged word gets no guess either */
         /* the output holds none of the input's tokens (3 letters and more) */
         for (j = 0; j < x.n; j++) {
             int q;

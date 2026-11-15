@@ -64,7 +64,8 @@ TEST(talk_census_smoke)
      * after a refused request or a question handed back (Q8d) is under 0.5%; a filler or a short reply (Q8e) under 0.1%
      * (every one left is a three-sentence line that cannot take a fourth, or a lower-case voice); a topic act answered
      * without the topic (Q8b) under 5% (it was 27% on the engine before the layers; the rest are bank lines that fill no
-     * bubble). Q8a stays what the bank's own act labels make it (docs/TALK.md 6n). */
+     * bubble). THESE LIMITS ARE A TEMPORARY RATCHET, not the spec target (7.2: Q8b 0.5%, Q8e 0, Q8a 0); measured on the
+     * smoke census at landing: Q8a 123 of 562, Q8b 3.2%, Q8e 5 of 20,000. Tighten them as TM2e fixes the bank. Q8a stays what the bank's own act labels make it (docs/TALK.md 6n). */
     CHECK_EQ(r.q8[Q8_UNKNOWN], 0);
     CHECK_MSG(r.q8[Q8_HOOK] * 200 <= r.q8_n[Q8_HOOK], "Q8d %llu of %llu", (unsigned long long)r.q8[Q8_HOOK], (unsigned long long)r.q8_n[Q8_HOOK]);
     CHECK_MSG(r.q8[Q8_FILLER] * 1000 <= r.contexts, "Q8e %llu of %llu", (unsigned long long)r.q8[Q8_FILLER], (unsigned long long)r.contexts);
