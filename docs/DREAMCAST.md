@@ -578,7 +578,7 @@ numbers and the same bytes in every shot):
 | check | what | 2026-11-15 |
 |---|---|---|
 | boot | the CDI boots to the title without the movie | title 7.12 s after power-on (426 video frames: the game's mailbox is up after 2.7 s, then the boot scene's 123 ticks) |
-| intro | `tests/fmv/intro.txt --fmv`: the movie from the disc, then the title | starts 3.0 s after power-on, 152 frames shown, 0 skipped, ends 13.3 s after power-on (10,269 ms), the title follows 4.1 s later (17.4 s); 304 sound slots |
+| intro | `tests/fmv/intro.txt --fmv`: the movie from the disc, then the title | starts 3.0 s after power-on, 152 frames shown, 0 skipped, ends 13.3 s after power-on (10,269 ms), the title scene is set 4.1 s later (17.5 s, `scene: set TITLE`); 304 sound slots; one audio underrun in the handover from the movie's PCM slots to the synth (the 20-vblank drain and `doomo_init()` push nothing for about 0.3 s; 1 of 447 slots, heard as a click at worst, left as is) |
 | skip | `tests/fmv/skip.txt`: START during the movie | skipped after 3.7 s, the game boots to the title |
 | e2e | `tests/disc/e2e1.txt` then `e2e2.txt` on one VMU image: title, Free Play, a new island, the island's menu, Save / Load, A; `vmu_check.py` on the image; a restart; the title's Continue loads it; `load 1` gives the crc `e2e1` printed | the save writes 27 blocks in 2.96-3.00 s, the title's load reads 9,734 bytes in 0.55-0.66 s |
 | old | `tests/disc/old_saves_vmu.bin`, the VMU image the build before DC9C made (story and free-play saves of DC4's format), loaded by `tests/disc/old.txt` | both saves found, verified and loaded by the core (its own version and CRC checks); each written back by the current build and loaded again with the same town crc |
@@ -595,7 +595,7 @@ another crc), only with themselves after a round trip.
 |---|---|---|
 | `doomogachi.cdi` | 7,637,587 B | 8,744,851 B (`INTRO.DMV` 959,692 B, `1ST_READ.BIN` 5,080,652 -> 5,089,572 B); 8,784,563 B on the tree rebased onto the other streams' core changes |
 | ELF image (`make -C dc sizes`) | 9,657,580 B, 7,049,996 B free above `_end` | 9,664,376 B, 7,040,428 B free: +6,796 B (code 6 KB, `.bss` +800 B; the 365 KB of decode buffers are heap, for the movie only). After the rebase 9,699,624 B, 7,005,228 B free |
-| power-on to the title | 7.12 s | 7.12 s scripted; 17.4 s with the movie |
+| power-on to the title | 7.12 s | 7.12 s scripted; 17.5 s with the movie |
 | save a new free-play island (27 blocks) | 2.96 s | 2.96-3.00 s |
 | save a story island (33 blocks) | 3.67 s | 3.67 s |
 | save the 1000-citizen worst case (128 blocks; 129 after the rebase onto the other streams' core changes) | 13.4 s | 13.4 s (13.5 s, 129 blocks) |

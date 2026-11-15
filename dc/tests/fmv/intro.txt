@@ -16,7 +16,8 @@ print-frames fmv_done
 expect-log DC: fmv: /cd/INTRO.DMV, 152 frames
 expect-log 152 frames shown, 0 skipped
 wait-log 60 doomo: init
-wait 160
+wait-log 900 scene: set TITLE
+print-frames title_set
+wait 20
 expect-scene TITLE
-print-frames title_after_fmv
 shot fmv_title
