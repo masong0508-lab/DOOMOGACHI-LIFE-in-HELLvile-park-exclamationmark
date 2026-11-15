@@ -57,7 +57,7 @@
   "Of course you'd say that. That's why I like you."
 @rule core.joke.w_laugh_hellborn guard: hellborn&!kid_speaker act: laugh
   "Ha! Down in the pit, we call that a good time. Good one."
-  "Heh. That's almost as funny as the damned queue. Almost."
+  "Heh. That's almost as funny as the endless queue. Almost."
 @rule core.joke.w_laugh_ghost guard: ghost act: laugh
   "Oooh ha ha! I'm so tickled. I'm going to rattle."
   "That one is gold. {.}Sorry. Old habit."
