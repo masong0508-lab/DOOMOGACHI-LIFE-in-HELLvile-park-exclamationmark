@@ -166,6 +166,7 @@ New file `core/src/creator_house.c` (HOUSEHOLDS owns it; `creator.c` gets one ho
 | **HH-DATA** | `household.h/.c`, cap 20 everywhere, the `HOUS` chunk, join / leave, old saves load, `household_new_person`, tests (about 40), GBA / PS1 byte report | core tests, SAN, check-gen, GBA + PS1 builds, save-budget test green; memory table above measured |
 | **HH-CREATOR** | `creator_house.c`: strip, add / edit / move in / out / reorder / make head, old wizard removed | runner walk-through shots per platform, 30 fps with a direction held, texts fit |
 | **HH-REL** | the relationship editor (pair, tree, feelings), reverse fill, the rule checks | tests for every rule above, shots, 30 fps |
+| **HH-PETS** | pet families (section 9): the pet pool, creator page, care, save section | pet tests, shots, 30 fps, bytes per platform |
 | **HH-USE** | sim, Talk band, houses, news | sim tests, Talk census unchanged, news lines |
 
 HH-CREATOR and HH-REL both need HH-DATA. HH-USE needs HH-DATA only. They touch different files, so
@@ -184,3 +185,37 @@ docs (`docs/CREATOR.md`, `docs/PLAYAS.md`), `ROADMAP.md`, old saves load.
 5. A minor is never a parent, partner, spouse, fiance or crush; a minor is never an adult's
    roommate.
 6. Feelings are town-graph edges, not household data.
+
+## 9. Pet families (owner entry BOREAGOTCHI FAMILIES, 2026-11-15) - package HH-PETS, after HH-REL
+
+Every Boreagotchi (the player and each resident) can have up to **8 pet family members** (parent,
+sibling, offspring, partner; pet-only relations `PREL_*`). A pet family member is a small record,
+not a resident:
+
+```c
+typedef struct PetFam {      /* 24 B */
+    uint16_t owner;          /* resident id, or DOOMO_PLAYER_ID; 0xFFFF = free slot   */
+    uint32_t seed;           /* the pet's look seed (pet*.c draws it as today)        */
+    char     name[12];
+    uint8_t  rel, kind;      /* PREL_*, FAMPET_* (family.h)                            */
+    uint8_t  fed, mood, bond;/* the few care stats (0..15 each, derived loss rules unchanged) */
+    uint8_t  spare;
+} PetFam;
+```
+
+* One shared pool of **`PETFAM_MAX` = 48** records for the whole town (all platforms), so 8 per
+  Boreagotchi is the cap per owner and 48 is the cap at once: six full families, or many small ones.
+  Pool size is a compile-time constant. Resident bytes: 48 x 24 = **1,152 B** on every platform
+  (GBA EWRAM from CREATOR's share; PS1 resident: the coordinator's reserve, asked with these numbers
+  before HH-PETS is built, the HH-DATA 3,584 B approval does not cover it).
+* Saved as a second section of the `HOUS` chunk (nothing written while the pool is empty), +1,160 B,
+  so `SAVE_EXT_MAX_HOUS` is about 4,600 B.
+* The creator household view shows the owner's pets in a second strip row under the people (same
+  scrolling strip), with add / edit (look seed picker with the existing pet look, name, relation) /
+  move out. At the 8 cap or the 48 pool cap the creator says so in one plain line ("Pip has 8 pets
+  already", "The island has no room for more pet families").
+* Care and look use `pet*.c` / `family.h` pet code (cross-stream, small, marked); the player's
+  household pets stay the existing pool pets of household 0 and count toward its 20; the 8-pet
+  family is separate from that (a Boreagotchi's own family).
+* Kid and content rules apply as for pets today: nothing suggestive, a pet's loss is gentle and off-screen,
+  no harm shown to a child.
