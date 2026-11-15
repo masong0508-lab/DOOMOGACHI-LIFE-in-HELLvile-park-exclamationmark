@@ -46,6 +46,7 @@
  *   DC_HC_OPT id<<8|v      (DC6C) `opt ID VALUE`: opt_set, result opt_get
  *   DC_HC_TALK_BANK n      (TD1) `talk-bank open|line|enter|ready`: Talk's bank from the disc (TALK_EN.BIN) opened and
  *                          verified, one greeting generated from it (logged), the Talk screen entered
+ *   DC_HC_TALKQ            (TD2) questions about the Talk screen for dcrun's talk-* commands (talkhc.c)
  * and the tick hold of the harness's "sync on" (dc_harness_hold).
  */
 #include <string.h>
@@ -403,6 +404,11 @@ void dc_harness_cmd(void)
         } else if (arg == 2 && who >= 0) {
             if (home_talk_enter(who)) r = 2;
         }
+        break; }
+    case DC_HC_TALKQ: {                 /* TD2: the Talk screen's eyes (talkhc.c) */
+        char nm[sizeof(dc_mailbox.name)];
+        mailbox_name(nm);
+        r = dc_talk_hcmd(arg, nm);
         break; }
     default:
         break;

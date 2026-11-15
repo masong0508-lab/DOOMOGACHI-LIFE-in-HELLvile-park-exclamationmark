@@ -122,6 +122,8 @@ CDI   := $(BUILD)/doomogachi.cdi
 DEFS   := -DDOOMO_PLATFORM_DC=1
 # TD1: Talk is built in; its database TALK_en.BIN goes on the disc (dc/src/talkdisc.c)
 DEFS   += -DDOOMO_HAS_TALK=1
+# TD2: the read-only views of the Talk screen that dcrun's talk-* commands use (dc/src/talkhc.c)
+DEFS   += -DDOOMO_TALK_DEBUG=1
 # DC5b: MUSIC_IRQ=0 builds the music engine's legacy bridge instead of its IRQ tier
 MUSIC_IRQ ?= 1
 DEFS   += -DDC_MUSIC_IRQ=$(MUSIC_IRQ)

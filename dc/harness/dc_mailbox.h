@@ -142,7 +142,22 @@ enum {
     /* TD1: Talk's database on the disc (dc/src/talkdisc.c): arg 0 opens TALK_EN.BIN and verifies every bank's
      * CRC, 1 makes one greeting line of the first resident (logged), 2 opens the Talk screen with that
      * resident (home_talk_enter), 3 only asks whether the bank is there (no waiting for the slices); result 2 on success, 1 on failure (0 before the command ran) */
-    DC_HC_TALK_BANK = 32
+    DC_HC_TALK_BANK = 32,
+    /* TD2: the Talk screen's eyes (dc/src/talkhc.c): arg = DC_TQ_* in the low byte, the rest packed per
+     * question, name = a text; dcrun's talk-* commands are built on it */
+    DC_HC_TALKQ = 33
+};
+enum {
+    DC_TQ_ENTER = 1,                     /* name = who: 1 nobody called so, 2 Talk did not start, 3 started */
+    DC_TQ_STATE,                         /* 0 no Talk, else 1 | busy<<1 | page<<2 | sel<<5 | nrows<<11 | (to_id+1)<<17 | gate<<28 */
+    DC_TQ_FIND,                          /* kind<<8 | (arg+1)<<12 | (v+1)<<22, name = exact text or "": row + 1 */
+    DC_TQ_ROWSAY,                        /* name shown by a row: 2, by none: 1, no Talk: 0 */
+    DC_TQ_YOU,                           /* name in the header's "You: ..." line: 2 / 1 / no Talk 0 */
+    DC_TQ_REPLY,                         /* 1 | act<<1 | sincere<<8 | care<<9 | romance<<10 of the last answer */
+    DC_TQ_ACT,                           /* name -> act id + 1; with bit 8: act (arg >> 16) -> category + 1 */
+    DC_TQ_DIALOG,                        /* glyphs shown by the dialogue box + 1, 0 without one */
+    DC_TQ_WHO,                           /* name (a number, "everyone", a first or full name) -> id + 2 (everyone 1), 0 nobody */
+    DC_TQ_PARTY                          /* name: one more person for the next talk; bit 8 starts the list over */
 };
 
 #endif

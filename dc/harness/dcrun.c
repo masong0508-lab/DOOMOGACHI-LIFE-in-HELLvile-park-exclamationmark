@@ -1172,6 +1172,244 @@ static int scene_is(const char *name)
     return glog && strstr(glog, pat);
 }
 
+
+/* ---- TD2: the Talk screen played through the pad -------------------------------------------------
+ * The native runner's T8 commands (core/native/runner_main.c): every one presses real buttons and steps real
+ * ticks here, on the host side; the game only answers questions about the screen (DC_HC_TALKQ, talkhc.c). */
+static const char *const tk_kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick" };
+enum { TKS_ON = 1, TKS_BUSY = 2 };
+static const char *const tk_pages[] = { "main", "acts", "topic", "invite", "more" };
+
+static int tk_q(uint32_t arg, const char *name, uint32_t *r) { return mb_cmd(DC_HC_TALKQ, arg, name, r); }
+
+static int tk_press(const char *b)
+{
+    char *a[1] = { (char *)b };
+    uint16_t m;
+    int lt, rt;
+    if (!parse_buttons(a, 1, &m, &lt, &rt)) return 0;
+    buttons_down(m, lt, rt);
+    if (!run_ticks(sync_mode ? 1 : 2)) return 0;
+    buttons_up(m, lt, rt);
+    return run_ticks(1);
+}
+
+/* the row of the page by kind, arg, v and exact text (-1 any / ""); -1 when none, -2 when the host failed */
+static int tk_find(int kind, int arg, int v, const char *text)
+{
+    uint32_t r;
+    if (!tk_q(DC_TQ_FIND | (uint32_t)kind << 8 | (uint32_t)(arg + 1) << 12 | (uint32_t)(v + 1) << 22, text, &r)) return -2;
+    return (int)r - 1;
+}
+
+static int tk_kind(const char *name)
+{
+    for (int i = 0; i < 11; i++) if (!strcmp(tk_kinds[i], name)) return i;
+    return 0;
+}
+
+static int tk_goto(int to)
+{
+    for (int guard = 0; guard < 80; guard++) {
+        uint32_t r;
+        int sel, nrows, down, up;
+        if (!tk_q(DC_TQ_STATE, NULL, &r)) return 0;
+        if (!(r & TKS_ON)) return 1;
+        sel = (int)(r >> 5 & 63);
+        nrows = (int)(r >> 11 & 63);
+        if (sel == to || nrows <= 0) return 1;
+        down = (to - sel + nrows) % nrows;
+        up = nrows - down;
+        if (!tk_press(down <= up ? "DOWN" : "UP")) return 0;
+    }
+    return 1;
+}
+
+static int tk_pick(int row)
+{
+    if (row < 0) return 0;
+    return tk_goto(row) && tk_press("A");
+}
+
+/* the answer's dialogue box: A until the list is back; a patient reader waits for the line to finish typing */
+static int tk_read(int max)
+{
+    for (int k = 0; k < max; k++) {
+        uint32_t r, shown;
+        int last = -1, still = 0;
+        if (!tk_q(DC_TQ_STATE, NULL, &r)) return -1;
+        if (!(r & TKS_ON) || !(r & TKS_BUSY)) return 1;
+        for (int w = 0; w < 150 && still < 4; w++) {
+            if (!tk_q(DC_TQ_DIALOG, NULL, &shown)) return -1;
+            still = (int)shown == last ? still + 1 : 0;
+            last = (int)shown;
+            if (!run_ticks(1)) return -1;
+        }
+        if (!tk_press("A")) return -1;
+    }
+    uint32_t r;
+    if (!tk_q(DC_TQ_STATE, NULL, &r)) return -1;
+    return !(r & TKS_ON) || !(r & TKS_BUSY);
+}
+
+static int tk_main(void)
+{
+    for (int k = 0; k < 6; k++) {
+        uint32_t r;
+        if (!tk_q(DC_TQ_STATE, NULL, &r)) return -1;
+        if (!(r & TKS_ON)) return 0;
+        if (r & TKS_BUSY) { if (tk_read(30) < 0) return -1; continue; }
+        if (((r >> 2) & 7) == 0) return 1;
+        if (!tk_press("B")) return -1;
+    }
+    return 0;
+}
+
+static int tk_act(const char *name)
+{
+    uint32_t r;
+    if (!tk_q(DC_TQ_ACT, name, &r)) return -2;
+    return (int)r - 1;
+}
+
+/* 1 handled, 0 the script stops (a host failure), already reported through fail() otherwise */
+static int talk_cmd(const char *c, int n, char **v, int lineno)
+{
+    const char *a1 = n > 1 ? v[1] : "";
+    uint32_t r, st;
+    int ok;
+    if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+    ok = (st & TKS_ON) != 0;
+    if (!strcmp(c, "talk-enter")) {
+        if (!tk_q(DC_TQ_ENTER, a1, &r)) return 0;
+        if (r != 3) { fail("line %d: talk-enter %s: %s", lineno, a1, r == 1 ? "nobody called so" : "Talk did not start"); return 1; }
+        if (!run_ticks(3)) return 0;
+        if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+        if (!(st & TKS_ON)) fail("line %d: Talk is not the top scene after talk-enter", lineno);
+    } else if (!strcmp(c, "talk-party")) {
+        for (int i = 1; i < n; i++) {
+            if (!tk_q(DC_TQ_PARTY | (i == 1 ? 0x100u : 0u), v[i], &r)) return 0;
+            if (!r) { fail("line %d: talk-party: nobody called %s", lineno, v[i]); return 1; }
+        }
+    } else if (!strcmp(c, "talk-read")) {
+        int k;
+        if (!ok) { fail("line %d: talk-read: no Talk screen", lineno); return 1; }
+        k = tk_read(n > 1 ? atoi(a1) : 30);
+        if (k < 0) return 0;
+        if (!k) fail("line %d: the answer never ended", lineno);
+    } else if (!strcmp(c, "talk-quick") || !strcmp(c, "talk-quick-act")) {
+        int act = c[10] ? tk_act(a1) : -1, row;
+        if (!ok || (st & TKS_BUSY) || (c[10] && act < 0)) { fail("line %d: %s: the list is not up (or no such act)", lineno, c); return 1; }
+        row = ((st >> 2 & 7) == 0) ? (c[10] ? tk_find(tk_kind("quick"), -1, act, "") : tk_find(tk_kind("quick"), atoi(a1), -1, "")) : -1;
+        if (row == -2) return 0;
+        if (!tk_pick(row)) fail("line %d: no quick reply %s", lineno, a1);
+    } else if (!strcmp(c, "talk-say")) {
+        int act = tk_act(a1), cat, row, m;
+        if (!ok || act < 0) { fail("line %d: talk-say: %s", lineno, ok ? "no such act" : "no Talk screen"); return 1; }
+        if (!tk_q(DC_TQ_ACT | 0x100u | (uint32_t)act << 16, NULL, &r)) return 0;
+        cat = (int)r - 1;
+        if ((m = tk_main()) <= 0) { if (m < 0) return 0; fail("line %d: talk-say: cannot get to the main page", lineno); return 1; }
+        if (!tk_pick(tk_find(tk_kind("cat"), cat, -1, ""))) { fail("line %d: the screen has no category for %s", lineno, a1); return 1; }
+        row = tk_find(tk_kind("act"), act, -1, "");
+        if (row < 0) { fail("line %d: the screen does not offer %s", lineno, a1); return 1; }
+        if (!tk_pick(row)) return 0;
+        if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+        if ((st >> 2 & 7) == 2) {                     /* the act wants a topic */
+            int t = n > 2 ? tk_find(tk_kind("pick"), -1, -1, v[2]) : -1;
+            if (t < 0) t = tk_find(tk_kind("notopic"), -1, -1, "");
+            if (!tk_pick(t)) fail("line %d: talk-say %s: no topic row", lineno, a1);
+        }
+    } else if (!strcmp(c, "talk-type") || !strcmp(c, "talk-key")) {
+        /* talk-type: the characters go to the text entry as the native runner feeds them; talk-key: the same
+         * line through the Maple keyboard (device N keyboard), the way a player with a keyboard types it */
+        int m = tk_main();
+        if (m <= 0) { if (m < 0) return 0; fail("line %d: %s: no main page", lineno, c); return 1; }
+        if (!tk_pick(tk_find(tk_kind("type"), -1, -1, ""))) { fail("line %d: the screen has no typing row", lineno); return 1; }
+        if (!run_ticks(2)) return 0;
+        if (c[5] == 'k') {
+            if (!type_text(a1) || !type_text("\\n")) return 0;
+        } else {
+            for (const char *t = a1; *t; t++) {
+                if (!mb_cmd(DC_HC_TEXT_FEED, (unsigned char)*t, NULL, &r)) return 0;
+                if (!r) { fail("line %d: no text entry open for %s", lineno, a1); return 1; }
+                if (!run_ticks(1)) return 0;
+            }
+            if (!mb_cmd(DC_HC_TEXT_FEED, '\n', NULL, &r)) return 0;
+            if (!r) { fail("line %d: no text entry open for OK", lineno); return 1; }
+        }
+        if (!run_ticks(4)) return 0;
+    } else if (!strcmp(c, "talk-page")) {
+        int m = tk_main();
+        if (m <= 0) { if (m < 0) return 0; fail("line %d: talk-page: no main page", lineno); return 1; }
+        if (!strcmp(a1, "more")) { if (!tk_pick(tk_find(tk_kind("more"), -1, -1, ""))) fail("line %d: the screen has no Options row", lineno); }
+        else if (strcmp(a1, "main")) fail("line %d: talk-page is main or more, not %s", lineno, a1);
+    } else if (!strcmp(c, "talk-invite")) {
+        int m = tk_main(), who;
+        if (!tk_q(DC_TQ_WHO, a1, &r)) return 0;
+        who = (int)r - 2;
+        if (m <= 0 || who < 0) { if (m < 0) return 0; fail("line %d: talk-invite: no main page or nobody called %s", lineno, a1); return 1; }
+        if (!tk_pick(tk_find(tk_kind("more"), -1, -1, "")) || !tk_pick(tk_find(tk_kind("invite"), -1, -1, ""))) { fail("line %d: the screen offers no invite", lineno); return 1; }
+        if (!tk_pick(tk_find(tk_kind("pick"), 1, who, ""))) fail("line %d: the invite list does not offer %s", lineno, a1);
+    } else if (!strcmp(c, "talk-to")) {
+        int who;
+        if (!tk_q(DC_TQ_WHO, a1, &r)) return 0;
+        who = (int)r - 2;
+        if (!ok || !r) { fail("line %d: talk-to: no talk or nobody called %s", lineno, a1); return 1; }
+        for (int k = 0; k < 6; k++) {
+            if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+            if ((int)((st >> 17) & 2047) - 1 == who) break;
+            if (!tk_press("SELECT")) return 0;
+        }
+        if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+        if ((int)((st >> 17) & 2047) - 1 != who) fail("line %d: the talk cannot be spoken to %s", lineno, a1);
+    } else if (!strcmp(c, "talk-leave")) {
+        for (int k = 0; k < 40; k++) {
+            if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+            if (!(st & TKS_ON)) break;
+            if (!tk_press((st & TKS_BUSY) ? "A" : "B")) return 0;
+        }
+        if (!run_ticks(2)) return 0;
+        if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+        if (st & TKS_ON) fail("line %d: Talk did not end", lineno);
+    } else if (!strcmp(c, "expect-talk")) {
+        int want = n > 1 && strcmp(a1, "off") != 0;
+        if (ok != want) fail("line %d: %s", lineno, want ? "the Talk screen is not up" : "the Talk screen is still up");
+    } else if (!strcmp(c, "expect-talk-page")) {
+        if (!ok || strcmp(tk_pages[st >> 2 & 7], a1)) fail("line %d: expected the Talk page %s, it is %s", lineno, a1, ok ? tk_pages[st >> 2 & 7] : "(no talk)");
+    } else if (!strcmp(c, "expect-talk-row")) {
+        int want = n > 2 ? atoi(v[2]) : 1;
+        if (!tk_q(DC_TQ_ROWSAY, a1, &r)) return 0;
+        if ((r == 2) != (want != 0)) fail("line %d: %s \"%s\"", lineno, want ? "no row of the page shows" : "a row of the page shows", a1);
+    } else if (!strcmp(c, "expect-talk-you")) {
+        int want = n > 2 ? atoi(v[2]) : 1;
+        if (!tk_q(DC_TQ_YOU, a1, &r)) return 0;
+        if (!r || (r == 2) != (want != 0)) fail("line %d: the header %s \"%s\"", lineno, want ? "does not say" : "says", a1);
+    } else if (!strcmp(c, "expect-talk-quick")) {
+        int act = tk_act(a1), want = n > 2 ? atoi(v[2]) : 1, row;
+        if (!ok || act < 0) { fail("line %d: expect-talk-quick: no talk or no such act", lineno); return 1; }
+        row = (st >> 2 & 7) == 0 ? tk_find(tk_kind("quick"), -1, act, "") : -1;
+        if (row == -2) return 0;
+        if ((row >= 0) != (want != 0)) fail("line %d: %s %s", lineno, want ? "no quick reply says" : "a quick reply says", a1);
+    } else if (!strcmp(c, "expect-talk-gate")) {
+        static const char *const gates[] = { "pass", "refuse", "refuse_minor", "deflect", "hate", "distress", "k7" };
+        int g = (int)(st >> 28 & 7);
+        if (!ok || g > 6 || strcmp(gates[g], a1)) fail("line %d: expected the gate to say %s, it says %s", lineno, a1, ok && g < 7 ? gates[g] : "(no talk)");
+    } else if (!strcmp(c, "expect-talk-reply-romance") || !strcmp(c, "expect-talk-care") || !strcmp(c, "expect-talk-reply-sincere")) {
+        int want = n > 1 ? atoi(a1) : (c[12] == 'c' ? 1 : 0), got;
+        if (!tk_q(DC_TQ_REPLY, NULL, &r)) return 0;
+        got = c[12] == 'r' ? (int)(r >> 10 & 1) : c[12] == 'c' ? (int)(r >> 9 & 1) : (int)(r >> 8 & 1);
+        if (!r || got != (want != 0)) fail("line %d: %s is %d, wanted %d", lineno, c, got, want);
+    } else if (!strcmp(c, "expect-talk-to")) {
+        int who;
+        if (!tk_q(DC_TQ_WHO, a1, &r)) return 0;
+        who = (int)r - 2;
+        if (!ok || !r || (int)((st >> 17) & 2047) - 1 != who) fail("line %d: the talk is not spoken to %s", lineno, a1);
+    } else {
+        fail("line %d: unknown talk command '%s'", lineno, c);
+    }
+    return 1;
+}
+
 static int run_script(FILE *f)
 {
     char line[1024], raw[1024], *v[32];
@@ -1486,6 +1724,8 @@ static int run_script(FILE *f)
             memset(rumble_seen, 0, sizeof rumble_seen);
         } else if (!strcmp(c, "vmu-shot") && n >= 2) {
             vmu_shot(v[1]);
+        } else if (!strncmp(c, "talk-", 5) || !strncmp(c, "expect-talk", 11)) {
+            if (!talk_cmd(c, n, v, lineno)) return 0;
         } else {
             fail("line %d: unknown command '%s'", lineno, raw);
             return 0;
