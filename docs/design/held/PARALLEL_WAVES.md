@@ -21,6 +21,7 @@ Every stream lead and every agent reads this file. The hard rules of `CLAUDE.md`
 | **CREATOR** | `session_01Xd63cvvRYHgPW3b8GJby1n` (Sonnet; first lead `session_01Xd63cwsuWNoECo4JeUnWy3`) | CR3 (the saved patch `patches/fut-crc.mbox`), CR4 art batches until at least 1,500 new parts are live, CR5a, CR5, CR8, CR10, CR11, CR13, CR14, the creator's held-input speed gap (GBA about 22 fps), the six creator sets tied to the new levels | `CREATOR_PLAN.md`, `docs/CREATOR.md`, HELD_OFF_ROADMAP 6 |
 | **LEVELS** | `session_01Xd63cvXV9YcGJn2CBo4zvt` (the first lead, back since 2026-11-15 13:10 UTC: the Sonnet lead `session_01Xd63cz7PBDFwYoagK8oCML` could not launch agents and stood down) | LV0-LV11 (foundations), LV12-LV21 (9 main-game levels), LV22-LV37 (New Game+), LV38 (integration) | `../levels/LEVELS_EXPANSION_PLAN.md`, HELD_OFF_ROADMAP 7 |
 | **COMBAT** | not started: a session starts after the owner's usage allowance resets (2026-11-15 04:00 UTC); brief `leads/COMBAT.md` | the combat 3D view on all three ports, the GBA first: good (what is drawn), coherent (one renderer spec, parity tests) and fast (a steady 30 where the hardware can). Owner 2026-11-13. Changes no renderer or combat code until speed audit 4 is done (the coordinator says "AUDIT4 DONE") | `leads/COMBAT.md`, `status/COMBAT.md`, `../SPEED_AUDIT4.md` |
+| **STUDIO** | its lead session (started 2026-11-15; see `status/STUDIO.md`) | the song studio: easy by default, playable (jam, live recording, drum pads), detailed tools, an Advanced switch for full songs, user songs in the Concert Hall and PERFORM | `leads/STUDIO.md`, `status/STUDIO.md` |
 
 The sessions were started on 2026-11-12 23:47 UTC; each lead's standing brief is `leads/<STREAM>.md`.
 If a lead session is lost, the coordinator starts a new one with the same brief and edits this table.
@@ -41,6 +42,7 @@ message says `cross-stream:` and why.
 | CREATOR | `core/src/creator*.c`, `portrait*.c`, `part*.c`, `core/data/parts/**`, `tools/part*.py`, `tools/parts_build.py`, the generated part files, `docs/CREATOR.md`, `docs/PORTRAIT.md` |
 | LEVELS | `core/src/levels*.c`, `lv_*.c`, `map.c`, `maps.c`, `core/data/maps/**`, `tools/mapc.py`, new level tools, the mechanics and enemies it adds to `combat*.c` / `actor.c` (the hot path must keep its fps), the PS1 level packs, `docs/LEVELS.md` |
 | COMBAT | the 3D renderers (`gba/src/r3d*`, `view3d.c`, `viewhold.c`, `ps1/src/r3d.c`, `view3d.c`, `prims.c`) and the combat drawing in `core/src/combat*.c` / `actor*.c`; LEVELS keeps adding mechanics and enemies there (hooks stay, rebase onto them); `dc/**` stays the DC stream's (`cross-stream:` and a status-file agreement) |
+| STUDIO | `core/src/studio*.c`, `song_book.c`, `song_player.c`, `songs.c`, `concert_song.c`, `concert_lyrics.c`, `unlocks_studio.c`, `core/include/doomo/song.h`, `docs/STUDIO.md`, `docs/MUSIC_STUDIO_ROADMAP.md` (the audio engines stay SPEED's / DC's) |
 
 Shared files that every stream touches (keep changes small, expect to rebase): `ROADMAP.md`,
 `docs/GBA.md`, `docs/PS1.md`, `core/Makefile` and the source lists, the registries in
