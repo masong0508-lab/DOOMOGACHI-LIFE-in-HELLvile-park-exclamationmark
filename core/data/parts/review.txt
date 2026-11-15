@@ -55,7 +55,7 @@ review top      25-48 batch=A5 date=2026-11-13 by=claude sheets="slot_top, slot_
 review lash  1-3 batch=CR5 date=2026-11-13 by=claude sheets="slot_lash (bust 1x, head 2x on the cat bench): flicks, wing lashes and lower lashes read at 2x, subtle at 1x; nothing suggestive, the chibi has none"
 review lid   1-3 batch=CR5 date=2026-11-13 by=claude sheets="slot_lid (bust 1x, head 2x): heavy droop, half-lidded and double crease read at 2x; nothing suggestive"
 review liner 1-3 batch=CR5 date=2026-11-13 by=claude sheets="slot_liner (bust 1x, head 2x): thin, winged and waterline liner read at 2x, subtle at 1x; nothing suggestive"
-# CR4 A1b: noses, mouths, ears, blush styles (the muzzles / teeth / freckles / scars deep fields wait for CR5, and the
+# CR4 A1b: noses, mouths, ears, blush styles (the muzzles / teeth / freckles / scars deep fields are not built yet: CR5 only has lash, lid, liner; and the
 # 3 extra eyes for a gene change; ear folds were already painted and live; see docs/CREATOR.md "CR4 A1b")
 review nose    12-23 batch=A1b date=2026-11-13 by=claude sheets="slot_nose, slot_nose_shape (bust 1x, head 2x, figure, chibi, fighter): snub, beak, ink triangle and heart, bulb, cone, snout, cat Y, plaster, wet nose; plain cartoon shapes, no gore, nothing suggestive, no props"
 review mouth   20-31 batch=A1b date=2026-11-13 by=claude sheets="slot_mouth, slot_mouth_shape: bold w and m, slash, dot, toothy box, crooked, wail, gap tooth, grille, fang pair, wobble, zipper line; ink strokes and white teeth, no tongue or lips, nothing suggestive"
