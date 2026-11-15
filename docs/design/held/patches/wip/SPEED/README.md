@@ -9,3 +9,4 @@ apply the patches into a new worktree. Delete a folder when its package lands.
 Landed today: PS1-FLAT, S2-11.
 Landed 2026-11-15: PS1-RAM (folder deleted).
 Landed 2026-11-15: S2-4b (folder deleted).
+Landed 2026-11-15: S2-4c (folder deleted).

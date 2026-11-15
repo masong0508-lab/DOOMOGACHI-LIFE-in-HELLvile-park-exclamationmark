@@ -1570,14 +1570,14 @@ the player's 3D model went with the PS1-FLAT package ("HOUSE CHARACTERS FLAT"). 
 no-op.
 
 **S2-4c (the kitchen as layers over kept pictures).** Nothing of it is built here (`COOK_KEPT` is 0 on the PS1: no
-kept picture, no layers, no baked poses; the core's new box and key helpers are `!DOOMO_PLATFORM_PS1`), and the
-kitchen draws its whole frame as before. On the tip `d5305653` and that tree + S2-4c: `_end` 0x801ee580 both times
-(72,320 B below the stack top with the boot FMV: delta 0 B), `TEXT.BIN` and `SFX.BIN` the same, `OVL.BIN` and the EXE's
-overlay table differ (the fishcook group's code: the screens are split into parts). Measured (PCSX-Redux,
-`speed2.sh fishcook`, `game_smoke` passes): the kitchen's table is the tip's, row for row (book, chop, stir, fry,
-bake, simmer 30.12-30.17 with every frame two vsyncs; the result card 30.00 with one 50 ms frame, its first: the
-dish's unlocks granted that tick; the counter 29.83 with two and serving 30.00 with one 50 ms frame: whole faces
-rendered in one tick, S3-2); the fishcook group's overlay read is 5 ms longer (313 + 293 ms).
+kept picture, no layers, no baked poses; the core's new box and key helpers and the poses' lookup `cook_pose_find` are
+`!DOOMO_PLATFORM_PS1`), and the kitchen draws its whole frame as before. On the tip `5aa25cd1` (PS1-RAM in) and that
+tree + S2-4c: `_end` 0x801df9f0 both times (132,608 B below the stack top with the boot FMV: delta 0 B), `TEXT.BIN`
+and `SFX.BIN` the same, `OVL.BIN` and the EXE's overlay table differ (the fishcook group's code: the screens are split
+into parts). Measured (PCSX-Redux, `speed2.sh fishcook`, `game_smoke` passes): the kitchen's table is the tip's, row
+for row (book, chop, stir, fry, bake, simmer 30.12-30.17 with every frame two vsyncs; the result card 30.00 with one
+50 ms frame, its first: the dish's unlocks granted that tick; the counter and serving 30.00 with one 50 ms frame each:
+whole faces rendered in one tick, S3-2), and so is the fishcook group's overlay read (313 + 315 ms).
 
 **S2-8 (text pages as kept panels).** Nothing is built here (`UI_PANELS` 0: the Field Guide's and the Almanac page's
 text panels compile out, `page_text` keeps its old path; the Field Guide's preview scroll byte sits in the wing's

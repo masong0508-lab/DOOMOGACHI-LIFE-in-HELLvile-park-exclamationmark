@@ -383,8 +383,8 @@ ticks over 33.3 ms of work, worst 17.1 ms (the Gallery); `make dc-host-test` pas
 
 (S2-4c, 2026-11-15, a measurement note: the kitchen after the GBA's kept kitchen. The Dreamcast has no kept backdrop
 (`plat_stage_begin` and `plat_cook_pose` keep their weak defaults), so every kitchen screen asks once and draws in full
-as before. Flycast, `speed2.sh fishcook` on `d5305653` + S2-4c: all 16 fishing and kitchen windows 30.0, 0 of 3,334
-ticks over 33.3 ms, worst 17.9 ms at tick 3262 (COOKING), the same as speed audit 3.)
+as before. Flycast, `speed2.sh fishcook` on `5aa25cd1` + S2-4c: all 16 fishing and kitchen windows 30.0, 0 of 3,334
+ticks over 33.3 ms, worst 16.5 ms at tick 3262 (COOKING); speed audit 3 had 18.1 ms.)
 
 ### The harness mailbox (`dc_mailbox`, `dc/harness/dc_mailbox.h`)
 
