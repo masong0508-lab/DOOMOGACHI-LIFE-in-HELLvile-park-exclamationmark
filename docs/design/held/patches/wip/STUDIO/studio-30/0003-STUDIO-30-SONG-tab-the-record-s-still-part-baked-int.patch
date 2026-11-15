@@ -1,0 +1,155 @@
+From b83edb20bcb762221b9786f2d50fca1bedda0a28 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 22:50:45 +0000
+Subject: [PATCH 3/5] STUDIO-30: SONG tab: the record's still part baked into
+ one picture (GBA 31.0 -> 26.9 ms, made song playing 28.5 -> 30.0 fps)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/studio_edit.c                     | 19 +++++++++++++++----
+ gba/harness/scripts/speed2_studio_tabs.txt | 14 ++++++++++++++
+ 2 files changed, 29 insertions(+), 4 deletions(-)
+
+diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+index 1d50a32f..f60b487f 100644
+--- a/core/src/studio_edit.c
++++ b/core/src/studio_edit.c
+@@ -270,16 +270,27 @@ static void song_row_label(int row, char *buf, int cap)
+ }
+ 
+ /* a spinning record with the title on its label */
+-static void draw_record(int cx, int cy, int r, int t, int playing)
++/* the record's still part: the shadow, the grooves and the label (a[0] = radius, a[1] = the genre's pattern). On the GBA
++ * it is painted once into the studio's bake pool and drawn with one plat_image (7 circles, ~70 rect calls, 5.5 ms:
++ * STUDIO-30); the shine that sweeps round is drawn live over it. */
++static void record_rects(int ox, int oy, const int *a)
+ {
+-    int a = playing ? t * 3 : t / 2;
++    int r = a[0], g = a[1], cx = ox + r + 3, cy = oy + r + 3;      /* (ox, oy): the top-left, so the bake paints on-screen */
+     ui_fill_circle(cx + 2, cy + 3, r, PAL_PAINT(PAINT_GRAPE, 0));
+     ui_fill_circle(cx, cy, r, PAL_PAINT(PAINT_JET, 1));
+     ui_fill_circle(cx, cy, r - 3, PAL_PAINT(PAINT_CHARCOAL, 0));
+     ui_fill_circle(cx, cy, r - 5, PAL_PAINT(PAINT_JET, 1));
+-    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(SS->genre & 3, 1));
+-    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(SS->genre & 3, 2));
++    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(g, 1));
++    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(g, 2));
+     ui_fill_circle(cx, cy, 1, PAL_PAINT(PAINT_JET, 1));
++}
++
++static void draw_record(int cx, int cy, int r, int t, int playing)
++{
++    int a = playing ? t * 3 : t / 2, g[2];
++    g[0] = r; g[1] = SS->genre & 3;
++    if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
++        record_rects(cx - r - 3, cy - r - 3, g);
+     /* the shine sweeps around */
+     {
+         int dx = ui_wave(a, 120, r - 3), dy = ui_wave(a + 30, 120, r - 3);
+diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+index d9d117a7..e081e257 100644
+--- a/gba/harness/scripts/speed2_studio_tabs.txt
++++ b/gba/harness/scripts/speed2_studio_tabs.txt
+@@ -17,11 +17,13 @@ wait 130
+ fps start
+ wait 90
+ fps studio tabs: song idle
++shot studio_tabs_song_idle
+ press START
+ wait 45
+ fps start
+ wait 90
+ fps studio tabs: song playing
++shot studio_tabs_song_playing
+ press START
+ wait 10
+ 
+@@ -31,11 +33,13 @@ wait 20
+ fps start
+ wait 90
+ fps studio tabs: notes idle
++shot studio_tabs_notes_idle
+ press START
+ wait 40
+ fps start
+ wait 90
+ fps studio tabs: notes playing
++shot studio_tabs_notes_playing
+ press START
+ wait 10
+ 
+@@ -51,6 +55,7 @@ wait 20
+ fps start
+ wait 90
+ fps studio tabs: order
++shot studio_tabs_order
+ down SELECT
+ press R
+ release
+@@ -60,6 +65,7 @@ wait 10
+ fps start
+ wait 90
+ fps studio tabs: lyrics
++shot studio_tabs_lyrics
+ down SELECT
+ press R
+ release
+@@ -67,6 +73,7 @@ wait 20
+ fps start
+ wait 90
+ fps studio tabs: choir
++shot studio_tabs_choir
+ 
+ # ---- PERFORM (the show) -------------------------------------------------
+ press R
+@@ -76,9 +83,11 @@ wait 60
+ fps start
+ wait 20
+ fps studio tabs: perform early
++shot studio_tabs_perform_early
+ fps start
+ wait 90
+ fps studio tabs: perform later
++shot studio_tabs_perform_later
+ 
+ # ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+ scene TITLE
+@@ -90,6 +99,7 @@ wait 130
+ fps start
+ wait 90
+ fps studio tabs: start card
++shot studio_tabs_start_card
+ down SELECT
+ press UP
+ release
+@@ -97,6 +107,7 @@ wait 30
+ fps start
+ wait 60
+ fps studio tabs: control card
++shot studio_tabs_control_card
+ press B
+ wait 10
+ press A
+@@ -104,6 +115,7 @@ wait 45
+ fps start
+ wait 90
+ fps studio tabs: made song playing
++shot studio_tabs_made_song_playing
+ press START
+ wait 10
+ down SELECT
+@@ -133,8 +145,10 @@ wait 20
+ fps start
+ wait 90
+ fps studio tabs: file top
++shot studio_tabs_file_top
+ press UP
+ wait 20
+ fps start
+ wait 90
+ fps studio tabs: file end
++shot studio_tabs_file_end
+-- 
+2.43.0
+

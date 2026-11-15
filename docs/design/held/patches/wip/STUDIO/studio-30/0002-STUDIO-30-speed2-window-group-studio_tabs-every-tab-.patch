@@ -1,0 +1,162 @@
+From 47c0ce81850b8448360b3cb737910ad7c37de9d6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 22:46:36 +0000
+Subject: [PATCH 2/5] STUDIO-30: speed2 window group studio_tabs (every tab and
+ mode the other two groups lack)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ gba/harness/scripts/speed2_studio_tabs.txt | 140 +++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
+ create mode 100644 gba/harness/scripts/speed2_studio_tabs.txt
+
+diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+new file mode 100644
+index 00000000..d9d117a7
+--- /dev/null
++++ b/gba/harness/scripts/speed2_studio_tabs.txt
+@@ -0,0 +1,140 @@
++# speed2_studio_tabs.txt - speed tour 2 (STUDIO-30): every studio tab and mode that speed2_studio.txt and
++# speed2_studio_play.txt do not time: SONG idle / playing, NOTES idle / playing, ORDER, LYRICS, CHOIR, the PERFORM show
++# (the lead alone, then the full choir), and on the empty song (arg -2) the Start card, the control card, the song
++# Make it! made playing on SONG, and the FILE list top and end. Window rules: speed2_fair.txt.
++wait 40
++expect-log doomo: init
++sync on 61
++seed 1
++scene TITLE
++wait 20
++push STUDIO -107
++wait 100
++expect-scene STUDIO
++
++# ---- SONG ---------------------------------------------------------------
++wait 130
++fps start
++wait 90
++fps studio tabs: song idle
++press START
++wait 45
++fps start
++wait 90
++fps studio tabs: song playing
++press START
++wait 10
++
++# ---- NOTES --------------------------------------------------------------
++press R
++wait 20
++fps start
++wait 90
++fps studio tabs: notes idle
++press START
++wait 40
++fps start
++wait 90
++fps studio tabs: notes playing
++press START
++wait 10
++
++# ---- ORDER, LYRICS, CHOIR (PLAY is between NOTES and ORDER: speed2_studio_play) ----------
++down SELECT
++press R
++release
++wait 20
++down SELECT
++press R
++release
++wait 20
++fps start
++wait 90
++fps studio tabs: order
++down SELECT
++press R
++release
++wait 20
++press DOWN
++wait 10
++fps start
++wait 90
++fps studio tabs: lyrics
++down SELECT
++press R
++release
++wait 20
++fps start
++wait 90
++fps studio tabs: choir
++
++# ---- PERFORM (the show) -------------------------------------------------
++press R
++wait 20
++press A
++wait 60
++fps start
++wait 20
++fps studio tabs: perform early
++fps start
++wait 90
++fps studio tabs: perform later
++
++# ---- the empty song: Start card, control card, Make it!, FILE -----------------------
++scene TITLE
++wait 20
++push STUDIO -2
++wait 100
++expect-scene STUDIO
++wait 130
++fps start
++wait 90
++fps studio tabs: start card
++down SELECT
++press UP
++release
++wait 30
++fps start
++wait 60
++fps studio tabs: control card
++press B
++wait 10
++press A
++wait 45
++fps start
++wait 90
++fps studio tabs: made song playing
++press START
++wait 10
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 4
++down SELECT
++press R
++release
++wait 20
++fps start
++wait 90
++fps studio tabs: file top
++press UP
++wait 20
++fps start
++wait 90
++fps studio tabs: file end
+-- 
+2.43.0
+

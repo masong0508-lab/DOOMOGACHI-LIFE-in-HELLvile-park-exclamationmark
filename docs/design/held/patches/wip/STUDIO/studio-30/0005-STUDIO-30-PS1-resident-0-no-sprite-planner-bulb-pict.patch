@@ -1,0 +1,244 @@
+From bade5a9a84c4628ac822ccd2a665ac40a68fa91b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 23:47:40 +0000
+Subject: [PATCH 5/5] STUDIO-30: PS1 resident +0 (no sprite planner / bulb
+ pictures there, one redo_push call site), expect-fps floors on the studio
+ windows
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ core/src/studio.c                          | 15 +++++-------
+ core/src/studio_edit.c                     |  2 ++
+ core/src/studio_stage.c                    | 10 ++++++++
+ gba/harness/scripts/speed2_studio.txt      |  2 +-
+ gba/harness/scripts/speed2_studio_tabs.txt | 28 +++++++++++-----------
+ 5 files changed, 33 insertions(+), 24 deletions(-)
+
+diff --git a/core/src/studio.c b/core/src/studio.c
+index 03c1de45..1fe5310e 100644
+--- a/core/src/studio.c
++++ b/core/src/studio.c
+@@ -343,20 +343,17 @@ int ed_undo(void)
+         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+         int join = (ln & JOIN) != 0;
+         ln &= ~JOIN;
++        int big = 0;
+         if (off == BIG_OFF && enc == 0) {
+             /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
+-            if (ez && ez->before_ok) {
+-                if (keep && !redo_push(ez, 0, (int)sizeof(DoomoSong), !first)) keep = 0;
+-                first = 0;
+-                memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+-            } else {
+-                keep = 0;
+-            }
+-        } else if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
++            if (ez && ez->before_ok) { off = 0; big = 1; } else { off = 0xFFFFu; keep = 0; }
++        }
++        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
+             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
+             first = 0;
+-            rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
++            if (big) memcpy(&studio.song, ez->before, sizeof(DoomoSong));
++            else rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+         }
+         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
+         if (!join || studio.undo_used < 6) break;
+diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+index f60b487f..86bd6aaf 100644
+--- a/core/src/studio_edit.c
++++ b/core/src/studio_edit.c
+@@ -289,7 +289,9 @@ static void draw_record(int cx, int cy, int r, int t, int playing)
+ {
+     int a = playing ? t * 3 : t / 2, g[2];
+     g[0] = r; g[1] = SS->genre & 3;
++#if ST_BAKE
+     if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
++#endif
+         record_rects(cx - r - 3, cy - r - 3, g);
+     /* the shine sweeps around */
+     {
+diff --git a/core/src/studio_stage.c b/core/src/studio_stage.c
+index 74777136..692a489e 100644
+--- a/core/src/studio_stage.c
++++ b/core/src/studio_stage.c
+@@ -832,6 +832,7 @@ void stage_draw_full(void)
+  * Four bulbs are one 32x5 picture (two phases, the bulbs alternate), so a row is 7 plat_image calls. The pictures are
+  * what ui_fill_circle(.., 2, ..) paints (test_studio.c studio_bulbs_equal_the_circles). Returns how many bulbs it drew
+  * (a multiple of 4; the rest are drawn as circles). */
++#if !defined(DOOMO_PLATFORM_PS1)           /* the PS1 keeps the circles (no resident bytes for it: PS1.md) */
+ #define BL_ON PAL_PAINT(PAINT_LEMON, 2)
+ #define BL_OFF PAL_PAINT(PAINT_HONEY, 0)
+ #define BL_E(c) 0, c, c, c, 0, 0, 0, 0
+@@ -850,6 +851,9 @@ int st_bulbs(int rx, int ry, int rw, int rh, int phase)
+     }
+     return n;
+ }
++#else
++int st_bulbs(int rx, int ry, int rw, int rh, int phase) { (void)rx; (void)ry; (void)rw; (void)rh; (void)phase; return 0; }
++#endif
+ 
+ /* ---- the poster ----------------------------------------------------------- */
+ void tab_stage_draw(StRect r)
+@@ -902,6 +906,7 @@ void tab_stage_draw(StRect r)
+             bx[k] = x - BODYSPR_W / 2;
+             by[k] = y - BODYSPR_H - (((t / 10) + k) % 8 == 0);
+         }
++#if !defined(DOOMO_PLATFORM_PS1)                          /* the PS1 has no sprites: no code there */
+         if (n > 0 && !studio.pop_n && !studio.msg_t && !studio.picking && !studio.help && !ui_toast_pending() &&
+             !tip_active() && plat_stage_obj_begin()) {
+             for (k = n - 1; k >= 0; k--) {
+@@ -913,12 +918,17 @@ void tab_stage_draw(StRect r)
+                 spr[k] = (uint8_t)!hit;
+             }
+         }
++#else
++        (void)bt; (void)sx1; (void)spr;
++#endif
+         for (k = 0; k < n; k++) {
+             int id = song_singer_id(SS, slots[k]);
++#if !defined(DOOMO_PLATFORM_PS1)
+             if (spr[k]) {
+                 const DoomoImage *img = bodyspr_image(id, 0, 0);
+                 if (img && plat_stage_obj(slots[k], bx[k], by[k], img, 0, NULL, 0)) continue;
+             }
++#endif
+             st_chibi(id, bx[k], by[k], 0, 0, 0, 0);
+         }
+     }
+diff --git a/gba/harness/scripts/speed2_studio.txt b/gba/harness/scripts/speed2_studio.txt
+index 84c6c59d..cb87c8c8 100644
+--- a/gba/harness/scripts/speed2_studio.txt
++++ b/gba/harness/scripts/speed2_studio.txt
+@@ -68,7 +68,7 @@ press R
+ wait 20
+ fps start
+ wait 130
+-fps studio: stage tab
++expect-fps 29 studio: stage tab
+ shot studio_stage
+ press R
+ wait 20
+diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+index e081e257..7095082a 100644
+--- a/gba/harness/scripts/speed2_studio_tabs.txt
++++ b/gba/harness/scripts/speed2_studio_tabs.txt
+@@ -16,13 +16,13 @@ expect-scene STUDIO
+ wait 130
+ fps start
+ wait 90
+-fps studio tabs: song idle
++expect-fps 29 studio tabs: song idle
+ shot studio_tabs_song_idle
+ press START
+ wait 45
+ fps start
+ wait 90
+-fps studio tabs: song playing
++expect-fps 29 studio tabs: song playing
+ shot studio_tabs_song_playing
+ press START
+ wait 10
+@@ -32,13 +32,13 @@ press R
+ wait 20
+ fps start
+ wait 90
+-fps studio tabs: notes idle
++expect-fps 29 studio tabs: notes idle
+ shot studio_tabs_notes_idle
+ press START
+ wait 40
+ fps start
+ wait 90
+-fps studio tabs: notes playing
++expect-fps 29 studio tabs: notes playing
+ shot studio_tabs_notes_playing
+ press START
+ wait 10
+@@ -54,7 +54,7 @@ release
+ wait 20
+ fps start
+ wait 90
+-fps studio tabs: order
++expect-fps 29 studio tabs: order
+ shot studio_tabs_order
+ down SELECT
+ press R
+@@ -64,7 +64,7 @@ press DOWN
+ wait 10
+ fps start
+ wait 90
+-fps studio tabs: lyrics
++expect-fps 29 studio tabs: lyrics
+ shot studio_tabs_lyrics
+ down SELECT
+ press R
+@@ -72,7 +72,7 @@ release
+ wait 20
+ fps start
+ wait 90
+-fps studio tabs: choir
++expect-fps 29 studio tabs: choir
+ shot studio_tabs_choir
+ 
+ # ---- PERFORM (the show) -------------------------------------------------
+@@ -82,11 +82,11 @@ press A
+ wait 60
+ fps start
+ wait 20
+-fps studio tabs: perform early
++expect-fps 29 studio tabs: perform early
+ shot studio_tabs_perform_early
+ fps start
+ wait 90
+-fps studio tabs: perform later
++expect-fps 29 studio tabs: perform later
+ shot studio_tabs_perform_later
+ 
+ # ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+@@ -98,7 +98,7 @@ expect-scene STUDIO
+ wait 130
+ fps start
+ wait 90
+-fps studio tabs: start card
++expect-fps 29 studio tabs: start card
+ shot studio_tabs_start_card
+ down SELECT
+ press UP
+@@ -106,7 +106,7 @@ release
+ wait 30
+ fps start
+ wait 60
+-fps studio tabs: control card
++expect-fps 29 studio tabs: control card
+ shot studio_tabs_control_card
+ press B
+ wait 10
+@@ -114,7 +114,7 @@ press A
+ wait 45
+ fps start
+ wait 90
+-fps studio tabs: made song playing
++expect-fps 29 studio tabs: made song playing
+ shot studio_tabs_made_song_playing
+ press START
+ wait 10
+@@ -144,11 +144,11 @@ release
+ wait 20
+ fps start
+ wait 90
+-fps studio tabs: file top
++expect-fps 29 studio tabs: file top
+ shot studio_tabs_file_top
+ press UP
+ wait 20
+ fps start
+ wait 90
+-fps studio tabs: file end
++expect-fps 29 studio tabs: file end
+ shot studio_tabs_file_end
+-- 
+2.43.0
+

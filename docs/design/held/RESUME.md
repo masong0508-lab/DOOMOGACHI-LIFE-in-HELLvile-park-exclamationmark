@@ -70,3 +70,6 @@ the studio and concert speed2 windows before and after.
 The levels plan section 10 (NG+ Chapter 5 and endings, W15 Bonejangles' origin, memorial names default,
 the NG+ cold open); "huggle" meaning (INTRO_REDO.md default); the GBA rent default from GBA-500; whether
 to remove the concept art (12 MB) and the trailer video (6.8 MB) from the repository.
+
+## Stopped at 100% (2026-11-16 ~00:00 UTC)
+STUDIO-30 was in review / landing: saved in patches/wip/STUDIO/studio-30/ (STAGE tab 22.5 -> 30.0, a made song playing 30.0, the take-over-a-song undo, a speed2 window per tab, PS1 +0). Apply with git am -3 and land it first. CONCERT-30 landed partial (band 23.2 fps; what is left is in its status line and findings).
