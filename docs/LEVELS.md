@@ -234,8 +234,11 @@ so none of this shows on a real run today; the host tests re-point a dark level 
 * **The first-visit flag** (`levels_rec.c`, `lv_note_seen()` / `lv_note_set_seen()`): one bit per dark level in
   the 'BRCH' arc's spare bytes 42..43. The chunk size does not change; a chunk from before LV11 reads "nothing
   seen". A level with no note reads "seen". The GBA keeps the bits of the dark levels it does not list.
+* **Save growth**: the world's OPT2 chunk is 2 bytes longer on every platform that has the two ids (not the
+  PS1); an older shorter chunk still loads. `test_save.c` allows one byte more for the extra LZ length byte.
 * **The select** (`levels_select.c`): a small moon badge next to the tag pill, and the short note as a strip
-  on the preview's bottom edge (where "Clear it once to race the clock" goes, which wins).
+  on the preview's bottom edge (where "Clear it once to race the clock" goes, which wins). The strip and badge
+  also show on a locked dark level (it is a content warning; the owner may override).
 * **Options** (`options_store.c`, add-only ids at the end of OPT2): `OPT_NOTES` "Content notes": Every time
   (default) / First time only; `OPT_MEMORIAL` "Memorial names": On (default) / Off. Both are on the Game page,
   machine-wide (the config record's byte 16: bit 0 first time only, bit 1 memorial Off, so 0 is both defaults
@@ -243,12 +246,30 @@ so none of this shows on a real run today; the host tests re-point a dark level 
   byte the Stick option already uses (no EWRAM). The memorial row only shows once Notice 13 is built and open.
   A preset does not touch them. `lv_memorial_label(name)` is what the Vault's memorial wall prints for each
   name: the name, or "Someone we lost." when Off (the Vault's package, LV41, calls it).
+* **Later-visit line and mode rules**: with a mode rule line on the card (Cute-Only, Brutal-Only, Time Trial)
+  the one-line note is not drawn (the card would be 71 px against a 66 px budget at 240x160), whatever
+  Content notes says. The first visit's page always shows.
+* **The note page holds still** (round 3): after the dim is in (12 ticks) the page uses S2-1's modal hold like
+  the control card does, so only the banner's band is repainted and the held 3D view is not redrawn each frame.
+  Not measured on a GBA: no dark level has a map yet, so no harness script can reach the page (the first
+  dark level's package, LV3 and later, measures it with `fps` on the page). The first-visit bit is saved with
+  the next island save.
 * **PS1**: nothing. The PS1 lists no dark level, so `town.h` has no `OPT_NOTES` / `OPT_MEMORIAL` there, the
-  card and play code is behind `LV_HAS_NEW`, and the EXE is byte-identical to the base (ends `0x801ef580`,
-  66 KB below the stack top, both before and after). When the LEVELS share of PS1 RAM is released, add the
+  card and play code is behind `LV_HAS_NEW`. Measured 2026-11-15 on the tip (`249ae551`) and the tip + LV11
+  (clean PS1 builds with the boot FMV): `ps1/build/doomogachi.exe` and `OVL.BIN` are byte-identical, `_end`
+  `0x801df9f0` both, **132,608 B below the stack top** both (delta 0 B; LEVELS' PS1 resident share used by this
+  package: 0 B). `game_smoke` PASS. When the LEVELS share of PS1 RAM is used for the dark levels, add the
   ids and flip `LV_HAS_NEW`.
+* **GBA** (measured 2026-11-15 on the tip and the tip + LV11, `make -C gba sizes`): `.iwram` 11,272 B,
+  `.iwram_bss` 4,088 B, `.data` 816 B, `.bss` 254,836 B, every overlay group the same before and after
+  (net zero); ROM `.text` 1,500,088 -> 1,501,472 B (+1,384 B), `.rodata` 7,693,800 -> 7,695,628 B (+1,828 B).
+  Vape Cellar autopilot (combat, reference only), before -> after, fps drawn start room / middle / late:
+  8.8 / 8.4 / 16.6 -> 8.8 / 8.3 / 16.4 (the notes code is not on the combat path; the small differences are
+  the autopilot's timing after the code moved). `make -C gba test` passes.
 * **Visible change on the other platforms**: the Options Game page has one more row, "Content notes", on
-  the GBA, Dreamcast and native builds (not the PS1).
+  the GBA, Dreamcast and native builds (not the PS1). It sits below the first six rows, so the page as it
+  opens (240x160 and 320x240) is pixel for pixel the same; the row shows when the list scrolls. Nothing else
+  changes in any existing level's card or select: the note, the badge and the strip need a dark level.
 * **Tests**: `test_levels_rec.c` (`lv11_*`: the notes and the dark flags are the same set, every line fits at
   both sizes, the flag in a real save and on the GBA's list, the first visit's flow with B / A / a later
   visit / a demo, the pages and the badge at both sizes (screenshots), the memorial label, the options
