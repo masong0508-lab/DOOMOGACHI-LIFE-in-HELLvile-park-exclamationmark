@@ -1624,16 +1624,16 @@ rows not filled twice, the caption's cloud box drawing only the bump rows its re
 under the bubble's full disc. `plat_hshapes` and `plat_tile_rows` are the weak defaults, so the circles, ellipses and
 the floor take the core's own fills (the same pixels), and none of the GBA-only changes is built (the straight sky
 bands, the held choice, the wipe's hardware fade, the vignettes' still faces and lazy chibis, the mirror's ARM blit).
-`speed2.sh dream` (its windows now cover every vignette of three dreams, docs/GBA.md) on the landing tip `167c08ba`
-+ S2-4d against that tip (the same tables on `5aa25cd1` and `249ae551`): the 13 shots are byte for byte the tip's; bedroom 30.17, bubble 30.38, Endless Doors cute / twist 30.00 (one 50 ms frame each) -> **30.18 /
+`speed2.sh dream` (its windows now cover every vignette of three dreams, docs/GBA.md) on the landing tip `e597703e`
++ S2-4d against that tip (the same tables on `5aa25cd1`, `249ae551`, `167c08ba`): the 13 shots are byte for byte the tip's; bedroom 30.17, bubble 30.38, Endless Doors cute / twist 30.00 (one 50 ms frame each) -> **30.18 /
 30.18** (none), nightmare vignette 2 30.00 (one) -> **30.09** (none), plush dream vignette 1 30.00 (one) -> **30.09**
 (none), The Giant Plush 29.92 (two 50 ms frames) -> **30.00** (one); vignette 2, The Mirror, nightmare 1 and 3, the
 choice and Cloud Concert 30.00 on both, with one 50 ms frame at the window's start (`hcmd_poll`'s lockstep stop, see
 S2-9 above); the choice's first ticks 28.24 on both (two 50 ms frames). No frame over 50 ms in any window. Earlier, on
 `ad06012` with the old windows: the two choice windows 29.85 / 29.75 (a 67 ms frame each) -> 30.00, the last
 vignette's start one 67 ms frame on both builds (the red nightmare is 29-31 ms of CPU a frame here, `perf:` lines).
-`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801df9f0 -> 0x801df9d0,
-132,608 -> 132,640 B below `elf2exe`'s stack top with the boot FMV, on `167c08ba` as on `5aa25cd1`); the dream overlay group 39 -> 42 KB (its load 182
+`game_smoke` passes. Memory: no resident data; the EXE's code 32 B smaller (`_end` 0x801dfb10 -> 0x801dfaf0,
+132,320 -> 132,352 B below `elf2exe`'s stack top with the boot FMV, on `e597703e`; the same 32 B on `5aa25cd1`); the dream overlay group 39 -> 42 KB (its load 182
 -> 186 ms, measured on `ad06012`; 181 -> 195 ms before the bedroom window in this run).
 
 **S2-4 (the fair's kept playfield).** Nothing is built here: `mg.h` turns the kept-playfield mode into constants (`MGK_OFF`), so Whack draws its whole booth as before (the restore helpers and `ui_round_rect_inset` compile out); only the drawing order was regrouped (`mg_tent_sway`, `hole_back`), same pixels. 65 KB below the stack top with the boot FMV on the rebased tree (`_end` the same as without S2-4); the minigame overlay group grows by a few hundred bytes of code, the slot is unchanged (168 KB, the house's). PCSX-Redux `speed2_fair`: the Whack title, Sweet and Hellfire windows 30.17 / 30.12 / 30.12 fps (all 2-vsync frames), as before.
