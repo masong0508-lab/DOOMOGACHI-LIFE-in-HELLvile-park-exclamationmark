@@ -449,7 +449,7 @@ against the LAST row, not against a figure from an older base.
 | 56 | S2-4b: the Fun Fair's bands, undo lists and stamps, the results card held (docs: "Speed wave 2: S2-4b" below) | after CR4 A1b (`41df852`) | 6,412 B | **6,420 B** | +8 B | 6,288 B | measured 2026-11-15 on `41df852` (origin, built) and that tree + S2-4b (built clean, `make -C gba sizes`): `.bss` 254,836 -> 254,828 B (`mg_bake_key` is gone on the GBA), `.data` 816 B, `.iwram` 11,272 B and `.iwram_bss` 4,088 B unchanged (no resident IWRAM); the overlay's room group 9,512 -> 9,796 B (+284: `stage_find`, the binary search of the baked table, and `stage_list`) and its UI group 9,740 -> 10,124 B (+384: the `ldm` / `stm` checker), both inside the slot the 3D group sizes (10,352 B; 228 B left beside the UI group). The games' new state lives in the scene scratch and the MG arena (2,048 B, the undo state in its last 24 B): the Whack arena 1,524 B, the Derby's hop table 40 B, Memory's card centres 80 B; the results hold is code only. ROM `.text` 1,500,088 -> 1,507,888 B (+7,800), `.rodata` 7,693,800 -> 7,935,356 B (+241,556; `backdrops.bin` 3,418,324 -> 3,659,772 B: Whack's 30 whole pictures, 1.15 MB, are now 469 KB of bands; Dodge 161 KB, Gallery 386 KB, Derby 99 KB, Memory 113 KB, the shared stamps 119 KB). PS1: compiled out, `_end` 0x801df9f0 = the tip's on `41df852`, `366ee6c`, `5aa25cd` and `cb9df1c` (with PS1-RAM: 132,608 B below the stack top with the boot FMV; 0x801ee550 = the tip's on `b9e74a5`), +0 B resident. The same deltas on `2bc6130`, `0cce022` (`.bss` 249,084 -> 249,076 B there, before CR5's look pool) `b9e74a5` (254,844 -> 254,836 B), `5aa25cd` and `366ee6c`; first measured on `ee686c7` (15,444 -> 15,452 B). Frames equal to the base but for the shake, 10 fade frames and the held results card (below) |
 | 57 | S3-2: no whole portrait or chibi inside a frame (docs: "Speed wave 3: S3-2" above) | after row 56 | 6,420 B | **6,420 B** | 0 B | 6,288 B | measured on the rebased tree: `.bss` 254,828 B (the tip with S2-4b), `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B ( no new static data, the hold / lazy mode is one more value of two existing bytes); ROM code only. PS1: +304 B resident (`_end` 0x801ee550 -> 0x801ee680 on the old tree; on the PS1-RAM tree 132,320 B below the stack top). |
 | 58 | CR-SLIDERX: cheat "Slider range x1..x4" (docs/CREATOR.md "CR-SLIDERX") | after S3-2 (row 57) | unchanged | **unchanged** | 0 B | 6,288 B | re-measured on origin `77185ff1` + CR-SLIDERX: `.bss` 254,836, `.iwram` 11,272, `.iwram_bss` 4,088, `.data` 816, ROM `.text` 1,500,368, `.rodata` 7,694,372 (with A1b) (the package moves none of the RAM sections); first measured 2026-11-15 on `bef8bf12` (clean tip) and the same + CR-SLIDERX (`make -C gba`, `make -C gba sizes`): `.bss` 249,084 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B, `.mailbox` 80 B and the overlay slots (ovl_ui 9,740 B) identical; ROM `.text` 1,486,552 -> 1,486,744 B (+192), `.rodata` 7,623,560 -> 7,624,132 B (+572: the 11-row slider table, the option, the Spanish rows). The option's value is one byte of the OPT2 array (`s_opt2` 4 -> 6 B, one hole where the stick bit lives); the linker's padding absorbed it, so `.bss` did not move. No new resident EWRAM or IWRAM. `make -C gba test-creator-sliders` runs the slider walk-through at x1, x2, x3 and x4 in the ROM. |
-| 59 | S2-4c: the kitchen as layers over kept pictures, Granny's baked poses (docs: "Speed wave 2: S2-4c" below) | `d5305653` | 12,500 B | **12,500 B** | 0 B | 6,288 B | measured on `d5305653` and that tree + S2-4c, both built clean (`make -C gba sizes`, memreport): `.bss` 248,748 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the main stack (6,288 B) unchanged, no resident EWRAM or IWRAM (the stage's records, ~1.2 KB, and the pass state live in the kitchen's scene scratch); the overlay's room group 9,512 -> 9,516 B (`stage_rows`' new span threshold; 836 B free in the slot). ROM 9,102,952 -> 9,422,888 B (+319,936: `.text` +10,072, `.rodata` +309,860: three kept pictures of 38,400 B and Granny's 164 poses, 194,536 B). PS1: compiled out, `_end` 0x801ee580 before and after (72,320 B below the stack top with the boot FMV) |
+| 59 | S2-4c: the kitchen as layers over kept pictures, Granny's baked poses (docs: "Speed wave 2: S2-4c" below) | after CR5 and DC9C (`a7565746`) | 6,404 B | **6,404 B** | 0 B | 6,288 B | measured on `a7565746` and that tree + S2-4c, both built clean (`make -C gba sizes`, memreport): `.bss` 254,844 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B and the main stack (6,288 B) unchanged, no resident EWRAM or IWRAM (the stage's records, ~1.2 KB, and the pass state live in the kitchen's scene scratch); the overlay's room group 9,512 -> 9,516 B (`stage_rows`' new span threshold; 836 B free in the slot). ROM 9,207,856 -> 9,527,848 B (+319,992: `.text` +10,128, `.rodata` +309,860: three kept pictures of 38,400 B and Granny's 164 poses, 194,536 B). PS1: compiled out (see the S2-4c section) |
 
 Known claimants still to land (their own packages measure and add rows):
 
@@ -2147,54 +2147,74 @@ redrawing half the screen (a layer on a changed box is redrawn, its whole box pu
   wave, the tear, size), periodic over 2,520 ticks; `cook_poses()` lists every place, size and mood the kept screens
   draw her in; each pose is `granny_draw` on a screen cleared to index 0, cropped and cut off where the counter
   starts. `plat_cook_pose` (`fishcook_int.h`; weak default: none) draws one as a scale-1 image (~1.3 ms instead of
-  ~10) and gives its exact box; a pose that is not baked (or paints index 0) is drawn in full. 164 poses.
+  ~10) and gives its exact box; a pose that is not baked (or paints index 0) is drawn in full. 164 poses. The file's
+  lookup is `cook_pose_find` (`cook_scene.c`), the one the GBA calls; `test_cook_kept` bakes the file the way the GBA
+  build does and checks every listed pose read back through it against `granny_draw`.
 - **The faces at the counter** are blitted only above the counter (a view of the portrait with fewer rows).
 - **Speech bubbles** are two layers, the body and the tail's rows 1-5 (the tail's first row lies under the body's
   edge row: `fc_bubble_boxes` / `fc_bubble_part`).
 - **Measured boxes**: the apparatus of each step (over the bots' cooking at both screen sizes), Granny, a dish per art,
   every ingredient icon (items within rw of the centre, the coffee's steam 18 px above, fish with fins and bubbles);
   keys that change only when the picture does (a cupcake, rolls, balls, a salad and a bagel stand still).
+- **Translated text**: a key or box taken from a text follows the text shown, `lang_tr(s)`: the bubbles' typewriter
+  key counts the translation's characters (Spanish lines are longer than the English), and the step banner's box
+  reaches `W * 5 / 8 + 8` right of its centre (the name is centred by its popped width but drawn at full scale from a
+  pop scale of 200, so a long name such as "¡REVUELVE!" at 320x240 reaches `W * 312 / 512 + 2`).
 - `stage_rows` copies spans from 4 halfwords on by DMA (was 24; the CPU loop takes ~10 cycles a ROM halfword). The
-  fair's kept spans gain too: Whack-an-Imp 20.7 -> 22.1 fps (Sweet), 19.7 -> 20.3 (Hellfire), the same pixels.
+  fair's kept spans gain too: Whack-an-Imp 20.7 -> 22.1 fps (Sweet), 19.7 -> 20.0 (Hellfire), the same pixels.
 
 **Same pixels.** `core/tests/test_cook_kept.c`: every part inside its box and keyed (Granny for every mood and size,
 every dish at eight sizes burnt or not, every ingredient, the window, pans and logo at both screen sizes); the whole
 kitchen (the book through every page, the buy popup, a dish cooked by hand, the bot's bake, fry, simmer, scorch and a
 second simmer, the counter with the dish list, a serve and the reaction) with the stage on and off, day and night,
-240x160 and 320x240: 5,140 frames each, identical, 5,084 over a kept picture; every pose drawn is one the baker
-lists. Native frame hashes of a 5,896-frame kitchen tour with the stage off are the tip's at both sizes. On the GBA,
-`vhash-seq` of every tick against the tip's ROM: the book (idle, a page turn and back, to the counter), the buy
-popup, the intro, chop, stir, fry, the result card (early and late), bake and simmer: 13 windows, 630 frames, all
-identical. The counter's windows differ only inside the customers' faces (150 frames: 0 pixels outside them): the
-portrait cache renders animation phases in idle time (SP2), and cheaper frames give it that time on other ticks (as
-S2-5 found for the Vapula figure).
+240x160 and 320x240, and again in Spanish at both sizes: 5,140 frames each, identical, 5,084 over a kept picture
+(240x160); every pose drawn is one the baker lists. Native frame hashes of a 5,896-frame kitchen tour with the stage
+off are the tip's at both sizes. On the GBA, `vhash-seq` of every tick against the ROM of the tip it lands on
+(`a7565746`): the book (idle, a page turn and back, to the counter), the buy popup, the intro, chop, stir, fry, the
+result card (early and late), bake and simmer: 13 windows, 630 frames, all identical; in Spanish a dish cooked by hand
+(late on every step: a burnt bake, its result card; 900 frames) and the bot's fry and simmer (1,080 frames) are
+identical, and of the bot's bake one frame of 500 differs: on the tip's ROM that frame (tick 727, the first step's
+banner) is the same picture moved down one pixel, a display offset of the tip on that slow frame (the package's frame
+is the one the tip `d5305653` showed). The counter's windows differ only inside the customers' faces (150 frames:
+the differing pixels lie in the four faces' band, rows 55-101, above the counter): the portrait cache renders
+animation phases in idle time (SP2), and cheaper frames give it that time on other ticks (as S2-5 found for the Vapula
+figure).
 
-| window (`speed2_fishcook.txt`, libmgba) | before (drawn fps, work avg / max ms) | after |
+| window (`speed2_fishcook.txt`, libmgba; before: the tip `a7565746`) | before (drawn fps, work avg / max ms) | after |
 |---|---:|---:|
-| cook: recipe book | 20.0 (49.1 / 50.5) | **30.0** (25.2 / 32.8, every frame 2 vblanks) |
-| cook: chop | 21.8 (38.7 / 52.9) | **30.0** (19.3 / 35.6, every frame 2 vblanks) |
-| cook: stir | 20.1 (43.2 / 60.7) | **30.0** (24.1 / 42.5, one 50 ms frame) |
-| cook: fry | 20.1 (39.1 / 41.7) | **30.0** (17.3 / 23.1, every frame 2 vblanks) |
-| cook: bake | 20.8 (41.1 / 57.8) | **29.9** (20.3 / 39.1, one 50 ms frame) |
-| cook: simmer | 21.6 (39.4 / 78.6) | **29.8** (18.4 / 60.9, one 50 and one 67 ms frame) |
-| cook: result card | 15.0 (54.7 / 55.0) | 21.1 (40.9 / 42.6) |
-| cook: counter | 18.3 (46.0 / 81.6) | 26.0 (32.3 / 67.8) |
-| cook: serving | 20.0 (41.9 / 48.6) | 27.5 (31.7 / 64.3) |
+| cook: recipe book | 20.0 (49.1 / 50.4) | **30.0** (25.2 / 32.8, every frame 2 vblanks) |
+| cook: chop | 21.9 (38.8 / 53.2) | **30.0** (19.3 / 35.7, every frame 2 vblanks) |
+| cook: stir | 20.0 (43.1 / 54.3) | 30.0 (24.2 / 42.6, one 50 ms frame: not steady) |
+| cook: fry | 19.8 (39.1 / 40.3) | **30.0** (17.3 / 23.0, every frame 2 vblanks) |
+| cook: bake | 20.8 (41.3 / 65.8) | 29.9 (20.3 / 39.1, one 50 ms frame: not steady) |
+| cook: simmer | 21.8 (39.4 / 78.6) | 29.7 (18.4 / 61.0, one 50 and one 67 ms frame: not steady) |
+| cook: result card | 15.0 (54.7 / 55.0) | 21.1 (41.0 / 42.7, 55 frames of 50 ms) |
+| cook: counter | 18.3 (45.9 / 81.7) | 26.3 (31.0 / 68.0, 17 frames over 33 ms, 5 over 50) |
+| cook: serving | 20.0 (41.6 / 47.2) | 27.7 (31.5 / 64.9, 7 frames over 33 ms, 2 over 50) |
 
 Logic is 30 ticks/s in all of them. Floors: `expect-fps 28` on the book and the cooking steps (`expect-gap 34` on the
-book, chop and fry), 24 / 25 / 19 on the counter, serving and the result card. **Still short of 30:** the **result
+book, chop and fry), 24 / 25 / 19 on the counter, serving and the result card. The goal (a steady 30, no frame over
+33 ms) is met on the book, chop and fry only. **Still short of 30 (open for a follow-up package):** the **result
 card** (21.1): the rays turn and the dish steams every tick under the grade stamp, whose ring touches the bubble and
 whose star touches the title, Granny cheers every tick; with whole-box redraws nearly every layer is redrawn every
-frame. It needs the stage to redraw an unchanged layer only inside the changed box (G2-EX's clipped redraw, in flight)
-or a pixel-changing trade (the owner allows the rays, "beams", at 15 Hz, but the dish under them moves every tick).
-The **counter / serving** (26.0 / 27.5): every face animates (blink, breathing, mouths) and the order bubbles bob and
-touch each other, the window and the title; their first frames are whole faces rendered in one tick (S3-2). The
-cooking steps keep one or two 50-67 ms frames at a step change (the banner, bubble and apparatus come and go at once).
+frame. It needs the stage to redraw an unchanged layer only inside the changed box (G2-EX's clipped redraw, in flight).
+The **counter / serving** (26.3 / 27.7): every face animates (blink, breathing, mouths) and the order bubbles bob and
+touch each other, the window and the title; their first frames are whole faces rendered in one tick (S3-2). **Stir, bake and simmer** keep one or two
+50-67 ms frames at a step change (the banner, bubble, apparatus and Granny's mood change at once).
 
-GBA memory: no EWRAM, no resident IWRAM (`.bss` 248,748 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B, `.data` 816 B
-before and after; the stage's records and the pass state live after the kitchen's state in its 12 KB scene scratch).
-ROM 9,102,952 -> 9,422,888 B (+319,936): three kept pictures (115,200 B in `backdrops.bin`), Granny's poses (194,536 B),
-code (+10 KB `.text`); the overlay's room group +4 B (`stage_rows`), main stack 6,288 B unchanged.
+**The approved 15 Hz trades (owner, 2026-11-13) were measured and not taken.** The stage compares each frame with the
+record of the Mode 4 page it draws over, the picture of two ticks before, so a layer redrawn every second tick still
+differs at every frame and is drawn at every frame: the trade saves nothing over a kept picture. Measured on the
+result card (`speed2_fishcook.txt`, libmgba): the rays at 15 Hz 21.1 fps (unchanged); even the whole plate (rays,
+spotlight and the dish, which is not an approved trade) at 15 Hz 21.1 fps (unchanged, 41.0 ms of work). A 15 Hz
+layer would need a stage that copies a redrawn box to the other page (or holds it for four ticks); no pixel-changing
+step is in this package.
+
+GBA memory (ledger row 52): no EWRAM, no resident IWRAM (`.bss` 254,844 B, `.iwram` 11,272 B, `.iwram_bss` 4,088 B,
+`.data` 816 B before and after on `a7565746`, EWRAM free 6,404 B both; the stage's records and the pass state live
+after the kitchen's state in its 12 KB scene scratch). ROM 9,207,856 -> 9,527,848 B (+319,992): three kept pictures
+(115,200 B in `backdrops.bin`), Granny's poses (194,536 B), code (+10 KB `.text`); the overlay's room group +4 B
+(`stage_rows`), main stack 6,288 B unchanged.
 PS1: compiled out (`COOK_KEPT` 0); `_end` 0x801ee580 before and after (72,320 B below the stack top with the boot FMV,
 delta 0 B), `OVL.BIN` changes (the fishcook group's code), the kitchen's speed tour 2 table is the tip's. Dreamcast: no
 kept backdrop, the full draw as before (Flycast, `speed2.sh fishcook`: all 16 windows 30.0, 0 of 3,334 ticks over
