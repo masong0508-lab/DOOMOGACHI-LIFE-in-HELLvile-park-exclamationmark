@@ -22,3 +22,10 @@ Drawn fps / work avg ms / max ms.
 ## Left (band needs another ~3-6 ms, max 39.5 -> <33)
 Stage 10-12.5 ms, crowd 9 ms (back silhouettes 3.6, front chibis 3.4), band members 6.4 ms (instruments as kept
 pictures -3 ms), karaoke + HUD 2 ms. The Dreamland stage is 3-5 ms over the others: not profiled yet.
+
+## Gates (2026-11-15, on 33f8a583 + guard commit)
+core test 1534/0; SAN=1 1534/0 (4 old reports, none in the new code); check-gen ok; xcheck 434 files ok; make -C gba test ok;
+gba sizes: .bss 210,508 B (EWRAM unchanged), .iwram 11,392 B (+104 B from s4-c), overlays unchanged; dc-host-test ok;
+PS1: 110,352 B below the stack top with the boot FMV (the lead bake is compiled out there), perf_concert 29.88, game_smoke PASS.
+Not run: make -C dc (KOS build, the change is compiled out on DC), test-speed2 concert groups, a frame-hash proof on the ROM
+(two ROMs of different speed do not share ticks; the proof is the unit test against the two-blit reference).
