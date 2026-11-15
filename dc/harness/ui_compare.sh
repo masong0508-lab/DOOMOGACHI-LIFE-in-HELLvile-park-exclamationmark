@@ -21,7 +21,7 @@ set -u
 FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
-SCRIPTS=${UI_SCRIPTS:-"ui_gallery fp_title fp_screens creator creator_sliders library_lobby pause_options"}
+SCRIPTS=${UI_SCRIPTS:-"ui_gallery fp_title fp_screens creator creator_sliders creator_sliders_x2 creator_sliders_x3 creator_sliders_x4 library_lobby pause_options"}
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
 : > "$sum"
@@ -50,13 +50,16 @@ for s in $SCRIPTS; do
     } >>"$sum"
     if [ $rc -ne 0 ] || [ $nrc -ne 0 ] || [ $crc -ne 0 ]; then bad=1; fi
 done
-# CR-BODY: every build slider moved the creator's preview on the console too (tools/slider_shots_check.py)
-if [ -d "$OUT/creator_sliders/dc" ] && [ -n "$(ls "$OUT/creator_sliders/dc" 2>/dev/null)" ]; then
-    {
-        echo "== creator_sliders (slider check on the Dreamcast shots)"
-        python3 -I "$root/tools/slider_shots_check.py" "$OUT/creator_sliders/dc" || bad=1
-    } >>"$sum" 2>&1
-fi
+# CR-BODY: every build slider moved the creator's preview on the console too (tools/slider_shots_check.py);
+# CR-SLIDERX: and at the cheat Slider range x2, x3, x4 (the same script with one `opt` line)
+for v in creator_sliders creator_sliders_x2 creator_sliders_x3 creator_sliders_x4; do
+    if [ -d "$OUT/$v/dc" ] && [ -n "$(ls "$OUT/$v/dc" 2>/dev/null)" ]; then
+        {
+            echo "== $v (slider check on the Dreamcast shots)"
+            python3 -I "$root/tools/slider_shots_check.py" "$OUT/$v/dc" || bad=1
+        } >>"$sum" 2>&1
+    fi
+done
 cat "$sum"
 n_ok=$(grep -c '^ok \|^known ' "$sum")
 n_fail=$(grep -c '^FAIL \|^MISSING ' "$sum")

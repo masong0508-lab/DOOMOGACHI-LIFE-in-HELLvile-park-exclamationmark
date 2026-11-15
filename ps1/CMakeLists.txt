@@ -458,6 +458,16 @@ else()
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders.txt
 		        --out ${_shots}/creator_sliders
 		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders
+		# CR-SLIDERX: the same at the cheat Slider range x2, x3, x4 (tools/slider_scripts.py makes the scripts)
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders_x2.txt
+		        --out ${_shots}/creator_sliders_x2
+		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders_x2
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders_x3.txt
+		        --out ${_shots}/creator_sliders_x3
+		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders_x3
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders_x4.txt
+		        --out ${_shots}/creator_sliders_x4
+		COMMAND ${Python3_EXECUTABLE} -I ${CORE_DIR}/../tools/slider_shots_check.py ${_shots}/creator_sliders_x4
 		# S2-12: the image cache under pressure (Candy Catch's session + Whack, then Dodge: the old hang)
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/fair_cache.txt
 		        --out ${_shots}/fair_cache

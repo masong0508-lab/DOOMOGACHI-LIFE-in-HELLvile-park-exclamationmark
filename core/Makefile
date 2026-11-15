@@ -179,6 +179,9 @@ scripts: $(BUILD)/runner
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
 	@# CR-BODY: every build slider moved the preview in the creator_sliders walk-through (both resolutions)
 	@for r in 240x160 320x240; do $(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(BUILD)/shots/$$r/creator_sliders | tail -1 || exit 1; done
+	@# CR-SLIDERX: the same walk-through with the cheat Slider range at x2, x3 and x4 (generated variants: tools/slider_scripts.py)
+	@$(PYTHON) -I $(ROOT)/tools/slider_scripts.py --check || exit 1
+	@for x in 2 3 4; do for r in 240x160 320x240; do $(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(BUILD)/shots/$$r/creator_sliders_x$$x | tail -1 || exit 1; done; done
 
 # --- M0: the journey and tap meter (docs/GAME_DESIGN.md "UX budgets") ---
 journeys: $(BUILD)/runner
@@ -331,6 +334,8 @@ check-gen:
 	exit $$status
 	@# --- L1: also no left-over language table (a language that lost its strings) ---
 	@$(PYTHON) $(ROOT)/tools/langpack.py --check
+	@# --- CR-SLIDERX: the x2 / x3 / x4 slider walk-through scripts are the base script with one line added ---
+	@$(PYTHON) -I $(ROOT)/tools/slider_scripts.py --check
 
 # ---- cross compile check --------------------------------------------------------
 xcheck:

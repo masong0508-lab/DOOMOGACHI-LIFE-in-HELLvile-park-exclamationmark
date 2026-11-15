@@ -620,3 +620,4 @@ Controller rumble, apart from Screen shake.	Vibración del control, aparte de la
 Adult scenes. Off: cutaways. Censored: censor bars. On: implied, then a fade. Going up asks for the grown-ups' code (if set) and your age.	Escenas para adultos. No: cortes de escena. Censurado: barras de censura. Sí: insinuadas y luego fundido. Subirlo pide el código de los adultos (si hay) y tu edad.	# fp_options.c
 Mature scenes are for adults. Are you 18 or older?	Las escenas maduras son para adultos. ¿Tienes 18 años o más?	# fp_options.c
 Apply this preset? Language, volumes, Mature and Monster Mode stay as they are.	¿Aplicar este preajuste? Idioma, volúmenes, escenas maduras y Modo Monstruo no cambian.	# fp_options.c
+Cheat: grown-ups' build sliders go x2, x3 or x4 as far. Saved looks never change; x1 is normal.	Truco: los deslizadores de cuerpo de los adultos llegan x2, x3 o x4 veces más lejos. Los aspectos guardados no cambian; x1 es lo normal.	# fp_options.c

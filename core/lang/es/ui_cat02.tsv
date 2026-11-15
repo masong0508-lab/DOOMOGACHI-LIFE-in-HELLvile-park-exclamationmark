@@ -624,3 +624,4 @@ unlocks: duplicate unlock id		# unlocks.c
 Stick	Stick	# options_store.c
 Turn	Girar	# options_store.c
 Strafe	Desplazar	# options_store.c
+Slider range	Rango de deslizadores	# options_store.c
