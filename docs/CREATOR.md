@@ -796,7 +796,7 @@ plugs in).
   the Dreamcast on Flycast (`make -C dc ui-compare`, the script is in the default list and the checker runs on its shots).
   The checker has a self-test (`parts-check`: a slider that moves nothing fails, an animation does not count).
 * **Memory.** PS1: the resident table is 96 B + a 16 B step array (was 120 B) and `sanitize` gained one load and add:
-  16 B less resident (`_end` 0x801ee560, 72,336 B below the stack top on the landed tree; the 72 KB plan gate is not met on the tip
+  16 B less resident (`_end` 0x801ee550, 72,336 B below the stack top on the landed tree; the 72 KB plan gate is not met on the tip
   either, 1,392 B short, until SPEED PS1-RAM; docs/PS1.md "CR-BODY");
   the catalog rows, the six part icons and the slider table are overlay / disc data. GBA: `.bss`, `.iwram`, `.iwram_bss`,
   `.data` identical (free EWRAM 12,164 B), `.text` +336 B and `.rodata` +2,612 B in ROM (docs/GBA.md ledger row 49).
@@ -853,13 +853,13 @@ plugs in).
   Shirt) as busts and from behind with the backpack and the cape accessory (the plan's "outer layers x tops x backpieces";
   the real backpieces are deep fields that do not exist yet). `--views` and the sheets now stage a layer over a white top and
   legwear on bare legs (`sheet_stage`).
-* **Measured** (base `ee4e053` against base + A5, clean builds): GBA `make -C gba sizes`: `.text` 1,486,552 B, `.iwram`
+* **Measured** (base `ee4e053` against base + A5, clean builds): GBA `make -C gba sizes`: `.text` 1,486,744 B, `.iwram`
   11,272 B, `.iwram_bss` 4,088 B and `.bss` 249,084 B (EWRAM) on the landed tree (A5 adds no resident byte: A/B against the base was identical), `.rodata` 7,658,744 B (+35 KB for A5: scripts, icons,
   names); `make -C gba test` and `test-creator` pass (creator rows 29.9, value step 27.9 drawn fps). PS1 (`cmake --preset ps1
-  -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801ee560 on the landed tree (72,352 B below the stack top; the 72 KB gate is 1,376 B short, inherited from the tip, A5 adds 0 B), nothing resident added (the
+  -DDOOMO_INTRO_REQUIRED=ON`): `_end` 0x801ee550 on the landed tree (72,368 B below the stack top; the 72 KB gate is 1,360 B short, inherited from the tip, A5 adds 0 B), nothing resident added (the
   part scripts are creator-overlay data the PS1 does not read before CR10); harness (PCSX-Redux, xvfb) `game_smoke`,
   `creator_speed` (idle 30.13, grid scroll 29.39, rows 30.13, value 29.88: the S3-3 numbers), `creator`, `creator_grid` and the new
-  `creator_parts_outfit` PASS. Core 1,279 tests pass (SAN=1 the same, the known UBSan reports only), `make -C core check-gen` clean, xcheck 420 files OK on all four compilers,
+  `creator_parts_outfit` PASS. Core 1,289 tests pass (SAN=1 the same, the known UBSan reports only), `make -C core check-gen` clean, xcheck 420 files OK on all four compilers,
   `make dc-host-test` ok. Dreamcast `make -C dc` not run: no `dc/` or shared drawing / input / save code changed.
 * **Runner walk-through:** `core/tests/scripts/creator_parts_outfit.txt` (both resolutions): the Outfit tab, the Top, Outer
   layer and Legwear rows opened as grids, a new part found by letters and worn (Breton Stripes, Poncho, Knee Socks), the
