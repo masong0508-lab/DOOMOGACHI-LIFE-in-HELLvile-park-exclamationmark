@@ -22,10 +22,12 @@ static const char *const style_names[MUSIC_COUNT] = {
 static const char *const mood_names[SMOOD_COUNT] = { "Happy", "Sweet", "Sad", "Spooky", "Fierce" };
 static const char *const tempo_names[STEMPO_COUNT] = { "Slow", "Medium", "Fast", "Frantic" };
 static const char *const length_names[SLEN_COUNT] = { "Short", "Song", "Long" };
-/* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D */
-static const uint8_t mood_scale[SMOOD_COUNT] = { SONG_SCALE_MAJOR, SONG_SCALE_PENTATONIC, SONG_SCALE_MINOR,
-                                                SONG_SCALE_HARMONIC_MINOR, SONG_SCALE_BLUES };
-static const uint8_t mood_key[SMOOD_COUNT] = { 0, 5, 9, 4, 2 };
+/* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D.
+ * (Tables of 8 bytes or less would land in the PS1's resident .sdata; this one is 10 bytes: overlay rodata.) */
+static const struct { uint8_t scale, key; } mood_tab[SMOOD_COUNT] = {
+    { SONG_SCALE_MAJOR, 0 }, { SONG_SCALE_PENTATONIC, 5 }, { SONG_SCALE_MINOR, 9 },
+    { SONG_SCALE_HARMONIC_MINOR, 4 }, { SONG_SCALE_BLUES, 2 }
+};
 
 const char *studio_style_name(int style) { return style_names[DOOMO_CLAMP(style, 0, MUSIC_COUNT - 1)]; }
 const char *studio_mood_name(int mood) { return mood_names[DOOMO_CLAMP(mood, 0, SMOOD_COUNT - 1)]; }
@@ -47,23 +49,22 @@ int studio_pick_bpm(int style, int tempo)
 
 int studio_pick_passes(int length)
 {
-    static const uint8_t passes[SLEN_COUNT] = { 8, 12, SONG_ORDER_MAX };
-    return passes[DOOMO_CLAMP(length, 0, SLEN_COUNT - 1)];
+    return length <= SLEN_SHORT ? 8 : length == SLEN_SONG ? 12 : SONG_ORDER_MAX;
 }
 
 void studio_make_song(DoomoSong *s, const StartPick *p)
 {
     /* the order lists: intro hook 3, verse 0, chorus 1, bridge 2; every one ends on the chorus */
-    static const uint8_t ord8[8] = { 3, 0, 0, 1, 0, 1, 2, 1 };
-    static const uint8_t ord12[12] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1 };
-    static const uint8_t ord16[16] = { 3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 0, 1, 2, 1, 1, 1 };
+    static const uint8_t ords[36] = { 3, 0, 0, 1, 0, 1, 2, 1,                                  /* 8 passes at 0  */
+                                      3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 1, 1,                      /* 12 passes at 8 */
+                                      3, 0, 0, 1, 0, 0, 1, 2, 1, 0, 0, 1, 2, 1, 1, 1 };       /* 16 passes at 20 */
     int style = DOOMO_CLAMP(p->style, 0, MUSIC_COUNT - 1), mood = DOOMO_CLAMP(p->mood, 0, SMOOD_COUNT - 1);
     int n = studio_pick_passes(p->length);
-    const uint8_t *ord = n <= 8 ? ord8 : n <= 12 ? ord12 : ord16;
+    const uint8_t *ord = ords + (n <= 8 ? 0 : n <= 12 ? 8 : 20);
     s->flags |= SONGF_VALID | SONGF_CUSTOM;
-    s->key = mood_key[mood];
+    s->key = mood_tab[mood].key;
     s->order_len = 1;                         /* a fresh order: the composer lays its own, we replace it below */
-    studio_compose_scale(s, style, p->seed, mood_scale[mood]);
+    studio_compose_scale(s, style, p->seed, mood_tab[mood].scale);
     s->bpm = (uint8_t)studio_pick_bpm(style, p->tempo);
     memset(s->order, 0, sizeof(s->order));
     memcpy(s->order, ord, (size_t)n);
