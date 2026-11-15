@@ -140,7 +140,7 @@ TEST(crsx_option_is_the_next_opt2_id_and_a_cheat)
 {
     const DoomoOptionInfo *oi = &doomo_option2_info[OPT_SLIDER_RANGE - OPT2_FIRST];
     CHECK_EQ(OPT_SLIDER_RANGE, OPT_STICK_MODE + 1);
-    CHECK_EQ(OPT_SLIDER_RANGE + 1, OPT2_END);
+    CHECK(OPT_SLIDER_RANGE + 1 <= OPT2_END);              /* LV11's two ids follow it (not on the PS1) */
     CHECK_EQ(oi->count, 4);
     CHECK_EQ(oi->def, 0);
     CHECK_EQ(oi->page, OPTPAGE_CHEATS);
@@ -177,20 +177,20 @@ TEST(crsx_saved_in_opt2_and_an_old_save_reads_x1)
     n = ext->write(buf, sizeof(buf));
     CHECK_EQ(n, 4u + (uint32_t)OPT2_COUNT);
     CHECK(n <= SAVE_EXT_MAX_OPT2);
-    CHECK_EQ(buf[n - 1], 2);                             /* the new id is the last byte: the chunk only grew at its end */
+    CHECK_EQ(buf[4 + OPT_SLIDER_RANGE - OPT2_FIRST], 2); /* its own byte, in id order: the chunk only grew at its end */
     opt_set(OPT_SLIDER_RANGE, 0);
     CHECK(ext->read(buf, n, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 2);
     CHECK_EQ(mult_in_force(), 3);                /* and the draw follows the load */
     /* a chunk written before this option (one byte shorter): x1 */
     memcpy(old, buf, n);
-    k = n - 1;
+    k = 4u + (uint32_t)(OPT_SLIDER_RANGE - OPT2_FIRST);     /* the chunk ends where the slider's byte was */
     CHECK(ext->read(old, k, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
     CHECK_EQ(mult_in_force(), 1);
     /* a byte past the choices reads the default, never a wild range */
     opt_set(OPT_SLIDER_RANGE, 3);
-    buf[n - 1] = 9;
+    buf[4 + OPT_SLIDER_RANGE - OPT2_FIRST] = 9;
     CHECK(ext->read(buf, n, 2));
     CHECK_EQ(opt_get(OPT_SLIDER_RANGE), 0);
     CHECK_EQ(mult_in_force(), 1);
