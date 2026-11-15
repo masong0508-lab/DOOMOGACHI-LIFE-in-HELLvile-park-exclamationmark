@@ -1419,12 +1419,13 @@ static int deep_commit(int id)
     /* CR5-FIX: the whole chunk must still hold the pool beside what this commit can add: 8 B of gene
      * trailer for this citizen (counted always: a safe over-count) and 16 B for a nickname that is new.
      * Checked before the pool is touched (a put moves a run to the end), so a refusal leaves the pool
-     * byte for byte as it was. A commit that takes bytes out of the pool is never refused (the town may
-     * already be near the limit). */
+     * byte for byte as it was. A commit is refused only when the chunk would be over the limit and the
+     * commit adds more (nickname, trailer) than it takes out of the pool: one that nets no growth is
+     * never refused (the town may already be near the limit). */
     look_pool_raw(&n);
     n = n - (ol ? 4u + (uint32_t)ol : 0u) + (rl ? 4u + (uint32_t)rl : 0u);       /* the pool after the put */
     if (cr.nick[0] && !creator_nickname(id)[0]) extra += NICK_REC;
-    if (n && rl >= ol &&
+    if (n && (rl >= ol || extra > (uint32_t)(ol - rl)) &&
         1u + (uint32_t)nick_count_used() * NICK_REC + (g ? g : 2u) + extra + 2u + n > DOOMO_SAVE_EXT_MAX)
         return 0;
     return look_pool_put(id, RUN_DEEP, run, rl);       /* 0 = the pool is full: it is left as it was */
