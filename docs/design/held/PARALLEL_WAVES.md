@@ -106,6 +106,18 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
      (`make -C core -j2 test`, `make -C core check-gen`) and push. If they touch shared code you build on
      (core sources, `gba/src`, `ps1/src`, the registries), re-run the gates of the platforms that code
      reaches. The full set is for your first rebase, not for every retry.
+3c. **No landing loops, ever** (2026-11-15: four SPEED landers each rebased 25-40 times in 7 hours, re-running
+   every gate and renumbering ledger rows on each try). The land agent of `tools/agents/wave-runner.js` follows
+   a fixed push loop: full gates once on the first rebase; after that a rejected push re-runs only the fast
+   gates (incoming commits outside your files and outside shared code) or only the platforms the incoming code
+   reaches; no "numbers on the new tip" commits; ledger rows keep the number of the first rebase (or the
+   package id); `git rerere` replays docs conflicts; **after the 4th rejected push the lander stops and
+   reports `needs-window`**.
+   **Landing window:** a lead whose lander reports `needs-window` messages the coordinator at once. The
+   coordinator tells every stream to hold its pushes (at most 60 minutes; building and gating go on), the
+   lead starts a new land agent, it lands, the coordinator sends "LANDING WINDOW CLOSED". The coordinator
+   also opens a window on its own when its check-in sees a package that has been in its land step for more
+   than 90 minutes. A lead who receives a hold message never pushes until it is closed.
 4. Never revert another stream's commit. If a clean checkout of origin fails a gate because of
    someone else's landing: tell the coordinator, and fix it forward yourself only when the fix is
    small and plainly right (its own commit, message starting `tip repair:`).

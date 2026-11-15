@@ -92,7 +92,7 @@ const REVIEW_SCHEMA = {
 const LAND_SCHEMA = {
   type: 'object',
   properties: {
-    status: { type: 'string', enum: ['landed', 'landed-partial', 'not-landed'] },
+    status: { type: 'string', enum: ['landed', 'landed-partial', 'not-landed', 'needs-window'] },
     commits: { type: 'string', description: 'sha + one line for each commit now on origin' },
     final_measurements: { type: 'string', description: 'the key numbers on the rebased, landed tree' },
     ps1_margin_bytes: { type: 'string', description: 'bytes below the stack top on the landed tree (with the boot FMV), or "not built" and why' },
@@ -176,11 +176,16 @@ ${depNotes ? '\n## Landed just before you\n' + depNotes + '\n' : ''}
 ## Steps
 1. Every blocking finding: reproduce it. Real: fix it and add a test that fails without the fix. Not real: keep the probe that shows it. Non-blocking: fix the ones that are cheap and clearly right; list the rest.
 2. If the builder reported "partial": finish what can be finished in reasonable time. Never call a number below the target done: land what helps and write the measured number and the gap into the docs.
-3. git fetch origin ${BRANCH} ; git rebase origin/${BRANCH}. Other streams land on this branch all the time, so expect conflicts and resolve them by the rules of docs/design/held/PARALLEL_WAVES.md: in docs and ledgers keep both sides' rows (renumber yours); a generated file (core/gen/*, anything check-gen covers) is never merged by hand: take either side and run its generator again; an id or tag that now clashes: renumber yours, never the one already on origin; in source files understand both changes and keep both behaviours. Never revert another stream's commit.
-4. Rebuild from clean and run ALL the gates on the rebased tree. Re-measure the package's key numbers on the rebased tree: those are the numbers for the docs and the commit message.
+3. git config rerere.enabled true (git then replays a conflict resolution you already made); git fetch origin ${BRANCH} ; git rebase origin/${BRANCH}. Other streams land on this branch all the time, so expect conflicts and resolve them by the rules of docs/design/held/PARALLEL_WAVES.md: in docs and ledgers keep both sides' rows (a ledger row you add keeps the number it got on this first rebase; on later rebases never renumber it again: if the number is taken, use your package id in its place); a generated file (core/gen/*, anything check-gen covers) is never merged by hand: take either side and run its generator again; an id or tag that now clashes: renumber yours, never the one already on origin; in source files understand both changes and keep both behaviours. Never revert another stream's commit.
+4. Rebuild from clean and run ALL the gates on this rebased tree, once. Re-measure the package's key numbers on it: those are the numbers for the docs and the commit message. Write the tree you measured on into your evidence directory (git rev-parse HEAD), not into the docs: never quote "the tip it lands on" in docs or status files, and never re-measure or re-commit numbers on a later rebase unless the incoming commits touched what those numbers measure.
 5. PS1 memory on the rebased tree: at least 72 KB below the stack top. If the tree you rebased onto is itself still under 72 KB (the PS1-RAM package has not landed), then your package must not make it smaller at all: compile new PS1 code -Os (DOOMO_PS1_COLD) or put it into an overlay group. Never push a tree whose PS1 disc fails to link.
 6. ${stream ? `Update docs/design/held/status/${stream}.md in the same push (its header says what goes in: what landed with sha and key numbers, the PS1 margin and GBA sizes now, what is next, blockers).` : 'If docs/design/held/status/ has a file for this stream, update it in the same push.'}
-7. Push: git push origin HEAD:${BRANCH} (fast-forward only; if rejected: fetch, rebase, re-run the gates the incoming commits could affect, push again). Verify with git ls-remote origin ${BRANCH} that origin has your head.
+7. Push: git push origin HEAD:${BRANCH} (fast-forward only, never --force). If it is rejected, the PUSH LOOP (this is where landers used to lose hours; follow it exactly):
+   a. Note OLD=$(git rev-parse origin/${BRANCH}) before you fetch; git fetch origin ${BRANCH}; git rebase origin/${BRANCH} (rerere replays your earlier resolutions).
+   b. Classify the incoming commits: git diff --name-only OLD origin/${BRANCH}. FAST case: none of those files is a file your package changed, and none is under core/src, core/include, gba/src, ps1/src, ps1/CMakeLists.txt, gba/Makefile, core/Makefile or a generator (core/tools, tools/*.py) your build uses (typical: docs, status files, ROADMAP.md, core/data/talk/**, part data, maps, dc/** when you did not touch dc/). Then run only make -C core -j2 test and make -C core check-gen (about 5 minutes) and push again at once. TARGETED case: otherwise re-run only the gates of the platforms that the incoming code reaches (core sources: core tests + the GBA build and test + the PS1 build and its margin; gba/src: GBA; ps1/src or ps1/CMakeLists.txt: PS1; dc/src: dc-host-test and the DC build), then push. Never re-run fps measurements in the push loop unless the incoming commits changed a file your scene draws with.
+   c. Do not add commits in the push loop other than conflict resolutions (no "numbers on the new tip", no status-id refreshes).
+   d. HARD CAP: after the 4th rejected push, stop. Do not push. Report status "needs-window" with your branch head and what the gates said: the stream lead asks the coordinator for a landing window (all other streams hold their pushes while you land) and starts a new land agent in it.
+   Verify with git ls-remote origin ${BRANCH} that origin has your head.
 8. Clean up after the push is verified: delete build directories, git -C ${REPO} worktree remove the worktree, delete the local branch fut-${slug}.
 If you cannot land (a gate you cannot get green, a conflict that would lose behaviour): do not push. Leave the branch and worktree in place and report exactly what blocks.
 
@@ -205,7 +210,7 @@ function runPackage(p) {
       depNotes += `${dep}: ${l ? l.status + '; PS1 margin ' + l.ps1_margin_bytes + '; ' + l.commits : 'did not land (' + (d && d.status) + ')'}\n`
     }
     const l = await agent(landPrompt(p, b, r, depNotes), { label: `land:${p.id}`, phase: 'Land', schema: LAND_SCHEMA , ...MODEL_OPT })
-    log(`${p.id}: ${l ? l.status : 'the land agent returned nothing'}`)
+    log(`${p.id}: ${l ? l.status : 'the land agent returned nothing'}${l && l.status === 'needs-window' ? ' (ask the coordinator for a landing window, then start a new land agent)' : ''}`)
     return { id: p.id, status: l ? l.status : 'land-missing', build: b, review: r, land: l }
   })()
   landed[p.id] = prom

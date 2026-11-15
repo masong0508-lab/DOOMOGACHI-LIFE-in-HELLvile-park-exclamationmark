@@ -24,6 +24,10 @@ To run a round, call the Workflow tool with `scriptPath` = this file and args:
 `"model": "sonnet"` (optional) runs every agent of the round on that model instead of the lead's own;
 a lead session on an expensive model uses it so the heavy work runs on Sonnet.
 
+A land agent that is rejected four times reports `needs-window` instead of looping: ask the coordinator
+for a landing window (PARALLEL_WAVES.md section 4, step 3c), then start a new land agent in it (pass the
+build and review reports so only the land step runs).
+
 `after` makes a package's landing wait for other packages of the same round. A package resumed after
 a pause may carry `"build"` and `"review"`: the reports of the steps it already finished (from the stopped
 workflow's journal.jsonl); the runner then skips those steps and goes straight to the land agent.
