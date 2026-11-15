@@ -22,6 +22,7 @@ Every stream lead and every agent reads this file. The hard rules of `CLAUDE.md`
 | **LEVELS** | `session_01Xd63cvXV9YcGJn2CBo4zvt` (the first lead, back since 2026-11-15 13:10 UTC: the Sonnet lead `session_01Xd63cz7PBDFwYoagK8oCML` could not launch agents and stood down) | LV0-LV11 (foundations), LV12-LV21 (9 main-game levels), LV22-LV37 (New Game+), LV38 (integration) | `../levels/LEVELS_EXPANSION_PLAN.md`, HELD_OFF_ROADMAP 7 |
 | **COMBAT** | not started: a session starts after the owner's usage allowance resets (2026-11-15 04:00 UTC); brief `leads/COMBAT.md` | the combat 3D view on all three ports, the GBA first: good (what is drawn), coherent (one renderer spec, parity tests) and fast (a steady 30 where the hardware can). Owner 2026-11-13. Changes no renderer or combat code until speed audit 4 is done (the coordinator says "AUDIT4 DONE") | `leads/COMBAT.md`, `status/COMBAT.md`, `../SPEED_AUDIT4.md` |
 | **STUDIO** | `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, started 2026-11-15) | the song studio: easy by default, playable (jam, live recording, drum pads), detailed tools, an Advanced switch for full songs, user songs in the Concert Hall and PERFORM | `leads/STUDIO.md`, `status/STUDIO.md` |
+| **HOUSEHOLDS** | `session_01Xd63cyoVQMX8CCuWDX8Db9` (Sonnet, from 2026-11-15 19:45) | households for every resident built in the creator (household view, add / move in / move out, up to 20 members), the Create-a-Sim relationship editor, households in the sim, Talk, houses, news; owns the household data (family.h, the life code) and those creator pages | `../HOUSEHOLDS_PLAN.md`, `status/CREATOR.md` (block HOUSEHOLDS) |
 | **UI** | `session_01Xd63czLgdbSn871LSJKjVC` (Sonnet, started 2026-11-15) | every menu decluttered and improved in one style, Options first, each at a steady 30 (takes over SPEED's UI1 and S3-13) | `leads/UI.md`, `status/UI.md` |
 
 The sessions were started on 2026-11-12 23:47 UTC; each lead's standing brief is `leads/<STREAM>.md`.
@@ -76,6 +77,9 @@ Shared files that every stream touches (keep changes small, expect to rebase): `
   above (TALK 12 KB, LEVELS 8 KB, COMBAT 8 KB); **reserve about 6.5 KB** (6,656 B). With CR10 on origin the
   margin is about 111.6 KB below the stack top. Whatever CREATOR later moves into an overlay group goes
   back to the reserve.
+  **2026-11-15 19:50:** HOUSEHOLDS (session_01Xd63cyoVQMX8CCuWDX8Db9, part of the CREATOR family) gets **3.5 KB
+  (3,584 B) from the reserve** for the resident household records (24 households x 144 B + 98 B = 3,554 B);
+  **reserve now about 3 KB** (3,072 B). Its GBA EWRAM (about 3.9 KB) comes out of CREATOR's 6 KB share.
 * **PS1 overlay slot.** An overlay group must fit the slot (docs/PS1.md). Growing the slot costs
   resident memory: ask the coordinator first. The slot is 131,072 B. With PS1-RAM (2026-11-15) the
   combat group is 129,380 B in the link map (1,692 B of room; the planner's estimate says 129,956 B),
