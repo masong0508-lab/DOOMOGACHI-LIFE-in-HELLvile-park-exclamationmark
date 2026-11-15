@@ -32,8 +32,8 @@
   "bring an umbrella. and a snack. and a very small cloud, for company."
   "wait it out. all storms pass. i'd know, i make them."
 @rule core.tell.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: backchannel
-  "hm, go on. i'm listening. my cloud is, too."
-  "oh, interesting. i'll make a note. in the rain."
+  "hm, go on. i'm listening. my cloud is, too." guard: !topic
+  "oh, interesting. i'll make a note. in the rain." guard: !topic
 @rule core.joke.lord_vapula_v1 guard: speaker=lord_vapula tags: lower act: laugh
   "hmph. *a small rumble that is possibly a laugh*"
   "fine, it was funny. don't tell anyone. i'll storm."

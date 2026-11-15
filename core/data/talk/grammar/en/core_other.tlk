@@ -49,12 +49,12 @@
 @rule core.continue.tell act: tell
   "And THEN, it got worse. It always gets worse."
   "So anyway, the duck came back. With friends."
-  "Where was I? Oh yes. The pie was hiding something."
+  "Where was I? Oh yes. The pie was hiding something." guard: !topic
   "And that's how I lost my eyebrows. Again."
 @rule core.continue.topic guard: topic act: tell
   "And {x}? Don't get me started. {.}Too late, I've started."
 @rule core.continue.dismiss guard: blunt act: dismiss
-  "That's it. That's the story. Stories end."
+  "That's it. That's the story. Stories end." guard: !topic
 @rule core.backchannel.tell act: tell
   "Right? And there's more. There's always more."
   "Yep. Yep yep yep. Where was I?"

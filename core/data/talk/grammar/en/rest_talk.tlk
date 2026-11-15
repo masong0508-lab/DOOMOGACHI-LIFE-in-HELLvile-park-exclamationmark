@@ -34,15 +34,15 @@
 
 # ---- CONTINUE and BACKCHANNEL --------------------------------------------------------------------
 @rule core.continue.r_tell act: tell
-  "Right, so where was I? Ah, yes. The part with the teapot."
-  "And that's when things got interesting. Slightly. Not very."
-  "Okay, so, the thing is. I forgot the thing. Hang on."
+  "Right, so where was I? Ah, yes. The part with the teapot." guard: !topic
+  "And that's when things got interesting. Slightly. Not very." guard: !topic
+  "Okay, so, the thing is. I forgot the thing. Hang on." guard: !topic
   "So I said to myself, I said, this is a problem. And it was."
 @rule core.continue.r_answer act: answer
-  "Yes, sure, go on. I'm all ears. Two of them."
-  "Please do. I'm listening. I even sat down."
+  "Yes, sure, go on. I'm all ears. Two of them." guard: !topic
+  "Please do. I'm listening. I even sat down." guard: !topic
 @rule core.continue.r_joke act: joke
-  "Continue! Don't mind me. I'll just hold my breath for effect."
+  "Continue! Don't mind me. I'll just hold my breath for effect." guard: !topic
 @rule core.continue.r_dismiss act: dismiss
   "I'd rather not go on. Some stories need a rest."
 @rule core.backchannel.r_tell act: tell

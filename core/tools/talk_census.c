@@ -643,7 +643,7 @@ unsigned talk_census_q8(const TalkConv *c, const TalkUtter *u, const TalkExchang
     /* Q8b: the player gave a topic, the reply is a topic act reply: it names the topic (or one of its
      * associations), or its core alternative's guard needs the topic (a pronoun line) */
     if ((want & (1u << Q8_CONTENT)) && q8_topic_act(pa) && u->topic[0] && !(l0->flags & TLF_SINCERE) &&
-        !is_grief(u->topic[0]) && (tr[0].parts & TPART_CORE)) {
+        !is_grief(u->topic[0]) && talk_gen_concept_ok(u->topic[0], &c->aud) && (tr[0].parts & TPART_CORE)) {   /* a topic the room may not hear is never said back */
         app |= 1u << Q8_CONTENT;
         if (!q8_said_topic(&tr[0], u->topic[0]) && !q8_alt_needs_topic(tr[0].core_alt)) bad |= 1u << Q8_CONTENT;
     }

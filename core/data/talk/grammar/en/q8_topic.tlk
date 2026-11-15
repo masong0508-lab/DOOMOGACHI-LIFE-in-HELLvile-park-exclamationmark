@@ -1,0 +1,22 @@
+# core/data/talk/grammar/en/q8_topic.tlk - TM2F-Q8: topic-naming companions (owner: TK; docs/TALK.md 6o).
+# A story line of three sentences cannot take the topic bridge (reason.name) and keep to three sentences, so the
+# listener lines that name nothing ("Right, so where was I? Ah, yes. The part with the teapot.") are now said only
+# when there is no topic (guard: !topic on the line). These rules are the same acts for the topic case: each line
+# names the topic with {x}, two or three sentences, clean in any room (no register word, no romance, nothing aimed
+# at the player). Rule names start with q8_.
+
+@rule core.continue.q8_tell guard: topic act: tell
+  "Right, {x}. Where was I? The teapot."
+  "So, {x}. And that's when things got interesting."
+  "Okay, {x}. The thing is, I forgot the thing."
+  "{x:cap}, then. And THEN it got worse."
+@rule core.continue.q8_answer guard: topic act: answer
+  "Yes, sure, go on about {x}. I'm all ears."
+  "Please do, {x} and all. I even sat down."
+@rule core.continue.q8_joke guard: topic act: joke
+  "Continue about {x}! I'll just hold my breath."
+@rule core.continue.q8_dismiss guard: topic act: dismiss
+  "I'd rather not go on about {x}. It needs a rest."
+@rule core.tell.q8_lord_vapula guard: speaker=lord_vapula&topic tags: lower act: backchannel
+  "hm, {x}. go on. my cloud is listening."
+  "oh, {x}. interesting. i'll make a note, in the rain."
