@@ -678,7 +678,7 @@ ultimatum keep `!kid_present`, the kid lines keep `kid_speaker` and the
 `kid` tag. A long session now draws from 2-3 times as many beat lines
 (e.g. `beat.smalltalk` 4 -> 11, `excuse` 5 -> 10, `prod` 4 -> 8).
 `TALK_en.BIN` 643,516 -> 676,924 B, the PS1 subset 312,185 -> 345,634 B of
-the 312 KB budget (**the PS1 subset is now over that budget: TKP must pick
+the 312 KB budget (**the PS1 subset is now over that budget (577,786 B on 2026-11-15, see 6q and TKP_PLAN.md): TKP must pick
 its lever, see 6.4 and TP1**). Data only: no code, no resident byte on any
 platform. A 40-line sample is in the evidence directory.
 
@@ -1783,6 +1783,32 @@ scripted scene test plays one end to end.
 
 ---------------------------------------------------------------------------
 
+## 6q. Talk on the PS1: the re-measure and the plan (TKP0-MEASURE)
+
+Read-and-measure package (2026-11-15); the full numbers and the packages TKP1 to TKP6 are in
+[docs/design/talk/TKP_PLAN.md](design/talk/TKP_PLAN.md). No resident PS1 byte changed (margin 110,560 B on the
+rebased tree, before and after). What it found, in short:
+
+* **Code.** Linked on the PS1 the Talk files are 146 KB (95 KB code, 14 KB rodata, 5.6 KB bss after
+  `--gc-sections`, 26 KB of it the typed line the PS1 does not need). As one new overlay group `talk` (the screen
+  is a scene, not a house part) it is **92 KB, no slot growth**; real links: +19,520 B resident with the
+  group alone, +15,616 B with the typed line off (margin 110,560 -> 94,944 B), **about 2 to 4 KB** after the TKP2 clean-ups (state to the scene
+  scratch, the callbacks local, the save chunk kept as a blob). Inside the 12 KB share.
+* **Data.** The PS1 subset of `TALK_en.BIN` (909,052 B) is **577,786 B** against the design's 319,488 B.
+  Lossless levers (word-token strings -90 KB, packed rows -50 KB) give about 437 KB. **That does not fit SPU RAM:**
+  CR10's part store (PARTS.BIN, 143,360 B) holds 0x50000-0x7DFFF, so Talk can have at most 278,528 B
+  (0x0C000-0x4FFFF) or 331,776 B with the tail after PARTS.BIN. Decision D1 for the owner: a reduced PS1 content
+  tier (about 38 % or 26 % of the lossless bin cut, TKP1b), or drop Talk on the PS1. The design's top-6 /
+  attribute-tail levers are worth nothing now.
+* **Reads and time.** 2,075 database reads and 43.4 KB a line (74 KB an exchange; 48 % of the instructions are
+  the lint's probes): a 16 KB block cache and one lint a line bring it to 5.8 KB a line. 661,000 x86
+  instructions a line, estimated 12 to 30 ms for a typical `talk_dm_step` on the R3000 and up to 260 ms for the
+  worst: the 30 fps gate needs the generator sliced inside a step (TKP4).
+* **Tools** (host or build machine only, nothing in the game): `ps1/tools/talk_size.sh`,
+  `core/tools/talk_reads.sh` (+ `talk_reads.c`), `core/tools/talk_steps.sh` (+ `talk_steps.c`).
+
+---------------------------------------------------------------------------
+
 ## 7. Sizes (measured)
 
 All figures are for `TALK_en.BIN` after the TK1 content (`talkc --stats`):
@@ -2224,7 +2250,8 @@ owner may override any of them.
 * **The player speaks in Talk.** This is an exception to "@P: Silent". The
   story stays silent.
 * **PS1 SPU RAM is split**: SFX use 0x2000-0x2FFFF, Talk uses
-  0x30000-0x7DFFF.
+  0x30000-0x7DFFF. (Superseded 2026-11-15: CR10's part store took 0x50000-0x7DFFF;
+  Talk can have 0x0C000-0x4FFFF at most, see section 6q and TKP_PLAN.md D1.)
 * **No teen-teen romance acts in Talk.** The life sim keeps its own
   same-age teen rule.
 * **Typed self-harm content** gets a gentle line, out of character and not a
