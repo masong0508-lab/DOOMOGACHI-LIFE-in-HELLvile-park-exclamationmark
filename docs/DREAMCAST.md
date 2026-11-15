@@ -638,7 +638,10 @@ runner both fail its `expect-scene DIALOG` / `TALK` / `HOME` lines while the nat
 a core change of another stream, not seen by anything of DC9C: the host runner links none of it).
 Repaired 2026-11-15 (TIP-DC-HOMEVISIT): the Dreamcast has no Talk screen, so `room-test` now runs
 `dc/tests/house/home_visit.txt` (the core script minus the live Talk steps; a copy beside
-`run_flycast.sh` wins over `core/tests/scripts`). `make -C dc room-test`: all 9 scripts ok.
+`run_flycast.sh` wins over `core/tests/scripts`). Only dcrun and the host runner take that copy;
+the native reference runner always takes the core script (it has the live Talk screen, and the Talk-less
+copy fails its scene checks). `dc/tests/families/scripts/home_visit_dc.txt` is a near-duplicate kept for
+family-test2. When Talk lands on the DC (TD1-TD3), delete `dc/tests/house/home_visit.txt`.
 `check-elf` expected a `dc_mailbox` of 4,364 B and the ELF's is 4,372 B since DC6B/6C: the check says
 4,372 B now (`make -C dc test` stopped at it before).
 

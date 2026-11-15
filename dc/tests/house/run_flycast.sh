@@ -18,7 +18,7 @@
 #              (HOSTRUN = dc/build/host/dc2d_runner: room.c through the
 #              software PVR); compare_house.py gates every Flycast shot
 #              against it (exact >= 99 %, within 24/255 >= 99.9 %)
-#    native    the same script in the native runner (room_ref.c): reported
+#    native    the core script (live Talk screen) in the native runner (room_ref.c): reported
 #              per shot (the Dreamcast's own effects differ by design)
 #    timing    the game's work per tick (dcrun): no tick over 33.3 ms (the
 #              30 fps budget), and the house view's own time (mailbox room_*)
@@ -82,6 +82,9 @@ for s in $SCRIPTS; do
     # a Dreamcast copy beside this script wins (home_visit.txt: no live Talk screen on the DC yet)
     src=$here/$s.txt
     [ -f "$src" ] || src=$root/core/tests/scripts/$s.txt
+    # the native runner has the live Talk screen: it always runs the core script
+    nsrc=$root/core/tests/scripts/$s.txt
+    [ -f "$nsrc" ] || nsrc=$src
     d=$OUT/$s
     rm -rf "$d"
     mkdir -p "$d/dc" "$d/nat" "$d/host"
@@ -89,7 +92,7 @@ for s in $SCRIPTS; do
         --script "$src" --shots "$d/dc" --timeout 1200 > "$d/dcrun.log" 2>&1
     rc=$(verdict $? "$d/dcrun.log")
     # --pad dc: both runners name the buttons as the Dreamcast build does (C3)
-    "$RUNNER" --w 320 --h 240 --pad dc --script "$src" --shots "$d/nat" --saves "$d/saves" > "$d/native.log" 2>&1
+    "$RUNNER" --w 320 --h 240 --pad dc --script "$nsrc" --shots "$d/nat" --saves "$d/saves" > "$d/native.log" 2>&1
     nrc=$?
     DC3_PNG=1 DC3_REPORT="$d/host/report.txt" "$HOSTRUN" --w 320 --h 240 --pad dc --script "$src" \
         --shots "$d/host" --saves "$d/hsaves" > "$d/host.log" 2>&1
