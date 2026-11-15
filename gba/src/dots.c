@@ -45,22 +45,42 @@ DOTS_ARM void dots_expand2(volatile uint32_t *dst, const uint8_t *d, int dw, int
     }
 }
 
-/* (plat_hshapes) the shapes in order, each row by row: the row's span clipped to the screen and filled by vid_rect
- * (the resident span fill plat_rect ends in), so the same fills in the same order as one plat_rect a row, without
- * the core's THUMB row loop and a call, veneer and clip test a row. Colour 0 is black, as plat_rect draws it. */
+/* (plat_hshapes) the shapes in order, each row by row: the row's span clipped to the screen and filled, so the same
+ * fills in the same order as one plat_rect a row, without the core's THUMB row loop and a call, veneer and clip test
+ * a row. Colour 0 is black, as plat_rect draws it. (S2-4d) A span is filled here rather than by a call to vid_rect
+ * (its stack frame and set-up were most of a short span's cost: the dream's rim, caption cloud and sky puffs are
+ * ~1,500 such rows a frame): whole words stored, the end words merged through byte masks (VRAM takes no byte
+ * stores), the same pixels. */
+static inline __attribute__((always_inline)) void span_fill(volatile uint32_t *row, int x0, int x1, uint32_t c4)
+{
+    volatile uint32_t *p = row + (x0 >> 2), *q = row + ((x1 - 1) >> 2);
+    uint32_t hm = 0xFFFFFFFFu << ((x0 & 3) << 3), tm = 0xFFFFFFFFu >> ((3 - ((x1 - 1) & 3)) << 3);
+    if (p == q) {
+        hm &= tm;
+        *p = hm == 0xFFFFFFFFu ? c4 : (*p & ~hm) | (c4 & hm);
+        return;
+    }
+    *p = hm == 0xFFFFFFFFu ? c4 : (*p & ~hm) | (c4 & hm);
+    for (p++; p < q; p++) *p = c4;
+    *q = tm == 0xFFFFFFFFu ? c4 : (*q & ~tm) | (c4 & tm);
+}
+
 DOTS_ARM void hshapes_fill(const DoomoHShape *s, int n)
 {
     for (; n > 0; n--, s++) {
         int cy = s->cy, y = cy - s->top, y1 = cy + s->bot;
         uint32_t c = s->c ? s->c : PAL_BLACK;
+        volatile uint32_t *row;
+        c *= 0x01010101u;
         if (y < 0) y = 0;
         if (y1 > SCREEN_H - 1) y1 = SCREEN_H - 1;
-        for (; y <= y1; y++) {
+        row = (volatile uint32_t *)(void *)gba_back + y * (SCREEN_W / 4);
+        for (; y <= y1; y++, row += SCREEN_W / 4) {
             int hw = y < cy ? s->ht[cy - y] : s->hb[y - cy];
             int x0 = s->cx - hw, x1 = s->cx + hw + 1;
             if (x0 < 0) x0 = 0;
             if (x1 > SCREEN_W) x1 = SCREEN_W;
-            if (x0 < x1) vid_rect(x0, y, x1, y + 1, c);
+            if (x0 < x1) span_fill(row, x0, x1, c);
         }
     }
 }
@@ -68,6 +88,7 @@ DOTS_ARM void hshapes_fill(const DoomoHShape *s, int n)
 int plat_hshapes(const DoomoHShape *s, int n)
 {
     if (gba_nodraw == 1) return 1;                  /* a skipped tick: nothing is drawn */
+    if (gba_nodraw == GBA_NODRAW_FIRST) vid_route(0, 0, SCREEN_W, SCREEN_H);   /* the frame's first call: Mode 4 */
     if (gba_nodraw != 0) return 0;                  /* tiles, panels, the estimate: plat_rect's paths */
     iwram_ovl_use(OVL_UI);
     hshapes_fill(s, n);

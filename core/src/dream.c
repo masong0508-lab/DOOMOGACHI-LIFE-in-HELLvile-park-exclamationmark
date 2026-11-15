@@ -32,6 +32,7 @@
 #include "concert_int.h"
 #include "doomo/story_vm.h"
 #include "doomo/txt.h"
+#include "doomo/plat_ext.h"         /* S2-4d: plat_ui_loops */
 
 enum { DS_PEEK, DS_ENTER, DS_DREAM, DS_WIPE, DS_CHOICE, DS_AFTER };
 
@@ -43,6 +44,7 @@ static struct {
     int state, st_t, id, nightmare, vi, choice, outcome, prev_song, problem, was_awake;
     int scripted;                    /* S2: 1 + the scripted dream row, 0 = a Peek */
     uint8_t plan[DREAM_SHOW];
+    uint8_t ch_top;                  /* S2-4d: the held choice's band (its top row), 0 = none (in plan's padding) */
     DreamCast cast;
     char cap[112];
     int split;
@@ -322,6 +324,8 @@ static void dream_enter(int arg)
 
 static void dream_leave(void)
 {
+    if (D.ch_top) plat_hold_band(PLAT_BAND_DROP, NULL);   /* S2-4d: the held choice's band */
+    D.ch_top = 0;
     if (D.prev_song > SONG_NONE) audio_music(D.prev_song);
     else concert_restore_music();
 }
@@ -422,7 +426,8 @@ static void caption_box(const char *text, int split, int t, int creep, int night
     uint8_t bg = creep >= 12 ? (nightmare ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_RAMP(RAMP_VAPE, 0)) : PAL_RAMP(RAMP_VAPE, 7);
     uint8_t ink = creep >= 12 ? PAL_WHITE : PAL_RAMP(RAMP_VAPE, 0);
     uint8_t ol = creep >= 12 ? (nightmare ? PAL_RAMP(RAMP_BLOOD, 4) : PAL_RAMP(RAMP_VAPE, 3)) : PAL_RAMP(RAMP_VAPE, 4);
-    int k;
+    int k, n;
+    int16_t xy[2 * 32];
     /* the box fits the whole line (it grows upwards) */
     lines = ui_text_wrap(x + 8, 0, w - 16, text, ink, 0);
     if (lines < 1) lines = 1;
@@ -435,10 +440,14 @@ static void caption_box(const char *text, int split, int t, int creep, int night
     if (shown > len) shown = len;
     memcpy(buf, text, (size_t)shown);
     buf[shown] = 0;
-    /* a cloud-shaped box */
-    for (k = 0; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 1, 7, ol);
+    /* a cloud-shaped box (S2-4d: each row of bumps in one dream_circles call) */
+    for (k = 0, n = 0; k < w && n < 32; k += 14, n++) { xy[2 * n] = (int16_t)(x + 7 + k); xy[2 * n + 1] = (int16_t)(y + 1); }
+    dream_circles(xy, n, 7, ol);
+    for (; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 1, 7, ol);
     ui_round_rect(x - 1, y - 1, w + 2, h + 2, 8, ol);
-    for (k = 0; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 2, 6, bg);
+    for (k = 0; k < n; k++) xy[2 * k + 1] = (int16_t)(y + 2);
+    dream_circles(xy, n, 6, bg);
+    for (k = n * 14; k < w; k += 14) ui_fill_circle(x + 7 + k, y + 2, 6, bg);
     ui_round_rect(x, y, w, h, 7, bg);
     ui_text_wrap(x + 8, y + 5, w - 16, buf, ink, 1);
     if (shown >= len && ((t / 10) & 1)) plat_text(x + w - 12, y + h - 10, STR_ICON_ARROW_D, ink);
@@ -474,6 +483,62 @@ static void floating_caption(const char *text, int t, int creep, int nightmare)
     }
 }
 
+/* --- S2-4d: the wake-up choice held (docs/GBA.md "Speed wave 2: S2-4d") ---
+ * The choice dims the whole dream (a full-screen shade, 14 ms on the GBA) and draws its card on it. Once one such
+ * frame was drawn, the platform keeps a clean copy of the dimmed rows the card's moving parts live in (the buttons
+ * and the line under them: plat_hold_band) and S2-1's modal hold keeps that frame in both pages: a held tick puts
+ * the rows back and draws the buttons (their bob, the cursor) and the line again, so a cursor move is a held tick
+ * too. The dream under the dim and the title's shake stand still meanwhile (a held frame). Where the platform
+ * keeps nothing (the defaults) every frame is drawn in full, as before. */
+static void choice_geom(int *y, int *bw, int *gap)
+{
+    int big = plat_screen_h() >= 200;
+    *y = plat_screen_h() / 2 - (big ? 30 : 24);
+    *bw = big ? 104 : 88;
+    *gap = big ? 12 : 8;
+}
+
+/* the band the held choice redraws: from the buttons' top (bobbed up one row) down */
+static void choice_band(PlatBand *b)
+{
+    int y, bw, gap;
+    choice_geom(&y, &bw, &gap);
+    b->y_need = b->y_want = (int16_t)(y + 37);
+    b->cx0 = b->cy0 = b->cx1 = b->cy1 = 0;          /* no core: the whole rows */
+}
+
+/* the card's buttons and the line under them (all inside the band) */
+static void choice_buttons(void)
+{
+    int sw = plat_screen_w(), y, bw, gap;
+    choice_geom(&y, &bw, &gap);
+    ui_button(sw / 2 - bw - gap / 2, y + 38, bw, "Wake them up", D.choice == 0, WIN_CUTE);
+    ui_button(sw / 2 + gap / 2, y + 38, bw, "Let them sleep", D.choice == 1, WIN_HELL);
+    ui_text_center(sw / 2, y + 60, D.choice == 0 ? "A hug and a glass of milk." :
+                   "They'll sleep it off... probably.", PAL_GRAY_L);
+}
+
+/* every drawn tick: 1 when this tick is a held choice (the band is back and the buttons are drawn) */
+static int choice_held(void)
+{
+    PlatBand b;
+    int sh = plat_screen_h();
+    if (!ui_modal_hold(&D, D.state == DS_CHOICE && D.ch_top, 0, D.ch_top, plat_screen_w(), sh - D.ch_top)) {
+        if (D.state != DS_CHOICE && D.ch_top) { plat_hold_band(PLAT_BAND_DROP, NULL); D.ch_top = 0; }
+        return 0;
+    }
+    choice_band(&b);
+    if (!plat_hold_band(PLAT_BAND_RESTORE, &b)) {     /* the copy is gone: draw in full (and keep it again) */
+        ui_modal_hold_end();
+        ui_modal_drop();
+        D.ch_top = 0;
+        return 0;
+    }
+    choice_buttons();
+    ui_modal_hold_end();
+    return 1;
+}
+
 static void bedroom(int expr, int shake)
 {
     dream_draw_bedroom(D.id, &D.cast, expr, D.t, shake);
@@ -483,6 +548,9 @@ static void dream_draw(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h(), big = sh >= 200;
     char buf[96];
+    if (plat_draw_skipped()) return;      /* S2-4d: a catch-up tick draws nothing: skip the sky's and shapes' maths */
+    plat_ui_loops();                      /* S2-4d: a plain bitmap frame: the platform's faster 2D loops */
+    if (choice_held()) return;            /* S2-4d: the held choice: its band is back, the buttons drawn */
     switch (D.state) {
     case DS_PEEK:
         bedroom(EXPR_SLEEPY, 0);
@@ -496,14 +564,14 @@ static void dream_draw(void)
         ui_hint(STR_ICON_A " Peek into the dream  " STR_ICON_B " Tiptoe away", WIN_DARK);
         break;
     case DS_ENTER:
-        bedroom(EXPR_SLEEPY, 0);
+        if (!dream_bubble_covers(D.st_t, ENTER_TICKS)) bedroom(EXPR_SLEEPY, 0);   /* S2-4d: hidden under the bubble */
         dream_draw_bubble_in(D.id, D.st_t, ENTER_TICKS, D.t);
         break;
     case DS_DREAM: case DS_WIPE: case DS_CHOICE: {
         int last = D.vi == DREAM_SHOW - 1, nm = D.nightmare && last;
         int t = D.state == DS_DREAM ? D.st_t : VIG_TICKS, creep = creep_of(t, nm);
         if (D.state == DS_CHOICE) creep = 16;
-        dream_draw_sky(creep, nm, D.t);
+        dream_draw_sky_rows(creep, nm, D.t, dream_sky_rows(D.plan[D.vi]));   /* S2-4d: not what the vignette covers */
         dream_draw_vignette(D.plan[D.vi], &D.cast, t, creep, nm);
         dream_draw_frame(creep, nm, D.t);
         if (D.state == DS_WIPE) {
@@ -526,17 +594,19 @@ static void dream_draw(void)
             ui_text_outline(6, big ? 8 : 5, dream_vignette_names[D.plan[D.vi]], PAL_WHITE, PAL_RAMP(RAMP_VAPE, 0));
         }
         if (D.state == DS_CHOICE) {
-            int y = sh / 2 - (big ? 30 : 24), bw = big ? 104 : 88, gap = big ? 12 : 8;
-            int tw = ui_text_big_width("NIGHTMARE!", 2);
+            int y, bw, gap, tw = ui_text_big_width("NIGHTMARE!", 2), top;
+            PlatBand b;
+            choice_geom(&y, &bw, &gap);
             plat_shade_rect(0, 0, sw, sh, 9);
+            choice_band(&b);                      /* S2-4d: the dimmed rows under the buttons, kept for held ticks */
+            top = plat_hold_band(PLAT_BAND_SAVE, &b);
+            D.ch_top = (uint8_t)(top > 0 && top < sh ? top : 0);
             ui_text_big(sw / 2 - tw / 2 + ((D.t & 2) ? 1 : -1), y, "NIGHTMARE!", 2, PAL_RAMP(RAMP_BLOOD, 5),
                         PAL_RAMP(RAMP_BLOOD, 0));
             doomo_snprintf(buf, sizeof(buf), "%s is having a nightmare!", concert_name(D.id));
             ui_text_center(sw / 2, y + 22, buf, PAL_WHITE);
-            ui_button(sw / 2 - bw - gap / 2, y + 38, bw, "Wake them up", D.choice == 0, WIN_CUTE);
-            ui_button(sw / 2 + gap / 2, y + 38, bw, "Let them sleep", D.choice == 1, WIN_HELL);
-            ui_text_center(sw / 2, y + 60, D.choice == 0 ? "A hug and a glass of milk." :
-                           "They'll sleep it off... probably.", PAL_GRAY_L);
+            choice_buttons();
+            ui_modal_full(&D, D.ch_top != 0);
         }
         break; }
     case DS_AFTER: {

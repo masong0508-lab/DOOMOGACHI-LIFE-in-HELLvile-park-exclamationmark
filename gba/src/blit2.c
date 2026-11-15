@@ -20,6 +20,8 @@
 #include "iwram_ovl.h"
 #include "doomo/plat_ext.h"
 #include "video_int.h"
+#include "canvas_int.h"
+#include "doomo/palette.h"
 
 #define BLIT2_ARM IWRAM_UI_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
 
@@ -324,6 +326,76 @@ int plat_beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t color)
     if (dy <= 0) return 1;
     q = 768 / dy;
     vid_beam_ui(ax, ay, ty, tx - ax, hw0, hw1 - hw0, dy, q, 768 - q * dy, color);
+    return 1;
+}
+
+/* (S2-4d) plat_sky_bands (plat_ext.h): the dream sky's wavy bands, one 8-px column at a time down the page. A column
+ * is two aligned words, so every row is two word stores (no read of the page): its band's colour in all four bytes,
+ * or on a seam row the checker word, seam[3 * i + (y & 1)] (bytes 0 and 2 the lower band on an even row, 1 and 3 on
+ * an odd one: (x + y) even, x = 8j + byte). The core's seam is cspan(): plat_checker over the column from 8j, or
+ * from 8j + 1 when the seam's first row is odd, so on an odd border's second (even) row the column's first pixel
+ * keeps the band above: that word is seam[3 * i + 2]. The core drew a rect per band and column (over the band
+ * above) and a checker per seam: ~5,000 masked rows and ~330 calls a frame (dream_gfx.c sky_bands). */
+BLIT2_ARM void vid_sky_cols(const int16_t *ys, int ncol, int nb, const uint32_t *solid, const uint32_t *seam, int y1)
+{
+    int j;
+    for (j = 0; j < ncol; j++, ys += nb) {
+        volatile uint32_t *p = (volatile uint32_t *)(void *)gba_back + 2 * j;
+        int y = 0, i;
+        for (i = 0; i <= nb; i++) {
+            int e = i < nb ? ys[i] - 2 : y1, n;
+            uint32_t w = solid[i];
+            if (e > y1) e = y1;
+            n = e - y;
+            for (; n >= 4; n -= 4, p += 4 * (SCREEN_W / 4)) {
+                p[0] = w; p[1] = w;
+                p[SCREEN_W / 4] = w; p[SCREEN_W / 4 + 1] = w;
+                p[2 * (SCREEN_W / 4)] = w; p[2 * (SCREEN_W / 4) + 1] = w;
+                p[3 * (SCREEN_W / 4)] = w; p[3 * (SCREEN_W / 4) + 1] = w;
+            }
+            for (; n > 0; n--, p += SCREEN_W / 4) { p[0] = w; p[1] = w; }
+            if (e > y) y = e;
+            if (i < nb && y < y1) {                  /* the seam: rows ys[i] - 2 and ys[i] - 1 */
+                uint32_t m = seam[3 * i + (y & 1)];
+                p[0] = m; p[1] = m;
+                y++; p += SCREEN_W / 4;
+                if (y < y1) {
+                    m = seam[3 * i + (y & 1)];
+                    p[0] = (ys[i] & 1) ? seam[3 * i + 2] : m;
+                    p[1] = m;
+                    y++; p += SCREEN_W / 4;
+                }
+            }
+        }
+    }
+}
+
+int plat_sky_bands(const int16_t *ys, int ncol, int nb, const uint8_t *col, int y1)
+{
+    uint32_t solid[8], seam[21];
+    int i;
+    if (ncol != SCREEN_W / 8 || nb < 1 || nb > 6 || y1 > SCREEN_H) return 0;   /* the core's rects */
+    if (gba_nodraw == 1 || y1 <= 0) return 1;      /* a skipped tick: nothing is drawn */
+    if (gba_nodraw == GBA_NODRAW_CANVAS) return 0;  /* a tile frame: the rects go to the canvas */
+    if (gba_nodraw) {                               /* the slow paths (the frame's first call, panels), as one rect */
+        int k;
+        pn_op = PN_OP_RECT;
+        k = vid_route(0, 0, SCREEN_W, y1);
+        pn_op = PN_OP_OTHER;
+        if (k != 1) return k == 0;
+    }
+    for (i = 0; i <= nb; i++) {
+        uint32_t c = col[i] ? col[i] : PAL_BLACK;
+        solid[i] = c * 0x01010101u;
+        if (i > 0) {
+            uint32_t a = col[i - 1] ? col[i - 1] : PAL_BLACK;   /* seam i - 1: the band above, checkered with c */
+            seam[3 * (i - 1)] = (c | a << 8) * 0x00010001u;     /* even row: bytes 0, 2 */
+            seam[3 * (i - 1) + 1] = (a | c << 8) * 0x00010001u; /* odd row: bytes 1, 3 */
+            seam[3 * (i - 1) + 2] = (a | a << 8) | (c | a << 8) << 16;   /* even row from 8j + 1: byte 2 */
+        }
+    }
+    iwram_ovl_use(OVL_UI);
+    vid_sky_cols(ys, ncol, nb, solid, seam, y1);
     return 1;
 }
 

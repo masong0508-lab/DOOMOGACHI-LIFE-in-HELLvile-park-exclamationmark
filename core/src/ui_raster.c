@@ -698,18 +698,18 @@ void ui_fill_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
     ellipse_draw(cx, cy, rx, ry, c);
 }
 
-static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c)
+/* The half-width of each row |dy| = 0 .. ry of ui_fill_ellipse(.., rx, ry, ..) for 1 <= ry <= CIRC_MAX (0 otherwise:
+ * a flat or a big one is drawn row by row) */
+int ui_ellipse_dx(int rx, int ry, int *dxs)
 {
-    int dxs[CIRC_MAX + 1];
     int y;
-    if (ry == 0) { out_rect(cx - rx, cy, 2 * rx + 1, 1, c); return; }
-    if (rx == ry && ry <= CIRC_MAX) {
+    if (rx < 0 || ry < 1 || ry > CIRC_MAX) return 0;
+    if (rx == ry) {
         const uint8_t *t = circle_dx(ry);
         for (y = 0; y <= ry; y++) dxs[y] = t[y];
-        nested_bands(cx, cy, dxs, ry, c);
-        return;
+        return 1;
     }
-    if (ry <= CIRC_MAX) {
+    {
         uint32_t A = (uint32_t)(rx * rx), B = (uint32_t)(ry * ry);
         if (ellq_ok(A, ry)) {
             EllQ e;
@@ -727,6 +727,16 @@ static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c)
                 dxs[y] = (int)(fx_isqrt(t * A / B) / 2);
             }
         }
+    }
+    return 1;
+}
+
+static void ellipse_draw(int cx, int cy, int rx, int ry, uint8_t c)
+{
+    int dxs[CIRC_MAX + 1];
+    int y;
+    if (ry == 0) { out_rect(cx - rx, cy, 2 * rx + 1, 1, c); return; }
+    if (ui_ellipse_dx(rx, ry, dxs)) {
         nested_bands(cx, cy, dxs, ry, c);
         return;
     }

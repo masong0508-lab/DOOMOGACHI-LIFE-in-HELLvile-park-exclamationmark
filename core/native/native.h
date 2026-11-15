@@ -12,6 +12,7 @@
 extern uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
 extern int nat_w, nat_h;
 extern int nat_band_off;                /* SP5: plat_hold_band says "cannot" (tests: the full redraw) */
+extern int nat_fast2d;                  /* S2-4d: plat_sky_bands / plat_hshapes draw (tests); 0: the core's rects */
 extern uint32_t nat_band_saves, nat_band_restores;
 
 typedef struct NatOptions {

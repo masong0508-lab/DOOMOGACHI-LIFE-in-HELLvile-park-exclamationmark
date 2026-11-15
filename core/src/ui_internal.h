@@ -34,6 +34,9 @@ int  ui_corner_inset(int r, int i);
  * the rounded-corner band tables (const lookup tables in ui_raster.c,
  * exposed for the tests) */
 int  ui_circle_dx(int r, int y);
+/* (S2-4d) the half-width of every row |dy| = 0 .. ry of ui_fill_ellipse(.., rx, ry, ..) into dxs (ry + 1 ints) when
+ * 1 <= ry <= 15 (returns 1; the shape is then exactly those rows), else 0 */
+int  ui_ellipse_dx(int rx, int ry, int *dxs);
 int  ui_corner_bands(int r, const uint8_t **len, const uint8_t **in);
 /* Only rows [row0, row1) of ui_round_rect(x, y, w, h, r, c). */
 void ui_round_rect_rows(int x, int y, int w, int h, int r, uint8_t c, int row0, int row1);

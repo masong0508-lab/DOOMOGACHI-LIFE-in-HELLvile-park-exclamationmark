@@ -276,12 +276,23 @@ extern const char *const dream_vignette_names[DREAM_VIGNETTES];
 void dream_draw_vignette(int vignette, const DreamCast *c, int t, int creep,
                          int nightmare);
 void dream_draw_sky(int creep, int nightmare, uint32_t t);
+/* (S2-4d) The sky's rows [0, y1) only (dream_draw_sky draws them all), and the rows of it vignette v leaves
+ * visible (0: none, it paints the whole screen; the floor's top row: the floor covers every row below it). */
+void dream_draw_sky_rows(int creep, int nightmare, uint32_t t, int y1);
+int  dream_sky_rows(int vignette);
+/* (S2-4d) n circles of radius r, centres (xy[2k], xy[2k + 1]), in order: ui_fill_circle's pixels, through
+ * plat_hshapes where the platform has it. */
+void dream_circles(const int16_t *xy, int n, int r, uint8_t c);
+/* (S2-4d) n filled ellipses of one colour, (cx, cy, rx, ry) in e[4k .. 4k + 3]: ui_fill_ellipse's pixels. */
+void dream_ellipses(const int16_t *e, int n, uint8_t c);
 void dream_draw_frame(int creep, int nightmare, uint32_t t);
 /* The sleeper's night bedroom (sleeper's portrait under a quilt). */
 void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int shake);
 /* Thought bubbles rising from the sleeper, the last one swelling to fill
  * the screen (t of total ticks). */
 void dream_draw_bubble_in(int id, int t, int total, uint32_t clock);
+/* (S2-4d) 1 when the swelling bubble covers the whole screen at tick t of total (nothing under it shows) */
+int  dream_bubble_covers(int t, int total);
 /* A procedural food icon (48 foods) at (cx, cy); size ~ radius; teeth
  * 0..16 (cute -> fanged). */
 void dream_food(int food, int cx, int cy, int size, int teeth, uint32_t t);

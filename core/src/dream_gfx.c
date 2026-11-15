@@ -9,6 +9,8 @@
  * chibis and a few of the demon sprites.
  */
 #include "concert_int.h"
+#include "doomo/plat_ext.h"     /* S2-4d: plat_sky_bands, plat_hshapes */
+#include "ui_internal.h"        /* S2-4d: ui_circle_dx */
 
 static int SW(void) { return plat_screen_w(); }
 static int SH(void) { return plat_screen_h(); }
@@ -28,6 +30,106 @@ static void glow(int cx, int cy, int rx, int ry, uint8_t c)
     for (y = -ry; y <= ry; y += 2) {
         int dx = (int)fx_isqrt((uint32_t)((ry * ry - y * y) * rx * rx / (ry * ry)));
         cspan(cx - dx, cx + dx, cy + y, 2, c);
+    }
+}
+
+/* (S2-4d) The half-widths of a filled circle's rows |dy| = 0 .. n - 1: ui_circle_dx(r, dy) = isqrt((r^2 - dy^2) * 4
+ * + 2r) / 2, the largest d with 4 d^2 <= that, walked down from r without a square root; clamped to 255. */
+static void circle_rows(int r, int n, uint8_t *dx)
+{
+    int y, d = r;
+    for (y = 0; y < n; y++) {
+        int32_t q = (int32_t)(r * r - y * y) * 4 + 2 * r;
+        while (d > 0 && (int32_t)(4 * d * d) > q) d--;
+        dx[y] = (uint8_t)(d > 255 ? 255 : d);
+    }
+}
+
+/* (S2-4d) n circles of radius r in colour c, centres (xy[2k], xy[2k + 1]), in that order: ui_fill_circle's pixels
+ * (a row of a circle is the span of its half-width: the union of ui_fill_ellipse's nested bands for r <= 15, its
+ * row spans above), in one plat_hshapes call per 16 where the platform has it (the GBA: an ARM loop of row fills
+ * instead of a THUMB call per band or row), else ui_fill_circle each. Only the rows on the screen are tabled; a
+ * half-width over 255 is cut to 255, which still covers every column when the centre is on the screen (else the
+ * circles are drawn one by one). */
+#define DC_ROWS 256
+void dream_circles(const int16_t *xy, int n, int r, uint8_t c)
+{
+    int k = 0, i, sh = SH(), sw = SW(), rows = 0;
+    if (n <= 0 || r < 0 || plat_draw_skipped()) return;
+    for (i = 0; i < n; i++) {                        /* the table's length: the on-screen rows of the farthest */
+        int cy = xy[2 * i + 1], top = DOOMO_CLAMP(cy, 0, r), bot = DOOMO_CLAMP(sh - 1 - cy, 0, r);
+        rows = DOOMO_MAX(rows, DOOMO_MAX(top, bot) + 1);
+        if (r > 255 && (xy[2 * i] < 0 || xy[2 * i] >= sw)) rows = DC_ROWS + 1;
+    }
+    if (rows <= DC_ROWS) {
+        DoomoHShape hs[16];
+        uint8_t dx[DC_ROWS];
+        circle_rows(r, rows, dx);
+        for (; k < n; k += i) {
+            int m = DOOMO_MIN(16, n - k);
+            for (i = 0; i < m; i++) {
+                int cy = xy[2 * (k + i) + 1];
+                hs[i].cx = xy[2 * (k + i)];
+                hs[i].cy = (int16_t)cy;
+                hs[i].top = (int16_t)DOOMO_CLAMP(cy, 0, r);
+                hs[i].bot = (int16_t)DOOMO_CLAMP(sh - 1 - cy, 0, r);
+                hs[i].ht = hs[i].hb = dx;
+                hs[i].c = c;
+            }
+            if (!plat_hshapes(hs, m)) break;
+        }
+    }
+    for (; k < n; k++) ui_fill_circle(xy[2 * k], xy[2 * k + 1], r, c);
+}
+
+/* one circle / ellipse through the helpers above (the same pixels as ui_fill_circle / ui_fill_ellipse) */
+static void d_circle(int cx, int cy, int r, uint8_t c)
+{
+    int16_t xy[2];
+    xy[0] = (int16_t)cx; xy[1] = (int16_t)cy;
+    dream_circles(xy, 1, r, c);
+}
+
+static void d_ellipse(int cx, int cy, int rx, int ry, uint8_t c)
+{
+    int16_t e[4];
+    e[0] = (int16_t)cx; e[1] = (int16_t)cy; e[2] = (int16_t)rx; e[3] = (int16_t)ry;
+    dream_ellipses(e, 1, c);
+}
+
+/* (S2-4d) n filled ellipses of one colour, (cx, cy, rx, ry) in e[4k .. 4k + 3]: ui_fill_ellipse's pixels (one
+ * colour: their order does not matter), the small ones (ry 1..15) in one plat_hshapes call per 16 where the
+ * platform has it, with each size's half-widths made once */
+void dream_ellipses(const int16_t *e, int n, uint8_t c)
+{
+    DoomoHShape hs[16];
+    uint8_t tab[16][16];
+    int16_t key[16], rxs[16];
+    int k, i, m = 0, nt = 0, dxs[16];
+    if (n <= 0 || plat_draw_skipped()) return;
+    for (k = 0; k <= n; k++) {
+        int rx, ry, t;
+        if (k == n || m == 16) {                     /* flush the batch (or draw it shape by shape) */
+            if (m && !plat_hshapes(hs, m)) for (i = 0; i < m; i++) ui_fill_ellipse(hs[i].cx, hs[i].cy, rxs[i], hs[i].bot, c);
+            m = 0;
+            if (k == n) break;
+        }
+        rx = e[4 * k + 2]; ry = e[4 * k + 3];
+        if (rx < 0 || rx > 200 || ry < 1 || ry > 15) {   /* flat, big or wide (half-widths 256+): row by row */
+            ui_fill_ellipse(e[4 * k], e[4 * k + 1], rx, ry, c);
+            continue;
+        }
+        for (t = 0; t < nt; t++) if (key[t] == (int16_t)(rx << 4 | ry)) break;
+        if (t == nt && nt < 16 && ui_ellipse_dx(rx, ry, dxs)) {
+            for (i = 0; i <= ry; i++) tab[nt][i] = (uint8_t)dxs[i];
+            key[nt++] = (int16_t)(rx << 4 | ry);
+        }
+        if (t == nt) { ui_fill_ellipse(e[4 * k], e[4 * k + 1], rx, ry, c); continue; }   /* no room in the table */
+        hs[m].cx = e[4 * k]; hs[m].cy = e[4 * k + 1];
+        hs[m].top = hs[m].bot = (int16_t)ry;
+        hs[m].ht = hs[m].hb = tab[t];
+        hs[m].c = c;
+        rxs[m++] = (int16_t)rx;
     }
 }
 
@@ -138,10 +240,10 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
     case FS_CUPCAKE:
         plat_rect(cx - s + 1, cy, 2 * s - 1, s, ad);
         for (k = -s + 2; k < s - 1; k += 3) plat_rect(cx + k, cy + 1, 1, s - 1, a);
-        ui_fill_ellipse(cx, cy - 1, s, s * 2 / 3, md);
-        ui_fill_ellipse(cx, cy - 2, s - 1, s / 2, m);
-        ui_fill_circle(cx, cy - s / 2 - 2, s / 2, ml);
-        ui_fill_circle(cx + 1, cy - s - 1, 2, PAL_PAINT(PAINT_CHERRY, 1));
+        d_ellipse(cx, cy - 1, s, s * 2 / 3, md);
+        d_ellipse(cx, cy - 2, s - 1, s / 2, m);
+        d_circle(cx, cy - s / 2 - 2, s / 2, ml);
+        d_circle(cx + 1, cy - s - 1, 2, PAL_PAINT(PAINT_CHERRY, 1));
         fy = cy - 1;
         break;
     case FS_ONIGIRI:
@@ -153,7 +255,7 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         fy = cy - 1;
         break;
     case FS_BOWL:
-        ui_fill_ellipse(cx, cy - 1, s + 1, s / 3 + 1, a);
+        d_ellipse(cx, cy - 1, s + 1, s / 3 + 1, a);
         for (k = -s + 2; k < s; k += 3) plat_rect(cx + k, cy - 2 - ((k + (int)t / 8) & 1), 2, 2, al);
         for (k = 0; k < s; k++) {
             int hw = s - k * k / s;
@@ -163,19 +265,19 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         fy = cy + s / 2;
         break;
     case FS_DONUT:
-        ui_fill_circle(cx, cy, s, md);
-        ui_fill_circle(cx, cy - 1, s - 1, m);
-        ui_fill_ellipse(cx, cy - 2, s - 1, s / 2 + 1, a);
+        d_circle(cx, cy, s, md);
+        d_circle(cx, cy - 1, s - 1, m);
+        d_ellipse(cx, cy - 2, s - 1, s / 2 + 1, a);
         for (k = 0; k < 4; k++) plat_rect(cx - s / 2 + k * s / 3, cy - s / 2 + (k & 1), 1, 2, PAL_WHITE);
-        ui_fill_circle(cx, cy, s / 3, 0);
-        if (s / 3 > 0) ui_fill_circle(cx, cy, s / 3, PAL_RAMP(RAMP_STONE, 0));
+        d_circle(cx, cy, s / 3, 0);
+        if (s / 3 > 0) d_circle(cx, cy, s / 3, PAL_RAMP(RAMP_STONE, 0));
         fy = cy + s / 2;
         break;
     case FS_EYEBALL:
-        ui_fill_circle(cx, cy, s, PAL_RAMP(RAMP_STONE, 5));
-        ui_fill_circle(cx, cy - 1, s - 1, m);
-        ui_fill_circle(cx + 1, cy, s / 2, a);
-        ui_fill_circle(cx + 1, cy, s / 4, PAL_RAMP(RAMP_STONE, 0));
+        d_circle(cx, cy, s, PAL_RAMP(RAMP_STONE, 5));
+        d_circle(cx, cy - 1, s - 1, m);
+        d_circle(cx + 1, cy, s / 2, a);
+        d_circle(cx + 1, cy, s / 4, PAL_RAMP(RAMP_STONE, 0));
         plat_rect(cx, cy - 1, 1, 1, PAL_WHITE);
         if (teeth > 8) for (k = 0; k < 3; k++) plat_line(cx - s + 1, cy - 2 + k * 2, cx - s / 2, cy - 1 + k, PAL_RAMP(RAMP_BLOOD, 5));
         return;                                    /* it IS the face */
@@ -188,8 +290,8 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         fy = cy + 1;
         break;
     case FS_PEPPER:
-        ui_fill_ellipse(cx, cy, s / 2 + 1, s, md);
-        ui_fill_ellipse(cx - 1, cy - 1, s / 2, s - 1, m);
+        d_ellipse(cx, cy, s / 2 + 1, s, md);
+        d_ellipse(cx - 1, cy - 1, s / 2, s - 1, m);
         plat_rect(cx - 2, cy - s - 2, 5, 3, a);
         plat_rect(cx, cy - s - 4, 1, 2, ad);
         plat_rect(cx - 2, cy - s / 2, 1, s / 2, ml);
@@ -200,15 +302,15 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
             plat_rect(cx - hw, cy - s + k, 2 * hw + 1, 1, k < 3 ? a : m);
         }
         plat_rect(cx - s - 1, cy + s - 2, 2 * s + 3, 3, k > 0 ? md : m);
-        if (fl[2] == PAINT_CHERRY) for (k = 0; k < 3; k++) ui_fill_circle(cx - 2 + k * 2, cy - 2 + (k & 1) * 4, 1, a);
+        if (fl[2] == PAINT_CHERRY) for (k = 0; k < 3; k++) d_circle(cx - 2 + k * 2, cy - 2 + (k & 1) * 4, 1, a);
         fy = cy + 1;
         break;
     case FS_MEAT:
-        ui_fill_ellipse(cx - 1, cy, s, s * 2 / 3 + 1, md);
-        ui_fill_ellipse(cx - 2, cy - 1, s - 1, s * 2 / 3, m);
+        d_ellipse(cx - 1, cy, s, s * 2 / 3 + 1, md);
+        d_ellipse(cx - 2, cy - 1, s - 1, s * 2 / 3, m);
         plat_rect(cx + s - 2, cy - 1, s / 2 + 2, 3, a);
-        ui_fill_circle(cx + s + s / 2, cy - 1, 2, al);
-        ui_fill_circle(cx + s + s / 2, cy + 2, 2, al);
+        d_circle(cx + s + s / 2, cy - 1, 2, al);
+        d_circle(cx + s + s / 2, cy + 2, 2, al);
         fy = cy;
         cx -= 2;
         break;
@@ -216,7 +318,7 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         plat_rect(cx - s / 2 - 1, cy - s, s + 3, 2 * s, ad);
         plat_rect(cx - s / 2, cy - s + 1, s + 1, 2 * s - 2, a);
         plat_rect(cx - s / 2, cy - s + 1, s + 1, 3, m);
-        if (fl[2] == PAINT_JET) for (k = 0; k < 3; k++) ui_fill_circle(cx - s / 3 + k * s / 3, cy + s - 3, 1, PAL_PAINT(PAINT_JET, 1));
+        if (fl[2] == PAINT_JET) for (k = 0; k < 3; k++) d_circle(cx - s / 3 + k * s / 3, cy + s - 3, 1, PAL_PAINT(PAINT_JET, 1));
         if (fl[2] == PAINT_CHERRY) for (k = -s / 2; k <= s / 2; k += 3) plat_rect(cx + k, cy - s + 3, 1, 2 * s - 4, PAL_PAINT(PAINT_CHERRY, 1));
         plat_line(cx + 1, cy - s - 4, cx + 3, cy - s + 2, PAL_PAINT(PAINT_BUBBLEGUM, 2));
         plat_rect(cx + s / 2 + 2, cy - s / 3, 2, s / 2 + 1, ad);
@@ -224,23 +326,23 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         break;
     case FS_STACK:
         for (k = 2; k >= 0; k--) {
-            ui_fill_ellipse(cx, cy + k * (s / 2) - s / 3, s + 1, s / 3 + 1, md);
-            ui_fill_ellipse(cx, cy + k * (s / 2) - s / 3 - 1, s, s / 3, m);
+            d_ellipse(cx, cy + k * (s / 2) - s / 3, s + 1, s / 3 + 1, md);
+            d_ellipse(cx, cy + k * (s / 2) - s / 3 - 1, s, s / 3, m);
         }
         plat_rect(cx - s / 2, cy - s / 2 - 2, s, 2, a);
         plat_rect(cx - 2, cy - s / 2, 4, s / 2 + 2, PAL_PAINT(PAINT_HONEY, 2));
         fy = cy + s / 3;
         break;
     case FS_BLOB:
-        ui_fill_ellipse(cx, cy + 1, s + 1, s * 3 / 4 + 1, md);
-        ui_fill_ellipse(cx, cy, s, s * 3 / 4, m);
-        ui_fill_ellipse(cx - s / 3, cy - s / 3, s / 3, s / 4, ml);
+        d_ellipse(cx, cy + 1, s + 1, s * 3 / 4 + 1, md);
+        d_ellipse(cx, cy, s, s * 3 / 4, m);
+        d_ellipse(cx - s / 3, cy - s / 3, s / 3, s / 4, ml);
         if (fl[2] == PAINT_CHERRY) plat_line(cx - s / 2, cy - s / 3, cx + s / 2, cy - s / 3 + 1, a);
-        else ui_fill_circle(cx + s / 2, cy - s / 2, 1, a);
+        else d_circle(cx + s / 2, cy - s / 2, 1, a);
         break;
     case FS_TACO:
-        ui_fill_ellipse(cx, cy, s + 1, s * 2 / 3, md);
-        ui_fill_ellipse(cx, cy - 1, s, s * 2 / 3 - 1, m);
+        d_ellipse(cx, cy, s + 1, s * 2 / 3, md);
+        d_ellipse(cx, cy - 1, s, s * 2 / 3 - 1, m);
         for (k = -s + 2; k < s - 1; k += 3) plat_rect(cx + k, cy - s / 2 - 1, 2, 2, (k & 1) ? a : PAL_PAINT(PAINT_CHERRY, 1));
         break;
     case FS_SUSHI:
@@ -251,9 +353,9 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         fy = cy + 1;
         break;
     case FS_MACARON:
-        ui_fill_ellipse(cx, cy - s / 3, s, s / 3 + 1, m);
+        d_ellipse(cx, cy - s / 3, s, s / 3 + 1, m);
         plat_rect(cx - s + 1, cy - 1, 2 * s - 1, 3, a);
-        ui_fill_ellipse(cx, cy + s / 3 + 1, s, s / 3 + 1, md);
+        d_ellipse(cx, cy + s / 3 + 1, s, s / 3 + 1, md);
         fy = cy - 1;
         break;
     case FS_CONE:
@@ -261,8 +363,8 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
             int hw = (s + 2 - k) * s / (2 * (s + 2)) + 1;
             plat_rect(cx - hw, cy + k, 2 * hw, 1, (k & 2) ? ad : a);
         }
-        ui_fill_circle(cx, cy - s / 3, s * 2 / 3 + 1, md);
-        ui_fill_circle(cx, cy - s / 3 - 1, s * 2 / 3, m);
+        d_circle(cx, cy - s / 3, s * 2 / 3 + 1, md);
+        d_circle(cx, cy - s / 3 - 1, s * 2 / 3, m);
         fy = cy - s / 3;
         break;
     case FS_TOAST:
@@ -271,23 +373,23 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         plat_rect(cx - s / 2, cy - s / 2, s / 2, s / 3, PAL_PAINT(PAINT_HONEY, 2));
         break;
     case FS_BUN:
-        ui_fill_ellipse(cx, cy, s + 1, s * 3 / 4 + 1, md);
-        ui_fill_ellipse(cx, cy - 1, s, s * 3 / 4, m);
+        d_ellipse(cx, cy, s + 1, s * 3 / 4 + 1, md);
+        d_ellipse(cx, cy - 1, s, s * 3 / 4, m);
         for (k = -s / 2; k <= s / 2; k += s / 3 + 1) plat_line(cx + k - 2, cy - s / 2, cx + k + 2, cy + s / 3, ml);
         break;
     case FS_STICK:
         plat_rect(cx, cy - s, 1, 2 * s + 2, PAL_PAINT(PAINT_CARAMEL, 2));
         for (k = 0; k < 3; k++) {
-            ui_fill_circle(cx, cy - s + 2 + k * (s * 2 / 3), s / 3 + 1, md);
-            ui_fill_circle(cx, cy - s + 1 + k * (s * 2 / 3), s / 3, m);
+            d_circle(cx, cy - s + 2 + k * (s * 2 / 3), s / 3 + 1, md);
+            d_circle(cx, cy - s + 1 + k * (s * 2 / 3), s / 3, m);
         }
         fy = cy;
         break;
     case FS_CLOUD:
         plat_rect(cx, cy, 1, s + 2, PAL_PAINT(PAINT_WHITE, 2));
-        ui_fill_circle(cx - s / 2, cy - s / 3, s * 2 / 3, m);
-        ui_fill_circle(cx + s / 2, cy - s / 3, s * 2 / 3, a);
-        ui_fill_circle(cx, cy - s * 2 / 3, s * 2 / 3, ml);
+        d_circle(cx - s / 2, cy - s / 3, s * 2 / 3, m);
+        d_circle(cx + s / 2, cy - s / 3, s * 2 / 3, a);
+        d_circle(cx, cy - s * 2 / 3, s * 2 / 3, ml);
         fy = cy - s / 2;
         break;
     case FS_CANDY:
@@ -298,7 +400,7 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         for (k = 0; k < 4; k++) plat_rect(cx - s / 2 + k * s / 3, cy - s / 3 + (k & 1) * 3, 1, 1, PAL_WHITE);
         break;
     case FS_BAT:
-        ui_fill_ellipse(cx, cy, s / 2 + 1, s / 2, m);
+        d_ellipse(cx, cy, s / 2 + 1, s / 2, m);
         for (k = 1; k <= s; k++) {
             int hh = s / 2 - k / 3 + ((k & 3) == 0 ? 1 : 0);
             plat_rect(cx - s / 2 - k, cy - hh / 2 - ((t / 6) & 1), 1, hh > 0 ? hh : 1, md);
@@ -317,14 +419,14 @@ void dream_food(int food, int cx, int cy, int s, int teeth, uint32_t t)
         s = s * 2 / 3;
         break;
     case FS_FRUIT:
-        ui_fill_circle(cx, cy, s, md);
-        ui_fill_circle(cx - 1, cy - 1, s - 1, m);
-        ui_fill_circle(cx - s / 3, cy - s / 3, s / 4 + 1, ml);
+        d_circle(cx, cy, s, md);
+        d_circle(cx - 1, cy - 1, s - 1, m);
+        d_circle(cx - s / 3, cy - s / 3, s / 4 + 1, ml);
         plat_rect(cx - 1, cy - s - 2, 4, 2, a);
         break;
     case FS_PICKLE:
-        ui_fill_ellipse(cx, cy, s / 2 + 1, s + 1, md);
-        ui_fill_ellipse(cx, cy, s / 2, s, m);
+        d_ellipse(cx, cy, s / 2 + 1, s + 1, md);
+        d_ellipse(cx, cy, s / 2, s, m);
         for (k = -s + 2; k < s; k += 3) plat_rect(cx - s / 4 + (k & 2), cy + k, 1, 1, a);
         break;
     default: break;
@@ -345,20 +447,20 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
             plat_line(cx - s / 2, ly, cx - s - 3, ly + (k < 2 ? -3 : 3) + ((k + (int)t / 4) & 1), dk);
             plat_line(cx + s / 2, ly, cx + s + 3, ly + (k < 2 ? -3 : 3) + ((k + (int)t / 4 + 1) & 1), dk);
         }
-        ui_fill_circle(cx, cy, s, dk);
-        ui_fill_circle(cx - s / 3, cy - s / 3, s / 4, PAL_RAMP(RAMP_STONE, 3));
+        d_circle(cx, cy, s, dk);
+        d_circle(cx - s / 3, cy - s / 3, s / 4, PAL_RAMP(RAMP_STONE, 3));
         face(cx, cy, s / 2 + 1, creep, t);
         if (creep >= 12) for (k = 0; k < 3; k++) plat_rect(cx - s / 2 + k * s / 2, cy - s / 2 - 2, 1, 1, PAL_RAMP(RAMP_BLOOD, 5));
         break;
     case 1:     /* the dark: a shadow blob that peeks */
-        ui_fill_ellipse(cx, cy, s + 2, s, PAL_RAMP(RAMP_VAPE, 0));
-        ui_fill_ellipse(cx, cy + s / 2, s + 4, s / 2, PAL_RAMP(RAMP_VAPE, 0));
+        d_ellipse(cx, cy, s + 2, s, PAL_RAMP(RAMP_VAPE, 0));
+        d_ellipse(cx, cy + s / 2, s + 4, s / 2, PAL_RAMP(RAMP_VAPE, 0));
         face(cx, cy - 1, s / 2 + 1, DOOMO_MAX(creep, 10), t);
         break;
     case 2:     /* thunder: a grumpy cloud */
-        ui_fill_circle(cx - s / 2, cy, s * 2 / 3, PAL_RAMP(RAMP_STONE, 3));
-        ui_fill_circle(cx + s / 2, cy, s * 2 / 3, PAL_RAMP(RAMP_STONE, 3));
-        ui_fill_circle(cx, cy - s / 3, s * 3 / 4, PAL_RAMP(RAMP_STONE, 4));
+        d_circle(cx - s / 2, cy, s * 2 / 3, PAL_RAMP(RAMP_STONE, 3));
+        d_circle(cx + s / 2, cy, s * 2 / 3, PAL_RAMP(RAMP_STONE, 3));
+        d_circle(cx, cy - s / 3, s * 3 / 4, PAL_RAMP(RAMP_STONE, 4));
         if (((t + (uint32_t)cx) % 24) < 6) {
             plat_line(cx, cy + s / 2, cx - 3, cy + s + 3, PAL_PAINT(PAINT_LEMON, 2));
             plat_line(cx - 3, cy + s + 3, cx + 2, cy + s + 3, PAL_PAINT(PAINT_LEMON, 2));
@@ -367,16 +469,16 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
         face(cx, cy - 1, s / 2, creep, t);
         break;
     case 3:     /* clowns */
-        ui_fill_circle(cx - s, cy - s / 3, s / 2, PAL_PAINT(PAINT_TANGERINE, 1));
-        ui_fill_circle(cx + s, cy - s / 3, s / 2, PAL_PAINT(PAINT_TANGERINE, 1));
-        ui_fill_circle(cx, cy, s, PAL_PAINT(PAINT_WHITE, 2));
+        d_circle(cx - s, cy - s / 3, s / 2, PAL_PAINT(PAINT_TANGERINE, 1));
+        d_circle(cx + s, cy - s / 3, s / 2, PAL_PAINT(PAINT_TANGERINE, 1));
+        d_circle(cx, cy, s, PAL_PAINT(PAINT_WHITE, 2));
         face(cx, cy - 1, s / 2 + 1, creep, t);
-        ui_fill_circle(cx, cy + 1, 2, PAL_PAINT(PAINT_CHERRY, 1));
+        d_circle(cx, cy + 1, 2, PAL_PAINT(PAINT_CHERRY, 1));
         break;
     case 4:     /* ghosts */
-        ui_fill_circle(cx, cy - s / 3, s, PAL_PAINT(PAINT_WHITE, 2));
+        d_circle(cx, cy - s / 3, s, PAL_PAINT(PAINT_WHITE, 2));
         plat_rect(cx - s, cy - s / 3, 2 * s + 1, s, PAL_PAINT(PAINT_WHITE, 2));
-        for (k = -s; k <= s; k += 4) ui_fill_circle(cx + k + 1, cy + s * 2 / 3 + wig, 2, PAL_PAINT(PAINT_WHITE, 2));
+        for (k = -s; k <= s; k += 4) d_circle(cx + k + 1, cy + s * 2 / 3 + wig, 2, PAL_PAINT(PAINT_WHITE, 2));
         face(cx, cy - s / 3, s / 2 + 1, creep, t);
         break;
     case 5:     /* heights: a wobbly tall ladder */
@@ -395,16 +497,16 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
         break;
     case 7:     /* vacuum cleaners */
         ui_round_rect(cx - s, cy - s / 2, s + s / 2, s + 2, 3, PAL_PAINT(PAINT_CHERRY, 1));
-        ui_fill_circle(cx - s / 2, cy + s / 2 + 1, 2, PAL_RAMP(RAMP_STONE, 0));
-        ui_fill_circle(cx + s / 3, cy + s / 2 + 1, 2, PAL_RAMP(RAMP_STONE, 0));
+        d_circle(cx - s / 2, cy + s / 2 + 1, 2, PAL_RAMP(RAMP_STONE, 0));
+        d_circle(cx + s / 3, cy + s / 2 + 1, 2, PAL_RAMP(RAMP_STONE, 0));
         plat_line(cx + s / 2, cy - s / 2, cx + s + 2, cy - s, PAL_RAMP(RAMP_STONE, 1));
         plat_line(cx + s + 2, cy - s, cx + s + 4, cy + s, PAL_RAMP(RAMP_STONE, 1));
         face(cx - s / 4, cy, s / 3 + 1, creep, t);
         break;
     case 8:     /* bees */
-        ui_fill_ellipse(cx - s / 3, cy - s / 2 + wig, s / 2, s / 3, PAL_PAINT(PAINT_WHITE, 2));
-        ui_fill_ellipse(cx + s / 3, cy - s / 2 - wig, s / 2, s / 3, PAL_PAINT(PAINT_WHITE, 2));
-        ui_fill_ellipse(cx, cy, s, s * 2 / 3, PAL_PAINT(PAINT_LEMON, 1));
+        d_ellipse(cx - s / 3, cy - s / 2 + wig, s / 2, s / 3, PAL_PAINT(PAINT_WHITE, 2));
+        d_ellipse(cx + s / 3, cy - s / 2 - wig, s / 2, s / 3, PAL_PAINT(PAINT_WHITE, 2));
+        d_ellipse(cx, cy, s, s * 2 / 3, PAL_PAINT(PAINT_LEMON, 1));
         for (k = -s / 2; k <= s / 2; k += 4) plat_rect(cx + k, cy - s / 2, 2, s, PAL_PAINT(PAINT_JET, 1));
         plat_rect(cx + s, cy, 2, 1, PAL_PAINT(PAINT_JET, 1));
         face(cx - s / 3, cy, s / 3 + 1, creep, t);
@@ -417,26 +519,26 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
         face(cx, cy - 1, s / 3 + 1, creep, t);
         break;
     case 10:    /* mirrors */
-        ui_fill_ellipse(cx, cy, s * 2 / 3 + 2, s + 2, PAL_PAINT(PAINT_HONEY, 1));
-        ui_fill_ellipse(cx, cy, s * 2 / 3, s, PAL_PAINT(PAINT_SKY, 2));
+        d_ellipse(cx, cy, s * 2 / 3 + 2, s + 2, PAL_PAINT(PAINT_HONEY, 1));
+        d_ellipse(cx, cy, s * 2 / 3, s, PAL_PAINT(PAINT_SKY, 2));
         plat_line(cx - s / 3, cy - s / 2, cx, cy - s / 2 + 4, PAL_WHITE);
         face(cx, cy, s / 3 + 1, creep, t);
         break;
     case 11:    /* being alone: one sad little balloon */
         plat_line(cx, cy, cx + wig, cy + s + 4, PAL_RAMP(RAMP_STONE, 4));
-        ui_fill_ellipse(cx, cy - s / 2, s * 2 / 3, s, PAL_PAINT(PAINT_SKY, 1));
+        d_ellipse(cx, cy - s / 2, s * 2 / 3, s, PAL_PAINT(PAINT_SKY, 1));
         face(cx, cy - s / 2, s / 3 + 1, creep > 6 ? creep : 0, t);
         break;
     case 12:    /* public speaking: a judging microphone */
         plat_rect(cx - 1, cy, 3, s + 4, PAL_RAMP(RAMP_STEEL, 3));
-        ui_fill_circle(cx, cy - s / 3, s * 2 / 3, PAL_RAMP(RAMP_STEEL, 5));
+        d_circle(cx, cy - s / 3, s * 2 / 3, PAL_RAMP(RAMP_STEEL, 5));
         for (k = -s / 2; k <= s / 2; k += 2) plat_rect(cx - s / 2, cy - s / 3 + k, s, 1, PAL_RAMP(RAMP_STEEL, 3));
         face(cx, cy - s / 3, s / 3 + 1, creep, t);
         break;
     case 13:    /* bath time */
         plat_rect(cx - s - 2, cy, 2 * s + 5, s, PAL_PAINT(PAINT_WHITE, 2));
         plat_rect(cx - s - 2, cy, 2 * s + 5, 1, PAL_PAINT(PAINT_SKY, 1));
-        for (k = 0; k < 5; k++) ui_fill_circle(cx - s + k * s / 2, cy - 1 - (k & 1) * 2, 3, PAL_PAINT(PAINT_SKY, 2));
+        for (k = 0; k < 5; k++) d_circle(cx - s + k * s / 2, cy - 1 - (k & 1) * 2, 3, PAL_PAINT(PAINT_SKY, 2));
         face(cx, cy + s / 2, s / 3 + 1, creep, t);
         break;
     case 14:    /* dentists: a drill-wielding tooth */
@@ -449,8 +551,8 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
     case 15:    /* popping balloons */
         plat_line(cx, cy + s, cx, cy + 2 * s, PAL_RAMP(RAMP_STONE, 4));
         if (((t + (uint32_t)cx) % 40) < 34) {
-            ui_fill_circle(cx, cy, s, PAL_PAINT(PAINT_CHERRY, 1));
-            ui_fill_circle(cx - s / 3, cy - s / 3, s / 4 + 1, PAL_PAINT(PAINT_CHERRY, 2));
+            d_circle(cx, cy, s, PAL_PAINT(PAINT_CHERRY, 1));
+            d_circle(cx - s / 3, cy - s / 3, s / 4 + 1, PAL_PAINT(PAINT_CHERRY, 2));
             face(cx, cy, s / 2, creep, t);
         } else {
             for (k = 0; k < 8; k++)
@@ -460,13 +562,13 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
         }
         break;
     case 16:    /* silence: a zipped mouth */
-        ui_fill_ellipse(cx, cy, s, s / 2, PAL_PAINT(PAINT_ROSE, 1));
+        d_ellipse(cx, cy, s, s / 2, PAL_PAINT(PAINT_ROSE, 1));
         plat_rect(cx - s + 2, cy, 2 * s - 3, 1, PAL_RAMP(RAMP_STEEL, 5));
         for (k = -s + 3; k < s - 2; k += 2) plat_rect(cx + k, cy - 1, 1, 3, PAL_RAMP(RAMP_STEEL, 3));
         ui_text(cx + s + 2, cy - s, "...", PAL_WHITE);
         break;
     case 17:    /* holy water */
-        ui_fill_circle(cx, cy + s / 3, s * 2 / 3 + 1, PAL_PAINT(PAINT_SKY, 1));
+        d_circle(cx, cy + s / 3, s * 2 / 3 + 1, PAL_PAINT(PAINT_SKY, 1));
         plat_rect(cx - 2, cy - s, 5, s, PAL_PAINT(PAINT_SKY, 2));
         plat_rect(cx - 3, cy - s - 2, 7, 2, PAL_PAINT(PAINT_HONEY, 1));
         plat_rect(cx, cy, 1, s / 2 + 2, PAL_WHITE);
@@ -479,7 +581,7 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
                       cx + (int)((fx_cos(a) * (s + 6)) >> 16), cy + (int)((fx_sin(a) * (s + 6)) >> 16),
                       PAL_PAINT(PAINT_LEMON, 2));
         }
-        ui_fill_circle(cx, cy, s, PAL_PAINT(PAINT_LEMON, 2));
+        d_circle(cx, cy, s, PAL_PAINT(PAINT_LEMON, 2));
         plat_rect(cx - s / 2 - 2, cy - 2, s + 5, 3, PAL_PAINT(PAINT_JET, 1));   /* shades */
         face(cx, cy + 1, s / 3 + 1, creep, t);
         break;
@@ -488,7 +590,7 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
             int hw = s / 2 + k * s / (2 * (s + 2)) + (k > s ? 2 : 0);
             plat_rect(cx - hw + wig, cy - s + k, 2 * hw + 1, 1, PAL_PAINT(PAINT_HONEY, k < 2 ? 2 : 1));
         }
-        ui_fill_circle(cx + wig * 2, cy + 3, 2, PAL_PAINT(PAINT_HONEY, 0));
+        d_circle(cx + wig * 2, cy + 3, 2, PAL_PAINT(PAINT_HONEY, 0));
         face(cx + wig, cy - s / 3, s / 3 + 1, creep, t);
         break;
     case 20:    /* exorcisms: the holy book and a plush cross */
@@ -505,7 +607,7 @@ void dream_fear(int fear, int cx, int cy, int s, int creep, uint32_t t)
         face(cx, cy - 1, s / 3 + 1, creep, t);
         break;
     case 22:    /* cute things: a kitten. Too cute. */
-        ui_fill_circle(cx, cy, s, PAL_PAINT(PAINT_PEACH, 2));
+        d_circle(cx, cy, s, PAL_PAINT(PAINT_PEACH, 2));
         for (k = 0; k < s / 2 + 1; k++) {
             plat_rect(cx - s + 1, cy - s - k + s / 2, 1 + k, 1, PAL_PAINT(PAINT_PEACH, 2));
             plat_rect(cx + s - k, cy - s - k + s / 2, 1 + k, 1, PAL_PAINT(PAINT_PEACH, 2));
@@ -533,29 +635,70 @@ static uint8_t sky_col(int i, int tier, int nightmare)
     return nightmare ? PAL_RAMP(RAMP_BLOOD, 3 - i / 2) : PAL_RAMP(RAMP_VAPE, 3 - i / 2);
 }
 
+/* (S2-4d) The bands with soft wavy borders, rows [0, y1) (the rest is drawn over by the caller). Border i of the
+ * 8-px column j sits at i * band + ui_wave(t + 16j + 40i, 160, 3 + tier): the phases are all t + 8m, m = (2j + 5i)
+ * mod 20, so a frame needs 20 waves, not one per column and border. The platform may paint every band in one pass
+ * (plat_sky_bands, the same pixels); else one rect per band and column and its checker seam, as before. */
+#define SKY_COLS 40                                     /* 320 / 8: wider screens draw the rects */
+static void sky_bands(int sw, int sh, int tier, int nightmare, uint32_t t, int y1)
+{
+    int band = sh / 6 + 1, i, j, m, wv[20];
+    uint8_t col[6];
+    for (i = 0; i < 6; i++) col[i] = sky_col(i, tier, nightmare);
+    for (m = 0; m < 20; m++) wv[m] = ui_wave((int)(t % 160u) + 8 * m, 160, 3 + tier);
+    if (sw % 8 == 0 && sw / 8 <= SKY_COLS) {
+        int16_t ys[SKY_COLS * 5];
+        for (i = 1; i < 6; i++)
+            for (j = 0, m = 5 * i % 20; j < sw / 8; j++, m = m >= 18 ? m - 18 : m + 2)   /* m = (2j + 5i) mod 20 */
+                ys[j * 5 + i - 1] = (int16_t)(i * band + wv[m]);
+        if (plat_sky_bands(ys, sw / 8, 5, col, y1)) return;
+    }
+    plat_rect(0, 0, sw, DOOMO_MIN(band + 8, y1), col[0]);
+    for (i = 1; i < 6; i++)
+        for (j = 0; j * 8 < sw; j++) {
+            int x = j * 8, y0 = i * band + wv[(2 * j + 5 * i) % 20];
+            plat_rect(x, y0, 8, DOOMO_MIN(i == 5 ? sh : (i + 1) * band + 6, y1) - y0, col[i]);
+            cspan(x, x + 8, y0 - 2, 2, col[i]);
+        }
+}
+
+/* the sky rows a vignette leaves visible: none when it paints the whole screen itself (the endless doors' wall),
+ * the rows above its checkerboard floor (which covers every pixel below), else all of them */
+int dream_sky_rows(int v)
+{
+    int sh = SH();
+    if (v == 14) return 0;
+    if ((0xB38Bu >> v) & 1u) return sh - (BIG() ? 46 : 36) - (BIG() ? 16 : 12);
+    return sh;
+}
+
 void dream_draw_sky(int creep, int nightmare, uint32_t t)
 {
-    int sw = SW(), sh = SH(), i, x, band = sh / 6 + 1;
+    dream_draw_sky_rows(creep, nightmare, t, SH());
+}
+
+void dream_draw_sky_rows(int creep, int nightmare, uint32_t t, int y1)
+{
+    int sw = SW(), sh = SH(), i;
     int tier = creep < 6 ? 0 : creep < 12 ? 1 : 2;
+    if (y1 <= 0) return;
+    if (y1 > sh) y1 = sh;
     /* bands with soft wavy borders, like a lava lamp */
-    plat_rect(0, 0, sw, band + 8, sky_col(0, tier, nightmare));
-    for (i = 1; i < 6; i++) {
-        uint8_t c = sky_col(i, tier, nightmare);
-        for (x = 0; x < sw; x += 8) {
-            int y0 = i * band + ui_wave((int)t + x * 2 + i * 40, 160, 3 + tier);
-            plat_rect(x, y0, 8, (i == 5 ? sh : (i + 1) * band + 6) - y0, c);
-            cspan(x, x + 8, y0 - 2, 2, c);
-        }
-    }
-    /* drifting puffs */
-    for (i = 0; i < 5; i++) {
-        int px = (int)((h2((uint32_t)i, 17u) % (uint32_t)(sw + 60) + t / (2 + (uint32_t)i % 3)) % (uint32_t)(sw + 60)) - 30;
-        int py = 18 + (int)(h2((uint32_t)i, 19u) % (uint32_t)(sh / 2));
+    sky_bands(sw, sh, tier, nightmare, t, y1);
+    /* drifting puffs (S2-4d: all one colour, so all fifteen ellipses in one dream_ellipses call) */
+    {
+        int16_t e[15 * 4];
         uint8_t pc = tier == 0 ? PAL_PAINT(PAINT_WHITE, 2) : tier == 1 ? PAL_RAMP(RAMP_VAPE, 6) :
                      nightmare ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_VAPE, 1);
-        ui_fill_ellipse(px, py, 14 + (i & 1) * 6, 4, pc);
-        ui_fill_ellipse(px - 6, py - 3, 7, 4, pc);
-        ui_fill_ellipse(px + 5, py - 4, 8, 5, pc);
+        for (i = 0; i < 5; i++) {
+            int px = (int)((h2((uint32_t)i, 17u) % (uint32_t)(sw + 60) + t / (2 + (uint32_t)i % 3)) % (uint32_t)(sw + 60)) - 30;
+            int py = 18 + (int)(h2((uint32_t)i, 19u) % (uint32_t)(sh / 2));
+            int16_t *q = e + 12 * i;
+            q[0] = (int16_t)px; q[1] = (int16_t)py; q[2] = (int16_t)(14 + (i & 1) * 6); q[3] = 4;
+            q[4] = (int16_t)(px - 6); q[5] = (int16_t)(py - 3); q[6] = 7; q[7] = 4;
+            q[8] = (int16_t)(px + 5); q[9] = (int16_t)(py - 4); q[10] = 8; q[11] = 5;
+        }
+        dream_ellipses(e, 15, pc);
     }
     /* stars, or eyes in the sky */
     for (i = 0; i < 14; i++) {
@@ -564,7 +707,7 @@ void dream_draw_sky(int creep, int nightmare, uint32_t t)
         if (creep < 10) ui_sparkle(sx, sy, (int)(t / 3 + r) & 15, tier ? PAL_PAINT(PAINT_LEMON, 2) : PAL_WHITE);
         else if ((i & 1) == 0) {
             int open = ((t / 2 + r) % 70) > 5;
-            ui_fill_ellipse(sx, sy, 4, open ? 2 : 0, PAL_WHITE);
+            d_ellipse(sx, sy, 4, open ? 2 : 0, PAL_WHITE);
             if (open) plat_rect(sx - 1 + (int)((t / 20) % 3) - 1, sy - 1, 2, 2, nightmare ? PAL_RAMP(RAMP_BLOOD, 5) : PAL_BLACK);
         }
     }
@@ -594,8 +737,23 @@ void dream_draw_frame(int creep, int nightmare, uint32_t t)
     uint8_t ol = creep < 8 ? PAL_RAMP(RAMP_VAPE, 5) : creep < 13 ? PAL_RAMP(RAMP_VAPE, 3) :
                  nightmare ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_RAMP(RAMP_VAPE, 0);
     /* a puffy thought-bubble rim: straight bands + a few bumps, outline
-     * pass then fill pass (~70 circles: cheap enough for the GBA) */
-    int pass;
+     * pass then fill pass (~70 circles). S2-4d: the bumps' centres are
+     * made once for both passes, and a pass's bumps (one colour, so their
+     * order does not matter) go to dream_circles together */
+    int pass, n = 0, over;
+    int16_t xy[2 * 64];
+    for (x = step / 2 - r; x < sw + r && n <= 62; x += step) {
+        int w1 = ui_wave((int)t + x, 50, 2);
+        xy[2 * n] = (int16_t)x; xy[2 * n + 1] = (int16_t)(band - 2 + w1); n++;
+        xy[2 * n] = (int16_t)(x + step / 2); xy[2 * n + 1] = (int16_t)(sh - band + 1 - w1); n++;
+    }
+    over = x < sw + r;
+    for (x = step; x < sh - step / 2 && n <= 62; x += step) {
+        int w1 = ui_wave((int)t + x * 2, 60, 2);
+        xy[2 * n] = (int16_t)(band - 2 + w1); xy[2 * n + 1] = (int16_t)x; n++;
+        xy[2 * n] = (int16_t)(sw - band + 1 - w1); xy[2 * n + 1] = (int16_t)(x + step / 2); n++;
+    }
+    if (over || x < sh - step / 2) n = -1;           /* a screen too big for the list: the bumps one by one */
     for (pass = 0; pass < 2; pass++) {
         uint8_t col = pass ? c : ol;
         int g = pass ? 0 : 1;
@@ -603,15 +761,19 @@ void dream_draw_frame(int creep, int nightmare, uint32_t t)
         plat_rect(0, sh - band - g, sw, band + g, col);
         plat_rect(0, 0, band + g, sh, col);
         plat_rect(sw - band - g, 0, band + g, sh, col);
+        if (n >= 0) {
+            dream_circles(xy, n, r / 2 + 2 + g, col);
+            continue;
+        }
         for (x = step / 2 - r; x < sw + r; x += step) {
             int w1 = ui_wave((int)t + x, 50, 2);
-            ui_fill_circle(x, band - 2 + w1, r / 2 + 2 + g, col);
-            ui_fill_circle(x + step / 2, sh - band + 1 - w1, r / 2 + 2 + g, col);
+            d_circle(x, band - 2 + w1, r / 2 + 2 + g, col);
+            d_circle(x + step / 2, sh - band + 1 - w1, r / 2 + 2 + g, col);
         }
         for (x = step; x < sh - step / 2; x += step) {
             int w1 = ui_wave((int)t + x * 2, 60, 2);
-            ui_fill_circle(band - 2 + w1, x, r / 2 + 2 + g, col);
-            ui_fill_circle(sw - band + 1 - w1, x + step / 2, r / 2 + 2 + g, col);
+            d_circle(band - 2 + w1, x, r / 2 + 2 + g, col);
+            d_circle(sw - band + 1 - w1, x + step / 2, r / 2 + 2 + g, col);
         }
     }
     if (creep >= 13) {
@@ -649,8 +811,8 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
         int wx = big ? 22 : 12, wy = big ? 26 : 16, ww = big ? 76 : 56, wh = big ? 70 : 52;
         plat_rect(wx - 3, wy - 3, ww + 6, wh + 6, PAL_RAMP(RAMP_WOOD, 3));
         plat_rect(wx, wy, ww, wh, PAL_RAMP(RAMP_SKY, 0));
-        ui_fill_circle(wx + ww * 2 / 3, wy + wh / 3, big ? 9 : 7, PAL_PAINT(PAINT_LEMON, 2));
-        ui_fill_circle(wx + ww * 2 / 3 + 4, wy + wh / 3 - 3, big ? 8 : 6, PAL_RAMP(RAMP_SKY, 0));
+        d_circle(wx + ww * 2 / 3, wy + wh / 3, big ? 9 : 7, PAL_PAINT(PAINT_LEMON, 2));
+        d_circle(wx + ww * 2 / 3 + 4, wy + wh / 3 - 3, big ? 8 : 6, PAL_RAMP(RAMP_SKY, 0));
         for (k = 0; k < 5; k++)
             ui_sparkle(wx + 6 + (int)(h2((uint32_t)k, 5u) % (uint32_t)(ww - 12)), wy + 5 + (int)(h2((uint32_t)k, 9u) % (uint32_t)(wh - 10)),
                        (int)(t / 4 + (uint32_t)k * 3) & 15, PAL_WHITE);
@@ -666,13 +828,13 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
         int nx = bx - bw / 2 - (big ? 34 : 26), ny = fy - (big ? 26 : 20);
         plat_rect(nx, ny, big ? 26 : 20, fy - ny + 2, PAL_RAMP(RAMP_WOOD, 3));
         plat_rect(nx, ny, big ? 26 : 20, 2, PAL_RAMP(RAMP_WOOD, 5));
-        ui_fill_ellipse(nx + (big ? 13 : 10), ny - 10, big ? 9 : 7, big ? 6 : 5, PAL_PAINT(PAINT_LEMON, 2));
+        d_ellipse(nx + (big ? 13 : 10), ny - 10, big ? 9 : 7, big ? 6 : 5, PAL_PAINT(PAINT_LEMON, 2));
         plat_rect(nx + (big ? 12 : 9), ny - 5, 2, 5, PAL_RAMP(RAMP_STEEL, 4));
         glow(nx + (big ? 13 : 10), ny - 10, big ? 30 : 24, big ? 20 : 16, PAL_PAINT(PAINT_LEMON, 2));
     }
     /* the bed */
     plat_rect(bx - bw / 2 + sx, by - (big ? 36 : 28), big ? 10 : 8, fy - by + (big ? 38 : 30), PAL_RAMP(RAMP_WOOD, 3));
-    ui_fill_circle(bx - bw / 2 + (big ? 5 : 4) + sx, by - (big ? 36 : 28), big ? 6 : 5, PAL_RAMP(RAMP_WOOD, 4));
+    d_circle(bx - bw / 2 + (big ? 5 : 4) + sx, by - (big ? 36 : 28), big ? 6 : 5, PAL_RAMP(RAMP_WOOD, 4));
     if (edgy) {
         plat_line(bx - bw / 2 + sx, by - (big ? 40 : 32), bx - bw / 2 - 5 + sx, by - (big ? 48 : 38), PAL_RAMP(RAMP_BLOOD, 3));
         plat_line(bx - bw / 2 + 8 + sx, by - (big ? 40 : 32), bx - bw / 2 + 13 + sx, by - (big ? 48 : 38), PAL_RAMP(RAMP_BLOOD, 3));
@@ -681,7 +843,7 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
     plat_rect(bx - bw / 2 + sx, by + 4, bw, big ? 14 : 10, PAL_RAMP(RAMP_WOOD, 2));
     plat_rect(bx - bw / 2 + 4 + sx, by, bw - 8, 6, PAL_PAINT(PAINT_WHITE, 1));
     /* pillow + the sleeper's head */
-    ui_fill_ellipse(bx - bw / 2 + (big ? 30 : 24) + sx, by - 4, big ? 20 : 16, big ? 8 : 6, PAL_PAINT(PAINT_WHITE, 2));
+    d_ellipse(bx - bw / 2 + (big ? 30 : 24) + sx, by - 4, big ? 20 : 16, big ? 8 : 6, PAL_PAINT(PAINT_WHITE, 2));
     if (id >= 0) {
         const DoomoImage *img = portrait_image(id, expr);
         if (img) plat_image(bx - bw / 2 + (big ? 30 : 24) - img->w / 2 + sx,
@@ -700,10 +862,10 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
         {
             int tx = qx + qw - (big ? 22 : 16), ty = qy - (big ? 6 : 4);
             uint8_t tc = edgy ? PAL_PAINT(PAINT_GRAPE, 1) : PAL_PAINT(PAINT_CARAMEL, 1);
-            ui_fill_circle(tx - 4, ty - 6, 2, tc);
-            ui_fill_circle(tx + 4, ty - 6, 2, tc);
-            ui_fill_circle(tx, ty - 2, big ? 6 : 5, tc);
-            ui_fill_circle(tx, ty + 6, big ? 6 : 5, tc);
+            d_circle(tx - 4, ty - 6, 2, tc);
+            d_circle(tx + 4, ty - 6, 2, tc);
+            d_circle(tx, ty - 2, big ? 6 : 5, tc);
+            d_circle(tx, ty + 6, big ? 6 : 5, tc);
             plat_rect(tx - 2, ty - 3, 1, 1, PAL_BLACK);
             plat_rect(tx + 2, ty - 3, 1, 1, PAL_BLACK);
             plat_rect(tx - 1, ty, 3, 1, PAL_PAINT(PAINT_BUBBLEGUM, 2));
@@ -722,27 +884,52 @@ void dream_draw_bedroom(int id, const DreamCast *c, int expr, uint32_t t, int sh
     cspan(0, sw, 0, 4, PAL_RAMP(RAMP_SKY, 0));
 }
 
+/* (S2-4d) where the big bubble is at tick t of `total`: 0 before it shows */
+static int bubble_at(int t, int total, int *cx, int *cy, int *r)
+{
+    int sw = SW(), sh = SH(), big = BIG();
+    int hx = sw * 58 / 100 - (big ? 75 : 56) + (big ? 30 : 24), hy = sh * 70 / 100 - (big ? 30 : 22) - 30, p;
+    if (t <= 18) return 0;
+    p = (t - 18) * 256 / (total - 18);
+    *r = 8 + (sw + sh) * p / 256 * p / 256;
+    *cx = hx + 40 + (sw / 2 - hx - 40) * p / 256;
+    *cy = hy - 34 + (sh / 2 - hy + 34) * p / 256;
+    return 1;
+}
+
+/* (S2-4d) 1 when the big bubble's pink disc covers every pixel of the screen (its farthest row reaches both
+ * sides): the bedroom, the little bubbles and the outline ring under it do not show */
+int dream_bubble_covers(int t, int total)
+{
+    int sw = SW(), sh = SH(), cx, cy, r, dy, hw;
+    if (!bubble_at(t, total, &cx, &cy, &r)) return 0;
+    dy = DOOMO_MAX(cy, sh - 1 - cy);
+    if (cy < 0 || cy >= sh || dy > r) return 0;
+    hw = (int)(fx_isqrt((uint32_t)((r * r - dy * dy) * 4 + 2 * r)) / 2);   /* ui_circle_dx(r, dy) */
+    return hw >= cx && hw >= sw - 1 - cx;
+}
+
 void dream_draw_bubble_in(int id, int t, int total, uint32_t clock)
 {
-    int sw = SW(), sh = SH(), big = BIG(), k;
+    int sw = SW(), sh = SH(), big = BIG(), k, cover = dream_bubble_covers(t, total);
     int hx = sw * 58 / 100 - (big ? 75 : 56) + (big ? 30 : 24), hy = sh * 70 / 100 - (big ? 30 : 22) - 30;
     (void)id;
     /* three little bubbles pop up, then the big one swells */
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < 3 && !cover; k++) {
         int appear = k * 6;
         if (t > appear)
-            ui_fill_circle(hx + 8 + k * 9, hy - k * 10, 2 + k * 2, PAL_PAINT(PAINT_WHITE, 2));
+            d_circle(hx + 8 + k * 9, hy - k * 10, 2 + k * 2, PAL_PAINT(PAINT_WHITE, 2));
     }
     if (t > 18) {
-        int p = (t - 18) * 256 / (total - 18), r = 8 + (sw + sh) * p / 256 * p / 256;
-        int cx = hx + 40 + (sw / 2 - hx - 40) * p / 256, cy = hy - 34 + (sh / 2 - hy + 34) * p / 256;
-        ui_fill_circle(cx, cy, r + 2, PAL_RAMP(RAMP_VAPE, 4));
-        ui_fill_circle(cx, cy, r, PAL_RAMP(RAMP_PASTEL_PINK, 7));
+        int r, cx, cy;
+        bubble_at(t, total, &cx, &cy, &r);
+        if (!cover) d_circle(cx, cy, r + 2, PAL_RAMP(RAMP_VAPE, 4));
+        d_circle(cx, cy, r, PAL_RAMP(RAMP_PASTEL_PINK, 7));
         /* a glimpse of the dream inside */
         if (r > 16) {
-            ui_fill_ellipse(cx - r / 3, cy + r / 4, r / 3, r / 8 + 1, PAL_PAINT(PAINT_WHITE, 2));
-            ui_fill_ellipse(cx + r / 3, cy - r / 4, r / 4, r / 10 + 1, PAL_PAINT(PAINT_WHITE, 2));
-            ui_fill_circle(cx - r / 3, cy - r / 3, r / 10 + 1, PAL_RAMP(RAMP_VAPE, 6));
+            d_ellipse(cx - r / 3, cy + r / 4, r / 3, r / 8 + 1, PAL_PAINT(PAINT_WHITE, 2));
+            d_ellipse(cx + r / 3, cy - r / 4, r / 4, r / 10 + 1, PAL_PAINT(PAINT_WHITE, 2));
+            d_circle(cx - r / 3, cy - r / 3, r / 10 + 1, PAL_RAMP(RAMP_VAPE, 6));
         }
         for (k = 0; k < 6; k++)
             ui_sparkle(cx + (int)((fx_cos(k * 682 + t * 40) * r) >> 17), cy + (int)((fx_sin(k * 682 + t * 40) * r) >> 17),
@@ -774,11 +961,11 @@ static void sprite_at(int spr, int frame, int cx, int feet, int scale, int flags
 
 static void cloud(int cx, int cy, int r, uint8_t c, uint8_t c2)
 {
-    ui_fill_circle(cx - r, cy + r / 3, r * 2 / 3, c2);
-    ui_fill_circle(cx + r, cy + r / 3, r * 2 / 3, c2);
-    ui_fill_circle(cx, cy, r, c);
-    ui_fill_circle(cx - r, cy + r / 4, r * 2 / 3 - 1, c);
-    ui_fill_circle(cx + r, cy + r / 4, r * 2 / 3 - 1, c);
+    d_circle(cx - r, cy + r / 3, r * 2 / 3, c2);
+    d_circle(cx + r, cy + r / 3, r * 2 / 3, c2);
+    d_circle(cx, cy, r, c);
+    d_circle(cx - r, cy + r / 4, r * 2 / 3 - 1, c);
+    d_circle(cx + r, cy + r / 4, r * 2 / 3 - 1, c);
 }
 
 static void party_hat(int cx, int top, int h, uint8_t c)
@@ -788,7 +975,7 @@ static void party_hat(int cx, int top, int h, uint8_t c)
         int hw = k / 2;
         plat_rect(cx - hw, top + k, 2 * hw + 1, 1, (k / 2) & 1 ? c : PAL_PAINT(PAINT_WHITE, 2));
     }
-    ui_fill_circle(cx, top - 1, 1, PAL_PAINT(PAINT_LEMON, 2));
+    d_circle(cx, top - 1, 1, PAL_PAINT(PAINT_LEMON, 2));
 }
 
 void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightmare)
@@ -829,7 +1016,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
                 int sx = x0 + img->w * s2 / 4 + (k % 3) * img->w * s2 / 4, sy = y0 + img->h * s2 / 3 + (k / 3) * img->h * s2 / 4;
                 plat_line(sx - 2, sy - 2, sx + 2, sy + 2, PAL_RAMP(RAMP_STONE, 1));
                 plat_line(sx + 2, sy - 2, sx - 2, sy + 2, PAL_RAMP(RAMP_STONE, 1));
-                if (creep > 4 + k * 2) ui_fill_circle(sx + 3, sy, 2 + creep / 6, PAL_PAINT(PAINT_WHITE, 2));
+                if (creep > 4 + k * 2) d_circle(sx + 3, sy, 2 + creep / 6, PAL_PAINT(PAINT_WHITE, 2));
             }
         }
         chibi_at(c->dreamer, cx + (big ? 70 : 58), ground + 6, sc, 1, 0, 0, 0);
@@ -843,7 +1030,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         for (k = 0; k < 6; k++)
             plat_rect(k * sw / 6 + 4, ground + 10 + t / 4, sw / 8, 20, PAL_RAMP(RAMP_STONE, 2));
         for (k = 0; k < 7; k++)
-            ui_fill_circle(cx - sw / 3 + k * sw / 9, (big ? 34 : 24) + ui_wave(t + k * 12, 50, 3),
+            d_circle(cx - sw / 3 + k * sw / 9, (big ? 34 : 24) + ui_wave(t + k * 12, 50, 3),
                            (big ? 22 : 16) + (k & 1) * 4, creep >= 8 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5));
         if (creep >= 8) {
             face(cx, big ? 34 : 24, big ? 14 : 10, creep, tt);
@@ -865,7 +1052,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         break; }
     case 4: {   /* picnic */
         int bw = big ? 160 : 120, by = ground - 6;
-        ui_fill_ellipse(cx, ground + 30, sw, 40, PAL_RAMP(RAMP_GRASS, creep >= 12 ? 1 : 4));
+        d_ellipse(cx, ground + 30, sw, 40, PAL_RAMP(RAMP_GRASS, creep >= 12 ? 1 : 4));
         for (k = 0; k < 8; k++) {
             int x = cx - bw / 2 + k * bw / 8;
             plat_rect(x, by, bw / 8, 6, (k & 1) ? PAL_PAINT(c->color, 1) : PAL_PAINT(PAINT_WHITE, 2));
@@ -884,15 +1071,15 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         break; }
     case 5: {   /* starry hobby on the moon */
         int my = ground - (big ? 40 : 30);
-        ui_fill_circle(cx, my, big ? 30 : 22, PAL_PAINT(PAINT_LEMON, 2));
-        ui_fill_circle(cx + (big ? 12 : 9), my - (big ? 12 : 9), big ? 28 : 21, creep >= 12 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5));
+        d_circle(cx, my, big ? 30 : 22, PAL_PAINT(PAINT_LEMON, 2));
+        d_circle(cx + (big ? 12 : 9), my - (big ? 12 : 9), big ? 28 : 21, creep >= 12 ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_VAPE, 5));
         portrait_at(c->dreamer, cx - (big ? 8 : 6), my - (big ? 14 : 12) + ui_wave(t, 70, 2), expr_for(creep), 0, 0);
         for (k = 0; k < 8; k++) {
             int a = k * 512 + t * 6, r = big ? 70 : 52;
             int x = cx + (int)((fx_cos(a) * r) >> 16), y = my - 10 + (int)((fx_sin(a) * r * 2 / 3) >> 16);
             if (creep < 10) ui_star(x, y, 3 + (k & 1), PAL_PAINT(PAINT_LEMON, 2));
             else {
-                ui_fill_ellipse(x, y, 5, 3, PAL_WHITE);
+                d_ellipse(x, y, 5, 3, PAL_WHITE);
                 plat_rect(x + (cx > x ? 1 : -2), y - 1, 2, 2, nightmare ? PAL_RAMP(RAMP_BLOOD, 5) : PAL_BLACK);
             }
         }
@@ -906,10 +1093,10 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         for (k = 0; k < (big ? 7 : 5); k++) {
             int x = (k + 1) * sw / ((big ? 7 : 5) + 1), y = ground + 4 - (((t / 5) + k) & 1) * 2;
             uint8_t wool = creep >= 12 ? PAL_RAMP(RAMP_STONE, 0) : PAL_PAINT(PAINT_WHITE, 2);
-            ui_fill_circle(x - 4, y, 5, wool);
-            ui_fill_circle(x + 4, y, 5, wool);
-            ui_fill_circle(x, y - 3, 6, wool);
-            ui_fill_ellipse(x, y + 1, 3, 4, PAL_RAMP(RAMP_STONE, 1));
+            d_circle(x - 4, y, 5, wool);
+            d_circle(x + 4, y, 5, wool);
+            d_circle(x, y - 3, 6, wool);
+            d_ellipse(x, y + 1, 3, 4, PAL_RAMP(RAMP_STONE, 1));
             if (creep >= 10) {
                 int e;
                 for (e = 0; e < 1 + creep / 5; e++) plat_rect(x - 3 + e * 2, y - 2 + (e & 1) * 2, 1, 1, PAL_RAMP(RAMP_BLOOD, 5));
@@ -921,9 +1108,9 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         break; }
     case 7: {   /* wobbly teeth */
         int mw = (big ? 70 : 52) + creep, mh = (big ? 30 : 22) + creep / 2, my = ground - mh - 10;
-        ui_fill_ellipse(cx, my, mw + 4, mh + 4, PAL_PAINT(PAINT_ROSE, 1));
-        ui_fill_ellipse(cx, my, mw, mh, PAL_RAMP(RAMP_BLOOD, 0));
-        ui_fill_ellipse(cx, my + mh / 2, mw / 2, mh / 3, PAL_PAINT(PAINT_ROSE, 2));
+        d_ellipse(cx, my, mw + 4, mh + 4, PAL_PAINT(PAINT_ROSE, 1));
+        d_ellipse(cx, my, mw, mh, PAL_RAMP(RAMP_BLOOD, 0));
+        d_ellipse(cx, my + mh / 2, mw / 2, mh / 3, PAL_PAINT(PAINT_ROSE, 2));
         for (k = -mw + 8; k < mw - 8; k += 10) {
             int wob = ui_wave(t + k, 12, 1), rows = 1 + creep / 6, r;
             for (r = 0; r < rows; r++) {
@@ -947,7 +1134,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         ui_text(bx + 6, by + 16, creep >= 10 ? "TRUE NAME?" : "1. 2+2 = fish", creep >= 10 ? PAL_RAMP(RAMP_BLOOD, 5) : PAL_RAMP(RAMP_STONE, 6));
         if (creep < 10) ui_text(bx + 6, by + 27, "2. spell \"BOO\"", PAL_RAMP(RAMP_STONE, 6));
         /* the clock spins (and melts) */
-        ui_fill_ellipse(cxk, cyk + creep / 2, 12, 12 + creep / 2, PAL_PAINT(PAINT_WHITE, 2));
+        d_ellipse(cxk, cyk + creep / 2, 12, 12 + creep / 2, PAL_PAINT(PAINT_WHITE, 2));
         a = t * (16 + creep * 8);
         plat_line(cxk, cyk, cxk + (int)((fx_cos(a) * 9) >> 16), cyk + (int)((fx_sin(a) * 9) >> 16), PAL_BLACK);
         plat_line(cxk, cyk, cxk + (int)((fx_cos(a / 12) * 6) >> 16), cyk + (int)((fx_sin(a / 12) * 6) >> 16), PAL_BLACK);
@@ -956,7 +1143,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         plat_rect(cx - 36, ground - 2, 3, 14, PAL_RAMP(RAMP_WOOD, 2));
         plat_rect(cx + 33, ground - 2, 3, 14, PAL_RAMP(RAMP_WOOD, 2));
         plat_rect(cx - 12, ground - 12, 24, 5, PAL_PAINT(PAINT_WHITE, 2));
-        if (creep >= 12) for (k = 0; k < 4; k++) ui_fill_circle(cx - 9 + k * 6, ground - 14 - (int)((tt + (uint32_t)k * 3) % 6), 3 - (k & 1), PAL_RAMP(RAMP_LAVA, 4 + (k & 1)));
+        if (creep >= 12) for (k = 0; k < 4; k++) d_circle(cx - 9 + k * 6, ground - 14 - (int)((tt + (uint32_t)k * 3) % 6), 3 - (k & 1), PAL_RAMP(RAMP_LAVA, 4 + (k & 1)));
         chibi_at(c->dreamer, cx + 50, ground + 8, sc, 1, 0, 0, 0);
         break; }
     case 9: {   /* the big spoon */
@@ -974,7 +1161,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         }
         /* the spoon */
         plat_line(dx - gap + 8, ground - 10 * sc, dx - gap + 22 + creep, ground - 26 * sc + ui_wave(t, 10, 2), PAL_RAMP(RAMP_STEEL, 5));
-        ui_fill_ellipse(dx - gap + 26 + creep, ground - 28 * sc + ui_wave(t, 10, 2), 6 + creep / 4, 4 + creep / 6, PAL_RAMP(RAMP_STEEL, 6));
+        d_ellipse(dx - gap + 26 + creep, ground - 28 * sc + ui_wave(t, 10, 2), 6 + creep / 4, 4 + creep / 6, PAL_RAMP(RAMP_STEEL, 6));
         break; }
     case 10: {  /* fluffy wings over HaHaland */
         int py = ground - (big ? 60 : 46) + ui_wave(t, 40, 4), flap = ui_wave(t, 12, 6);
@@ -990,9 +1177,9 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         if (creep < 10) {
             int side;
             for (side = -1; side <= 1; side += 2) {
-                ui_fill_ellipse(cx + side * 30, py - flap / 2, 19, 9 + flap / 2, PAL_RAMP(RAMP_VAPE, 4));
-                ui_fill_ellipse(cx + side * 30, py - flap / 2 - 1, 18, 8 + flap / 2, wc);
-                ui_fill_ellipse(cx + side * 36, py - flap / 2 + 3, 10, 4, PAL_RAMP(RAMP_SKY, 6));
+                d_ellipse(cx + side * 30, py - flap / 2, 19, 9 + flap / 2, PAL_RAMP(RAMP_VAPE, 4));
+                d_ellipse(cx + side * 30, py - flap / 2 - 1, 18, 8 + flap / 2, wc);
+                d_ellipse(cx + side * 36, py - flap / 2 + 3, 10, 4, PAL_RAMP(RAMP_SKY, 6));
             }
         } else {
             for (k = 0; k < 18; k++) {
@@ -1007,7 +1194,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         for (k = 0; k < 4; k++) cspan(0, sw, k * sh / 4, sh / 4, creep >= 12 ? PAL_RAMP(RAMP_SKY, 0) : PAL_PAINT(PAINT_COBALT, 1 + (k & 1)));
         for (k = 0; k < 10; k++) {
             int x = (int)(h2((uint32_t)k, 2u) % (uint32_t)sw), y = sh - (int)((h2((uint32_t)k, 3u) + tt * 2) % (uint32_t)sh);
-            ui_fill_circle(x + ui_wave(t + k * 10, 30, 2), y, 2 + (k & 1), PAL_PAINT(PAINT_SKY, 2));
+            d_circle(x + ui_wave(t + k * 10, 30, 2), y, 2 + (k & 1), PAL_PAINT(PAINT_SKY, 2));
         }
         plat_rect(cx - 50, ground - 4, 100, 5, PAL_PAINT(PAINT_WHITE, 2));
         plat_rect(cx - 45, ground + 1, 3, 12, PAL_PAINT(PAINT_WHITE, 1));
@@ -1021,7 +1208,7 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
             int dir = (k & 1) ? 1 : -1, x = (int)((tt * (2 + (uint32_t)k) + (uint32_t)k * 70) % (uint32_t)(sw + 40)) - 20;
             int y = 24 + k * (ground - 40) / 4;
             if (dir < 0) x = sw - x;
-            ui_fill_ellipse(x, y, 9, 5, PAL_PAINT(k & 2 ? PAINT_TANGERINE : PAINT_LEMON, 1));
+            d_ellipse(x, y, 9, 5, PAL_PAINT(k & 2 ? PAINT_TANGERINE : PAINT_LEMON, 1));
             plat_line(x - dir * 9, y, x - dir * 15, y - 4, PAL_PAINT(PAINT_TANGERINE, 0));
             plat_line(x - dir * 9, y, x - dir * 15, y + 4, PAL_PAINT(PAINT_TANGERINE, 0));
             plat_rect(x + dir * 4, y - 2, 2, 2, PAL_BLACK);
@@ -1030,8 +1217,8 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         break; }
     case 12: {  /* the mirror */
         int mx = cx + (big ? 40 : 30), my = ground - (big ? 44 : 34), lead = creep >= 6 ? 12 : 0;
-        ui_fill_ellipse(mx, my, big ? 38 : 30, big ? 46 : 36, PAL_PAINT(PAINT_HONEY, 1));
-        ui_fill_ellipse(mx, my, big ? 34 : 26, big ? 42 : 32, PAL_PAINT(PAINT_SKY, creep >= 10 ? 0 : 2));
+        d_ellipse(mx, my, big ? 38 : 30, big ? 46 : 36, PAL_PAINT(PAINT_HONEY, 1));
+        d_ellipse(mx, my, big ? 34 : 26, big ? 42 : 32, PAL_PAINT(PAINT_SKY, creep >= 10 ? 0 : 2));
         portrait_at(c->dreamer, cx - (big ? 54 : 44), my + ui_wave(t, 40, 3), expr_for(creep), 0, 0);
         /* the reflection moves first */
         {
@@ -1054,8 +1241,8 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
         int bounce = ui_wave(t, 30, 3) > 0 ? -ui_wave(t, 30, 3) : 0;
         sprite_at(SPR_PET, frame, cx, ground + 4 + bounce, s4, creep >= 12 ? IMG_SILHOUETTE : 0, PAL_RAMP(RAMP_VAPE, 0));
         if (creep >= 12) {
-            ui_fill_circle(cx - 12, ground - 50 + bounce, 3, PAL_RAMP(RAMP_BLOOD, 5));
-            ui_fill_circle(cx + 12, ground - 50 + bounce, 3, PAL_RAMP(RAMP_BLOOD, 5));
+            d_circle(cx - 12, ground - 50 + bounce, 3, PAL_RAMP(RAMP_BLOOD, 5));
+            d_circle(cx + 12, ground - 50 + bounce, 3, PAL_RAMP(RAMP_BLOOD, 5));
             plat_rect(cx - 2, ground - 30 + bounce, 2, 6 + (int)(tt % 8), PAL_PAINT(PAINT_SKY, 2));
         }
         chibi_at(c->dreamer, cx + (big ? 80 : 62), ground + 8, sc, 1, 0, 0, 0);
@@ -1101,8 +1288,8 @@ void dream_draw_vignette(int v, const DreamCast *c, int t, int creep, int nightm
             int r;
             for (r = 0; r < 4; r++) plat_rect(k + (r & 1) * 8, wy - 30 + r * 8, 15, 7, PAL_RAMP(RAMP_STONE, 2 + (r & 1)));
         }
-        ui_fill_ellipse(cx, wy - 10, 22, 26, PAL_RAMP(RAMP_VAPE, 0));
-        ui_fill_ellipse(cx, wy - 10, 18, 22, PAL_RAMP(RAMP_VAPE, 3 + (int)((tt / 6) & 1)));
+        d_ellipse(cx, wy - 10, 22, 26, PAL_RAMP(RAMP_VAPE, 0));
+        d_ellipse(cx, wy - 10, 18, 22, PAL_RAMP(RAMP_VAPE, 3 + (int)((tt / 6) & 1)));
         for (i = n - 1; i >= 0; i--) {
             int span = n * 30 + sw;
             int x = (int)((tt * (1 + (uint32_t)creep / 6)) % (uint32_t)span) - n * 30 + (n - 1 - i) * 30 + 15;
