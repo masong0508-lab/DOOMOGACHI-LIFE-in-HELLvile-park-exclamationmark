@@ -6,8 +6,10 @@
 # writes nothing; just after the trailer sector is erased; mid-stream; at the end of it; after it). Then the flash
 # file is read back by a fresh boot. The rule (save_flash.c: the trailer is written last): the slot either holds a
 # complete save, A or B, that verifies and loads with the right town, or it reads as empty. Never a torn one.
-# K = 100: A is untouched (the first pass writes nothing); K >= 350: the trailer sector is erased, so
-# the slot is empty until B's trailer lands (the GBA keeps one copy: unchanged from before S2-10).
+# K = 100, 300: A is untouched (the first pass writes nothing); from about 40% of the save on (K >= 400 on the tree of
+# 2026-11-15, a 15.7 s save) the trailer sector is erased, so the slot is empty until B's trailer lands (the GBA keeps
+# one copy: unchanged from before S2-10); K = 1100: B. The run fails when the first cut no longer finds A or the last
+# one no longer finds B (the save got longer or shorter: move the CUTS).
 rom=$1; harness=$2; work=$3
 [ -n "$work" ] || { echo "usage: $0 ROM HARNESS WORKDIR" >&2; exit 2; }
 scripts=$(dirname "$0")/scripts
@@ -15,7 +17,8 @@ mkdir -p "$work"
 rm -f "$work"/prev.sav
 "$harness" "$rom" --script "$scripts/cutsave_prev.txt" --save "$work/prev.sav" --quiet > "$work/prev.log" 2>&1 || { echo "cutsave: the previous save failed"; tail -5 "$work/prev.log"; exit 1; }
 fail=0
-for k in ${CUTS:-100 350 450 560 650 800}; do
+first=""; last=""
+for k in ${CUTS:-100 300 400 600 850 1100}; do
     sed "s/@K@/$k/" "$scripts/cutsave_cut.txt.in" > "$work/cut_$k.txt"
     cp "$work/prev.sav" "$work/cut_$k.sav"
     "$harness" "$rom" --script "$work/cut_$k.txt" --save "$work/cut_$k.sav" --quiet > "$work/cut_$k.log" 2>&1
@@ -35,7 +38,12 @@ for k in ${CUTS:-100 350 450 560 650 800}; do
             echo "cutsave: K=$k: $state"
         fi
     else
+        state="empty"
         echo "cutsave: K=$k: the slot reads as empty (never torn)"
     fi
+    [ -n "$first" ] || first=$state
+    last=$state
 done
+[ "$first" = "complete save of island 0x80000001" ] || { echo "cutsave: the first cut did not find the previous save"; fail=1; }
+[ "$last" = "complete save of island 4242" ] || { echo "cutsave: the last cut did not find the new save"; fail=1; }
 exit $fail
