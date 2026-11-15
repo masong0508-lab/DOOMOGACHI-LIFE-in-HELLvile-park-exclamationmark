@@ -50,6 +50,7 @@ typedef struct ConcertState {
     ConcertPlayer pl;
     StageView v;
     uint32_t t;
+    uint32_t setup_sig;         /* (G2-CO) what the setup's backdrop shows (setup_draw's hold) */
 } ConcertState;
 DOOMO_STATIC_ASSERT(sizeof(ConcertState) <= DOOMO_SCENE_SCRATCH, concert_state_fits_the_scratch);
 static ConcertState *cs;
@@ -761,38 +762,11 @@ static void draw_lineup(int x0, int x1, int feet)
     }
 }
 
-static void setup_draw(void)
+/* the setup's menu window: the rows and the start button */
+static void setup_menu(int mx, int my, int mw, int ch, int rowh, int style, const DoomoResident *r)
 {
-    const DoomoResident *r = town_res(C.lead);
-    int edgy = lead_edgy() || concert_genres[C.genre].edgy;
-    int style = edgy ? WIN_HELL : WIN_CUTE, big = H() >= 200;
-    int px = big ? 10 : 4, py = big ? 26 : 20, cw = big ? 80 : 70;
-    int mx = px + cw + (big ? 8 : 4), mw = W() - mx - (big ? 10 : 4), my = py;
-    int rowh = big ? 15 : 12, rows = 0, i, y, ch;
-    const UiStyle *st = ui_style(style);
-    StageLayout L;
     char buf[48];
-    /* the stage behind, dimmed: genre light show + stage theme preview */
-    concert_layout(&L);
-    C.v.t = C.t;
-    concert_draw_stage(&C.v, &L);
-    concert_draw_crowd(&C.v, &L);
-    plat_shade_rect(0, 0, W(), H(), 9);
-    ui_title(W() / 2, big ? 6 : 3, STR_ICON_NOTE " CONCERT HALL " STR_ICON_NOTE, style);
-    for (i = 0; i < ROW_COUNT; i++) if (row_visible(i)) rows++;
-    ch = rows * rowh + 10;
-    /* the star of the show */
-    ui_window(px, py, cw, ch, style);
-    {
-        const DoomoImage *img = portrait_image(C.lead, EXPR_HAPPY);
-        int iy = py + 4 + (ch - 10 - (big ? 80 : 68)) / 2;
-        if (img) plat_image(px + (cw - img->w) / 2, iy, img, 1, 0, 0);
-        ui_text_center(px + cw / 2, iy + 58, r ? r->name : "???", st->text);
-        if (ch >= 84) {
-            concert_job_of(C.lead, buf, big ? 13 : 11);
-            ui_text_center(px + cw / 2, iy + 68, buf, st->text_dim);
-        }
-    }
+    int i, y, big = H() >= 200;
     ui_window(mx, my, mw, ch, style);
     y = my + 6;
     for (i = 0; i < ROW_COUNT; i++) {
@@ -833,10 +807,68 @@ static void setup_draw(void)
                 vb[maxc - 2] = '.'; vb[maxc - 1] = '.'; vb[maxc] = 0;
                 val = vb;
             }
-            ui_value_row(mx + 14, y, mw - 18, lab, val, C.row == i);
+            /* (G2-CO) one pixel further in than before: the bobbing cursor stays inside the window, which the
+             * setup's hold repaints alone (it used to reach one pixel past the window's left edge) */
+            ui_value_row(mx + 15, y, mw - 19, lab, val, C.row == i);
         }
         y += rowh;
     }
+}
+
+/* (G2-CO) everything the setup screen's backdrop shows but the cursor row: the act, genre, stage, choir, song */
+static uint32_t setup_sig(void)
+{
+    uint32_t a = (uint32_t)C.mode | (uint32_t)C.genre << 2 | (uint32_t)(C.stage_sel + 1) << 8 |
+                 (uint32_t)C.layout << 12 | (uint32_t)C.take << 15 | (uint32_t)C.choir_n << 18;
+    return doomo_hash32(a ^ (uint32_t)C.lead * 2654435761u) ^ C.song.seed;
+}
+
+static void setup_draw(void)
+{
+    const DoomoResident *r = town_res(C.lead);
+    int edgy = lead_edgy() || concert_genres[C.genre].edgy;
+    int style = edgy ? WIN_HELL : WIN_CUTE, big = H() >= 200;
+    int px = big ? 10 : 4, py = big ? 26 : 20, cw = big ? 80 : 70;
+    int mx = px + cw + (big ? 8 : 4), mw = W() - mx - (big ? 10 : 4), my = py;
+    int rowh = big ? 15 : 12, rows = 0, i, ch;
+    const UiStyle *st = ui_style(style);
+    StageLayout L;
+    char buf[48];
+    uint32_t sig = setup_sig();
+    /* the star's portrait has a real picture (some phase of it is cached: a held page never keeps a stand-in;
+     * its blinks and breaths stop while held) */
+    int same = sig == C.setup_sig, ready = portrait_prefetch(C.lead, EXPR_HAPPY);
+    for (i = 0; i < ROW_COUNT; i++) if (row_visible(i)) rows++;
+    ch = rows * rowh + 10;
+    C.setup_sig = sig;
+    /* (G2-CO, S2-1's modal hold; pixel-changing: the stage behind stands still) while the setup's values stand still
+     * the dimmed stage, the title, the star's window, the line-up and the hint stay on the held page and only the
+     * menu window repaints; a changed value draws one full frame (the new stage and line-up), which is held next */
+    if (ui_modal_hold(&SCENE_CONCERT, same && ready, mx, my, mw, ch)) {
+        setup_menu(mx, my, mw, ch, rowh, style, r);
+        ui_modal_hold_end();
+        return;
+    }
+    /* the stage behind, dimmed: genre light show + stage theme preview */
+    concert_layout(&L);
+    C.v.t = C.t;
+    concert_draw_stage(&C.v, &L);
+    concert_draw_crowd(&C.v, &L);
+    plat_shade_rect(0, 0, W(), H(), 9);
+    ui_title(W() / 2, big ? 6 : 3, STR_ICON_NOTE " CONCERT HALL " STR_ICON_NOTE, style);
+    /* the star of the show */
+    ui_window(px, py, cw, ch, style);
+    {
+        const DoomoImage *img = portrait_image(C.lead, EXPR_HAPPY);
+        int iy = py + 4 + (ch - 10 - (big ? 80 : 68)) / 2;
+        if (img) plat_image(px + (cw - img->w) / 2, iy, img, 1, 0, 0);
+        ui_text_center(px + cw / 2, iy + 58, r ? r->name : "???", st->text);
+        if (ch >= 84) {
+            concert_job_of(C.lead, buf, big ? 13 : 11);
+            ui_text_center(px + cw / 2, iy + 68, buf, st->text_dim);
+        }
+    }
+    setup_menu(mx, my, mw, ch, rowh, style, r);
     /* the first lines of the song (big screens) */
     if (big) {
         int sy = my + ch + 6;
@@ -852,6 +884,7 @@ static void setup_draw(void)
         if (C.mode != CMODE_SOLO) draw_lineup(x0, x1, feet);
     }
     ui_hint(STR_ICON_A " Start  " STR_ICON_B " Leave  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Change", style);
+    ui_modal_full(&SCENE_CONCERT, ready);
 }
 
 static void draw_bill(const StageLayout *L)
@@ -1109,6 +1142,7 @@ static void concert_draw(void)
 {
     if (!scene_scratch_mine(CONCERT_SCRATCH_TAG)) { plat_clear(PAL_BLACK); return; }
     plat_ui_loops();                   /* SP6: a plain bitmap frame: the platform's faster 2D loops */
+    if (C.state != CS_SETUP) ui_modal_hold(&SCENE_CONCERT, 0, 0, 0, 0, 0);   /* (G2-CO) the setup's hold ends */
     switch (C.state) {
     case CS_SETUP: setup_draw(); break;
     case CS_PARADE: parade_draw(); break;

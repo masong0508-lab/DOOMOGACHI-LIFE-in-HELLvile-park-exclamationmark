@@ -237,3 +237,28 @@ TEST(modal_hold_toast_over_a_held_popup)
     CHECK_MSG(!ui_toast_pending(), "toast: still up at the end");
     CHECK_MSG(a.out[NF - 1] == a.out[29], "toast: the picture after the toast is not the one before it");
 }
+
+/* ---- (G2-CO) the concert's setup screen: the dimmed stage held under the menu; a cursor move repaints the menu
+ * only, a new genre draws one full frame (the new light show) and is held again ------------------------------------ */
+static void concert_setup(void)
+{
+    scene_set(&SCENE_CONCERT, -2);
+}
+
+static uint32_t concert_pad(int f)
+{
+    if (f == 50) return BTN_DOWN;                      /* the Genre row */
+    if (f == 90) return BTN_RIGHT;                     /* the next genre: the stage behind changes */
+    return 0;
+}
+
+TEST(modal_hold_concert_setup)
+{
+    Rect r;
+    int big = plat_screen_h() >= 200, px = big ? 10 : 4, cw = big ? 80 : 70;
+    r.x = px + cw + (big ? 8 : 4);
+    r.y = big ? 26 : 20;
+    r.w = plat_screen_w() - r.x - (big ? 10 : 4);
+    r.h = 5 * (big ? 15 : 12) + 10;                    /* a solo: five rows */
+    compare("concert setup", concert_setup, concert_pad, r, 80);
+}
