@@ -25,7 +25,7 @@ Contents:
 [6b The safety gate (T4)](#6b-the-safety-gate-t4) ·
 [6c The generator (T5a)](#6c-the-generator-t5a) ·
 [6d The census and the review sheet (T7)](#6d-the-census-and-the-review-sheet-t7) ·
-[6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) · ·
+[6h The multilevel composer (design, TM0)](#6h-the-multilevel-composer-design-tm0-design-2026-11-15) ·
 [6i Traits and the personality API (TM1)](#6i-traits-and-the-personality-api-tm1-traits) ·
 [6k The pointer (T9)](#6k-the-pointer-t9) ·
 [7 Sizes](#7-sizes-measured) ·
