@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include "test.h"
 #include "../src/concert_int.h"
+#include "doomo/backdrop.h"
 
 static uint32_t fb_hash(int w, int h)
 {
@@ -126,6 +127,92 @@ TEST(concert_stage_frames_match_the_golden)
     portrait_cache_reset();
     portrait_cache_clock(0, 0);
     CHECK(n == 2 * MUSIC_COUNT * 6 * 3 || bad);
+}
+
+/* (G2-CO) The stage over a kept picture of its still parts (the GBA's baked backdrop; the native platform keeps
+ * one when nat_stage_on is set) is the stage drawn whole, pixel for pixel: every theme (the Dreamland is drawn whole
+ * either way), every genre's show, kicks on and off, the props at every phase, both resolutions. A part that moves
+ * but is kept, or a still part drawn over something that moves, shows up as a differing frame. */
+TEST(concert_kept_stage_equals_the_full_stage)
+{
+    static ConcertCast cast;
+    static uint8_t want[320 * 240];
+    int res, g, k, j, n = 0, kept = 0, bad = 0;
+    town_new(TOWN_FREEPLAY, 777, TOWN_POP_PREMADE);
+    sim_init();
+    for (res = 0; res < 2 && !bad; res++) {
+        int w = res ? 320 : 240, h = res ? 240 : 160;
+        nat_w = w; nat_h = h;
+        portrait_cache_reset();
+        for (g = 0; g < MUSIC_COUNT && !bad; g++)
+            for (k = 0; k < 6 && !bad; k++) {
+                StageView v;
+                StageLayout L;
+                make_view(&v, &cast, g, k, res);
+                concert_layout(&L);
+                for (j = 0; j < 12 && !bad; j++) {
+                    uint32_t tick = 100u + (uint32_t)(g * 97 + k * 41 + j * 5), key;
+                    v.kick = j % 7;
+                    nat_stage_on = 0;
+                    memset(nat_fb, 0, (size_t)(w * h));
+                    draw_frame(&v, &L, tick, g, k);
+                    memcpy(want, nat_fb, (size_t)(w * h));
+                    nat_stage_on = 1;
+                    nat_stage_buffers = 2;
+                    memset(nat_fb, 0x5A, (size_t)(w * h));       /* whatever the page held before */
+                    draw_frame(&v, &L, tick, g, k);
+                    if (concert_stage_key(&v, &key)) kept++;
+                    if (memcmp(want, nat_fb, (size_t)(w * h)) != 0) {
+                        char m[200];
+                        int q, x0 = w, y0 = h, x1 = -1, y1 = -1;
+                        for (q = 0; q < w * h; q++)
+                            if (want[q] != nat_fb[q]) {
+                                x0 = DOOMO_MIN(x0, q % w); x1 = DOOMO_MAX(x1, q % w);
+                                y0 = DOOMO_MIN(y0, q / w); y1 = DOOMO_MAX(y1, q / w);
+                            }
+                        snprintf(m, sizeof(m), "kept stage differs: res %d genre %d view %d stage %d tick %u kick %d "
+                                 "in (%d,%d)-(%d,%d)", res, g, k, v.stage, (unsigned)tick, v.kick, x0, y0, x1, y1);
+                        test_fail(__FILE__, __LINE__, m);
+                        bad = 1;
+                    }
+                    n++;
+                }
+            }
+    }
+    nat_stage_on = 0;
+    nat_stage_reset();
+    nat_w = 240; nat_h = 160;
+    portrait_cache_reset();
+    portrait_cache_clock(0, 0);
+    CHECK(kept > 0 && kept < n);
+}
+
+/* (G2-CO) the baker's keys are every key a view can ask for */
+TEST(concert_stage_keys_cover_every_view)
+{
+    const DoomoBackdrop *f = NULL;
+    uint32_t keys[64], key;
+    int i, n, st, ok = 1;
+    for (i = 0; i < backdrop_family_count(); i++)
+        if (backdrop_family(i) && backdrop_family(i)->id == DOOMO_BACKDROP_CONCERT) f = backdrop_family(i);
+    CHECK(f != NULL);
+    if (!f) return;
+    n = f->keys(keys, 64);
+    CHECK(n == 30);
+    for (st = 0; st < STAGE_COUNT; st++) {
+        uint32_t t;
+        for (t = 0; t < 200; t++) {
+            StageView v;
+            int found = 0;
+            memset(&v, 0, sizeof(v));
+            v.stage = st;
+            v.t = t * 7919u;
+            if (!concert_stage_key(&v, &key)) { if (st != STAGE_DREAMLAND) ok = 0; continue; }
+            for (i = 0; i < n; i++) if (keys[i] == key) found = 1;
+            if (!found) ok = 0;
+        }
+    }
+    CHECK(ok);
 }
 
 /* the LED wall's wave stepper (concert_gfx.c ws_*) gives ui_wave's value at every step: periods from 1 to 400,

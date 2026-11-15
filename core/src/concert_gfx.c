@@ -16,10 +16,20 @@
  */
 #include "concert_int.h"
 #include "doomo/plat_ext.h"
+#include "doomo/backdrop.h"
 
 const char *const concert_stage_names[STAGE_COUNT] = {
     "Sugar Bowl", "Disco Inferno", "Graveyard Bash", "Hellfire Pit", "Dreamland"
 };
+
+/* (G2-CO) Which parts of the stage a pass draws: all of it (as before), only its still parts (the picture a
+ * platform keeps: concert_stage_still, the GBA's baked backdrop), or only what moves over them. The still parts of
+ * a pass depend on the stage theme and a short animation phase only (concert_stage_key), and nothing still is
+ * drawn after anything that moves and covers it, so still + live paints the same pixels as all of it
+ * (test_concert_gfx.c concert_kept_stage_equals_the_full_stage). */
+enum { SP_STILL = 1, SP_LIVE = 2, SP_ALL = 3 };
+#define STILL(m) ((m) & SP_STILL)
+#define LIVE(m)  ((m) & SP_LIVE)
 
 /* ====================================================================== */
 /* helpers                                                                  */
@@ -341,7 +351,7 @@ static void wall_skull(const Wall *W, int cx, int cy, int s, uint8_t c, uint8_t 
     wall_rect(W, cx, cy + s / 2, 1, 2, dark);
 }
 
-static void draw_show(const StageView *v, const Wall *W)
+static void draw_show(const StageView *v, const Wall *W, int m)
 {
     const ConcertGenre *g = &concert_genres[v->genre];
     uint8_t c0 = PAL_PAINT(g->c0, 1), c1 = PAL_PAINT(g->c1, 2), c2 = PAL_PAINT(g->c2, 2);
@@ -349,8 +359,8 @@ static void draw_show(const StageView *v, const Wall *W)
     int t = (int)v->t, i, k, pulse = v->kick > 0 ? v->kick : 0;
     int lit = v->lights;
     int cx = W->x + W->w / 2, cy = W->y + W->h / 2;
-    plat_rect(W->x, W->y, W->w, W->h, bg);
-    if (lit <= 0) return;
+    if (STILL(m)) plat_rect(W->x, W->y, W->w, W->h, bg);
+    if (lit <= 0 || !LIVE(m)) return;
     switch (g->show) {
     case SHOW_HEARTS: {
         int s = W->h / 6 + (pulse > 2 ? 2 : 0);
@@ -603,9 +613,10 @@ static void draw_show(const StageView *v, const Wall *W)
 
 /* ====================================================================== */
 /* stage                                                                    */
-static void draw_backdrop(const StageView *v, const StageLayout *L, const StagePal *p)
+static void draw_backdrop(const StageView *v, const StageLayout *L, const StagePal *p, int m)
 {
     int i, y0 = 0, band = L->floor_y / 4;
+    if (!STILL(m)) return;                      /* the props' phase is part of the still key */
     for (i = 0; i < 4; i++) {
         int y1 = i == 3 ? L->floor_y : y0 + band;
         plat_rect(0, y0, L->w, y1 - y0, p->sky[i]);
@@ -656,17 +667,25 @@ static void draw_backdrop(const StageView *v, const StageLayout *L, const StageP
     }
 }
 
-static void draw_speakers(const StageView *v, const StageLayout *L)
+static void draw_speakers(const StageView *v, const StageLayout *L, int m)
 {
     int i, k, sw = L->big ? 26 : 18, sh = L->big ? 26 : 18;
+    /* the synthwave grid's and the bats' lines leave the wall and can reach the speakers (drawn after the show):
+     * over a kept picture those shows draw the speakers again, whole */
+    int show = concert_genres[v->genre].show, over = m == SP_LIVE && (show == SHOW_GRID || show == SHOW_BATS);
+    if (over) m = SP_ALL;
     for (i = 0; i < 2; i++) {
         int x = i ? L->wall_x + L->wall_w + 2 : L->wall_x - sw - 2;
         if (x < 0) x = 0;
         if (x + sw > L->w) x = L->w - sw;
         for (k = 0; k < 2; k++) {
             int y = L->floor_y - (k + 1) * sh, r = sh / 3 + (v->kick > 2 ? 1 : 0);
-            ui_round_rect(x, y, sw, sh - 1, 2, PAL_RAMP(RAMP_STONE, 1));
-            ui_frame(x, y, sw, sh - 1, PAL_RAMP(RAMP_STONE, 0));
+            if (STILL(m)) {
+                ui_round_rect(x, y, sw, sh - 1, 2, PAL_RAMP(RAMP_STONE, 1));
+                ui_frame(x, y, sw, sh - 1, PAL_RAMP(RAMP_STONE, 0));
+            }
+            /* the cones: still at rest (the still pass's view has no kick), drawn again bigger on a kick */
+            if (!STILL(m) && v->kick <= 2) continue;
             ui_fill_circle(x + sw / 2, y + sh / 2, r, PAL_RAMP(RAMP_STONE, 0));
             ui_fill_circle(x + sw / 2, y + sh / 2, r / 2, PAL_RAMP(RAMP_STONE, 3));
             plat_rect(x + sw / 2 - 1, y + sh / 2 - 1, 1, 1, PAL_RAMP(RAMP_STONE, 5));
@@ -674,19 +693,22 @@ static void draw_speakers(const StageView *v, const StageLayout *L)
     }
 }
 
-static void draw_truss(const StageView *v, const StageLayout *L)
+static void draw_truss(const StageView *v, const StageLayout *L, int m)
 {
     const ConcertGenre *g = &concert_genres[v->genre];
     int i, th = L->truss_h, x;
     uint8_t s0 = PAL_RAMP(RAMP_STEEL, 2), s1 = PAL_RAMP(RAMP_STEEL, 4), s2 = PAL_RAMP(RAMP_STEEL, 6);
-    plat_rect(0, 0, L->w, th - 3, PAL_RAMP(RAMP_STONE, 0));
-    plat_rect(0, 1, L->w, 1, s1);
-    plat_rect(0, th - 5, L->w, 1, s1);
-    for (x = -4; x < L->w; x += 8) {
-        plat_line(x, 1, x + 4, th - 5, s0);
-        plat_line(x + 4, th - 5, x + 8, 1, s0);
+    if (STILL(m)) {
+        plat_rect(0, 0, L->w, th - 3, PAL_RAMP(RAMP_STONE, 0));
+        plat_rect(0, 1, L->w, 1, s1);
+        plat_rect(0, th - 5, L->w, 1, s1);
+        for (x = -4; x < L->w; x += 8) {
+            plat_line(x, 1, x + 4, th - 5, s0);
+            plat_line(x + 4, th - 5, x + 8, 1, s0);
+        }
+        plat_rect(0, 0, L->w, 1, s2);
     }
-    plat_rect(0, 0, L->w, 1, s2);
+    if (!LIVE(m)) return;
     /* lamps: flash on the beat, colour of the genre. Lamp i hangs at x =
      * w * (2i + 1) / 12 (the beams start there too); SP6: that x, the phase
      * (t / 8 + i) % 3 and i % 3 are stepped, no division per lamp */
@@ -721,14 +743,14 @@ static void draw_truss(const StageView *v, const StageLayout *L)
     }
 }
 
-static void draw_floor(const StageView *v, const StageLayout *L, const StagePal *p)
+static void draw_floor(const StageView *v, const StageLayout *L, const StagePal *p, int m)
 {
     int y, x, depth = L->stage_front - L->floor_y, i;
-    plat_rect(0, L->floor_y, L->w, depth, p->floor0);
+    if (STILL(m)) plat_rect(0, L->floor_y, L->w, depth, p->floor0);
     switch (v->stage) {
     case STAGE_DISCO_INFERNO: {
         int cs = depth / 2;
-        for (y = 0; y < 2; y++)
+        for (y = 0; y < 2 && LIVE(m); y++)
             for (x = 0; x * cs < L->w + cs; x++) {
                 uint32_t r = hash2((uint32_t)(x + y * 40), v->t / (opt_get(OPT_REDUCE_FLASH) ? 48u : 8u));
                 uint8_t c = (r & 3) == 0 ? PAL_PAINT(PAINT_MAGENTA, 2) : (r & 3) == 1 ? PAL_PAINT(PAINT_CYAN, 2) :
@@ -737,15 +759,18 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
             }
         break; }
     case STAGE_HELLFIRE:
-        for (x = 0; x < L->w; x += 6) plat_rect(x, L->floor_y, 1, depth, p->floor_line);
-        for (y = L->floor_y + 3; y < L->stage_front; y += 4) plat_rect(0, y, L->w, 1, p->floor_line);
-        cspan(0, L->w, L->stage_front - 3, 3, PAL_RAMP(RAMP_LAVA, 4 + (v->kick > 0)));
+        if (STILL(m)) {
+            for (x = 0; x < L->w; x += 6) plat_rect(x, L->floor_y, 1, depth, p->floor_line);
+            for (y = L->floor_y + 3; y < L->stage_front; y += 4) plat_rect(0, y, L->w, 1, p->floor_line);
+        }
+        if (LIVE(m)) cspan(0, L->w, L->stage_front - 3, 3, PAL_RAMP(RAMP_LAVA, 4 + (v->kick > 0)));
         break;
     case STAGE_DREAMLAND:
-        for (i = 0; i < 10; i++)
+        for (i = 0; i < 10 && STILL(m); i++)
             ui_fill_ellipse(i * L->w / 9, L->floor_y + depth / 2 + (i & 1) * 2, L->w / 14, depth / 2, p->floor1);
         break;
     default:
+        if (!STILL(m)) break;
         plat_rect(0, L->floor_y, L->w, 2, p->floor1);
         for (y = L->floor_y + 4; y < L->stage_front; y += 4) plat_rect(0, y, L->w, 1, p->floor_line);
         for (y = 0; y < depth / 4; y++)
@@ -754,7 +779,7 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
         break;
     }
     /* the house: dark seats below the stage, lit a little by the show */
-    {
+    if (STILL(m)) {
         int top = L->stage_front + (L->big ? 7 : 5), hh = L->h - top;
         int hell = v->stage == STAGE_HELLFIRE;
         plat_rect(0, top, L->w, hh, hell ? PAL_RAMP(RAMP_BLOOD, 1) : PAL_RAMP(RAMP_VAPE, 1));
@@ -762,8 +787,11 @@ static void draw_floor(const StageView *v, const StageLayout *L, const StagePal 
         cspan(0, L->w, top + hh / 3, hh / 3, hell ? PAL_RAMP(RAMP_BLOOD, 0) : PAL_RAMP(RAMP_VAPE, 0));
     }
     /* the front lip with footlights */
-    plat_rect(0, L->stage_front, L->w, L->big ? 7 : 5, p->lip);
-    plat_rect(0, L->stage_front, L->w, 1, ui_lighter(p->lip));
+    if (STILL(m)) {
+        plat_rect(0, L->stage_front, L->w, L->big ? 7 : 5, p->lip);
+        plat_rect(0, L->stage_front, L->w, 1, ui_lighter(p->lip));
+    }
+    if (!LIVE(m)) return;
     for (x = 8, i = (int)(v->t / 6u); x < L->w; x += L->w / 8) {
         int on = v->lights > 4 && (((uint32_t)x / 8 + (uint32_t)i) & 1);
         plat_rect(x, L->stage_front + 1, 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_RAMP(RAMP_STONE, 2));
@@ -791,26 +819,28 @@ static void beam(int ax, int ay, int tx, int ty, int hw0, int hw1, uint8_t c)
     }
 }
 
-void concert_draw_stage(const StageView *v, const StageLayout *L)
+static void stage_parts(const StageView *v, const StageLayout *L, int m)
 {
     StagePal p;
     Wall W;
     const ConcertGenre *g = &concert_genres[v->genre];
     int i;
     stage_pal(v->stage, &p);
-    draw_backdrop(v, L, &p);
+    draw_backdrop(v, L, &p, m);
     W.x = L->wall_x; W.y = L->wall_y; W.w = L->wall_w; W.h = L->wall_h;
     /* the wall frame */
-    ui_round_rect(W.x - 3, W.y - 3, W.w + 6, W.h + 6, 3, PAL_RAMP(RAMP_STEEL, 1));
-    plat_rect(W.x - 2, W.y - 3, W.w + 4, 1, PAL_RAMP(RAMP_STEEL, 4));
-    draw_show(v, &W);
-    /* scanline sheen */
-    for (i = W.y + 1; i < W.y + W.h; i += 3) cspan(W.x, W.x + W.w, i, 1, PAL_RAMP(RAMP_STONE, 1));
-    draw_speakers(v, L);
-    draw_floor(v, L, &p);
-    draw_truss(v, L);
+    if (STILL(m)) {
+        ui_round_rect(W.x - 3, W.y - 3, W.w + 6, W.h + 6, 3, PAL_RAMP(RAMP_STEEL, 1));
+        plat_rect(W.x - 2, W.y - 3, W.w + 4, 1, PAL_RAMP(RAMP_STEEL, 4));
+    }
+    draw_show(v, &W, m);
+    /* scanline sheen (over the show: it moves with it) */
+    for (i = W.y + 1; i < W.y + W.h && LIVE(m); i += 3) cspan(W.x, W.x + W.w, i, 1, PAL_RAMP(RAMP_STONE, 1));
+    draw_speakers(v, L, m);
+    draw_floor(v, L, &p, m);
+    draw_truss(v, L, m);
     /* beams sweep with the music */
-    if (v->lights > 6) {
+    if (v->lights > 6 && LIVE(m)) {
         /* SP6: lamp x, the two sweeps (2t + 70i on even lamps, 3t + 70i on
          * odd ones) and i % 3 stepped; the same targets and colours */
         int n = v->sec == SEC_CHORUS1 || v->sec == SEC_CHORUS2 || v->encore ? 6 : 4;
@@ -829,6 +859,66 @@ void concert_draw_stage(const StageView *v, const StageLayout *L)
             beam(lx, ly + 1, tx, L->stage_front, 1, L->big ? 14 : 10, (uint8_t)c);
         }
     }
+}
+
+#if !defined(DOOMO_PLATFORM_PS1)    /* (the PS1 never bakes, and its retained stage lives in another overlay group) */
+/* (G2-CO) The still key of a view: the stage theme and the phase of its backdrop props (the Sugar Bowl's
+ * stripes and sparkles repeat every 32 ticks, the Hellfire braziers every 12; the Graveyard and the Disco
+ * Inferno have none). 0 for the Dreamland, whose clouds drift over 840 ticks: it is drawn whole as before. */
+int concert_stage_key(const StageView *v, uint32_t *key)
+{
+    switch (v->stage) {
+    case STAGE_SUGAR_BOWL:   *key = (uint32_t)STAGE_SUGAR_BOWL << 8 | ((v->t / 2u) & 15u); return 1;
+    case STAGE_HELLFIRE:     *key = (uint32_t)STAGE_HELLFIRE << 8 | (v->t % 12u); return 1;
+    case STAGE_GRAVEYARD:
+    case STAGE_DISCO_INFERNO: *key = (uint32_t)v->stage << 8; return 1;
+    default: return 0;
+    }
+}
+
+/* the still parts of a key over the whole screen (the backdrop family below: the GBA build bakes every key) */
+static void concert_stage_still(uint32_t key)
+{
+    StageView v;
+    StageLayout L;
+    uint32_t ph = key & 255u;
+    memset(&v, 0, sizeof(v));
+    v.stage = (int)(key >> 8);
+    v.t = v.stage == STAGE_SUGAR_BOWL ? ph * 2u : ph;     /* a tick of that phase */
+    concert_layout(&L);
+    stage_parts(&v, &L, SP_STILL);
+}
+
+static int concert_stage_keys(uint32_t *out, int cap)
+{
+    static const uint8_t st[4] = { STAGE_SUGAR_BOWL, STAGE_HELLFIRE, STAGE_GRAVEYARD, STAGE_DISCO_INFERNO };
+    static const uint8_t ph[4] = { 16, 12, 1, 1 };
+    int i, k, n = 0;
+    for (i = 0; i < 4; i++)
+        for (k = 0; k < ph[i]; k++, n++)
+            if (n < cap) out[n] = (uint32_t)st[i] << 8 | (uint32_t)k;
+    return n;
+}
+const DoomoBackdrop concert_backdrop_family = { DOOMO_BACKDROP_CONCERT, concert_stage_still, concert_stage_keys, NULL };
+#endif
+
+void concert_draw_stage(const StageView *v, const StageLayout *L)
+{
+    PlatStageInfo info;
+    uint32_t key;
+    if (plat_draw_skipped()) return;                     /* (G2-CO) a catch-up tick shows nothing */
+#if !defined(DOOMO_PLATFORM_PS1)
+    /* (G2-CO) a platform that keeps the still parts puts them back in one copy; only what moves is drawn. The
+     * whole picture is put back on every frame, so nothing drawn over it needs a record (no plat_stage_end) */
+    if (concert_stage_key(v, &key) && plat_stage_begin(DOOMO_BACKDROP_CONCERT, key, concert_stage_still, &info)) {
+        plat_stage_restore(0, 0, L->w, L->h);
+        stage_parts(v, L, SP_LIVE);
+        return;
+    }
+#else
+    (void)info; (void)key;
+#endif
+    stage_parts(v, L, SP_ALL);
 }
 
 /* ====================================================================== */

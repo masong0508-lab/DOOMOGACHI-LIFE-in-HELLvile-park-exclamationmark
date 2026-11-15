@@ -34,7 +34,8 @@ extern const DoomoBackdrop exo_church_family;            /* exorcism_gfx.c */
 extern const DoomoBackdrop mg_backdrop_family;           /* (S2-4) mg.c: the fair booths */
 extern const DoomoBackdrop mg_stamp_family;              /* (S2-4b) mg.c: the fair's stamps */
 extern const DoomoBackdrop cook_backdrop_family;         /* (S2-4c) cook_scene.c: the kitchen */
-int backdrop_family_count(void) { return 4; }
+extern const DoomoBackdrop concert_backdrop_family;      /* (G2-CO) concert_gfx.c: the concert stage */
+int backdrop_family_count(void) { return 5; }
 #else
 int backdrop_family_count(void) { return 1; }            /* (the PS1 never bakes) */
 #endif
@@ -45,6 +46,7 @@ const DoomoBackdrop *backdrop_family(int i)
     if (i == 1) return &mg_backdrop_family;
     if (i == 2) return &mg_stamp_family;
     if (i == 3) return &cook_backdrop_family;
+    if (i == 4) return &concert_backdrop_family;
 #endif
     return i == 0 ? &exo_church_family : NULL;
 }

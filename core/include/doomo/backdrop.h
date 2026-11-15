@@ -20,7 +20,8 @@
 enum { DOOMO_BACKDROP_EXO_CHURCH = 1,
        DOOMO_BACKDROP_MG = 2,              /* (S2-4) the Fun Fair booths' still playfields (mg.c) */
        DOOMO_BACKDROP_MG_STAMP = 3,        /* (S2-4b) the Fun Fair's stamps: small pictures of its actors */
-       DOOMO_BACKDROP_KITCHEN = 4 };       /* (S2-4c) the kitchen's wall, jars and counter (cook_scene.c) */
+       DOOMO_BACKDROP_KITCHEN = 4,         /* (S2-4c) the kitchen's wall, jars and counter (cook_scene.c) */
+       DOOMO_BACKDROP_CONCERT = 5 };       /* (G2-CO) the concert stage's still parts (concert_gfx.c) */
 
 /* (S2-4b) what a key's picture holds (DoomoBackdrop.part; NULL: every key is BACKDROP_WHOLE):
  *   BACKDROP_WHOLE  the whole screen

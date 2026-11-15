@@ -244,6 +244,8 @@ typedef struct StageLayout {
 } StageLayout;
 void concert_layout(StageLayout *L);
 void concert_draw_stage(const StageView *v, const StageLayout *L);
+/* (G2-CO) the key of the stage's still parts for v (theme and props' phase); 0 when they are drawn whole */
+int  concert_stage_key(const StageView *v, uint32_t *key);
 void concert_draw_performers(const StageView *v, const StageLayout *L);
 void concert_draw_crowd(const StageView *v, const StageLayout *L);
 void concert_draw_fx(const StageView *v, const StageLayout *L);
