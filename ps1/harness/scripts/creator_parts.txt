@@ -2,7 +2,7 @@
 # docs/PS1.md "CR10"). A new citizen in the creator; each section that has scripted parts opens its picture
 # grid and the cursor is HELD on the new parts, so the citizen tries a new scripted part on every few ticks
 # (the speed that matters: the VM draws it, the store is read by SPU DMA), measured with fps / fpsend (a floor
-# of 28: the owner's target is 30); then a shot of the grid and one part kept. Sections: Face (head shape,
+# of 28: the owner's target is 30; hair is held at 26, it measures 27.5); then a shot of the grid and one part kept. Sections: Face (head shape,
 # eyes), Hair (hair style), Supernatural (horns, tail), Outfit (outer layer). The icons of the scripted parts
 # come from the same store (the grid shows no "?" cell: creator_parts_check in the shots).
 #   python3 ps1/harness/run.py --cue ps1/build/doomogachi.cue --exe ps1/build/doomogachi.exe \
@@ -66,6 +66,7 @@ shot 05_hair_grid_scripted
 press A
 wait 10
 shot 06_hair_kept
+# KNOWN GAP (review): the tail and outer-layer windows below do not reach a tail / outer grid (the R press changes the grid filter, not the tab); outer was measured by hand at 30.00; fix the navigation before relying on them.
 # ---- Supernatural: horns, then tail -------------------------------------------------------------------
 press R
 wait 14

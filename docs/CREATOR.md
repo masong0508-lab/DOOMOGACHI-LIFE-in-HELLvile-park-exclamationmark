@@ -881,7 +881,7 @@ package (the cheat "Slider range x1..x4" is CR-SLIDERX, below; the slider table 
   That is 16,928 B over CREATOR's 4 KB PS1 share: the VM and the painters' hooks are 12.7 KB of it and cannot leave the
   resident image. GBA and Dreamcast: no RAM change (the packed icon set is bigger: +48 KB of ROM there).
 * **Left:** a save with a bigger pool than the PS1's 384 B loads there with an empty pool; the hair try-on is 27.5 (S3-2);
-  every later batch adds 4 B of resident `PartRef` per part and needs `PARTS.BIN` room: SPU RAM holds 180 KB, 140 KB used,
+  every later batch adds 4 B of resident `PartRef` per part and needs `PARTS.BIN` room: SPU RAM holds 184,320 B, 143,360 B used,
   so about 190 more parts fit; the next PS1 creator package puts the icons on the disc (`ICONS.BIN`, one section's page per entry).
 
 ## CR4 batch A5: outfit (2026-11-13)
@@ -1079,3 +1079,9 @@ premade citizen in place, cancelling, the protagonist, undo/redo, locks and
 grandfathering, the randomiser vs locks, species parts, copying a premade
 look, nicknames and their save chunk, drawing every phase at both sizes)
 and both runner scripts at 240x160 and 320x240.
+
+CR10 known limits (lander review, 2026-11-15): the PS1 look pool is 384 B, so a GBA or Dreamcast look with more than
+about 40 deep runs loads on the PS1 with an empty pool (nicknames and gene bits stay) and the next PS1 save drops it.
+Hair try-on measures 27.52 fps on the PS1 (floor 26), below the 30 target until S3-2. The tail and outer windows of
+`creator_parts.txt` do not reach their grids yet (outer was measured by hand: 30.00). PS1 resident use is 21,024 B
+against the 4 KB share: not landed until the coordinator releases about 17 KB of the reserve.

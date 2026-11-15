@@ -691,7 +691,7 @@ comes on with CR10 (done 2026-11-15, see "CR10" below: the part data is in SPU R
 0x00000-0x00fff  capture buffers (hardware)
 0x01000-0x01fff  silent loop block + the chiptune waveforms (1.8 KB)
 0x02000-0x4ffff  sound effects (ADPCM; all converted at boot, about 35 KB used)
-0x50000-0x7dfff  PARTS.BIN (CR10): the part scripts and the packed part icons, 140 KB of the 180 KB
+0x50000-0x7dfff  PARTS.BIN (CR10): the part scripts and the packed part icons, 143,360 B of the 184,320 B (file on disc 145,408 B)
 0x7e000-0x7ffff  reverb work area (unused)
 ```
 
@@ -1813,7 +1813,7 @@ the resident age table is unchanged). The creator offers the PS1 only the painte
 Measured on `0c1fc51` and `0c1fc51` + A3 (clean builds, `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON`, `PSN00BSDK_LIBS=/opt/psn00bsdk/lib/libpsn00b`):
 `_end` 0x801ef450 both times, the overlay slot ends 0x801ef324 both times, 68,512 B below the stack top (on the rebased tree after A2, STKOPT and Talk: `_end` 0x801ef580, 68,208 B below the stack top, identical to origin before A3; the elf2exe line prints "66 KB left"), the disc image and
 `OVL.BIN` the same size (the EXE bytes differ: the resident part age table is rebuilt from the catalog). The 60 new parts
-(10 horns, 16 tails, 14 wings, 4 halos, 16 auras) are part scripts the PS1 does not read yet (the part VM is off until CR10):
+(10 horns, 16 tails, 14 wings, 4 halos, 16 auras) are part scripts the PS1 does not read yet (the part VM was off until CR10 (history: it is on since CR10, they now draw and are offered)):
 their catalog rows are creator-overlay data and all are age class ALL (no new age row). The creator offers the PS1 only the
 painted choices (`part_live_drawable`: Tail 1/16, Aura 1/8), as for every scripted part since CR3. Harness (PCSX-Redux):
 `game_smoke`, `creator`, `creator_grid` and the new `creator_parts_spooky` PASS; `creator_speed` idle 30.13, grid scroll
@@ -1888,7 +1888,7 @@ this package uses 21,024 B, 16,928 B over it**, taken from the reserve; the marg
 and icons are raw bytes in SPU RAM, not in the EXE (linking only the LZ blocks of the scripts was +14.7 KB, the
 LRU 9.5 KB: the first, naive build with the VM on was 37,088 B); the arena is 2 KB, not the LZ design's 8 KB.
 **Every later part batch adds 4 B of PartRef to the resident tables per part** (the scripts and the icons cost no RAM:
-SPU RAM holds 180 KB (0x50000 to the reverb area), 140 KB used, so **only about 190 more parts of script and icon fit**
+SPU RAM holds 184,320 B (0x50000 to the reverb area), 143,360 B used, so **only about 190 more parts of script and icon fit**
 (a part is about 55 B of script and 155 B of packed icon): the icons, 86 % of the file, need their own disc file read
 per section (`ICONS.BIN`, CREATOR_PLAN CR7) before the next big batches; that is the next PS1 creator package).
 
@@ -2365,7 +2365,7 @@ emulator at a time; the fps numbers are the game's own frame counts, so a busy h
 
 Measured with clean `cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON` builds on origin `5879aa3` and on A1b rebased onto `abc4f66`: `_end` 0x801ee550
 both times (72,368 B below the stack top): 0 B resident added. On the final landing tip (after PS1-RAM, CR5-FIX, TD1) the A1b tree ends at 0x801df9f0, 132,624 B (129 KB) below the stack top, above the 72 KB rule; the parts are still not read by the PS1. The 51 new parts (12 noses, 12 mouths,
-16 ears, 11 blush styles) are part scripts the PS1 does not read yet (the part VM is off until CR10), age class ALL; the creator offers the PS1
+16 ears, 11 blush styles) are part scripts the PS1 does not read yet (the part VM was off until CR10 (history: on since CR10)), age class ALL; the creator offers the PS1
 only the painted choices (`part_live_drawable`), as for every scripted part since CR3. `mat blush` is in the VM only (`portrait_script.c`,
 compiled out here). Harness (PCSX-Redux): `game_smoke`, `creator_grid`, `creator_parts_face_b` and `creator_speed` PASS (idle 30.13, grid
 scroll 29.39, rows 30.13, value 29.88: nothing resident changed).

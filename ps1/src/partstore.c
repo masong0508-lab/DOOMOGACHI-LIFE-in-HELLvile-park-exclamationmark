@@ -12,7 +12,7 @@
  * frame, spu.c "staging"), so a read here never races an upload: this is the "audio driver lock".
  *
  * A read costs one DMA of at most 320 bytes (the entry window rounded to the 64-byte blocks the SPU DMA moves).
- * PARTS.BIN is about 132 KB (docs/PS1.md "CR10"); the SPU RAM from SPU_PARTS_BASE to the reverb area is 184 KB.
+ * PARTS.BIN is 145,408 B on the disc, 143,360 B in SPU RAM (docs/PS1.md "CR10"); SPU RAM from SPU_PARTS_BASE to the reverb area is 184,320 B.
  */
 #include <string.h>
 #include <psxapi.h>
