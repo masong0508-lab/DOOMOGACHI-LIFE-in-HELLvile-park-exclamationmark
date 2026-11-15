@@ -49,7 +49,7 @@ tip, then `git apply -3` any `uncommitted.diff`; a README there says more where 
 * **LEVELS-2** (`wip/LEVELS-2/`: `lv8`, `lv9`): LV8 (platform level packs), LV9 (combat detail per level).
 * **LEVELS-3** (started 20:17, check `wip/LEVELS-3/` and status/LEVELS.md): the 24 new levels: LV12-LV20
   (main game), LV21 (their story hooks), LV22-LV37 (New Game+), LV38 (integration). None is built yet.
-* **STUDIO** (`wip/STUDIO/`: `st-easy.mbox`, `st-play.mbox`): ST-EASY, ST-PLAY, then ST-TOOLS, ST-ADV, ST-USE
+* **STUDIO** (`wip/STUDIO/`: `st-play.mbox`; ST-EASY landed 2026-11-15): ST-EASY, ST-PLAY, then ST-TOOLS, ST-ADV, ST-USE
   and all seven helper tools (`docs/design/STUDIO_PLAN.md`).
 * **UI** (`wip/UI/`: `ui-fit`, `ui-options`, `RESUME.md`): the text-fit test, the Options rebuild, then every
   menu decluttered at 30 (`docs/design/UI_PLAN.md`).
