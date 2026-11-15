@@ -466,6 +466,24 @@ else()
 		# CR9: the creator's speed gates (expect-fps floors; docs/CREATOR.md "Speed")
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_speed.txt
 		        --out ${_shots}/creator_speed
+		# CR10: the part VM and the part store (PARTS.BIN in SPU RAM): the cursor held on the scripted parts of six
+		# grids (fps floors), every batch's grids with the parts worn, and a deep part through Move in / save / load
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${_hs}/creator_parts.txt
+		        --out ${_shots}/creator_parts
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_parts_face_a.txt
+		        --out ${_shots}/creator_parts_face_a
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_parts_hair.txt
+		        --out ${_shots}/creator_parts_hair
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_parts_spooky.txt
+		        --out ${_shots}/creator_parts_spooky
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_parts_fur.txt
+		        --out ${_shots}/creator_parts_fur
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_parts_outfit.txt
+		        --out ${_shots}/creator_parts_outfit
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_deep.txt
+		        --out ${_shots}/creator_deep
+		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_deep_save.txt
+		        --out ${_shots}/creator_deep_save
 		# CR-BODY: every build slider moved across its range, the preview must change (tools/slider_shots_check.py)
 		COMMAND ${_run} --exe ${_exe} --cue ${_cue} --script ${CORE_DIR}/tests/scripts/creator_sliders.txt
 		        --out ${_shots}/creator_sliders

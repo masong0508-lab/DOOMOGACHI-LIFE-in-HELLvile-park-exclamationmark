@@ -10,6 +10,8 @@ shot smoke_01_boot
 # every sound effect of SFX.BIN went into SPU RAM at boot (spu.c audio_hw_sfx_preload: its staging
 # buffers are the idle display lists; an effect that was not converted there stays silent)
 expect-log effects (all)
+# CR10: PARTS.BIN (the part scripts and the packed part icons) went into SPU RAM and a read back at an odd offset matched
+expect-log parts: loaded
 wait 120
 expect-scene TITLE
 shot smoke_02_title

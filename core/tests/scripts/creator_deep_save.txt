@@ -1,0 +1,51 @@
+# CR10: a deep part (Lashes, the Face tab's Eye makeup block) survives Move in -> save -> load -> reopen. A new
+# citizen gets Wing Lashes (lashes value 2, the look pool's run), is named and moved in, the town is saved and loaded
+# through the platform's save files (the PS1: the memory card, its pool is the 384 B one), and the citizen opened
+# again in the creator still wears them (shot 03 shows the same lashes as shot 01).
+scene CREATOR -1
+expect-scene CREATOR
+wait 30
+press R
+wait 12
+press UP
+press UP
+press UP
+wait 6
+press RIGHT
+press RIGHT
+wait 12
+shot 01_lashes_2
+# Profile is six tabs right of the Face tab: its Name row opens the text entry
+press R
+press R
+press R
+press R
+press R
+press R
+wait 10
+press A
+wait 18
+type "Lashy\n"
+wait 12
+# move in
+press START
+wait 10
+press A
+wait 40
+shot 02_moved_in
+press A
+wait 10
+# save, load, reopen the citizen (slot 0)
+save 1
+expect-save 1
+load 1
+wait 20
+scene CREATOR 0
+wait 20
+press R
+wait 12
+press UP
+press UP
+press UP
+wait 12
+shot 03_reopened_lashes_2
