@@ -562,9 +562,18 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   - **Memory:** the working `SongExt` grows from 2,176 to 4,224 B and the box clipboard by 64 B: expected `.bss` +2,112 B on the GBA (about 43 KB EWRAM left), host and Dreamcast the same. Not
     measured here: `make -C gba sizes`, GBA speed windows (the grid draws one more strip), PS1 resident share (`song_player.c` +4 B). The saved page is still at most 1,536 B (a page that does not
     fit is saved classic, as before); the worst-case book chunk in the test output is unchanged at 5,305 B.
+- **One-bar patterns (2026-11-16):** a pattern is two bars (32 steps) or one bar (16 steps). Code: `song_ext.c` (`songx_plen`, `songx_set_plen`, `songx_ticks`), `song_player.c` (`advance`),
+  `studio_adv.c` (`g_length`). Tests: `song_ext_a_one_bar_pattern_*` (`test_song_ext.c`), `adv_pattern_length_*` (`test_studio_tools.c`). Plan 2.6 asked for 1..4 bars; 3 and 4 bars need
+  cells longer than 32 steps (a format change of the pool) and are still open.
+  - **Format:** `SongExt.short_mask[4]` (bit p = pattern p is one bar), at the end of the struct (+4 B). The cells do not change: the second bar of a one-bar pattern is kept, just not played,
+    so switching back brings it back. A saved page gets a 4-byte tail only when some pattern is one bar (`SX_FLAG_SHORT`, after the velocity tail); a page with none is the old page.
+  - **Played:** the pass of a one-bar pattern ends at step 16 (`advance`), so every part, the PERFORM show and the Concert Hall run on the shorter pass; `songx_ticks` sums the real steps of
+    every pass (a one-bar pass is half the time). Classic songs and two-bar patterns are unchanged (the same tests pass).
+  - **Note grid:** "Box and more..." (grid tools item 10), last item "One bar / two bars" switches the pattern at the cursor (one undo step; the cursor moves inside the first bar, LEFT / RIGHT wrap at
+    step 16, the rest of the roll is shaded; the footer says "Pattern A: one bar"). The box view shades it too. Lyric fit and the onsets strip still read all 32 steps.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** pan playback, patterns of 1..4 bars.
+- **Not done:** pan playback, patterns of 3 and 4 bars.
 - **Tests:** `adv_from_order_plays_like_the_classic_order`, `adv_arrangement_insert_remove_and_entry_passes`,
   `adv_order_tab_opens_the_arrangement_once_and_undo_reaches_it`, `adv_a_take_drops_the_arrangement_in_the_same_undo_step`,
   `adv_the_page_is_saved_with_the_song_and_loads_back`, the `adv_keys_*` journeys and the PERFORM tests (`test_studio_tools.c`).

@@ -149,7 +149,7 @@ has no empty cell. Options that cannot work on a platform are hidden there, neve
 > line was needed; patterns stay 2 bars; lyrics are the classic 8 lines, a section names the line of each pass; a `SongExt` is 2,176 B
 > (the plan said 3.5 KB); the GBA and PS1 keep 0 Advanced pages until a resident share is granted.
 >
-> **Screens built so far (2026-11-16, docs/STUDIO.md "ST-ADV screens"):** the Advanced ORDER arrangement and part view, the Mix view (pan / sound / swing per track, part brightness), the Expert view (free notes, counts, memory meter), the Note grid with Box selection (copy, cut, clear, octave, paste across tracks), Epic length and the FILE fold line. Played: sound shapes, brightness, swing and the per-note velocity bar (a separate 2-bit layer, so the cells did not change). Stored only: pan. Not built: patterns of 1..4 bars. The GBA keeps 2 Advanced pages (+5,264 B `.bss`); PS1 has none yet.
+> **Screens built so far (2026-11-16, docs/STUDIO.md "ST-ADV screens"):** the Advanced ORDER arrangement and part view, the Mix view (pan / sound / swing per track, part brightness), the Expert view (free notes, counts, memory meter), the Note grid with Box selection (copy, cut, clear, octave, paste across tracks), Epic length and the FILE fold line. Played: sound shapes, brightness, swing and the per-note velocity bar (a separate 2-bit layer, so the cells did not change). Stored only: pan. Patterns of one bar are built (a second-bar mask); 3 and 4 bars are not. The GBA keeps 2 Advanced pages (+5,264 B `.bss`); PS1 has none yet.
 
 ### 2.6 Advanced (ST-ADV)
 Advanced is a level switch that unlocks: more of everything, automation and expert views. Off by default; the

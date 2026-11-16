@@ -29,6 +29,7 @@
 #define SX_NO_LINE       0xFF
 #define SX_FLAG_ADVANCED 1             /* written in Advanced */
 #define SX_FLAG_FREE     2             /* free notes (no scale snap) */
+#define SX_FLAG_SHORT    8             /* in a saved page: a 4-byte one-bar mask follows (set by songx_encode) */
 #define SX_FLAG_VEL      4             /* in a saved page: a velocity tail follows the cells (set by songx_encode) */
 #define SX_VEL_SOFT      0             /* the four loudness levels of a note (the velocity bar) */
 #define SX_VEL_NORMAL    1             /* the default: a note plays at its track's volume */
@@ -76,6 +77,7 @@ typedef struct SongExt {
     uint8_t  map[SX_PATTERNS][SX_TRACKS];   /* pool block + 1 for a cell outside the classic 4 x 4, 0 = empty */
     uint8_t  pool[SX_POOL][SONG_STEPS];
     uint8_t  vel[SX_PATTERNS][SX_TRACKS][SONG_STEPS / 4];   /* per-note loudness, 2 bits a step (see songx_vel); all zero = every note normal */
+    uint8_t  short_mask[4];             /* bit p of the 32 bits = pattern p is one bar (16 steps): it plays steps 0..15 and the pass ends; 0 = all two bars */
 } SongExt;
 
 /* a fresh Advanced song: the classic song's order becomes one section per run (all in one is fine): sections = 1, its
@@ -92,6 +94,8 @@ int  songx_blocks_free(const SongExt *x);
 int  songx_vel(const SongExt *x, int pat, int trk, int step);
 int  songx_set_vel(SongExt *x, int pat, int trk, int step, int level);   /* 1 = stored, 0 = out of range */
 int  songx_vel_pct(int level);
+int  songx_plen(const SongExt *x, int pat);                              /* steps a pass of pattern `pat` plays: 32 (two bars) or 16 (one bar) */
+int  songx_set_plen(SongExt *x, int pat, int steps);                     /* 16 or 32; 1 = stored */
 int  songx_vel_any(const SongExt *x);                                    /* any note that is not normal */
 /* the arrangement as one flat list of pattern passes */
 int  songx_len(const SongExt *x);                                    /* passes in the whole song (>= 1) */

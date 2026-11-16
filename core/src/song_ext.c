@@ -7,6 +7,7 @@
  *   per track: pan (2 bits) | env << 2 | swing << 4
  *   per pattern: u8 mask of the tracks that hold a pool block; per set bit the 32 cells run-length coded
  *     (0x00..0x7F a literal cell, 0x80 | (n-1) a run of n empty cells, 0xC0 | (n-1) a run of n cells of value 1)
+ *   one-bar tail, only when flags bit 3 (SX_FLAG_SHORT) is set, after the velocity tail: 4 bytes, bit p of the 32 = pattern p is one bar
  *   velocity tail, only when flags bit 2 (SX_FLAG_VEL) is set: u16 count, then per cell with a non-normal note: pattern << 3 | track,
  *     then its 8 bytes of 2-bit levels. A page without the bit has no tail (every page written before the velocity bar).
  * A page that does not fit SONGX_PAGE_BYTES is not kept: the song stays classic (the studio says so).
@@ -46,7 +47,7 @@ int songx_sanitize(SongExt *x)
     FIX(x->arrange_len < 1 || x->arrange_len > SX_ARRANGE, x->arrange_len = (uint8_t)DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE));
     FIX(x->patterns < SONG_PATTERNS || x->patterns > SX_PATTERNS,
         x->patterns = (uint8_t)DOOMO_CLAMP(x->patterns, SONG_PATTERNS, SX_PATTERNS));
-    FIX(x->flags & ~7, x->flags &= 7);
+    FIX(x->flags & ~15, x->flags &= 15);
     FIX(x->nblocks > SX_POOL, x->nblocks = SX_POOL);
     for (i = 0; i < SX_SECTIONS; i++) {
         SxSection *c = &x->sect[i];
@@ -118,6 +119,20 @@ int songx_vel_pct(int level)
     return pct[level & 3];
 }
 
+int songx_plen(const SongExt *x, int pat)
+{
+    if (!x || pat < 0 || pat >= SX_PATTERNS) return SONG_STEPS;
+    return (x->short_mask[pat >> 3] >> (pat & 7)) & 1 ? SONG_STEPS / 2 : SONG_STEPS;
+}
+
+int songx_set_plen(SongExt *x, int pat, int steps)
+{
+    if (pat < 0 || pat >= SX_PATTERNS || (steps != SONG_STEPS && steps != SONG_STEPS / 2)) return 0;
+    if (steps == SONG_STEPS) x->short_mask[pat >> 3] &= (uint8_t)~(1u << (pat & 7));
+    else x->short_mask[pat >> 3] |= (uint8_t)(1u << (pat & 7));
+    return 1;
+}
+
 int songx_vel_any(const SongExt *x)
 {
     const uint8_t *b = &x->vel[0][0][0];
@@ -175,9 +190,11 @@ uint32_t songx_ticks(const DoomoSong *s, const SongExt *x)
     int i, len = DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE);
     for (i = 0; i < len; i++) {
         const SxSection *c = &x->sect[x->arrange[i] % SX_SECTIONS];
-        uint32_t b = bpm * DOOMO_CLAMP(c->tempo, 50, 200) / 100u;
+        uint32_t b = bpm * DOOMO_CLAMP(c->tempo, 50, 200) / 100u, steps = 0;
+        int k, n = sect_passes(x, x->arrange[i]);
         b = DOOMO_CLAMP(b, 30, 440);
-        total += ((uint32_t)sect_passes(x, x->arrange[i]) * 14400u + b - 1) / b;
+        for (k = 0; k < n; k++) steps += (uint32_t)songx_plen(x, c->pat[k] % SX_PATTERNS);      /* a one-bar pattern is half a pass */
+        total += (steps * 450u + b - 1) / b;
     }
     return total;
 }
@@ -377,9 +394,9 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
     int i, k, p, t;
     (void)s;
     o.d = dst; o.cap = cap; o.n = 0;
-    int velany = songx_vel_any(x);
+    int velany = songx_vel_any(x), shortany = (x->short_mask[0] | x->short_mask[1] | x->short_mask[2] | x->short_mask[3]) != 0;
     ob(&o, x->version); ob(&o, x->tracks); ob(&o, x->sections); ob(&o, x->arrange_len); ob(&o, x->patterns);
-    ob(&o, (uint32_t)((x->flags & ~SX_FLAG_VEL) | (velany ? SX_FLAG_VEL : 0)));
+    ob(&o, (uint32_t)((x->flags & ~(SX_FLAG_VEL | SX_FLAG_SHORT)) | (velany ? SX_FLAG_VEL : 0) | (shortany ? SX_FLAG_SHORT : 0)));
     for (i = 0; i < x->sections && i < SX_SECTIONS; i++) {
         const SxSection *c = &x->sect[i];
         ob(&o, c->name); ob(&o, c->npat);
@@ -407,6 +424,7 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
                 for (k = 0; k < 8; k++) ob(&o, x->vel[p][t][k]);
             }
     }
+    if (shortany) for (k = 0; k < 4; k++) ob(&o, x->short_mask[k]);
     return o.n > cap ? 0 : o.n;
 }
 
@@ -473,6 +491,10 @@ int songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t le
             for (k = 0; k < 8; k++) x->vel[id >> 3][id & 7][k] = (uint8_t)ib(&in);
         }
         if (in.err) memset(x->vel, 0, sizeof(x->vel));
+    }
+    if (!in.err && (x->flags & SX_FLAG_SHORT)) {           /* the one-bar mask; damaged, every pattern is two bars again */
+        for (k = 0; k < 4; k++) x->short_mask[k] = (uint8_t)ib(&in);
+        if (in.err) memset(x->short_mask, 0, sizeof(x->short_mask));
     }
     songx_sanitize(x);
     return 1;

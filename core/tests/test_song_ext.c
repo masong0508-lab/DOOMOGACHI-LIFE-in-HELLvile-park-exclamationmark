@@ -389,3 +389,48 @@ TEST(song_ext_velocity_scales_the_tracks_volume_and_normal_plays_as_a_classic_so
     CHECK_EQ(norm, ext_note_vol(SX_VEL_NORMAL, 0, 10));          /* a normal note is the classic note */
     CHECK_EQ(ext_note_vol(SX_VEL_PEAK, 1, 15), 15);              /* nothing goes over the top */
 }
+
+/* ---- one-bar patterns: a pattern may play 16 steps and end its pass; the length, the player and the page agree ---------------------- */
+TEST(song_ext_a_one_bar_pattern_ends_its_pass_early_and_is_saved_with_the_page)
+{
+    DoomoSong s;
+    SongExt x, y;
+    uint8_t buf[SONGX_PAGE_BYTES], plain[SONGX_PAGE_BYTES];
+    uint32_t two, one, n, n0;
+    int ticks2, ticks1;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK_EQ(songx_plen(&x, 0), SONG_STEPS);
+    CHECK(!songx_set_plen(&x, 0, 20));                              /* only a bar or two */
+    CHECK(!songx_set_plen(&x, 32, 16));
+    n0 = songx_encode(&s, &x, plain, sizeof(plain));
+    CHECK_EQ(plain[5] & SX_FLAG_SHORT, 0);                          /* no short pattern: the old bytes */
+    two = songx_ticks(&s, &x);
+    ticks2 = run_to_end(&s, &x, 100000);
+    CHECK(songx_set_plen(&x, 0, 16));
+    CHECK_EQ(songx_plen(&x, 0), 16);
+    CHECK_EQ(songx_plen(&x, 1), SONG_STEPS);                        /* the others are untouched */
+    one = songx_ticks(&s, &x);
+    CHECK(one < two);
+    CHECK(one * 2 + 2 >= two && one * 2 <= two + 2);                /* half the time, give or take a rounding tick */
+    ticks1 = run_to_end(&s, &x, 100000);
+    CHECK(ticks1 < ticks2);
+    CHECK(ticks1 * 2 <= ticks2 + 4);                                /* and the player really ends its pass at step 16 */
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(n == n0 + 4);
+    CHECK(buf[5] & SX_FLAG_SHORT);
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_plen(&y, 0), 16);
+    CHECK_EQ(songx_plen(&y, 1), SONG_STEPS);
+    /* with accents too: both tails read back */
+    songx_set_vel(&x, 0, 0, 0, SX_VEL_LOUD);
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_plen(&y, 0), 16);
+    CHECK_EQ(songx_vel(&y, 0, 0, 0), SX_VEL_LOUD);
+    /* a page cut inside the mask keeps the song and goes back to two bars */
+    CHECK(songx_decode(&s, &y, buf, n - 2));
+    CHECK_EQ(songx_plen(&y, 0), SONG_STEPS);
+    CHECK(songx_decode(&s, &y, plain, n0));
+    CHECK_EQ(songx_plen(&y, 0), SONG_STEPS);
+}

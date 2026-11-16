@@ -630,6 +630,7 @@ static const char *const lane_names[8] = { "Kik", "Snr", "Hat", "Opn", "Clp", "T
 
 #define G_VELH 10                       /* the velocity strip under a pitch track's roll */
 static int g_nt(void) { return mix_tracks(); }
+static int g_plen(void) { return songx_plen(X, g_pat); }               /* the steps this pattern plays: 32, or 16 for a one-bar pattern */
 static int g_npat(void) { return DOOMO_CLAMP((int)X->patterns, SONG_PATTERNS, SX_PATTERNS); }
 static int g_drum(int t) { return songx_lane_of(t) == 3; }
 static int g_cell(int pat, int trk, int step) { return songx_cell(SS, X, pat, trk, step); }
@@ -847,6 +848,17 @@ static void g_octave(int d)
     g_note[t] = (uint8_t)DOOMO_CLAMP(g_note[t] + d * 12, SONG_NOTE_MIN, SONG_NOTE_MAX);
     g_scroll(1);
     st_msg(d > 0 ? "Up an octave" : "Down an octave");
+    audio_sfx(SFX_SELECT);
+}
+
+static void g_length(void)                      /* the pattern is one bar or two (the second bar is kept, just not played, so it can come back) */
+{
+    int one = g_plen() == SONG_STEPS;
+    ed_touch(X->short_mask, (int)sizeof(X->short_mask));
+    songx_set_plen(X, g_pat, one ? SONG_STEPS / 2 : SONG_STEPS);
+    if (g_stp >= g_plen()) g_stp = (uint8_t)(g_plen() - 1);
+    ed_commit();
+    st_msg(one ? "Pattern %c: one bar" : "Pattern %c: two bars", pat_ch(g_pat));
     audio_sfx(SFX_SELECT);
 }
 
@@ -1096,7 +1108,7 @@ static void box_update(void)
     int nt = g_nt();
     if (btn_pressed(BTN_B)) { g_box_off(); b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_LEFT) && g_stp > 0) g_stp--;
-    if (btn_repeat(BTN_RIGHT) && g_stp < SONG_STEPS - 1) g_stp++;
+    if (btn_repeat(BTN_RIGHT) && g_stp < g_plen() - 1) g_stp++;
     if (btn_pressed(BTN_L) && g_trk > 0) { g_trk--; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_R) && g_trk < nt - 1) { g_trk++; audio_sfx(SFX_CURSOR); }
     if (btn_pressed(BTN_A) || studio_sel_tap) box_menu();
@@ -1117,6 +1129,7 @@ static void grid_more(int c)                    /* grid tools item 9: the box an
         break;
     case 3: g_louder(1); break;
     case 4: g_louder(-1); break;
+    case 5: g_length(); break;
     default: break;
     }
 }
@@ -1154,6 +1167,7 @@ static void box_draw(StRect r)
             else if (v == SONG_HOLD && !g_drum(t)) plat_rect(x0 + s * cw, y0 + t * rh + rh / 2, cw + 1, 1, col);
         }
     }
+    if (g_plen() < SONG_STEPS) plat_rect(x0 + g_plen() * cw, y0, (SONG_STEPS - g_plen()) * cw, nt * rh, beat_c);   /* not played */
     {   /* the box: a frame, and the cursor corner marked */
         int bx = x0 + s0 * cw, by = y0 + t0 * rh, bw = (s1 - s0 + 1) * cw + 1, bh = (t1 - t0 + 1) * rh;
         plat_rect(bx, by, bw, 1, st->accent); plat_rect(bx, by + bh - 1, bw, 1, st->accent);
@@ -1180,10 +1194,11 @@ static void grid_tools(int c)
     case 7: g_more_tracks(1); break;
     case 8: g_more_tracks(-1); break;
     case 9: {
-        static const char *const more[5] = { "Select a box", "Paste here", "Hear this part", "Louder note", "Softer note" };
-        static const char *const mhelp[5] = { "Stretch over steps and tracks.", "Corner of the copy at the cursor.", "Play from this part.",
-                                              "The note at the cursor, a level up.", "The note at the cursor, a level down." };
-        st_popup("Box and loudness", more, 5, 0, grid_more);
+        static const char *const more[6] = { "Select a box", "Paste here", "Hear this part", "Louder note", "Softer note", "One bar / two bars" };
+        static const char *const mhelp[6] = { "Stretch over steps and tracks.", "Corner of the copy at the cursor.", "Play from this part.",
+                                              "The note at the cursor, a level up.", "The note at the cursor, a level down.",
+                                              "Switch this pattern's length." };
+        st_popup("Box, loudness, length", more, 6, 0, grid_more);
         st_popup_help(mhelp);
         break;
     }
@@ -1206,11 +1221,12 @@ static void grid_update(void)
 {
     if (g_trk >= g_nt()) g_trk = (uint8_t)(g_nt() - 1);
     if (g_pat >= g_npat()) g_pat = 0;
+    if (g_stp >= g_plen()) g_stp = (uint8_t)(g_plen() - 1);
     if (!g_note[g_trk]) g_focus();
     if (g_box) { box_update(); return; }
     if (btn_pressed(BTN_B)) { studio.aview = 3; studio.asel = 1; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
-    if (btn_repeat(BTN_LEFT)) { g_stp = (uint8_t)((g_stp + SONG_STEPS - 1) % SONG_STEPS); }
-    if (btn_repeat(BTN_RIGHT)) { g_stp = (uint8_t)((g_stp + 1) % SONG_STEPS); }
+    if (btn_repeat(BTN_LEFT)) { g_stp = (uint8_t)((g_stp + g_plen() - 1) % g_plen()); }
+    if (btn_repeat(BTN_RIGHT)) { g_stp = (uint8_t)((g_stp + 1) % g_plen()); }
     if (btn_repeat(BTN_UP)) g_pitch(1);
     if (btn_repeat(BTN_DOWN)) g_pitch(-1);
     if (btn_pressed(BTN_L)) g_track(-1);
@@ -1219,12 +1235,12 @@ static void grid_update(void)
     if (studio_sel_tap) {
         static const char *const items[10] = { "Next pattern", "Previous pattern", "New pattern (copy)", "Tie to the note before",
                                                "Clear this track here", "Octave up", "Octave down", "Add a track",
-                                               "Take the last track away", "Box and loudness..." };
+                                               "Take the last track away", "Box and more..." };
         static const char *const help[10] = { "Go to the next pattern.", "Go to the one before.",
                                               "A copy to change; pick it in a pass.", "The note before rings on.",
                                               "Empty this track in this pattern.", "Move this track's notes up 12.",
                                               "Move this track's notes down 12.", "Up to 8 tracks.",
-                                              "Only when it is empty.", "Box, loudness, hear." };
+                                              "Only when it is empty.", "Box, loudness, length." };
         st_popup("Note grid", items, 10, 0, grid_tools);
         st_popup_help(help);
     }
@@ -1290,6 +1306,7 @@ static void grid_draw(StRect r)
             plat_rect(x, y0 + row * rh + 1, len * cw - 1, 1, hi);
         }
     }
+    if (g_plen() < SONG_STEPS) plat_rect(x0 + g_plen() * cw, y0, (SONG_STEPS - g_plen()) * cw, ysum, beat_c);     /* a one-bar pattern: the rest is not played */
     if (po >= 0) {
         int sec, pass;
         if (songx_at(X, po, &sec, &pass) == g_pat) plat_rect(x0 + song_pos_step() * cw, y0, 1, ysum, PAL_PAINT(PAINT_ROSE, 0));
@@ -1322,6 +1339,7 @@ static void grid_draw(StRect r)
     ui_text(r.x + 8, y0 + ysum + 4, buf, st->text);
     if (t >= songx_tracks_max()) doomo_snprintf(buf, sizeof(buf), "Mixed in on this console");
     else if (!drum && g_cell(g_pat, t, g_stp) >= 2) doomo_snprintf(buf, sizeof(buf), "Pattern %c: %s", pat_ch(g_pat), vel_names[songx_vel(X, g_pat, t, g_stp)]);
+    else if (g_plen() < SONG_STEPS) doomo_snprintf(buf, sizeof(buf), "Pattern %c: one bar", pat_ch(g_pat));
     else doomo_snprintf(buf, sizeof(buf), "Pattern %c of %d", pat_ch(g_pat), g_npat());
     ui_text(r.x + 8, y0 + ysum + 14, buf, st->text_dim);
     doomo_snprintf(buf, sizeof(buf), "Room %d/%d", songx_blocks_free(X), SX_POOL);

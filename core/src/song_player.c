@@ -953,7 +953,7 @@ static int advance(void)
         if (P.rfrom) seek_lyrics();
         return 1;
     }
-    if (P.step < SONG_STEPS) return 1;
+    if (P.step < (P.x ? songx_plen(P.x, cur_pattern()) : SONG_STEPS)) return 1;      /* a one-bar pattern ends its pass at step 16 */
     P.step = 0;
     P.ord++;
     if (P.ord < order_len()) return 1;

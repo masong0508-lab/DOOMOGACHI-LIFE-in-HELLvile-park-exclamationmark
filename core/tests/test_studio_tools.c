@@ -2089,3 +2089,30 @@ TEST(adv_velocity_is_saved_with_the_page_and_a_new_pattern_copies_it)
     CHECK_EQ(gvel(SONG_PATTERNS, 0, 0), SX_VEL_NORMAL);
     st_level_set(0);
 }
+
+TEST(adv_pattern_length_one_bar_clamps_the_cursor_keeps_the_second_bar_and_undoes)
+{
+    int p, i;
+    open_grid();
+    p = grid_pat();
+    for (i = 0; i < 20; i++) press(BTN_RIGHT);                 /* step 21 */
+    press(BTN_A);
+    CHECK_EQ(gcell(p, 0, 20), 72);
+    press(BTN_SELECT); pick(9); pick(5);                       /* One bar / two bars */
+    CHECK_EQ(songx_plen(&studio.xw, p), 16);
+    CHECK(strstr(studio.msg, "one bar") != NULL);
+    press(BTN_RIGHT);                                          /* the cursor lives in the first bar now */
+    press(BTN_A);
+    CHECK(gcell(p, 0, 20) == 72);                              /* the hidden bar is kept */
+    for (i = 0; i < 40; i++) press(BTN_RIGHT);
+    press(BTN_A);                                              /* wraps inside 16 steps: a note lands in the first bar only */
+    for (i = 16; i < SONG_STEPS; i++) if (i != 20) CHECK_EQ(gcell(p, 0, i), 0);
+    press(BTN_SELECT); pick(9); pick(5);                       /* back to two bars */
+    CHECK_EQ(songx_plen(&studio.xw, p), SONG_STEPS);
+    CHECK(ed_undo());
+    CHECK_EQ(songx_plen(&studio.xw, p), 16);                   /* the undo of "two bars" is one bar again */
+    for (i = 0; i < 4 && songx_plen(&studio.xw, p) < SONG_STEPS; i++) CHECK(ed_undo());   /* back past the two notes and the first switch */
+    CHECK_EQ(songx_plen(&studio.xw, p), SONG_STEPS);
+    CHECK_EQ(gcell(p, 0, 20), 72);
+    st_level_set(0);
+}
