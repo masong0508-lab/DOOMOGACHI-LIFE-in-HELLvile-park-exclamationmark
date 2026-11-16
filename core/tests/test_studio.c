@@ -1499,6 +1499,7 @@ TEST(studio_level_switch_is_kept_in_the_stats_and_the_save)
     st_level_set(1);
     studio_stats.lines = (uint16_t)(STUDIO_LINES_LEVEL | STUDIO_LINES_MASK);
     CHECK_EQ(STUDIO_LINES(&studio_stats), STUDIO_LINES_MASK);
+    studio_stats_reset();                                   /* the later tests start on Easy */
     test_reset();
 }
 

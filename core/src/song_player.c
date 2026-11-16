@@ -1009,6 +1009,12 @@ void song_play_ext(const DoomoSong *s, const SongExt *x, int singer_override)
     start(s, singer_override, 0, 0, 0, 0);
 }
 
+void song_play_ext_at(const DoomoSong *s, const SongExt *x, int singer_override, int pos, int step)
+{
+    next_x = x;
+    start(s, singer_override, 0, 0, pos, step);
+}
+
 void song_play(const DoomoSong *s, int singer_override)
 {
     start(s, singer_override, 0, 0, 0, 0);

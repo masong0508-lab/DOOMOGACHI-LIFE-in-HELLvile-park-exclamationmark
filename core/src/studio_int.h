@@ -87,8 +87,20 @@ void studio_check_unlocks(void);
 
 typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
 
+/* ST-ADV screens: builds with room for arrangement pages (host, Dreamcast) keep a working SongExt `xw` right behind the
+ * song, so the undo journal (offsets from &studio.song) covers both. GBA / PS1 (SONGX_BOOK_PAGES 0) have no xw. */
+#if SONGX_BOOK_PAGES > 0
+#define STUDIO_ADV 1
+#else
+#define STUDIO_ADV 0
+#endif
+
 typedef struct Studio {
     DoomoSong song;             /* the working song                          */
+#if STUDIO_ADV
+    SongExt  xw;                /* ST-ADV: the working arrangement (version 0 = none: a classic song); MUST follow `song` */
+    uint8_t  aview, asel, atop; /* ORDER (Advanced): 0 the arrangement, 1 one part; its cursor and top row */
+#endif
     uint32_t t;                 /* ticks in the studio                       */
     uint16_t tab_t;             /* ticks since the tab opened                */
     int16_t  prev_music;
@@ -151,6 +163,12 @@ typedef struct Studio {
 } Studio;
 extern Studio studio;
 #define SS (&studio.song)
+/* the bytes of the studio the undo journal reaches: the song and, where there is one, the arrangement behind it */
+#if STUDIO_ADV
+#define STUDIO_JBYTES (sizeof(DoomoSong) + sizeof(SongExt))
+#else
+#define STUDIO_JBYTES sizeof(DoomoSong)
+#endif
 
 /* ---- ST-EASY state: lives in the shared scene scratch (on the GBA the tail of studio.c's BakeSt), not in .bss.
  * st_easy() returns it, claiming + zeroing it when another scene took the scratch (the redo history is simply
@@ -306,6 +324,20 @@ int  st_help_rect(int *x, int *y, int *w, int *h);
 int  st_level(void);
 void st_level_set(int level);
 
+
+/* ---- studio_adv.c (ST-ADV): the Advanced ORDER screen. All of it is a no-op where STUDIO_ADV is 0 ------------------ */
+int  st_adv_on(void);                  /* an arrangement is open (the ORDER tab shows it) */
+int  st_adv_eats_b(void);              /* B left the part view this frame: the studio must not take it as "leave" */
+void st_adv_enter(int slot);           /* a song came in from the book slot (-1: not from the book): load its page or none */
+void st_adv_take(void);                /* a take / template / new song replaces the song: drop the arrangement (inside the open undo step) */
+int  st_adv_saved(int slot);           /* after the classic song was saved to the slot: keep the page; 0 = it did not fit */
+void st_adv_play(int pos, int singer); /* play (the arrangement when there is one) from flat pass `pos` */
+int  st_adv_pass_of_cursor(void);      /* ORDER's cursor as a pass number */
+uint32_t st_adv_ticks(void);
+int  st_adv_try_open(void);            /* the ORDER tab opened on Advanced: make the arrangement from the classic order; 1 = did */
+void tab_order_adv_update(void);
+void tab_order_adv_draw(StRect r);
+int  st_adv_prompts(UiPrompt *p);
 
 /* ---- studio_grid.c (ST-TOOLS): the drum editor and the chord track, two screens of the NOTES tab ---------------- */
 enum { SUB_NONE, SUB_DRUMS, SUB_CHORDS };

@@ -204,6 +204,94 @@ int songx_last_chorus_up(SongExt *x, int steps)
     return n;
 }
 
+
+/* ---- ST-ADV screens ------------------------------------------------------------------------------------- */
+static const char *const sx_names[SX_NAMES] = { "Intro", "Verse", "Pre-chorus", "Chorus", "Bridge", "Outro" };
+const char *songx_name(int name) { return name >= 0 && name < SX_NAMES ? sx_names[name] : "Part"; }
+
+void songx_from_order(SongExt *x, const DoomoSong *s)
+{
+    static const uint8_t nm[4] = { SX_VERSE, SX_CHORUS, SX_BRIDGE, SX_OUTRO };
+    int n = DOOMO_CLAMP(s->order_len, 1, SONG_ORDER_MAX), c, k, secs = (n + 3) / 4;
+    songx_init(x, s);
+    for (c = 0; c < secs; c++) {
+        SxSection *q = &x->sect[c];
+        int np = DOOMO_MIN(4, n - c * 4);
+        if (c) { memset(q, 0, sizeof(*q)); q->tempo = 100; }
+        q->name = nm[c];
+        q->npat = (uint8_t)np;
+        memset(q->line, SX_NO_LINE, SX_LINES);
+        for (k = 0; k < np; k++) {
+            q->pat[k] = (uint8_t)(s->order[c * 4 + k] % SONG_PATTERNS);
+            q->line[k] = (uint8_t)SONG_LINE_OF(c * 4 + k);       /* the classic song's lyric line of that order position */
+        }
+        x->arrange[c] = (uint8_t)c;
+    }
+    x->sections = (uint8_t)secs;
+    x->arrange_len = (uint8_t)secs;
+}
+
+int songx_arrange_insert(SongExt *x, int at, int sect)
+{
+    if (x->arrange_len >= SX_ARRANGE || sect < 0 || sect >= x->sections) return 0;
+    at = DOOMO_CLAMP(at, 0, x->arrange_len);
+    memmove(x->arrange + at + 1, x->arrange + at, (size_t)(x->arrange_len - at));
+    x->arrange[at] = (uint8_t)sect;
+    x->arrange_len++;
+    return 1;
+}
+
+int songx_sect_users(const SongExt *x, int sect)
+{
+    int i, n = 0;
+    for (i = 0; i < x->arrange_len && i < SX_ARRANGE; i++) n += x->arrange[i] == sect;
+    return n;
+}
+
+int songx_arrange_remove(SongExt *x, int at)
+{
+    int sec, i;
+    if (x->arrange_len <= 1 || at < 0 || at >= x->arrange_len) return 0;
+    sec = x->arrange[at];
+    memmove(x->arrange + at, x->arrange + at + 1, (size_t)(x->arrange_len - at - 1));
+    x->arrange[--x->arrange_len] = 0;
+    if (sec < x->sections && !songx_sect_users(x, sec) && x->sections > 1) {      /* nobody plays it: the part goes, the ids close up */
+        memmove(&x->sect[sec], &x->sect[sec + 1], (size_t)(x->sections - sec - 1) * sizeof(SxSection));
+        x->sections--;
+        memset(&x->sect[x->sections], 0, sizeof(SxSection));
+        for (i = 0; i < x->arrange_len; i++) if (x->arrange[i] > sec) x->arrange[i]--;
+    }
+    return 1;
+}
+
+int songx_section_dup(SongExt *x, int sect)
+{
+    int n;
+    if (sect < 0 || sect >= x->sections) return -1;
+    n = songx_add_section(x, x->sect[sect].name);
+    if (n < 0) return -1;
+    x->sect[n] = x->sect[sect];
+    return n;
+}
+
+int songx_entry_pass(const SongExt *x, int entry)
+{
+    int i, n = 0;
+    for (i = 0; i < entry && i < x->arrange_len; i++) n += sect_passes(x, x->arrange[i]);
+    return n;
+}
+
+int songx_entry_of_pass(const SongExt *x, int pass)
+{
+    int i, len = DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE);
+    for (i = 0; i < len; i++) {
+        int n = sect_passes(x, x->arrange[i]);
+        if (pass < n) return i;
+        pass -= n;
+    }
+    return len - 1;
+}
+
 /* ---- serialization --------------------------------------------------------------------------------------------- */
 typedef struct { uint8_t *d; uint32_t cap, n; } Out;
 static void ob(Out *o, uint32_t v) { if (o->n < o->cap) o->d[o->n] = (uint8_t)v; o->n++; }

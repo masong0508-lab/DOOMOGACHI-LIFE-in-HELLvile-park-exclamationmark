@@ -92,6 +92,7 @@ void st_set_tab(int tab)
 {
     tab = (tab + STAB_COUNT) % STAB_COUNT;
     if (tab == studio.tab) return;
+    if (tab == STAB_ORDER) st_adv_try_open();      /* ST-ADV: on Advanced the classic order becomes an arrangement (once) */
     if (studio.tab == STAB_STAGE) stage_leave();
     if (studio.tab == STAB_PLAY) tab_play_leave();
     studio.tab = (uint8_t)tab;
@@ -217,7 +218,7 @@ static void touch_rec(const void *field, int len, int keep_redo)
 {
     const uint8_t *base = (const uint8_t *)&studio.song, *p = (const uint8_t *)field;
     int off, enc;
-    if (p < base || len <= 0 || p + len > base + sizeof(DoomoSong)) return;
+    if (p < base || len <= 0 || p + len > base + STUDIO_JBYTES) return;
     if (!keep_redo && !studio.undo_open) redo_clear();
     off = (int)(p - base);
     enc = rle_encode(p, len, NULL, 0);
@@ -349,7 +350,7 @@ int ed_undo(void)
             /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
             if (ez && ez->before_ok) { off = 0; big = 1; } else { off = 0xFFFFu; keep = 0; }
         }
-        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+        if (off + ln <= STUDIO_JBYTES && enc + 6 <= studio.undo_used) {
             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
             first = 0;
@@ -412,7 +413,7 @@ int ed_redo(void)
             ez->redo_lost = 0;
             return 1;
         }
-        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= ez->redo_used) {
+        if (off + ln <= STUDIO_JBYTES && enc + 6 <= ez->redo_used) {
             touch_rec((const uint8_t *)&studio.song + off, (int)ln, 1);
             rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
         }
@@ -1161,6 +1162,7 @@ static void studio_enter(int arg)
         /* runner / tests: premade citizens move in, a template is loaded */
         if (!town_count(-1)) town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
         studio_template_load(SS, STUDIO_ARG_DEMO(0) - arg);
+        st_adv_enter(-1);
         studio.slot = -1;
         studio.tab = STAB_SONG;
         arg = -2;
@@ -1169,15 +1171,19 @@ static void studio_enter(int arg)
         if (doomo_song_book[arg].flags & SONGF_VALID) {
             studio.song = doomo_song_book[arg];
             studio.slot = (int8_t)arg;
+            st_adv_enter(arg);             /* its arrangement page, if it has one */
         } else {
+            st_adv_enter(-1);
             new_song();
             st_card_open();                /* an empty page: "Start a song" */
         }
         studio.tab = STAB_SONG;
     } else if (arg == -3) {
         studio.slot = -1;                  /* studio_edit() copied it in */
+        st_adv_enter(-1);
         studio.tab = STAB_SONG;
     } else if (arg == -2 || !(studio.song.flags & SONGF_VALID)) {
+        st_adv_enter(-1);
         new_song();
         studio.tab = STAB_SONG;
         st_card_open();                    /* ST-EASY: an empty song opens on "Start a song" */
@@ -1306,13 +1312,14 @@ static void studio_update(void)
     case STAB_SONG: if (studio.card) st_card_update(); else tab_song_update(); break;
     case STAB_NOTES: tab_notes_update(); break;
     case STAB_PLAY: tab_play_update(); break;
-    case STAB_ORDER: tab_order_update(); break;
+    case STAB_ORDER: if (st_adv_on()) tab_order_adv_update(); else tab_order_update(); break;
     case STAB_LYRICS: tab_lyrics_update(); break;
     case STAB_CHOIR: tab_choir_update(); break;
     case STAB_STAGE: tab_stage_update(); break;
     default: tab_file_update(); break;
     }
     if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY && !studio.pop_n && !studio.picking && btn_pressed(BTN_B) &&
+        !st_adv_eats_b() &&
         !(studio.tab == STAB_STAGE && stage_fullscreen()) && scene_top() == &SCENE_STUDIO)
         studio_try_leave();
 }
@@ -1365,7 +1372,7 @@ static void studio_draw(void)
     case STAB_SONG: if (studio.card) st_card_draw(r); else tab_song_draw(r); break;
     case STAB_NOTES: tab_notes_draw(r); break;
     case STAB_PLAY: tab_play_draw(r); break;
-    case STAB_ORDER: tab_order_draw(r); break;
+    case STAB_ORDER: if (st_adv_on()) tab_order_adv_draw(r); else tab_order_draw(r); break;
     case STAB_LYRICS: tab_lyrics_draw(r); break;
     case STAB_CHOIR: tab_choir_draw(r); break;
     case STAB_STAGE: tab_stage_draw(r); break;

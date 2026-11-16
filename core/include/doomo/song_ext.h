@@ -91,6 +91,17 @@ int  songx_lane_of(int trk);                                         /* where tr
 int  songx_add_section(SongExt *x, int name);                        /* new section id or -1 */
 int  songx_arrange_push(SongExt *x, int sect);                       /* 1 = added */
 int  songx_last_chorus_up(SongExt *x, int steps);                    /* "key change up for the last chorus": sections changed */
+/* ST-ADV screens (studio_adv.c) */
+void songx_from_order(SongExt *x, const DoomoSong *s);               /* the classic order as an arrangement: up to 4 sections of 4 passes; plays the same, lyric lines included */
+int  songx_arrange_insert(SongExt *x, int at, int sect);             /* 1 = entry added before position `at` */
+int  songx_arrange_remove(SongExt *x, int at);                       /* 1 = removed (never the last entry); a part nobody uses any more is dropped */
+int  songx_sect_users(const SongExt *x, int sect);                   /* arrangement entries that play this part */
+int  songx_section_dup(SongExt *x, int sect);                        /* a copy of the part: its id or -1 (16 parts) */
+const char *songx_name(int name);                                    /* "Intro" .. "Outro", "Part" for a custom id */
+int  songx_entry_pass(const SongExt *x, int entry);                  /* the flat pass number where an entry starts */
+int  songx_entry_of_pass(const SongExt *x, int pass);                /* the entry that plays pass `pass` */
+/* start playing the arrangement at pass `pos` (a flat pass number), `step` into it; x = NULL is song_play_at */
+void song_play_ext_at(const DoomoSong *s, const SongExt *x, int singer_override, int pos, int step);
 /* serialization (one page): returns bytes, 0 when it does not fit in cap; songx_decode 1 = ok */
 uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32_t cap);
 int  songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t len);

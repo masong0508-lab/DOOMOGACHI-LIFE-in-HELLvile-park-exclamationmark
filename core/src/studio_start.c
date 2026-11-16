@@ -104,6 +104,7 @@ static void make(StEasy *ez, int shuffle)
     ed_undo_make();                            /* Shuffle again / Make it! after a Shuffle: replace that take, so the
                                                 * one step this card adds always has the small before-image */
     ed_touch(SS, (int)sizeof(DoomoSong));
+    st_adv_take();
     studio_make_song(SS, &p);
     ed_commit();
     ed_mark_make(&p);

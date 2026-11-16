@@ -15,7 +15,7 @@ static int pending_slot, pending_tpl;
 static void save_to(int slot)
 {
     DoomoSong *dst = &doomo_song_book[slot];
-    songx_book_drop(slot);                      /* the studio edits the classic song: an old arrangement would not match it */
+    songx_book_drop(slot);                      /* an old page would not match the song being saved */
     *dst = studio.song;
     dst->flags |= SONGF_VALID | SONGF_CUSTOM;
     song_sanitize(dst);
@@ -25,6 +25,7 @@ static void save_to(int slot)
     studio_stats.genres |= (uint16_t)(1u << (studio.song.genre % MUSIC_COUNT));
     studio_check_unlocks();
     st_msg("Saved on page %d " STR_ICON_HEART, slot + 1);
+    if (!st_adv_saved(slot)) st_msg("Saved, but the sections did not fit");   /* ST-ADV: the arrangement rides with the page (else the song stays classic) */
     audio_sfx(SFX_SPARKLE);
 }
 
@@ -33,6 +34,7 @@ static void load_from(int slot)
     song_stop();
     studio.song = doomo_song_book[slot];
     song_sanitize(SS);
+    st_adv_enter(slot);
     studio.slot = (int8_t)slot;
     studio.dirty = 0;
     ed_reset();
@@ -84,6 +86,7 @@ static void do_new(int c)
     if (c != 1 && c != -2) return;
     song_stop();
     ed_touch(SS, (int)sizeof(DoomoSong));
+    st_adv_take();                           /* ST-ADV: the arrangement goes with the old song, in the same undo step */
     song_clear(SS);
     studio_choir_fill(SS, FILL_CLEAR, -1, 0);
     SS->singer[0] = DOOMO_PLAYER_ID;
@@ -100,6 +103,7 @@ static void do_template(int c)
     if (c != 1 && c != -2) return;
     song_stop();
     ed_touch(SS, (int)sizeof(DoomoSong));
+    st_adv_take();                           /* ST-ADV: the arrangement goes with the old song, in the same undo step */
     studio_template_load(SS, t);
     ed_commit();
     studio.slot = -1;
@@ -117,6 +121,7 @@ static void muse_done(int id)
     song_stop();
     r = town_res(id);
     ed_touch(SS, (int)sizeof(DoomoSong));
+    st_adv_take();                           /* ST-ADV: the arrangement goes with the old song, in the same undo step */
     studio_inspire(SS, id, r ? RES_LIKE_MUSIC(r) % MUSIC_COUNT : -1, doomo_hash32(studio.t * 977u + (uint32_t)id));
     ed_commit();
     studio.slot = -1;

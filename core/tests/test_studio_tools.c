@@ -297,10 +297,12 @@ static const DoomoScene base_scene = { "TESTBASE", NULL, NULL, NULL, NULL, 0 };
 static void open_notes(void)
 {
     int i;
+    studio_stats_reset();                      /* the classic ORDER screen: some other test may have left the level on Advanced */
     test_reset();
     scene_set(&base_scene, 0);
     scene_push(&SCENE_STUDIO, -2);
     for (i = 0; i < 12; i++) frames(1, 0);
+    st_level_set(0);                           /* (the scratch copy of the level may be left on Advanced by an earlier test) */
     song_clear(&studio.song);
     studio.song.key = 0;
     studio.song.scale = SONG_SCALE_MAJOR;

@@ -53,6 +53,7 @@ int tab_prompts(int tab, UiPrompt *p)
         n = play_prompts(p);
         break;
     case STAB_ORDER:
+        if (st_adv_on()) return st_adv_prompts(p);              /* ST-ADV: the arrangement */
         PR(BTN_LEFT | BTN_RIGHT, 1, "Pattern");
         PR(BTN_A, 0, "Insert");
         PR(BTN_START, 2, st_play_verb());

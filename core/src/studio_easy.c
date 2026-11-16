@@ -19,7 +19,7 @@ static int target(int *pos)
     *pos = 0;
     switch (studio.tab) {
     case STAB_NOTES: return TG_PATTERN;
-    case STAB_ORDER: *pos = studio.osel; return TG_ORDER;
+    case STAB_ORDER: *pos = st_adv_pass_of_cursor(); return TG_ORDER;
     case STAB_LYRICS: {
         int p = studio_line_pos(SS, studio.lsel);
         if (p >= 0) { *pos = p; return TG_ORDER; }
@@ -46,6 +46,7 @@ void st_start(void)
     }
     k = target(&pos);
     if (k == TG_PATTERN) song_play_pattern(SS, studio.pat, studio.stp);
+    else if (st_adv_on() && studio.tab != STAB_LYRICS) st_adv_play(pos, -1);   /* the arrangement plays, not the classic order */
     else song_play_at(SS, -1, pos, 0);
 }
 
