@@ -43,6 +43,8 @@ extern int nat_stream_fail_at;          /* > 0: that stream write fails  */
 /* audio call counters (tests) */
 extern uint32_t nat_tone_calls, nat_sample_calls;
 extern uint8_t nat_tone_vol[4];         /* the last tone volume per channel 0..3 */
+extern uint8_t nat_tone_pan[4];         /* the last plat_tone_pan per channel 0..3 (0 left, 1 middle = the start, 2 right) */
+extern uint8_t nat_tone_pan_calls;      /* how many plat_tone_pan calls so far (wraps) */
 extern int nat_last_sample;
 
 /* draw-call counters (runner "stats"): calls since start, per primitive */

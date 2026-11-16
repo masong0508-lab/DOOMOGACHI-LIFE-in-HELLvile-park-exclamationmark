@@ -143,6 +143,27 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
     REG_IME = ime;
 }
 
+/* ST-ADV Mix view pan: the PSG can only switch a channel to the left speaker, the right one or both, so left / middle / right
+ * is the whole range. SNDDMGCNT bits 12..15 enable channels 1..4 on the left, bits 8..11 on the right; the low byte (the
+ * master volumes) is not touched. The default is every channel on both sides, as at boot (0xFF77). */
+static uint8_t tone_pan[4] = { 1, 1, 1, 1 };
+
+void plat_tone_pan(int channel, int pan)
+{
+    uint16_t ime, m = 0;
+    int c;
+    if (channel < 0 || channel > 3) return;
+    tone_pan[channel] = (uint8_t)(pan < 0 ? 0 : pan > 2 ? 2 : pan);
+    for (c = 0; c < 4; c++) {
+        if (tone_pan[c] != 2) m |= (uint16_t)(0x1000u << c);   /* left on unless panned right */
+        if (tone_pan[c] != 0) m |= (uint16_t)(0x0100u << c);   /* right on unless panned left */
+    }
+    ime = REG_IME;
+    REG_IME = 0;
+    REG_SNDDMGCNT = (uint16_t)((REG_SNDDMGCNT & 0x00FFu) | m);
+    REG_IME = ime;
+}
+
 /* ---- the music clock ------------------------------------------------------------------------
  * Timer 1 fires 240 times a second (16777216 / 64 / 1092 = 240.07 Hz) and runs the core's music
  * driver (mus_drv_tick, one mt) whatever the frame loop is doing: a 100 ms hub frame or a 3D frame

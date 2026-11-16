@@ -27,6 +27,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/song_ext.h"
+#include "doomo/plat_ext.h"
 
 DOOMO_STATIC_ASSERT(SONG_WAVES == (int)WAVE_COUNT, song_waves_match);
 DOOMO_STATIC_ASSERT((int)SONG_KIT_CLASSIC == (int)WAVE_NOISE, kit_classic_is_noise);
@@ -543,12 +544,28 @@ static struct {
     uint8_t  harm_vol;
     uint8_t  late[4], lv[4];  /* ST-ADV Mix view swing: a lane's off-beat note waits `late` ticks (value lv); 0 = nothing waiting */
     uint8_t  lvl[4];          /* ... and its velocity level (SX_VEL_*) */
+    int8_t   pan[4];          /* ST-ADV Mix view: the pan last sent to the platform per channel (-1 left, 0 middle = the default, +1 right) */
     uint8_t  shape[3];        /* ST-ADV Mix view: the sound (0 soft = as always, 1 punchy, 2 long, 3 pluck) of each lane's note */
     uint8_t  voice[VOICE_COUNT];
     /* preview */
     uint8_t  pv_ticks, pv_ch;
     Sent     sent[4];
 } P;
+
+/* ST-ADV Mix view pan: the lane's own setting (0 left, 1 middle, 2 right) goes to the platform when a note sounds and
+ * whenever it changes; a classic song, a preview and a stopped song are the middle. A platform that cannot pan ignores it. */
+static void pan_set(int ch, int want)
+{
+    if (ch < 0 || ch >= 4 || P.pan[ch] == want) return;
+    plat_tone_pan(ch, want + 1);
+    P.pan[ch] = (int8_t)want;
+}
+
+static void pan_reset(void)
+{
+    int ch;
+    for (ch = 0; ch < 4; ch++) pan_set(ch, 0);
+}
 
 static void send(int ch, int freq, int vol, int wave)
 {
@@ -558,6 +575,8 @@ static void send(int ch, int freq, int vol, int wave)
     vol = DOOMO_CLAMP(vol, 0, 15);
     if (freq <= 0 || vol <= 0) { freq = 0; vol = 0; }
     freq = DOOMO_MIN(freq, 20000);
+    if (freq && ch < 4)
+        pan_set(ch, P.x && P.on ? DOOMO_MIN((int)P.x->trk[ch].pan, 2) - 1 : 0);
     if (c->valid && c->freq == freq && c->vol == vol && c->wave == wave) return;
     plat_tone(ch, (uint16_t)freq, (uint8_t)vol, (uint8_t)wave);
     c->freq = (uint16_t)freq;
@@ -585,6 +604,7 @@ static void silence_all(void)
         P.sent[ch].valid = 0;
         send(ch, 0, 0, ch == 3 ? WAVE_NOISE : WAVE_PULSE50);
     }
+    pan_reset();
 }
 
 static int cur_pattern(void)

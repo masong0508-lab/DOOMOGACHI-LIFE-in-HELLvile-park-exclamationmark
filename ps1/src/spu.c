@@ -211,6 +211,25 @@ static uint16_t hz_to_pitch(uint32_t hz, int cyc)
     return (uint16_t)(p > 0x3fff ? 0x3fff : p);
 }
 
+/* ST-ADV Mix view pan (0 left, 1 middle, 2 right): the far side keeps a quarter of the level, so a panned lane stays heard
+ * on a mono output. The default is the same level on both sides, as always. */
+static uint8_t s_tone_pan[TONE_VOICES] = { 1, 1, 1, 1 };
+
+static void tone_write_vol(int channel, int amp)
+{
+    int p = s_tone_pan[channel];
+    SPU_CH_VOL_L(channel) = (uint16_t)(p == 2 ? amp / 4 : amp);
+    SPU_CH_VOL_R(channel) = (uint16_t)(p == 0 ? amp / 4 : amp);
+}
+
+void plat_tone_pan(int channel, int pan)
+{
+    if (channel < 0 || channel >= TONE_VOICES) return;
+    s_tone_pan[channel] = (uint8_t)(pan < 0 ? 0 : pan > 2 ? 2 : pan);
+    if (s_ready && s_tone[channel].on)
+        tone_write_vol(channel, (s_tone[channel].vol * s_music_vol * 0x2000) / (15 * 15));
+}
+
 void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 {
     ToneState *t;
@@ -241,8 +260,7 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
         pitch = hz_to_pitch(freq_hz, cyc);
     }
     amp = (vol * s_music_vol * 0x2000) / (15 * 15);
-    SPU_CH_VOL_L(channel) = (uint16_t)amp;
-    SPU_CH_VOL_R(channel) = (uint16_t)amp;
+    tone_write_vol(channel, amp);
     SPU_CH_FREQ(channel) = pitch;
     if (!t->on || t->wave != wave || t->variant != variant) {
         SPU_CH_ADDR(channel) = getSPUAddr(s_wave_addr[wave][variant]);

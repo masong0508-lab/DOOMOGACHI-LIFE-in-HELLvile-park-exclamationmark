@@ -1629,7 +1629,7 @@ static void mix_draw(StRect r)
         }
         if (i >= songx_tracks_max()) ui_text(r.x + r.w - 40, y + 1, "mixed in", sel ? PAL_WHITE : st->text_dim);
     }
-    ui_text(r.x + 12, r.y + r.h - 14, "Sound, light, swing play. Pan: saved.", st->text_dim);
+    ui_text(r.x + 12, r.y + r.h - 14, "Sound, light, swing and pan play.", st->text_dim);
 }
 
 static void fit_text(char *out, int cap, const char *src, int maxw)

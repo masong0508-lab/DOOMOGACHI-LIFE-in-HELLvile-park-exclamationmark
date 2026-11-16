@@ -461,8 +461,8 @@ A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song w
 
 Done since this package (see the sections below): the Advanced screens (ORDER arrangement, part view, Mix, Expert, Note grid with Box,
 Velocity bar, Lyric lines), the 32 / 64 bar Start card (Epic), the FILE fold message, Sound / Brightness / Swing playback, free notes.
-Not done: a working copy of the `SongExt` in the scene scratch (it lives in `studio.xw`), pan playback,
-patterns of 1..4 bars.
+Not done: a working copy of the `SongExt` in the scene scratch (it lives in `studio.xw`),
+patterns of 3 and 4 bars.
 
 ## ST-ADV: Epic length and the FILE fold line (2026-11-16)
 Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio_file.c`. Tests: `adv_start_card_offers_epic_only_on_advanced`,
@@ -573,23 +573,30 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
     step 16, the rest of the roll is shaded; the footer says "Pattern A: one bar"). The box view shades it too. Lyric fit and the onsets strip still read all 32 steps.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** pan playback, patterns of 3 and 4 bars.
+- **Not done:** patterns of 3 and 4 bars.
 - **Tests:** `adv_from_order_plays_like_the_classic_order`, `adv_arrangement_insert_remove_and_entry_passes`,
   `adv_order_tab_opens_the_arrangement_once_and_undo_reaches_it`, `adv_a_take_drops_the_arrangement_in_the_same_undo_step`,
   `adv_the_page_is_saved_with_the_song_and_loads_back`, the `adv_keys_*` journeys and the PERFORM tests (`test_studio_tools.c`).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.
 
-## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
-Four items are open. Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+## ST-ADV: Pan playback (2026-11-16; core + GBA / PS1 / DC drivers written, only the host is built and tested)
+Code: `plat_tone_pan` (`core/include/doomo/plat_ext.h`, weak default in `plat_weak_ext.c`), `pan_set` / `pan_reset` in `song_player.c`, `gba/src/audio.c`, `ps1/src/spu.c`,
+`dc/src/mixer.c` + `audio.c`, the native recorder `nat_tone_pan` (`plat_native.c`). Test: `song_ext_mix_pan_is_sent_to_the_platform_while_the_song_plays_and_reset_when_it_stops`.
+- **Contract:** `plat_tone_pan(channel 0..3, pan)`, pan 0 left, 1 middle (the port's own place for the channel), 2 right. Additive: a port that does not define it plays centre.
+- **Player:** when a note sounds on a lane the player sends that lane's Mix view pan (`SongExt.trk[lane].pan`) if it differs from what it sent last (a change made in the Mix view
+  while the song plays is heard on the next note); `silence_all` (song start, stop) sends the middle back for every lane that was panned. A classic song, a preview and a jam over
+  no arrangement never send a pan call (test), so nothing else on the tone channels is moved.
+- **GBA:** the PSG has a left / right enable per channel, so the range is left / middle / right and nothing between: `REG_SNDDMGCNT` bits 12..15 (left) and 8..11 (right), the low
+  byte (master volume) is kept. One register write per change, interrupts off around it. Not built: `make -C gba` not run here, no listening check.
+- **PS1:** left / right voice volumes of the SPU voice: the far side keeps a quarter of the level (still heard on a mono TV). Not built, not listened to.
+- **Dreamcast:** the mixer's fixed `tone_pan` table became a table the main thread writes (`dcsnd_tone_pan`): left 192 / 64, right 64 / 192, middle the old table. Not built, not listened to.
+- **Mix footer:** now "Sound, light, swing and pan play."
+- **Not run:** the GBA / PS1 / DC builds, the GBA speed windows (the player does one compare per sounding note), the listening check on each console.
 
-1. **Pan playback.** The Mix view stores a pan per track (`SxTrack.pan`: 0 left, 1 middle, 2 right) and the page keeps it, but nothing plays it.
-   - *Why not yet:* `plat_tone(channel, freq_hz, vol, wave)` (`core/include/doomo/platform.h`) has no pan argument, and the three ports answer it differently. PS1 (`ps1/src/spu.c`)
-     writes the same value to both `SPU_CH_VOL_L` and `SPU_CH_VOL_R`, so a pan is two different writes there. Dreamcast (`dc/src/mixer.c`) already has a fixed `tone_pan` table per tone
-     channel (`{128,128}, {152,104}, {128,128}, {104,152}`), so a per-track pan means replacing that table with a value the core sends. The GBA PSG (`gba/src/audio.c`) was not read for
-     this note: its hardware has a left / right enable per channel, which would give left / middle / right only if the driver exposes it. Check it before promising pan there.
-   - *Shape of the change:* a new additive platform call, for example `plat_tone_pan(int channel, int8_t pan)`, with an empty default so a port that cannot pan stays as it is; the
-     player (`song_player.c`, `lane_on`) sends the lane's `trk[t].pan` once at a note start, the same place Sound and velocity are applied. It is `cross-stream:` (SPEED / DC own the audio
-     code) and needs the PS1 and Dreamcast builds and one listening check each. The Mix footer ("Pan: saved") changes to say where pan plays.
+## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
+Three items are open (pan playback is built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+
+1. **Pan playback (built 2026-11-16, see "Pan playback" below).** Left / middle / right per lane, heard on the GBA, PS1 and Dreamcast ports (code written, not built here: see the section).
 2. **More than 8 lyric lines.** A song has 8 lines (`SONG_LYRIC_LINES` in `song.h`: `lyrics[8][28]`, `line_singers[8]`, the classic `'SONG'` chunk). The Advanced part view names a line per
    pass (0..7, `SX_NO_LINE`), so a long Epic song repeats lines.
    - *Why not yet:* the constant is used about 40 times across 12 files, so this is a change to the classic format's neighbours, not to the extension: `song_book.c` (save and load of the

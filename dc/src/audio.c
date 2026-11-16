@@ -154,6 +154,8 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
     dcsnd_tone(channel, freq_hz, vol, wave);
 }
 
+void plat_tone_pan(int channel, int pan) { dcsnd_tone_pan(channel, pan); }
+
 void plat_sample(int sfx_id, uint8_t vol)
 {
     dcsnd_trigger(sfx_id, vol, 0, 0, 0);

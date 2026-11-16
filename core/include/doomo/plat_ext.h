@@ -385,4 +385,11 @@ enum { PLAT_VIEW_DROP = 0, PLAT_VIEW_KEEP = 1, PLAT_VIEW_PUT = 2 };
 #define PLAT_VIEW_PUT_SHADED(level) (PLAT_VIEW_PUT | ((level) + 1) << 8)
 int plat_view_hold(int op, uint32_t key);
 
+/* ---- (ST-ADV) pan of a tone channel -------------------------------------------------------------------------------
+ * plat_tone_pan(channel, pan): where the sound of plat_tone channel 0..3 sits in the stereo picture, pan 0 = left,
+ * 1 = middle (the port's own default place for the channel), 2 = right. The song player (song_player.c) sends a lane's
+ * Mix view pan when a note sounds on it and the middle again when the song stops, so every other user of the tone channels
+ * hears the port's own place. Weak default: nothing (a port without stereo, or one that has not done it yet, plays centre). */
+void plat_tone_pan(int channel, int pan);
+
 #endif

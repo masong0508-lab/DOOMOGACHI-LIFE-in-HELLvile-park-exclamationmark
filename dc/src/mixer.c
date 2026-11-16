@@ -99,7 +99,18 @@ static uint32_t rec_at;                   /* frames of the head slot played     
 static uint8_t  playing;                  /* primed: slots are being consumed    */
 
 /* the stereo place of the four tone channels (L, R; L + R = 256) */
-static const int16_t tone_pan[DCSND_TONES][2] = { { 128, 128 }, { 152, 104 }, { 128, 128 }, { 104, 152 } };
+static const int16_t tone_pan_mid[DCSND_TONES][2] = { { 128, 128 }, { 152, 104 }, { 128, 128 }, { 104, 152 } };
+static int16_t tone_pan[DCSND_TONES][2] = { { 128, 128 }, { 152, 104 }, { 128, 128 }, { 104, 152 } };
+
+/* ST-ADV Mix view pan: 0 left, 1 middle (the table above), 2 right. Written by the main thread, read by the stream thread a
+ * block at a time: a half-written pair is one block of a slightly wrong balance. */
+void dcsnd_tone_pan(int ch, int pan)
+{
+    if (ch < 0 || ch >= DCSND_TONES) return;
+    if (pan <= 0)      { tone_pan[ch][0] = 192; tone_pan[ch][1] = 64; }
+    else if (pan >= 2) { tone_pan[ch][0] = 64;  tone_pan[ch][1] = 192; }
+    else               { tone_pan[ch][0] = tone_pan_mid[ch][0]; tone_pan[ch][1] = tone_pan_mid[ch][1]; }
+}
 
 /* 2^(k/12) in Q16 */
 static const uint32_t semi_q16[12] = { 65536, 69433, 73562, 77936, 82570, 87480,

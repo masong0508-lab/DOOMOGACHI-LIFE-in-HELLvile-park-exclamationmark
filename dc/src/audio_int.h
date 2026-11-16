@@ -71,6 +71,7 @@ void dcsnd_reset(void);                   /* everything silent, ring empty      
 
 /* producer (main thread) */
 void dcsnd_tone(int ch, uint16_t freq_hz, uint8_t vol, uint8_t wave);
+void dcsnd_tone_pan(int ch, int pan);                     /* ST-ADV Mix view: 0 left, 1 middle, 2 right */
 void dcsnd_trigger(int sfx, uint8_t vol, int8_t pan, uint8_t prio, int8_t semis);
 /* end of a tick: render it into the next slot; 0: the ring is full (the
  * state and the triggers wait for the next push, nothing is rendered) */

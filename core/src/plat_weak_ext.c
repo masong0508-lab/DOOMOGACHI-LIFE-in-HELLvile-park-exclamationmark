@@ -116,3 +116,5 @@ WEAK int plat_keep_rows(int op, int rows)
     return 0;
 }
 #endif
+
+WEAK void plat_tone_pan(int channel, int pan) { (void)channel; (void)pan; }

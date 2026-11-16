@@ -390,6 +390,38 @@ TEST(song_ext_velocity_scales_the_tracks_volume_and_normal_plays_as_a_classic_so
     CHECK_EQ(ext_note_vol(SX_VEL_PEAK, 1, 15), 15);              /* nothing goes over the top */
 }
 
+/* ---- Mix view pan: the lane's pan reaches the platform when a note sounds, and the middle comes back when the song stops ---------------- */
+TEST(song_ext_mix_pan_is_sent_to_the_platform_while_the_song_plays_and_reset_when_it_stops)
+{
+    DoomoSong s;
+    SongExt x;
+    int i;
+    opt_set(OPT_MUSIC_VOL, 7);
+    base(&s);
+    memset(s.notes, 0, sizeof(s.notes));
+    s.notes[0][0][0] = 72;                                         /* a lead note on the first step */
+    s.notes[0][2][0] = 48;                                         /* a bass note (lane 1, the harmony, gives way to the choir voice) */
+    songx_from_order(&x, &s);
+    x.trk[0].pan = 0;                                              /* lead left */
+    x.trk[2].pan = 2;                                              /* bass right */
+    nat_tone_pan[0] = nat_tone_pan[1] = nat_tone_pan[2] = nat_tone_pan[3] = 1;
+    song_play_ext(&s, &x, -1);
+    for (i = 0; i < 2; i++) song_tick();
+    CHECK(nat_tone_vol[2] > 0 && nat_tone_vol[0] > 0);
+    CHECK_EQ(nat_tone_pan[0], 0);
+    CHECK_EQ(nat_tone_pan[2], 2);
+    CHECK_EQ(nat_tone_pan[1], 1);                                  /* an untouched lane stays in the middle */
+    song_stop();
+    CHECK_EQ(nat_tone_pan[0], 1);                                  /* every other user of the channels hears the middle again */
+    CHECK_EQ(nat_tone_pan[2], 1);
+    /* a classic song never pans, and sends nothing while it plays */
+    nat_tone_pan_calls = 0;
+    song_play(&s, -1);
+    for (i = 0; i < 2; i++) song_tick();
+    song_stop();
+    CHECK_EQ(nat_tone_pan_calls, 0);
+}
+
 /* ---- one-bar patterns: a pattern may play 16 steps and end its pass; the length, the player and the page agree ---------------------- */
 TEST(song_ext_a_one_bar_pattern_ends_its_pass_early_and_is_saved_with_the_page)
 {
