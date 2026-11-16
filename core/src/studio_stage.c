@@ -110,9 +110,9 @@ static void finish_show(void)
 
 static int line_fits(int line)
 {
-    int pos = studio_line_pos(SS, line);
-    if (pos < 0 || !SS->lyrics[line][0]) return 0;
-    return song_syllables(SS->lyrics[line], NULL, 0) == song_lead_onsets(SS, SS->order[pos] & 3);
+    int pat = st_adv_line_pattern(line);                 /* ST-ADV: the pattern the arrangement sings it over */
+    if (pat < 0 || !SS->lyrics[line][0]) return 0;
+    return song_syllables(SS->lyrics[line], NULL, 0) == song_lead_onsets(SS, pat);
 }
 
 void tab_stage_update(void)
@@ -120,7 +120,7 @@ void tab_stage_update(void)
     if (!studio.show) {
         if (btn_pressed(BTN_A)) stage_start();
         if (studio_sel_tap) {
-            if (concert_stage_song(SS)) audio_sfx(SFX_SELECT);
+            if (concert_stage_song_x(SS, st_adv_ext())) audio_sfx(SFX_SELECT);
             else { st_msg("The Concert Hall is booked - sing here!"); audio_sfx(SFX_ERROR); }
         }
         return;
@@ -128,7 +128,7 @@ void tab_stage_update(void)
     studio.show_t++;
     if (studio.show == 1) {
         int pl;
-        if (studio.show_t == CURTAIN_T) song_play(SS, -1);
+        if (studio.show_t == CURTAIN_T) st_adv_play(0, -1);      /* the arrangement when there is one */
         if (btn_pressed(BTN_B)) { stage_leave(); st_msg("Show cancelled"); return; }
         pl = song_pos_line();
         if (song_playing() && pl >= 0 && pl != studio.last_line) {
@@ -144,7 +144,7 @@ void tab_stage_update(void)
             studio.last_line = 0xFE;      /* an instrumental: keep going */
         /* the end: a one-shot song stops by itself, a looping one after a pass */
         if (studio.show_t > CURTAIN_T + 2 &&
-            (!song_playing() || song_pos_ticks() >= song_length_ticks(SS)))
+            (!song_playing() || song_pos_ticks() >= st_adv_ticks()))
             finish_show();
         return;
     }

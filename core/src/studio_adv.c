@@ -67,6 +67,23 @@ uint32_t st_adv_ticks(void)
     return X->version ? songx_ticks(SS, X) : song_length_ticks(SS);
 }
 
+const SongExt *st_adv_ext(void) { return X->version ? X : NULL; }
+
+int st_adv_line_pattern(int line)
+{
+    int i, n, sec, pass, pat;
+    if (!X->version) {
+        int pos = studio_line_pos(SS, line);
+        return pos < 0 ? -1 : SS->order[pos] & 3;
+    }
+    n = songx_len(X);
+    for (i = 0; i < n; i++) {
+        pat = songx_at(X, i, &sec, &pass);
+        if (X->sect[sec].line[pass % SX_LINES] == line) return pat < SONG_PATTERNS ? pat : -1;
+    }
+    return -1;
+}
+
 /* ---- one edit = one undo step ------------------------------------------------------------------------------------------ */
 typedef int (*AdvFn)(SongExt *x, int a, int b);
 
@@ -591,6 +608,12 @@ int st_adv_saved(int slot) { (void)slot; return 1; }
 void st_adv_play(int pos, int singer) { song_play_at(SS, singer, pos, 0); }
 int st_adv_pass_of_cursor(void) { return studio.osel; }
 uint32_t st_adv_ticks(void) { return song_length_ticks(SS); }
+const SongExt *st_adv_ext(void) { return NULL; }
+int st_adv_line_pattern(int line)
+{
+    int pos = studio_line_pos(SS, line);
+    return pos < 0 ? -1 : SS->order[pos] & 3;
+}
 int st_adv_try_open(void) { return 0; }
 void tab_order_adv_update(void) {}
 void tab_order_adv_draw(StRect r) { (void)r; }

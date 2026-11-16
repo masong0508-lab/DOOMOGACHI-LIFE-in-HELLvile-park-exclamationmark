@@ -333,7 +333,9 @@ void st_adv_take(void);                /* a take / template / new song replaces 
 int  st_adv_saved(int slot);           /* after the classic song was saved to the slot: keep the page; 0 = it did not fit */
 void st_adv_play(int pos, int singer); /* play (the arrangement when there is one) from flat pass `pos` */
 int  st_adv_pass_of_cursor(void);      /* ORDER's cursor as a pass number */
-uint32_t st_adv_ticks(void);
+uint32_t st_adv_ticks(void);           /* the whole song in 30 Hz ticks: the arrangement's (tempo per part) or the classic order's */
+const SongExt *st_adv_ext(void);       /* the arrangement for the Concert Hall, NULL for a classic song */
+int  st_adv_line_pattern(int line);    /* the pattern (0..3) the song sings lyric line `line` over, -1 = never or not in the 4 classic ones */
 int  st_adv_try_open(void);            /* the ORDER tab opened on Advanced: make the arrangement from the classic order; 1 = did */
 void tab_order_adv_update(void);
 void tab_order_adv_draw(StRect r);

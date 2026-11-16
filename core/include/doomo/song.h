@@ -217,6 +217,8 @@ void studio_edit(const DoomoSong *s);
  * and return 1). The studio's weak default returns 0 = no hand-off, the
  * studio performs the song on its own stage. */
 int  concert_stage_song(const DoomoSong *s);
+/* ST-ADV: the same with the song's arrangement (x NULL = classic, the same as concert_stage_song) */
+int  concert_stage_song_x(const DoomoSong *s, const struct SongExt *x);
 extern const char *const doomo_song_scale_names[SONG_SCALE_COUNT];
 extern const char *const doomo_song_drum_names[SONG_DRUM_COUNT];
 extern const char *const doomo_song_kit_names[SONG_KIT_COUNT];

@@ -40,6 +40,11 @@ __attribute__((weak)) int concert_stage_song(const DoomoSong *s)
     (void)s;
     return 0;
 }
+__attribute__((weak)) int concert_stage_song_x(const DoomoSong *s, const struct SongExt *x)
+{
+    (void)x;
+    return concert_stage_song(s);
+}
 
 
 /* ====================================================================== */

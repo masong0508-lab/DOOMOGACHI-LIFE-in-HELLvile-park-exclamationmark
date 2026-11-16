@@ -69,14 +69,18 @@ static const char *const layout_names[CHOIR_LAYOUT_COUNT] = { "Risers", "Semicir
 /* The Music Studio's song while it performs on our stage (it lives in the
  * studio's state, which stays put under us on the scene stack). */
 static const DoomoSong *studio_song;
+static const SongExt *studio_x;           /* ST-ADV (cross-stream: STUDIO): the song's arrangement, NULL = classic */
 
-int concert_stage_song(const DoomoSong *s)
+int concert_stage_song(const DoomoSong *s) { return concert_stage_song_x(s, NULL); }
+
+int concert_stage_song_x(const DoomoSong *s, const SongExt *x)
 {
     int i, any = 0;
     if (!s || !(s->flags & SONGF_VALID)) return 0;
     for (i = 0; i < SONG_SINGERS; i++) if (song_singer_id(s, i) >= 0) any = 1;
     if (!any) return 0;                          /* nobody to sing it */
     studio_song = s;
+    studio_x = x;
     scene_push(&SCENE_CONCERT, CONCERT_ARG_STUDIO);
     return 1;
 }
@@ -367,6 +371,7 @@ static void concert_leave(void)
         /* back to the studio, which keeps the background music paused */
         song_stop();
         studio_song = NULL;
+        studio_x = NULL;
         concert_play_silence();
         return;
     }
@@ -728,7 +733,7 @@ static void concert_update(void)
         if (C.st_t == 62) audio_sfx(SFX_HAPPY);
         if (btn_pressed(BTN_A) && C.st_t < 60) C.st_t = 60;
         if (C.st_t >= INTRO_TICKS) {
-            if (C.studio) song_play(studio_song, -1);
+            if (C.studio) song_play_ext(studio_song, studio_x, -1);
             else concert_play_start(&C.pl, &C.song, &C.cast, 0);
             goto_state(CS_SHOW);
         }
@@ -990,7 +995,7 @@ static void draw_hud(const StageLayout *L)
     {
         int prog = concert_play_progress(&C.pl);
         if (C.studio && studio_song) {
-            uint32_t len = song_length_ticks(studio_song);
+            uint32_t len = studio_x ? songx_ticks(studio_song, studio_x) : song_length_ticks(studio_song);
             prog = len ? (int)(DOOMO_MIN(song_pos_ticks(), len) * 255u / len) : 0;
         }
         plat_rect(0, L->truss_h - 2, L->w * prog / 255, 1, PAL_PAINT(PAINT_LEMON, 2));
