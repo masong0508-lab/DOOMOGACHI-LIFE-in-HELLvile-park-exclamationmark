@@ -430,7 +430,7 @@ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
               StudioPopDone done)
 {
     int i;
-    n = DOOMO_CLAMP(n, 1, 8);
+    n = DOOMO_CLAMP(n, 1, 10);
     studio.pop_title = title;
     for (i = 0; i < n; i++) studio.pop_items[i] = items[i];
     studio.pop_n = (uint8_t)n;
@@ -1172,6 +1172,7 @@ static void studio_enter(int arg)
         studio.last[3] = SONG_DRUM_KICK;
     }
     studio.clip_pat = studio.clip_trk = -1;
+    studio.rng_a = -1;
     studio.muse = -1;
     studio.sing_pos = -1;
     studio.fmode = 0;

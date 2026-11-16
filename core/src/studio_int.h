@@ -104,6 +104,7 @@ typedef struct Studio {
     uint8_t  a_edit;            /* A held on a placed note                   */
     uint8_t  kb_flash, kb_note;
     int8_t   clip_pat, clip_trk;
+    int8_t   rng_a;             /* ST-TOOLS: the marked start step of the range tools, -1 = none (the cursor's bar) */
     /* ORDER */
     uint8_t  osel, otop;
     /* LYRICS */
@@ -129,7 +130,7 @@ typedef struct Studio {
     uint16_t pop_t;
     uint32_t pop_lock;
     const char *pop_title;
-    const char *pop_items[8];
+    const char *pop_items[10];   /* ST-TOOLS: up to 10 (the Pattern tools menu) */
     StudioPopDone pop_done;
     /* toast-ish message bubble */
     uint16_t msg_t;
@@ -297,6 +298,33 @@ void st_help_draw(void);
 int  st_help_rect(int *x, int *y, int *w, int *h);
 int  st_level(void);
 void st_level_set(int level);
+
+
+/* ---- studio_tools.c (ST-TOOLS): pure edits on a song; the caller ed_touch()es the cells and ed_commit()s. Each returns
+ * the cells it changed (0 = nothing to do). Ranges are steps [from, to) of track t of pattern p. */
+void tl_range(int mark, int stp, int *from, int *to);      /* the mark..cursor range, or the cursor's bar */
+int  tl_shift(DoomoSong *s, int p, int t, int from, int to, int steps);
+int  tl_octave(DoomoSong *s, int p, int t, int from, int to, int dir);
+int  tl_repeat(DoomoSong *s, int p, int t, int from, int to);
+int  tl_clear(DoomoSong *s, int p, int t, int from, int to);
+int  tl_reverse(DoomoSong *s, int p, int t, int from, int to);
+int  tl_stretch(DoomoSong *s, int p, int t, int from, int to, int faster);
+int  tl_degree(const DoomoSong *s, int midi);
+int  tl_chord_at(const DoomoSong *s, int p, int h);        /* half bar h 0..3: the chord's degree, -1 none */
+int  tl_suggest_chords(const DoomoSong *s, int p, int h, int n, uint8_t out[4]);
+void tl_chord_name(const DoomoSong *s, int deg, char *buf, int cap);
+int  tl_chord_write(DoomoSong *s, int p, int h, int deg);
+void tl_phrase(const DoomoSong *s, int p, int bar, int variant, uint8_t out[16]);
+int  tl_phrase_write(DoomoSong *s, int p, int bar, const uint8_t ph[16]);
+int  tl_groove_write(DoomoSong *s, int p, int g, int with_fill);
+int  studio_groove_count(void);
+const char *studio_groove_name(int g);
+int  tl_harmonize(DoomoSong *s, int p, int kind);          /* 0 third, 1 fifth, 2 octave below the lead */
+int  tl_section_copy(DoomoSong *s, int src, int dst, int shift, int groove);
+int  tl_free_pattern(const DoomoSong *s, int src);
+int  tl_mix_balance(DoomoSong *s);
+int  tl_mix_flags(const DoomoSong *s);
+int  tl_fit_status(const DoomoSong *s, int line, int *words, int *notes);
 
 /* ---- studio_gen.c --------------------------------------------------------------- */
 /* Compose music only (patterns, order, instruments) for a genre. */

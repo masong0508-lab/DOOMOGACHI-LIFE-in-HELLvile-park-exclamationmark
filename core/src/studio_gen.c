@@ -385,13 +385,65 @@ static void write_drums(DoomoSong *s, int pat, int groove, int role)
         if (g->kick & bit) d = SONG_DRUM_KICK;
         c[i] = (uint8_t)d;
     }
-    if (g->fill && role != 3) {
+    if (g->fill && role != 3 && role != 4) {
         /* a fill into the next pattern */
         c[28] = SONG_DRUM_TOM; c[29] = SONG_DRUM_TOM;
         c[30] = SONG_DRUM_SNARE; c[31] = SONG_DRUM_SNARE;
     }
     if (role == 1 && groove != DR_NONE) c[0] = SONG_DRUM_CRASH;    /* chorus! */
     if (groove == DR_HYMN && role == 1) c[0] = SONG_DRUM_CRASH;
+}
+
+
+/* ====================================================================== */
+/* ST-TOOLS: the groove picker and the melody helper (studio_tools.c calls these) */
+static const char *const groove_names[DR_HYMN + 1] = {
+    "Silence", "Pop", "Hip-hop", "City", "Chip", "Lullaby", "Jazz", "Folk", "Disco",
+    "Shanty", "Synth", "Goth", "Punk", "Doom", "Industrial", "Hymn"
+};
+int studio_groove_count(void) { return (int)DOOMO_COUNTOF(grooves); }
+const char *studio_groove_name(int g) { return groove_names[DOOMO_CLAMP(g, 0, DR_HYMN)]; }
+/* one pattern of drums from groove g; with_fill = the groove's own fill into the next pattern */
+void studio_groove_write(DoomoSong *s, int pat, int g, int with_fill)
+{
+    write_drums(s, pat & 3, DOOMO_CLAMP(g, 0, DR_HYMN), with_fill ? 0 : 4);
+}
+
+/* One bar (16 steps) of lead on chords whose roots are scale degrees chord0 (steps 0..7) and chord1 (8..15), over
+ * a tonic `base`; every seed makes another motif; the last note rests on a chord tone of chord1. */
+void studio_phrase(const DoomoSong *s, int base, int chord0, int chord1, uint32_t seed, uint8_t out[16])
+{
+    DoomoRng r;
+    Motif mo;
+    int i, deg, prev = -1, mi = 0, last = -1;
+    rng_seed(&r, seed * 2654435761u + 7919u);
+    make_motif(&mo, &r, 3 + rng_range(&r, 4), (int)(seed & 1));
+    memset(out, 0, 16);
+    deg = nearest_chord_tone(2, chord0, 0, 9);
+    for (i = 0; i < 16; i++) {
+        int strong, chord = i < 8 ? chord0 : chord1;
+        if (!(mo.rhythm & (1u << i))) continue;
+        strong = (i % 8) == 0 || ((i % 4) == 0 && rng_chance(&r, 50));
+        if (prev >= 0) {
+            deg += mo.contour[mi % 16];
+            if (deg < 0) deg = (-deg) % 3;
+            if (deg > 9) deg = 9 - (deg - 9) % 3;
+            if (strong) deg = nearest_chord_tone(deg, chord, 0, 9);
+        }
+        mi++;
+        out[i] = (uint8_t)deg_note(s, base, deg);
+        prev = i;
+        last = i;
+    }
+    if (last >= 0) {
+        int dg = nearest_chord_tone(deg, chord1, 0, 9);
+        out[last] = (uint8_t)deg_note(s, base, dg);
+    }
+    /* hold each note until the next onset; breathe in the last two steps */
+    for (i = 0; i < 16; i++) {
+        if (out[i] >= 2) { last = i; continue; }
+        if (last >= 0 && i < 14) out[i] = SONG_HOLD;
+    }
 }
 
 /* ====================================================================== */
