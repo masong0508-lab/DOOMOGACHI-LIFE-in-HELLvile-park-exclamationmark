@@ -496,6 +496,11 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   the settings are saved with the page. They are stored only: the player does not use pan / sound / swing / brightness yet (the screen says so).
   The undo journal range now covers the track settings (`META` in `studio_adv.c`). Tests: `adv_mix_view_edits_pan_sound_swing_and_brightness_one_undo_step_each`,
   `adv_mix_settings_are_saved_with_the_page`. The Arrange popup is full (10 items is the popup limit), so Mix is reached from the part view.
+- **Expert view (2026-11-16):** in the part view, SELECT tools, "Expert view..." (item 10). The **Free notes** switch (A / LEFT / RIGHT, one undo step, saved in `SongExt.flags`):
+  when on, a new note in the NOTES tracker keeps the pitch you last used instead of snapping to the scale (`st_adv_free()`, `studio_edit.c`). Under it: notes per track
+  for the patterns the arrangement uses, the notes the whole song plays, and a memory meter (parts / 16, entries / 64, note blocks / 48, encoded save page / 1,536 B).
+  B goes back to the part. Not built: the per-note velocity bar (cells have no velocity byte; needs a format change). Tests: `adv_expert_view_free_notes_switch_is_one_undo_step_and_stops_the_scale_snap`,
+  `adv_expert_free_flag_is_saved_with_the_page`. Not run: GBA / PS1 / DC builds.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
 - **Not done:** the LYRICS tab does not know arrangement positions;

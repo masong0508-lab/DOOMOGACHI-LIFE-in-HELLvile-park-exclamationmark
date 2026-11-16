@@ -99,7 +99,7 @@ typedef struct Studio {
     DoomoSong song;             /* the working song                          */
 #if STUDIO_ADV
     SongExt  xw;                /* ST-ADV: the working arrangement (version 0 = none: a classic song); MUST follow `song` */
-    uint8_t  aview, asel, atop; /* ORDER (Advanced): 0 the arrangement, 1 one part; its cursor and top row */
+    uint8_t  aview, asel, atop; /* ORDER (Advanced): 0 the arrangement, 1 one part, 2 Mix, 3 Expert; its cursor and top row */
 #endif
     uint32_t t;                 /* ticks in the studio                       */
     uint16_t tab_t;             /* ticks since the tab opened                */
@@ -327,6 +327,7 @@ void st_level_set(int level);
 
 
 /* ---- studio_adv.c (ST-ADV): the Advanced ORDER screen. All of it is a no-op where STUDIO_ADV is 0 ------------------ */
+int  st_adv_free(void);                /* Advanced "Free notes" switch is on: new notes are not snapped to the scale */
 int  st_adv_on(void);                  /* an arrangement is open (the ORDER tab shows it) */
 int  st_adv_eats_b(void);              /* B left the part view this frame: the studio must not take it as "leave" */
 void st_adv_enter(int slot);           /* a song came in from the book slot (-1: not from the book): load its page or none */

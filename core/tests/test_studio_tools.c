@@ -1453,6 +1453,45 @@ TEST(adv_mix_settings_are_saved_with_the_page)
     st_level_set(0);
 }
 
+TEST(adv_expert_view_free_notes_switch_is_one_undo_step_and_stops_the_scale_snap)
+{
+    open_adv(4);
+    CHECK(!st_adv_free());
+    press(BTN_A);                                              /* the part view, its tools: Expert view... */
+    press(BTN_SELECT); pick(9);
+    CHECK_EQ(studio.aview, 3);
+    press(BTN_A);                                              /* the switch */
+    CHECK(st_adv_free());
+    CHECK(studio.xw.flags & SX_FLAG_FREE);
+    press(BTN_RIGHT);                                          /* and off again */
+    CHECK(!st_adv_free());
+    press(BTN_A);
+    CHECK(st_adv_free());
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 1);                                 /* back to the part, not out of the studio */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    CHECK(ed_undo());
+    CHECK(!st_adv_free());
+    st_level_set(0);
+}
+
+TEST(adv_expert_free_flag_is_saved_with_the_page)
+{
+    uint8_t buf[2048];
+    SongExt back;
+    uint32_t n;
+    open_adv(4);
+    press(BTN_A);
+    press(BTN_SELECT); pick(9);
+    press(BTN_A);
+    n = songx_encode(&studio.song, &studio.xw, buf, sizeof(buf));
+    CHECK(n > 0);
+    memset(&back, 0, sizeof(back));
+    CHECK(songx_decode(&studio.song, &back, buf, n));
+    CHECK(back.flags & SX_FLAG_FREE);
+    st_level_set(0);
+}
+
 TEST(adv_keys_start_plays_the_arrangement)
 {
     open_adv(8);

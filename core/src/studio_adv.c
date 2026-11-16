@@ -11,6 +11,9 @@
  * order the first time the ORDER tab opens on Advanced and plays exactly the same until it is edited. It is saved with the
  * song's book page (songx_book_put) and comes back when the page is opened.
  *
+ * EXPERT VIEW (part tools, "Expert view..."): the Free notes switch (new notes keep the pitch you last used instead of snapping to the
+ *   scale), note counts per track for the whole song, and a memory meter (parts, entries, pool blocks, page bytes). Free notes is one undo step.
+ *
  * Builds with no room for arrangement pages (GBA, PS1: SONGX_BOOK_PAGES 0) compile only the no-op versions at the end.
  */
 #include "studio_int.h"
@@ -27,6 +30,7 @@ static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing */
 static uint8_t b_eaten;                 /* B left the part view this frame: the studio must not take it as "leave" */
 
 int st_adv_on(void) { return studio.xw.version != 0; }
+int st_adv_free(void) { return studio.xw.version != 0 && (studio.xw.flags & SX_FLAG_FREE) != 0; }
 int st_adv_eats_b(void) { return b_eaten; }
 
 void st_adv_enter(int slot)
@@ -184,6 +188,7 @@ static int e_pass_del(SongExt *x, int sec, int at)
 static int e_trk_pan(SongExt *x, int t, int v) { x->trk[t].pan = (uint8_t)DOOMO_CLAMP(v, 0, 2); return 1; }
 static int e_trk_env(SongExt *x, int t, int v) { x->trk[t].env = (uint8_t)(v & 3); return 1; }
 static int e_trk_swing(SongExt *x, int t, int v) { x->trk[t].swing = (uint8_t)DOOMO_CLAMP(v, 0, 8); return 1; }
+static int e_free(SongExt *x, int on, int unused) { (void)unused; if (on) x->flags |= SX_FLAG_FREE; else x->flags &= (uint8_t)~SX_FLAG_FREE; return 1; }
 static int e_bright(SongExt *x, int sec, int v) { x->sect[sec].bright = (uint8_t)(v & 3); return 1; }
 static int e_chorus_up(SongExt *x, int steps, int unused) { (void)unused; return songx_last_chorus_up(x, steps); }
 
@@ -353,6 +358,7 @@ static void do_pass_del(int at)
 }
 
 static void to_mix_view(void) { studio.aview = 2; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
+static void to_expert_view(void) { studio.aview = 3; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 static void to_part_view(void) { studio.aview = 1; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 
 static void arrange_tools(int c)
@@ -388,6 +394,7 @@ static void part_tools(int c)
         st_adv_play(songx_entry_pass(X, studio.osel), -1);
         break;
     case 8: to_mix_view(); break;
+    case 9: to_expert_view(); break;
     default: break;
     }
 }
@@ -469,14 +476,14 @@ static void part_update(void)
         else part_adjust(1);                                       /* the settings: A is the same as RIGHT */
     }
     if (studio_sel_tap) {
-        static const char *const items[9] = { "Add a pass", "Delete this pass", "Make it unique", "Name...", "Key change...",
-                                              "Tempo change...", "Fade...", "Hear this part", "Mix and sound..." };
-        static const char *const help[9] = { "A copy of the pass, just after.", "Take the pass out.",
+        static const char *const items[10] = { "Add a pass", "Delete this pass", "Make it unique", "Name...", "Key change...",
+                                              "Tempo change...", "Fade...", "Hear this part", "Mix and sound...", "Expert view..." };
+        static const char *const help[10] = { "A copy of the pass, just after.", "Take the pass out.",
                                              "Its own copy: edits stay here.", "Verse, chorus, bridge...",
                                              "Lift or drop the whole part.", "Faster or slower part.",
                                              "Fade the part in or out.", "Play from this part.",
-                                             "Pan, sound and swing per track." };
-        st_popup("This part", items, 9, 0, part_tools);
+                                             "Pan, sound and swing per track.", "Free notes, note counts, memory." };
+        st_popup("This part", items, 10, 0, part_tools);
         st_popup_help(help);
     }
     if (vis < 3) vis = 3;
@@ -516,12 +523,112 @@ static void mix_update(void)
     else if (btn_pressed(BTN_A)) mix_adjust(1);
 }
 
+
+/* ---- the Expert view: the Free notes switch, note counts and a memory meter ------------------------------------------------ */
+typedef struct ExStats {
+    int per_trk[SX_TRACKS];             /* notes in the patterns the arrangement uses (each pattern once) */
+    int played;                         /* notes the whole song plays (patterns counted every pass) */
+    int pats_used;                      /* distinct patterns the arrangement plays */
+    int page;                           /* bytes of the encoded book page (0 = does not fit) */
+} ExStats;
+
+static int ex_cell_is_note(int trk, int v) { return trk == 3 ? v > 0 : v >= 2 && v != SONG_HOLD; }
+
+static int ex_pat_notes(int pat, int trk)
+{
+    int i, n = 0;
+    for (i = 0; i < SONG_STEPS; i++) n += ex_cell_is_note(trk, songx_cell(SS, X, pat, trk, i));
+    return n;
+}
+
+static void ex_stats(ExStats *e)
+{
+    uint8_t used[SX_PATTERNS], buf[SONGX_PAGE_BYTES];
+    int i, n, t, sec, pass, pat, nt = mix_tracks();
+    memset(e, 0, sizeof(*e));
+    memset(used, 0, sizeof(used));
+    n = songx_len(X);
+    for (i = 0; i < n; i++) {
+        pat = songx_at(X, i, &sec, &pass);
+        if (pat < 0 || pat >= SX_PATTERNS) continue;
+        if (!used[pat]) { used[pat] = 1; e->pats_used++; }
+        for (t = 0; t < nt; t++) e->played += ex_pat_notes(pat, t);
+    }
+    for (pat = 0; pat < SX_PATTERNS; pat++)
+        if (used[pat]) for (t = 0; t < nt; t++) e->per_trk[t] += ex_pat_notes(pat, t);
+    e->page = (int)songx_encode(SS, X, buf, sizeof(buf));
+}
+
+static void expert_update(void)
+{
+    if (btn_pressed(BTN_B)) { studio.aview = 1; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if ((btn_pressed(BTN_A) || btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT))) {
+        int on = (X->flags & SX_FLAG_FREE) == 0;
+        if (adv_edit(e_free, on, 0, -1)) { st_msg(on ? "Free notes: on" : "Free notes: off"); audio_sfx(on ? SFX_SPARKLE : SFX_CURSOR); }
+    }
+}
+
+static void bar(int x, int y, int w, int used, int cap, uint8_t col, uint8_t back)
+{
+    int f = cap > 0 ? DOOMO_CLAMP(used * w / cap, used > 0 ? 1 : 0, w) : 0;
+    plat_rect(x, y, w, 5, back);
+    if (f) plat_rect(x, y, f, 5, col);
+}
+
+static void expert_draw(StRect r)
+{
+    static const char *const tname[SX_TRACKS] = { "Lead", "Harmony", "Bass", "Drums", "Extra 5", "Extra 6", "Extra 7", "Extra 8" };
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int rh = st_wide() ? 15 : 12, nt = mix_tracks(), i, y = r.y + 6 + rh, bx = r.x + r.w - 76;
+    int blocks = SX_POOL - songx_blocks_free(X);
+    ExStats e;
+    char buf[40];
+    ex_stats(&e);
+    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+    ui_text(r.x + 12, r.y + 5, "Expert", st->text);
+    {   /* the switch */
+        int sel = 1, on = (X->flags & SX_FLAG_FREE) != 0;
+        uint8_t tc = sel ? PAL_WHITE : st->text;
+        if (sel) { ui_round_rect(r.x + 4, y - 1, r.w - 8, 12, 4, st->accent); ui_cursor(r.x + 5, y + 1); }
+        ui_text(r.x + 16, y + 1, "Free notes", tc);
+        ui_text(r.x + 100, y + 1, on ? "< On >" : "< Off >", tc);
+        ui_text(r.x + 140, y + 1, on ? "any pitch" : "snap to scale", sel ? PAL_WHITE : st->text_dim);
+    }
+    y += rh + 2;
+    ui_text(r.x + 12, y, "Notes in the song", st->text_dim);
+    doomo_snprintf(buf, sizeof(buf), "%d played", e.played);
+    ui_text(r.x + r.w - 12 - (int)strlen(buf) * 6, y, buf, st->text_dim);
+    y += rh - 2;
+    for (i = 0; i < nt && y + 9 < r.y + r.h - 40; i++, y += 9) {
+        doomo_snprintf(buf, sizeof(buf), "%d", e.per_trk[i]);
+        ui_text(r.x + 16, y, tname[i], st->text);
+        ui_text(r.x + 76, y, buf, st->text);
+    }
+    y = r.y + r.h - 36;
+    doomo_snprintf(buf, sizeof(buf), "Parts %d/%d", X->sections, SX_SECTIONS);
+    ui_text(r.x + 12, y, buf, st->text_dim);
+    bar(bx, y + 1, 64, X->sections, SX_SECTIONS, st->accent, st->fill_lo);
+    y += 9;
+    doomo_snprintf(buf, sizeof(buf), "Entries %d/%d", X->arrange_len, SX_ARRANGE);
+    ui_text(r.x + 12, y, buf, st->text_dim);
+    bar(bx, y + 1, 64, X->arrange_len, SX_ARRANGE, st->accent, st->fill_lo);
+    y += 9;
+    doomo_snprintf(buf, sizeof(buf), "Note blocks %d/%d", blocks, SX_POOL);
+    ui_text(r.x + 12, y, buf, st->text_dim);
+    bar(bx, y + 1, 64, blocks, SX_POOL, st->accent, st->fill_lo);
+    y += 9;
+    if (e.page) doomo_snprintf(buf, sizeof(buf), "Save page %d/%d B", e.page, SONGX_PAGE_BYTES);
+    else doomo_snprintf(buf, sizeof(buf), "Save page: too big");
+    ui_text(r.x + 12, y, buf, e.page ? st->text_dim : st->accent);
+    bar(bx, y + 1, 64, e.page ? e.page : SONGX_PAGE_BYTES, SONGX_PAGE_BYTES, st->accent, st->fill_lo);
+}
+
 void tab_order_adv_update(void)
 {
     b_eaten = 0;
     if (!X->version) return;
     if (X->arrange_len < 1 || studio.osel >= X->arrange_len) studio.osel = 0;
-    if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
+    if (studio.aview == 3) expert_update(); else if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
 }
 
 /* ---- draw ------------------------------------------------------------------------------------------------------------- */
@@ -691,14 +798,18 @@ static void mix_draw(StRect r)
 void tab_order_adv_draw(StRect r)
 {
     if (!X->version) return;
-    if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
+    if (studio.aview == 3) expert_draw(r); else if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
 }
 
 int st_adv_prompts(UiPrompt *p)
 {
     int n = 0;
 #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
-    if (studio.aview == 2) {
+    if (studio.aview == 3) {
+        PR(BTN_A | BTN_LEFT | BTN_RIGHT, 0, "Switch");
+        PR(BTN_START, 1, st_play_verb());
+        PR(BTN_B, 2, "Back");
+    } else if (studio.aview == 2) {
         PR(BTN_LEFT | BTN_RIGHT, 0, "Change");
         PR(BTN_A, 1, studio.asel < mix_tracks() ? "Next column" : "More");
         PR(BTN_START, 2, st_play_verb());
@@ -723,6 +834,7 @@ int st_adv_prompts(UiPrompt *p)
 #else  /* !STUDIO_ADV: the GBA and PS1 have no room for an arrangement yet (docs/STUDIO.md "ST-ADV screens") */
 
 int st_adv_on(void) { return 0; }
+int st_adv_free(void) { return 0; }
 int st_adv_eats_b(void) { return 0; }
 void st_adv_enter(int slot) { (void)slot; }
 void st_adv_take(void) {}

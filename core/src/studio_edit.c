@@ -817,7 +817,10 @@ void tab_notes_update(void)
             } else if (*c >= 2) {
                 studio.last[t] = *c;                      /* pick it up */
             } else {
-                *c = (uint8_t)song_scale_snap(s, studio.last[t] >= 2 ? studio.last[t] : 72);
+                {
+                    int base = studio.last[t] >= 2 ? studio.last[t] : 72;
+                    *c = (uint8_t)(st_adv_free() ? base : song_scale_snap(s, base));    /* Advanced "Free notes": any pitch */
+                }
                 studio.last[t] = *c;
             }
             studio.a_edit = 1;
