@@ -144,6 +144,11 @@ card), can be undone, and has no dead end or half-working option. A package does
 (`docs/STUDIO.md` section "Function ledger", one row per control: what it says, what it does, feedback, undo, tested by)
 has no empty cell. Options that cannot work on a platform are hidden there, never greyed with no reason.
 
+> **Built so far (2026-11-15, core only; docs/STUDIO.md "ST-ADV"):** the format, the player and the save are done. Where the code
+> differs from this plan: the pages are a tail of the `'SONG'` chunk (version 1), not a new `'SNG2'` chunk, so no save slot or budget
+> line was needed; patterns stay 2 bars; lyrics are the classic 8 lines, a section names the line of each pass; a `SongExt` is 2,176 B
+> (the plan said 3.5 KB); the GBA and PS1 keep 0 Advanced pages until a resident share is granted.
+
 ### 2.6 Advanced (ST-ADV)
 Advanced is a level switch that unlocks: more of everything, automation and expert views. Off by default; the
 old four-tab song opens in it unchanged.

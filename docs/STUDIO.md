@@ -437,6 +437,32 @@ dense songs is ~5.3 KB (the save staging area is 8 KB). Old saves without
 the chunk load with an empty book (the chunk's `reset()`), unknown chunks
 are skipped, damaged ones reset. `town_new()` resets it.
 
+## ST-ADV: the Advanced song extension (core only, 2026-11-15)
+Code: `core/include/doomo/song_ext.h`, `core/src/song_ext.c`, `song_play_ext()` in `song_player.c`. Tests: `core/tests/test_song_ext.c`.
+No studio screen uses it yet (see "Not done").
+
+A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song with no `SongExt` is classic and plays as before
+(`song_play(s, singer)` is `song_play_ext(s, NULL, singer)`). A `SongExt` is 2,176 bytes in RAM.
+- **Sections:** up to 16. Each has a name (six defaults: intro, verse, pre-chorus, chorus, bridge, outro, or a custom id),
+  1..8 patterns, a key shift (-12..+12), a tempo (50..200 %), a fade (none / in / out) and a brightness (stored, not played yet).
+- **Arrangement:** up to 64 section entries, so up to 512 passes of 2 bars. `songx_len`, `songx_at` and `songx_ticks` give the
+  length, the pattern of a pass and the exact time (tempo per section).
+- **Patterns and cells:** up to 32 patterns, up to 8 tracks. Patterns 0..3 on tracks 0..3 are the classic song's own cells.
+  Every other cell lives in a pool of 48 blocks of 32 steps; an empty cell costs nothing, a full pool refuses the edit.
+- **Folding:** a console plays `songx_tracks_max()` tracks (4 for now). Tracks 5 and 6 are mixed into the harmony lane, 7 into
+  the bass, 8 into the drums, only where that lane is empty at the step. `songx_folded()` gives the message for FILE.
+- **Lyrics:** a section names the lyric line of each of its passes (`line[pass mod 4]`, 0xFF = instrumental). The lines and their
+  singers are the classic song's (8 lines, `line_singers`).
+- **Save:** one encoded page per book slot (at most 1,536 bytes, run-length coded) is written as a tail of the `'SONG'` chunk
+  (mask, then length and bytes per page). The chunk version stays 1: an old chunk has no tail and loads, an old build ignores the
+  tail. A damaged tail is dropped and the songs stay. A classic save, a delete and a Concert Hall export drop the slot's page.
+- **Memory:** `SONGX_BOOK_PAGES` is 6 on the host and the Dreamcast and 0 on the GBA and PS1, until the coordinator grants
+  resident bytes (plan section 4). Nothing was added to the GBA's `.bss`; the GBA and PS1 builds were not run.
+
+Not done: the Advanced screens (sections and arrangement on ORDER, key / tempo / fade menus, the 32 / 64 bar Start card, the FILE
+fold message), a working copy of the `SongExt` in the scene scratch, per-track pan / envelope / swing playback (stored only),
+the brightness, the note grid, free notes, the expert views, patterns of 1..4 bars.
+
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),
 Static (20 lyric lines), Toy Box drums (2 songs), Bone Rattle (Inspire me),
