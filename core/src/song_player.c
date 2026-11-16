@@ -541,6 +541,7 @@ static struct {
     uint8_t  sing_age;
     uint8_t  harm;            /* choir doubling note on ch1 (0 = none)       */
     uint8_t  harm_vol;
+    uint8_t  shape[3];        /* ST-ADV Mix view: the sound (0 soft = as always, 1 punchy, 2 long, 3 pluck) of each lane's note */
     uint8_t  voice[VOICE_COUNT];
     /* preview */
     uint8_t  pv_ticks, pv_ch;
@@ -833,10 +834,11 @@ static void drum_on(int d)
 static void do_step(void)
 {
     const DoomoSong *s = P.s;
-    int pat = cur_pattern(), t, v, shift = 0, fade = 256;
+    int pat = cur_pattern(), t, v, shift = 0, fade = 256, bright = 0;
     if (P.x) {
         int sec = sect_now(0, &fade);
         shift = P.x->sect[sec].key;
+        bright = P.x->sect[sec].bright;
         fade = P.x->sect[sec].fade == SX_FADE_IN ? fade : P.x->sect[sec].fade == SX_FADE_OUT ? 256 - fade : 256;
     }
     if (P.step == 0) begin_line();
@@ -852,6 +854,8 @@ static void do_step(void)
             P.age[t] = 0;
             P.base[t] = (uint8_t)(fade < 256 ? DOOMO_MAX(1, s->vol[t] * fade / 256) : s->vol[t]);
             P.wave[t] = (uint8_t)(s->wave[t] < SONG_WAVES ? s->wave[t] : WAVE_PULSE50);
+            P.shape[t] = P.x ? (uint8_t)(P.x->trk[t].env & 3) : 0;
+            if (t == 0 && bright) P.wave[0] = (uint8_t)(bright == 1 ? WAVE_PULSE50 : bright == 2 ? WAVE_PULSE25 : WAVE_PULSE12);   /* the part's lead brightness */
             if (t == 0) {
                 if (P.mask && P.over < 0) {
                     int n = popcount32(P.mask);
@@ -899,10 +903,16 @@ static int advance(void)
 }
 
 /* ---- output -------------------------------------------------------------- */
-static int env(int base, int age)
+static int env(int base, int age, int shape)
 {
-    int drop = age < 3 ? 0 : (age - 3) / 5;
-    if (drop > base / 3) drop = base / 3;
+    int drop, cap;
+    switch (shape) {
+    case 1:  drop = age < 1 ? 0 : (age - 1) / 3; cap = base / 2; break;          /* punchy: drops quickly to half */
+    case 2:  drop = age < 12 ? 0 : (age - 12) / 10; cap = base / 4; break;       /* long: rings on */
+    case 3:  drop = age / 2; cap = base * 3 / 4; break;                          /* pluck: dies away */
+    default: drop = age < 3 ? 0 : (age - 3) / 5; cap = base / 3; break;          /* soft: the classic shape */
+    }
+    if (drop > cap) drop = cap;
     return base - drop;
 }
 
@@ -920,11 +930,11 @@ static void render_tones(void)
             f = song_note_hz(P.harm);
             /* chorus: a wobble that widens with the number of singers */
             if (n >= 3) f += (P.ticks & 1) ? 1 + n / 6 : -(1 + n / 6);
-            v = env(P.harm_vol, P.age[0]);
+            v = env(P.harm_vol, P.age[0], 0);
             w = P.s->wave[1] < SONG_WAVES ? P.s->wave[1] : WAVE_PULSE25;
         } else if (P.note[t]) {
             f = song_note_hz(P.note[t]);
-            v = env(P.base[t], P.age[t]);
+            v = env(P.base[t], P.age[t], P.shape[t]);
             /* a sung note gets vibrato once it is held */
             if (t == 0 && P.singing && P.age[0] > 6)
                 f += ((P.ticks >> 1) & 1) ? f / 160 : -(f / 160);
@@ -1108,6 +1118,7 @@ void song_preview(const DoomoSong *s, int track, int cell)
     } else if (cell >= 2) {
         P.note[track] = (uint8_t)cell;
         P.age[track] = 0;
+        if (track < 3) P.shape[track] = 0;
         P.base[track] = (uint8_t)DOOMO_MAX(s->vol[track], 6);
         P.wave[track] = (uint8_t)(s->wave[track] < SONG_WAVES ? s->wave[track] : WAVE_PULSE50);
         retrigger(track, song_note_hz(cell), P.base[track], P.wave[track]);

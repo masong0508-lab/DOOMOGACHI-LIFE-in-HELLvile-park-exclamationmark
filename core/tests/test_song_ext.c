@@ -217,3 +217,34 @@ TEST(songx_book_keeps_pages_through_the_save_chunk_and_old_saves_load)
     CHECK(!songx_book_has(slot));
     doomo_save_ext_studio->reset();
 }
+
+/* ---- Mix view playback: Sound (the envelope of a lane's notes) ---------------------------------------------------------- */
+#include "../native/native.h"
+static uint32_t ext_tone_calls(int env, int ticks)
+{
+    DoomoSong s;
+    SongExt x;
+    uint32_t c0;
+    int i;
+    opt_set(OPT_MUSIC_VOL, 7);                    /* (the default may be silent in a test) */
+    base(&s);
+    s.vol[0] = 15;
+    memset(s.notes, 0, sizeof(s.notes));
+    s.notes[0][0][0] = 72;
+    memset(&s.notes[0][0][1], SONG_HOLD, SONG_STEPS - 1);          /* one long note, so only the sound changes its level */
+    songx_from_order(&x, &s);
+    x.trk[0].env = (uint8_t)env;
+    c0 = nat_tone_calls;
+    song_play_ext(&s, &x, -1);
+    for (i = 0; i < ticks; i++) song_tick();
+    song_stop();
+    return nat_tone_calls - c0;
+}
+
+TEST(song_ext_sound_shapes_change_how_a_note_dies_away)
+{
+    uint32_t soft = ext_tone_calls(0, 100), punchy = ext_tone_calls(1, 100), longer = ext_tone_calls(2, 100), pluck = ext_tone_calls(3, 100);
+    CHECK(punchy > soft);          /* a faster fall steps the level more often */
+    CHECK(pluck > soft);
+    CHECK(longer < soft);          /* a long note rings on: fewer level changes */
+}

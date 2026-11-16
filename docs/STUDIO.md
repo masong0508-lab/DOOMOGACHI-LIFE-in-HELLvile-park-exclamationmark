@@ -493,7 +493,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **Mix view (2026-11-16):** in the part view, SELECT tools, "Mix and sound...". One row per track (4, up to 8) with Pan (left / middle / right),
   Sound (soft / punchy / long / pluck) and Swing (song / 1..8), and a last row for the part's Brightness (as set / 1..3). UP / DOWN pick the row,
   A moves the column, LEFT / RIGHT change the value, B goes back. Tracks the console folds say "mixed in". Each edit is one undo step (nudges join);
-  the settings are saved with the page. They are stored only: the player does not use pan / sound / swing / brightness yet (the screen says so).
+  the settings are saved with the page. Sound and Brightness are played (see "Mix playback"); pan and swing are stored only (the screen says so).
   The undo journal range now covers the track settings (`META` in `studio_adv.c`). Tests: `adv_mix_view_edits_pan_sound_swing_and_brightness_one_undo_step_each`,
   `adv_mix_settings_are_saved_with_the_page`. The Arrange popup is full (10 items is the popup limit), so Mix is reached from the part view.
 - **Expert view (2026-11-16):** in the part view, SELECT tools, "Expert view..." (item 10). The **Free notes** switch (A / LEFT / RIGHT, one undo step, saved in `SongExt.flags`):
@@ -522,9 +522,14 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   `adv_box_copy_paste_moves_a_two_track_phrase_and_one_undo_step_takes_it_back`, `adv_box_cut_and_clear_take_the_ties_of_their_notes_and_undo_puts_them_back`,
   `adv_box_octave_moves_pitch_rows_only_and_refuses_out_of_range`, `adv_box_paste_refuses_drums_on_a_pitch_track_and_an_empty_clipboard`.
   Not run: GBA / PS1 / DC builds, GBA sizes (+259 B `.bss`) and the speed window of the box view.
+- **Mix playback (2026-11-16):** the player now uses two Mix settings (`song_player.c`, only with an arrangement; a classic song plays bit-identically). **Sound** (per lane 1..3, track 1..3's
+  setting): soft = the classic fall (the default), punchy falls to half in about a third of a second, long rings on, pluck dies away fast; the choir doubling and jam pads keep the classic shape.
+  **Brightness** (a part's lead): as set / 1 = 50 % pulse, 2 = 25 %, 3 = 12 % (thinner, brighter). Not played: pan (the players have no stereo for the PSG voices) and per-track swing
+  (the step clock is shared; the song's swing still applies). The Mix screen footer now says so (\"Sound and light play. Pan, swing: saved.\"). Cost: +3 B in the player state, a few lines of code
+  (PS1 resident share: re-measure). Test: `song_ext_sound_shapes_change_how_a_note_dies_away` (`test_song_ext.c`). Brightness has no test (the native platform does not record the wave).
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** per-track pan / sound / swing and brightness playback, the per-note velocity bar, patterns of 1..4 bars.
+- **Not done:** pan and per-track swing playback, the per-note velocity bar, patterns of 1..4 bars.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
   `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.

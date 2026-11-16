@@ -1438,7 +1438,7 @@ static void mix_draw(StRect r)
         }
         if (i >= songx_tracks_max()) ui_text(r.x + r.w - 40, y + 1, "mixed in", sel ? PAL_WHITE : st->text_dim);
     }
-    ui_text(r.x + 12, r.y + r.h - 14, "Saved with the song; heard on bigger consoles.", st->text_dim);
+    ui_text(r.x + 12, r.y + r.h - 14, "Sound and light play. Pan, swing: saved.", st->text_dim);
 }
 
 void tab_order_adv_draw(StRect r)
