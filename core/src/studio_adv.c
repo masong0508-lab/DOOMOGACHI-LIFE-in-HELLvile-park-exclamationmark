@@ -35,6 +35,7 @@ static uint8_t b_eaten;                 /* B left the part view this frame: the 
 int st_adv_on(void) { return studio.xw.version != 0; }
 int st_adv_free(void) { return studio.xw.version != 0 && (studio.xw.flags & SX_FLAG_FREE) != 0; }
 int st_adv_eats_b(void) { return b_eaten; }
+int st_adv_grid(void) { return studio.xw.version != 0 && studio.aview == 4; }
 
 void st_adv_enter(int slot)
 {
@@ -767,7 +768,7 @@ static void g_more_tracks(int d)
     int nt = g_nt();
     if (d > 0 && nt >= SX_TRACKS) { st_msg("8 tracks is the most"); audio_sfx(SFX_ERROR); return; }
     if (d < 0 && nt <= SONG_TRACKS) { st_msg("The four tracks stay"); audio_sfx(SFX_ERROR); return; }
-    if (d < 0 && g_track_used(nt - 1)) { st_msg("%s has notes: clear it first", trk_names[nt - 1]); audio_sfx(SFX_ERROR); return; }
+    if (d < 0 && g_track_used(nt - 1)) { st_msg("Clear %s first", trk_names[nt - 1]); audio_sfx(SFX_ERROR); return; }
     if (!adv_edit(e_tracks, d, 0, -1)) return;
     if (d < 0) { if (g_trk >= g_nt()) g_trk = (uint8_t)(g_nt() - 1); g_focus(); st_msg("%d tracks", g_nt()); }
     else { g_trk = (uint8_t)(g_nt() - 1); g_focus(); st_msg("%s added", trk_names[g_trk]); }
@@ -1241,6 +1242,7 @@ int st_adv_prompts(UiPrompt *p)
 int st_adv_on(void) { return 0; }
 int st_adv_free(void) { return 0; }
 int st_adv_eats_b(void) { return 0; }
+int st_adv_grid(void) { return 0; }
 void st_adv_enter(int slot) { (void)slot; }
 void st_adv_take(void) {}
 int st_adv_saved(int slot) { (void)slot; return 1; }

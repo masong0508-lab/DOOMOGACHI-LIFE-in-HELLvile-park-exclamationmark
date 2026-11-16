@@ -1309,7 +1309,7 @@ static void studio_update(void)
         if (studio.tab == STAB_PLAY) tab_play_shift();
         return;
     }
-    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY) {
+    if (studio.tab != STAB_NOTES && studio.tab != STAB_PLAY && !(studio.tab == STAB_ORDER && st_adv_grid())) {
         if (btn_pressed(BTN_L)) { st_set_tab(studio.tab - 1); return; }
         if (btn_pressed(BTN_R)) { st_set_tab(studio.tab + 1); return; }
     }

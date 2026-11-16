@@ -1626,6 +1626,8 @@ TEST(adv_note_grid_drum_lanes_tie_and_octave)
     open_grid();
     p = grid_pat();
     press(BTN_R); press(BTN_R); press(BTN_R);                  /* L / R pick the track: Drums */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    CHECK_EQ(studio.aview, 4);
     press(BTN_A);
     CHECK_EQ(gcell(p, 3, 0), SONG_DRUM_KICK);
     press(BTN_DOWN);                                           /* the next lane: snare */
