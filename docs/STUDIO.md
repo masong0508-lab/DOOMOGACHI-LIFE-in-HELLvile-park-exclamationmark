@@ -501,10 +501,18 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   for the patterns the arrangement uses, the notes the whole song plays, and a memory meter (parts / 16, entries / 64, note blocks / 48, encoded save page / 1,536 B).
   B goes back to the part. Not built: the per-note velocity bar (cells have no velocity byte; needs a format change). Tests: `adv_expert_view_free_notes_switch_is_one_undo_step_and_stops_the_scale_snap`,
   `adv_expert_free_flag_is_saved_with_the_page`. Not run: GBA / PS1 / DC builds.
+- **Note grid (2026-11-16):** in the part view, SELECT tools, "Notes, expert...", then the Note grid row (A). A piano roll for one pattern (32 steps) of one track:
+  pitch rows (the scale's own notes are the light rows) or, on the drum tracks (4 and 8), the 8 drum lanes. LEFT / RIGHT step, UP / DOWN pitch (a scale step; one semitone
+  with Free notes on; a lane on drums), A puts the pitch on the step or takes it off (its ties go with it), **L / R pick the track** (the studio's L / R tab switch is off while
+  the grid is open, `st_adv_grid()`), B goes back to Expert. SELECT tools: Next / Previous pattern, New pattern (copy), Tie to the note before (again: off), Clear this track here,
+  Octave up / down, Add a track, Take the last track away (only when it is empty), Hear this part. Parts' passes now pick any of the song's patterns (A..Z, a..f; up to 32).
+  A pattern past D and tracks 5..8 live in the note pool (48 blocks; "Room n/48" on the screen); an emptied cell gives its block back. Every press is one undo step
+  (it journals exactly the bytes it changes, pool included). Code: `studio_adv.c` ("the Note grid"), `songx_pattern_cost` / `songx_pattern_copy` in `song_ext.c`.
+  Tests: nine `adv_note_grid_*` in `test_studio_tools.c`. Lyrics fit still reads patterns A..D only (`st_adv_line_pattern` answers -1 for a later one).
+  Not run: GBA / PS1 / DC builds, GBA sizes and speed windows for the grid (the GBA keeps 2 Advanced pages, so it compiles there).
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** the LYRICS tab does not know arrangement positions;
-  the 32 / 64 bar Start card, the FILE fold message, the note grid, free notes, per-track pan / envelope playback, brightness.
+- **Not done:** per-track pan / sound / swing and brightness playback, the per-note velocity bar, rectangle selection across tracks in the Note grid, patterns of 1..4 bars.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
   `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.
