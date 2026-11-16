@@ -1,0 +1,69 @@
+# speed2_studio_tools.txt - speed tour 2 for the ST-TOOLS menus of the Music Studio: the ten item Pattern tools menu on
+# NOTES, the Range tools menu, the Helper tools menu, the next chord menu, the groove page, and the NOTES grid with a
+# marked range. STUDIO -107: the premade citizens and the "Park United!" template. Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+press R
+wait 30
+
+# ---- the Pattern tools menu (10 items) ---------------------------------------
+press SELECT
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: pattern tools menu
+shot tools_pattern_menu
+
+# ---- Range tools (item 9) -----------------------------------------------------
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: range tools menu
+shot tools_range_menu
+press A
+wait 20
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+wait 5
+fps start
+wait 90
+expect-fps 29 studio tools: notes with a marked range
+shot tools_marked_range
+
+# ---- Helper tools (item 10) ---------------------------------------------------
+press SELECT
+wait 30
+press UP
+wait 10
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: helper tools menu
+shot tools_helper_menu
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: next chord menu
+shot tools_chord_menu
+press B
+wait 20
