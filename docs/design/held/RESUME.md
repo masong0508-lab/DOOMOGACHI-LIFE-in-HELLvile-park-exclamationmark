@@ -80,7 +80,7 @@ STUDIO-30 was in review / landing: saved in patches/wip/STUDIO/studio-30/ (STAGE
 2. **ST-TOOLS** (not started: no commits): the note grid edits, per-track instrument / envelope / volume / pan,
    swing, chord track, drum pattern editor, then the seven helper tools one by one (chord suggester, melody
    helper, groove picker, lyric syllable fitter, choir auto-harmony, section copier, mix helper).
-3. **ST-ADV** (not started): the Advanced switch for full songs (sections, key / tempo changes, automation,
+3. **ST-ADV** (partly built, 2026-11-16: format, player, save, ORDER arrangement, Mix, Expert view, Note grid with Box, Sound / Brightness playback; see `status/STUDIO.md`; left: pan and per-track swing playback, velocity bar, patterns of 1..4 bars, GBA / PS1 / DC builds and sizes): the Advanced switch for full songs (sections, key / tempo changes, automation,
    more tracks, several minutes, lyrics and choir across the song; versioned format, old songs load).
 4. **ST-USE**: user songs in the Concert Hall and PERFORM; the studio look decluttered.
 5. **Concert to 30**: CONCERT-30 landed partial (band 23.2 fps); what is left with measured costs is in
