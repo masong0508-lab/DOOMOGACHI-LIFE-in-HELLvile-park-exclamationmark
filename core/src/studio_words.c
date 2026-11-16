@@ -151,9 +151,9 @@ static void lyric_tools(int c)
     case 6: {                                   /* ST-TOOLS: the syllable fitter's report */
         int w = 0, nn = 0, v = tl_fit_status(SS, studio.lsel, &w, &nn);
         if (v < 0) st_msg(SS->lyrics[studio.lsel][0] ? "This line is not sung yet" : "Write some words first");
-        else if (v == 0) st_msg("%d words, %d notes: a fit!", w, nn);
-        else if (v == 1) st_msg("%d words, %d notes: la la fills", w, nn);
-        else st_msg("%d words, %d notes: too many", w, nn);
+        else if (v == 0) st_msg("%d word%s, %d note%s: a fit!", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
+        else if (v == 1) st_msg("%d word%s, %d note%s: la la fills", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
+        else st_msg("%d word%s, %d note%s: too many", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
         audio_sfx(v == 0 ? SFX_SPARKLE : SFX_CURSOR);
         break; }
     default: break;
@@ -180,7 +180,12 @@ void tab_lyrics_update(void)
         static const char *const items[7] = { "Sing this line", "Auto-fit all lines",
                                               "Share out parts", "Write lyrics for me",
                                               "Clear this line", "Fit this line", "How does it fit?" };
+        static const char *const help[7] = { "Hear this line sung.", "Fit every line to its notes.",
+                                             "Share the lines out.", "Have lyrics written for you.",
+                                             "Empty this line.", "Fit this line to its notes.",
+                                             "Count words against notes." };
         st_popup("Lyric tools", items, 7, 0, lyric_tools);
+        st_popup_help(help);
     }
 }
 
@@ -549,7 +554,12 @@ void tab_choir_update(void)
                                                "Hellvile choir", "Both districts!", "Random choir",
                                                "Share out parts", "Sort by section",
                                                "Clear the choir", "Harmony: thirds", "Harmony: fifths" };
+        static const char *const help[10] = { "Singers who are their friends.", "Everyone from Hillvile.",
+                                              "Everyone from Hellvile.", "Both districts sing!", "Pick singers by chance.",
+                                              "Share the lines out.", "Order by voice part.", "Send everyone home.",
+                                              "A third under the lead.", "A fifth under the lead." };
         st_popup("Quick fill", items, 10, 0, fill_menu);
+        st_popup_help(help);
     }
 }
 

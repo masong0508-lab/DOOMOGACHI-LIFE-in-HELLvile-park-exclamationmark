@@ -308,9 +308,20 @@ static void open_notes(void)
     studio.pat = 0;
     studio.trk = 0;
     studio.stp = 0;
+    studio.sub = SUB_NONE;
+    studio.lane = 0;
+    studio.rng_a = -1;
     ed_reset();
     st_set_tab(STAB_NOTES);
     frames(2, 0);
+}
+
+/* the message bubble is 31 glyphs at most (Studio.msg) and has to fit the narrowest screen (240 px, 8 px of margin, the
+ * bubble's own 16) */
+static void msg_fits(void)
+{
+    CHECK(strlen(studio.msg) < sizeof(studio.msg) - 1);
+    CHECK(ui_text_width(studio.msg) + 16 <= 240 - 8);
 }
 
 static void pick(int item)
@@ -319,6 +330,7 @@ static void pick(int item)
     CHECK_EQ(st_popup_open(), 1);
     for (i = 0; i < item; i++) press(BTN_DOWN);
     press(BTN_A);
+    msg_fits();
 }
 
 /* SELECT tap, then the items a, b (b < 0: only a) */
@@ -394,7 +406,7 @@ TEST(tools_chord_suggester_menu_writes_the_chosen_chord_and_undoes)
     open_notes();
     studio.stp = 0;
     tools(9, 0);                                              /* Helper tools: Suggest a chord */
-    CHECK_EQ(studio.pop_n, 4);
+    CHECK_EQ(studio.pop_n, 6);                                /* four that fit, all chords, clear */
     CHECK_STR(studio.pop_items[0], "C");                      /* nothing before it: start on the tonic */
     press(BTN_A);
     CHECK_EQ(tl_chord_at(&studio.song, 0, 0), 0);
@@ -532,9 +544,506 @@ TEST(tools_lyric_fit_report_says_words_against_notes)
     CHECK_STR(studio.msg, "3 words, 2 notes: too many");
     strcpy(studio.song.lyrics[0], "la");
     tools(6, -1);
-    CHECK_STR(studio.msg, "1 words, 2 notes: la la fills");
+    CHECK_STR(studio.msg, "1 word, 2 notes: la la fills");
     strcpy(studio.song.lyrics[0], "la la");
     tools(6, -1);
     CHECK_STR(studio.msg, "2 words, 2 notes: a fit!");
     CHECK_EQ(ed_undo_steps(), 0);                             /* a report changes nothing */
+}
+
+
+/* ======================================================================================================================
+ * ST-TOOLS review (the second pass): edge cases of the pushed tools, and the new screens
+ * ==================================================================================================================== */
+TEST(tools_every_tool_leaves_an_empty_song_alone_and_clamps_a_range_past_the_end)
+{
+    DoomoSong s;
+    uint8_t out[4];
+    int t;
+    fresh(&s);
+    for (t = 0; t < 4; t++) {
+        CHECK_EQ(tl_shift(&s, 0, t, 0, 32, 1), 0);
+        CHECK_EQ(tl_octave(&s, 0, t, 0, 32, 1), 0);
+        CHECK_EQ(tl_repeat(&s, 0, t, 0, 16), 0);
+        CHECK_EQ(tl_clear(&s, 0, t, 0, 32), 0);
+        CHECK_EQ(tl_reverse(&s, 0, t, 0, 32), 0);
+        CHECK_EQ(tl_stretch(&s, 0, t, 0, 32, 1), 0);
+        CHECK_EQ(tl_stretch(&s, 0, t, 0, 16, 0), 0);
+    }
+    CHECK_EQ(tl_harmonize(&s, 0, 0), 0);
+    CHECK_EQ(tl_mix_balance(&s), 0);
+    CHECK_EQ(tl_section_copy(&s, 0, 1, 1, -1), 0);            /* nothing to copy: nothing changes */
+    CHECK_EQ(tl_chord_clear(&s, 0, 0), 0);
+    CHECK_EQ(tl_chord_repeat(&s, 0, 0), 0);
+    CHECK_EQ(tl_drum_lane_clear(&s, 0, SONG_DRUM_KICK), 0);
+    CHECK(tl_suggest_chords(&s, 0, 0, 4, out) >= 3);
+    /* a range that runs past the end is cut to the pattern; one that starts past it does nothing */
+    put(&s, 0, 0, 30, 60); put(&s, 0, 0, 31, SONG_HOLD);
+    CHECK_EQ(tl_shift(&s, 0, 0, 30, 99, 1), 1);
+    CHECK_EQ(s.notes[0][0][30], 62);
+    CHECK_EQ(tl_shift(&s, 0, 0, 32, 40, 1), 0);
+    CHECK_EQ(tl_clear(&s, 0, 0, -5, 3), 0);                   /* before the start: clamped, nothing in it */
+    CHECK_EQ(tl_clear(&s, 0, 0, 40, 50), 0);
+    CHECK_EQ(tl_reverse(&s, 0, 0, 31, 32), 0);                /* one cell: nothing to turn round */
+    CHECK_EQ(s.notes[0][0][31], SONG_HOLD);
+}
+
+TEST(tools_a_full_song_transposes_to_the_keyboard_edge_and_stops_there)
+{
+    DoomoSong s;
+    int i, n, guard = 0;
+    fresh(&s);
+    for (i = 0; i < SONG_STEPS; i++) put(&s, 0, 0, i, SONG_NOTE_MAX - 3 + i % 4);   /* the top of the keyboard */
+    while ((n = tl_octave(&s, 0, 0, 0, 32, 1)) > 0 && guard++ < 4) {}
+    for (i = 0; i < SONG_STEPS; i++) CHECK(s.notes[0][0][i] >= SONG_NOTE_MIN && s.notes[0][0][i] <= SONG_NOTE_MAX);
+    guard = 0;
+    while ((n = tl_shift(&s, 0, 0, 0, 32, 1)) > 0 && guard++ < 40) {}
+    for (i = 0; i < SONG_STEPS; i++) CHECK(s.notes[0][0][i] <= SONG_NOTE_MAX);
+    CHECK_EQ(tl_shift(&s, 0, 0, 0, 32, 1), 0);                /* the top: a press that cannot move anything says 0 */
+    for (i = 0; i < SONG_STEPS; i++) put(&s, 1, 2, i, SONG_NOTE_MIN + i % 3);
+    guard = 0;
+    while ((n = tl_shift(&s, 1, 2, 0, 32, -1)) > 0 && guard++ < 40) {}
+    for (i = 0; i < SONG_STEPS; i++) CHECK(s.notes[1][2][i] >= SONG_NOTE_MIN);
+}
+
+TEST(tools_half_speed_spills_into_the_steps_after_the_range_and_stops_at_the_pattern_end)
+{
+    DoomoSong s;
+    fresh(&s);
+    put(&s, 0, 0, 0, 60); put(&s, 0, 0, 1, 62); put(&s, 0, 0, 2, 64); put(&s, 0, 0, 3, 65);
+    put(&s, 0, 0, 6, 72);                                      /* after the range: overwritten by the longer notes */
+    CHECK(tl_stretch(&s, 0, 0, 0, 4, 0) > 0);                  /* steps 1-4 take 8 steps: 1-8 */
+    CHECK_EQ(s.notes[0][0][0], 60); CHECK_EQ(s.notes[0][0][1], SONG_HOLD);
+    CHECK_EQ(s.notes[0][0][2], 62); CHECK_EQ(s.notes[0][0][6], 65);
+    put(&s, 0, 0, 20, 70); put(&s, 0, 0, 21, 71);
+    CHECK(tl_stretch(&s, 0, 0, 20, 32, 0) > 0);                /* the range is cut at step 32: nothing is written past it */
+    CHECK_EQ(s.notes[0][0][20], 70); CHECK_EQ(s.notes[0][0][21], SONG_HOLD); CHECK_EQ(s.notes[0][0][22], 71);
+}
+
+TEST(tools_chord_suggester_starts_a_part_after_the_part_before_it_in_the_order)
+{
+    DoomoSong s;
+    uint8_t out[4];
+    fresh(&s);
+    s.order_len = 2; s.order[0] = 1; s.order[1] = 0;
+    tl_chord_write(&s, 1, 3, 3);                              /* part B ends on IV; it plays before part A */
+    CHECK_EQ(tl_suggest_chords(&s, 0, 0, 4, out), 4);
+    CHECK_EQ(out[0], 4);                                      /* V after IV: from the order list, not from the letter */
+    CHECK_EQ(tl_suggest_chords(&s, 1, 0, 4, out), 4);         /* B opens the song: the tonic and its friends */
+    CHECK_EQ(out[0], 0);
+    s.scale = SONG_SCALE_PENTATONIC;                          /* a five note scale has no sixth chord to start on */
+    CHECK(tl_suggest_chords(&s, 1, 0, 4, out) >= 3);
+    {
+        int i, j, k = tl_suggest_chords(&s, 1, 0, 4, out);
+        for (i = 0; i < k; i++) { CHECK(out[i] < 5); for (j = i + 1; j < k; j++) CHECK(out[i] != out[j]); }
+    }
+}
+
+TEST(tools_mix_balance_is_stable_and_never_moves_the_track_it_is_measured_by)
+{
+    DoomoSong s;
+    int mask, v;
+    for (mask = 1; mask < 16; mask++)
+        for (v = 0; v < 3; v++) {
+            int t, before[4], first;
+            fresh(&s);
+            for (t = 0; t < 4; t++) {
+                if (mask & (1 << t)) put(&s, 0, t, 0, t == 3 ? SONG_DRUM_KICK : 60);
+                s.vol[t] = (uint8_t)(v == 0 ? 15 : v == 1 ? 9 : 4 + t * 3);
+                before[t] = s.vol[t];
+            }
+            first = tl_mix_balance(&s);
+            (void)first;
+            CHECK_EQ(tl_mix_balance(&s), 0);                  /* a second press says "already balanced": no drift */
+            for (t = 0; t < 4; t++) {
+                CHECK(s.vol[t] >= 1 && s.vol[t] <= 15);
+                if (!(mask & (1 << t))) CHECK_EQ(s.vol[t], before[t]);      /* an empty track keeps its volume */
+            }
+        }
+    /* no lead: the bass is the measure and keeps its volume; the others follow it */
+    fresh(&s);
+    put(&s, 0, 2, 0, 40); put(&s, 0, 1, 0, 60);
+    s.vol[2] = 10; s.vol[1] = 14; s.vol[0] = 15;
+    CHECK(tl_mix_balance(&s) > 0);
+    CHECK_EQ(s.vol[2], 10);
+    CHECK(s.vol[1] < s.vol[2]);
+    CHECK_EQ(s.vol[0], 15);                                   /* the empty lead is left alone */
+}
+
+TEST(tools_phrase_write_and_chord_helpers_refuse_bad_places_without_writing)
+{
+    DoomoSong s;
+    uint8_t ph[16];
+    int i;
+    fresh(&s);
+    for (i = 0; i < 16; i++) ph[i] = (uint8_t)(60 + i);
+    CHECK_EQ(tl_phrase_write(&s, 0, -1, ph), 0);
+    CHECK_EQ(tl_phrase_write(&s, 0, 2, ph), 0);
+    CHECK_EQ(tl_phrase_write(&s, 0, 1, ph), 16);
+    CHECK_EQ(s.notes[0][0][16], 60); CHECK_EQ(s.notes[0][0][0], 0);
+    CHECK_EQ(tl_chord_clear(&s, 0, 4), 0);
+    CHECK_EQ(tl_chord_write(&s, 0, -1, 0), 0);
+}
+
+TEST(tools_chord_clear_and_repeat_work_on_half_bars)
+{
+    DoomoSong s;
+    int i;
+    fresh(&s);
+    CHECK(tl_chord_write(&s, 0, 1, 4) > 0);                   /* V in half bar 2 */
+    CHECK(tl_chord_repeat(&s, 0, 1) > 0);                     /* ... on to the end */
+    CHECK_EQ(tl_chord_at(&s, 0, 0), -1);
+    CHECK_EQ(tl_chord_at(&s, 0, 2), 4); CHECK_EQ(tl_chord_at(&s, 0, 3), 4);
+    CHECK_EQ(tl_chord_repeat(&s, 0, 1), 0);                   /* again: nothing changes */
+    CHECK_EQ(tl_chord_repeat(&s, 0, 0), 0);                   /* no chord to copy */
+    CHECK(tl_chord_clear(&s, 0, 2) > 0);
+    CHECK_EQ(tl_chord_at(&s, 0, 2), -1);
+    CHECK_EQ(tl_chord_at(&s, 0, 1), 4); CHECK_EQ(tl_chord_at(&s, 0, 3), 4);
+    for (i = 16; i < 24; i++) { CHECK_EQ(s.notes[0][2][i], 0); CHECK_EQ(s.notes[0][1][i], 0); }
+    CHECK_EQ(tl_chord_clear(&s, 0, 2), 0);
+}
+
+TEST(tools_drum_toggle_replaces_the_drum_on_a_step_and_lane_clear_takes_one_drum_out)
+{
+    DoomoSong s;
+    fresh(&s);
+    CHECK_EQ(tl_drum_toggle(&s, 0, 4, SONG_DRUM_KICK), SONG_DRUM_KICK);
+    CHECK_EQ(tl_drum_toggle(&s, 0, 4, SONG_DRUM_SNARE), SONG_DRUM_SNARE);   /* one drum per step: replaced */
+    CHECK_EQ(tl_drum_toggle(&s, 0, 4, SONG_DRUM_SNARE), 0);                 /* the same drum again: off */
+    CHECK_EQ(tl_drum_toggle(&s, 0, 4, 0), 0);
+    CHECK_EQ(tl_drum_toggle(&s, 0, 4, SONG_DRUM_COUNT), 0);                 /* no such drum: nothing happens */
+    CHECK_EQ(tl_drum_toggle(&s, 0, 36, SONG_DRUM_HAT), SONG_DRUM_HAT);      /* the step wraps into the pattern */
+    CHECK_EQ(s.notes[0][3][4], SONG_DRUM_HAT);
+    put(&s, 0, 3, 0, SONG_DRUM_KICK); put(&s, 0, 3, 8, SONG_DRUM_KICK);
+    CHECK_EQ(tl_drum_lane_clear(&s, 0, SONG_DRUM_KICK), 2);
+    CHECK_EQ(s.notes[0][3][4], SONG_DRUM_HAT);                              /* the other lanes stay */
+    CHECK_EQ(tl_drum_lane_clear(&s, 0, SONG_DRUM_KICK), 0);
+    CHECK_EQ(tl_drum_lane_clear(&s, 0, 0), 0);
+}
+
+static int sum_notes(void)
+{
+    int i, n = 0;
+    const uint8_t *b = (const uint8_t *)studio.song.notes;
+    for (i = 0; i < (int)sizeof(studio.song.notes); i++) n = n * 31 + b[i];
+    return n;
+}
+
+static void busy_pattern(void)
+{
+    int i;
+    for (i = 0; i < SONG_STEPS; i += 2) {
+        studio.song.notes[0][0][i] = (uint8_t)(60 + i % 7);
+        studio.song.notes[0][1][i] = (uint8_t)(55 + i % 5);
+        studio.song.notes[0][2][i] = (uint8_t)(40 + i % 3);
+        studio.song.notes[0][3][i] = (uint8_t)(1 + i % 8);
+    }
+}
+
+TEST(tools_every_range_tool_on_every_track_is_one_undo_step_and_undoes_to_the_exact_bytes)
+{
+    int item, trk;
+    for (trk = 0; trk < 4; trk++)
+        for (item = 1; item <= 9; item++) {
+            int before, steps;
+            open_notes();
+            busy_pattern();
+            studio.trk = (uint8_t)trk;
+            studio.stp = 21;
+            before = sum_notes();
+            tools(8, item);
+            steps = ed_undo_steps();
+            if (steps) {
+                CHECK(sum_notes() != before);                 /* a step means something really changed */
+                CHECK_EQ(steps, 1);
+                CHECK(ed_undo());
+            } else {
+                CHECK_EQ(sum_notes(), before);                /* no step means nothing changed */
+            }
+            CHECK_EQ(sum_notes(), before);
+            CHECK(ed_redo() == (steps ? 1 : 0));
+            if (steps) CHECK(sum_notes() != before);
+        }
+}
+
+TEST(tools_the_mark_follows_the_pattern_it_was_set_in)
+{
+    open_notes();
+    studio.stp = 31;
+    tools(8, 0);
+    CHECK_EQ(studio.rng_a, 31);
+    CHECK_STR(studio.msg, "Start at step 32. Now move");
+    msg_fits();
+    press(BTN_R);                                             /* another pattern: the mark is not carried over */
+    CHECK_EQ(studio.rng_a, -1);
+}
+
+TEST(tools_the_pattern_tools_move_a_track_with_a_message_and_no_step_when_it_cannot)
+{
+    open_notes();
+    studio.song.notes[0][0][0] = 60;
+    tools(5, -1);                                             /* Track up a step */
+    CHECK_EQ(studio.song.notes[0][0][0], 62);
+    CHECK_STR(studio.msg, "Track up a scale step");
+    CHECK_EQ(ed_undo_steps(), 1);
+    studio.song.notes[0][0][0] = SONG_NOTE_MAX;
+    tools(5, -1);
+    CHECK_STR(studio.msg, "Nothing to change there");
+    CHECK_EQ(ed_undo_steps(), 1);
+    studio.trk = 3;
+    tools(5, -1);
+    CHECK_STR(studio.msg, "Drums have no pitch");
+}
+
+/* the card: every menu of the tools has a help line for every item, and it fits */
+static void menu_has_help_that_fits(const char *what)
+{
+    int i, ok = 1;
+    if (!st_popup_open()) { printf("    menu %s is not open\n", what); ok = 0; }
+    CHECK(ok);
+    if (!ok) return;
+    CHECK(studio.pop_help != NULL);
+    if (!studio.pop_help) return;
+    for (i = 0; i < studio.pop_n; i++) {
+        CHECK(studio.pop_help[i] != NULL);
+        if (!studio.pop_help[i]) continue;
+        CHECK(strlen(studio.pop_help[i]) <= 36);
+        CHECK(ui_text_width(studio.pop_help[i]) + 16 <= 240 - 8);        /* the card is as wide as the longest help */
+        CHECK(ui_text_width(studio.pop_items[i]) + 30 <= 240 - 8);
+    }
+    CHECK(ui_text_width(studio.pop_title) + 20 <= 240 - 8);
+    CHECK(studio.pop_hw + 16 <= 240 - 8);
+}
+
+TEST(tools_every_menu_item_has_a_help_line_that_fits_the_card)
+{
+    open_notes();
+    frames(1, BTN_SELECT); frames(1, 0);
+    menu_has_help_that_fits("Pattern tools");
+    CHECK_EQ(studio.pop_n, 10);
+    pick(8);
+    menu_has_help_that_fits("Range tools");
+    press(BTN_B);
+    tools(9, -1);
+    menu_has_help_that_fits("Helper tools");
+    CHECK_EQ(studio.pop_n, 7);
+    pick(0);
+    menu_has_help_that_fits("Next chord");
+    pick(4);                                                  /* All chords... */
+    menu_has_help_that_fits("All chords");
+    press(BTN_B);
+    tools(9, 1);
+    menu_has_help_that_fits("Phrase");
+    press(BTN_B);
+    tools(9, 2);
+    menu_has_help_that_fits("Groove");
+    pick(8);
+    menu_has_help_that_fits("More grooves");
+    press(BTN_B);
+    tools(9, 3);
+    menu_has_help_that_fits("Harmony");
+    press(BTN_B);
+    st_set_tab(STAB_SONG); frames(2, 0); st_card_close(); frames(2, 0);
+    frames(1, BTN_SELECT); frames(1, 0);
+    menu_has_help_that_fits("Song tools");
+    press(BTN_B);
+    st_set_tab(STAB_ORDER); frames(2, 0);
+    frames(1, BTN_SELECT); frames(1, 0);
+    menu_has_help_that_fits("Arrange");
+    press(BTN_B);
+    st_set_tab(STAB_LYRICS); frames(2, 0);
+    frames(1, BTN_SELECT); frames(1, 0);
+    menu_has_help_that_fits("Lyric tools");
+    press(BTN_B);
+    st_set_tab(STAB_CHOIR); frames(2, 0);
+    frames(1, BTN_SELECT); frames(1, 0);
+    menu_has_help_that_fits("Quick fill");
+    press(BTN_B);
+}
+
+TEST(tools_the_help_line_changes_with_the_highlighted_item_and_a_plain_menu_has_none)
+{
+    open_notes();
+    frames(1, BTN_SELECT); frames(1, 0);
+    CHECK(studio.pop_help != NULL);
+    CHECK_EQ(studio.pop_sel, 0);
+    CHECK(strstr(studio.pop_help[studio.pop_sel], "pattern") != NULL);
+    press(BTN_DOWN);
+    CHECK_EQ(studio.pop_sel, 1);
+    CHECK(strstr(studio.pop_help[studio.pop_sel], "copied pattern") != NULL);
+    press(BTN_B);
+    st_popup("Plain", (const char *const[]){ "One", "Two" }, 2, 0, NULL);
+    CHECK(studio.pop_help == NULL);                           /* a menu that gives none shows none (and no stale one) */
+    press(BTN_B);
+}
+
+TEST(tools_drum_editor_puts_one_drum_per_step_in_its_lane_and_undoes_each_press)
+{
+    open_notes();
+    tools(9, 5);                                              /* Helper tools: Drum editor */
+    CHECK_EQ(studio.sub, SUB_DRUMS);
+    CHECK(strstr(studio.msg, "Drum editor") != NULL);
+    msg_fits();
+    press(BTN_A);                                             /* lane 0 = Kick, step 1 */
+    CHECK_EQ(studio.song.notes[0][3][0], SONG_DRUM_KICK);
+    CHECK_EQ(ed_undo_steps(), 1);
+    press(BTN_DOWN);                                          /* lane 1 = Snare */
+    press(BTN_A);
+    CHECK_EQ(studio.song.notes[0][3][0], SONG_DRUM_SNARE);    /* the step holds one drum: replaced */
+    CHECK_EQ(ed_undo_steps(), 2);
+    press(BTN_A);                                             /* the same lane again: off */
+    CHECK_EQ(studio.song.notes[0][3][0], 0);
+    press(BTN_RIGHT); press(BTN_RIGHT);
+    press(BTN_A);
+    CHECK_EQ(studio.stp, 2);
+    CHECK_EQ(studio.song.notes[0][3][2], SONG_DRUM_SNARE);
+    CHECK_EQ(studio.song.notes[0][0][2], 0);                  /* only the drums track is touched */
+    press(BTN_R);                                             /* another pattern */
+    CHECK_EQ(studio.pat, 1);
+    press(BTN_A);
+    CHECK_EQ(studio.song.notes[1][3][2], SONG_DRUM_SNARE);
+    CHECK_EQ(studio.song.notes[0][3][2], SONG_DRUM_SNARE);
+    CHECK(ed_undo());
+    CHECK_EQ(studio.song.notes[1][3][2], 0);
+    press(BTN_UP); press(BTN_UP);                             /* the lanes wrap: Snare up twice = Cow (the last) */
+    CHECK_EQ(studio.lane, 7);
+    press(BTN_L);
+    CHECK_EQ(studio.pat, 0);
+    press(BTN_B);                                             /* back to the grid */
+    CHECK_EQ(studio.sub, SUB_NONE);
+    press(BTN_A);                                             /* and A is a note again */
+    CHECK(studio.song.notes[0][0][2] >= 2);
+}
+
+TEST(tools_drum_editor_menu_grooves_clears_and_repeats_with_one_step_each)
+{
+    int i, kicks = 0;
+    open_notes();
+    tools(9, 5);
+    tools(1, -1);                                             /* Clear this lane: nothing there */
+    CHECK_STR(studio.msg, "Nothing to change there");
+    CHECK_EQ(ed_undo_steps(), 0);
+    tools(0, 0);                                              /* Pick a groove: Pop */
+    CHECK_EQ(studio.song.notes[0][3][0], SONG_DRUM_KICK);
+    CHECK_EQ(ed_undo_steps(), 1);
+    tools(1, -1);                                             /* the lane is Kick: its hits go */
+    CHECK_STR(studio.msg, "Lane cleared");
+    for (i = 0; i < SONG_STEPS; i++) kicks += studio.song.notes[0][3][i] == SONG_DRUM_KICK;
+    CHECK_EQ(kicks, 0);
+    CHECK(studio.song.notes[0][3][4] != 0);                   /* the snare stays */
+    CHECK_EQ(ed_undo_steps(), 2);
+    tools(3, -1);                                             /* Repeat bar 1 in bar 2 */
+    CHECK_STR(studio.msg, "Bar 1 repeated in bar 2");
+    for (i = 0; i < 16; i++) CHECK_EQ(studio.song.notes[0][3][16 + i], studio.song.notes[0][3][i]);
+    tools(3, -1);
+    CHECK_STR(studio.msg, "Nothing to change there");
+    tools(2, -1);                                             /* Clear all drums */
+    for (i = 0; i < SONG_STEPS; i++) CHECK_EQ(studio.song.notes[0][3][i], 0);
+    CHECK_STR(studio.msg, "Drums cleared");
+    CHECK_EQ(ed_undo_steps(), 4);
+    for (i = 0; i < 4; i++) CHECK(ed_undo());
+    for (i = 0; i < SONG_STEPS; i++) CHECK_EQ(studio.song.notes[0][3][i], 0);
+    tools(4, -1);                                             /* Loop this bar */
+    CHECK(strstr(studio.msg, "Looping bar 1") != NULL);
+    CHECK(song_playing());
+}
+
+TEST(tools_the_screens_close_with_the_tab_and_keep_the_notes_grid_prompts)
+{
+    UiPrompt pr[UI_PROMPTS_MAX];
+    int n;
+    open_notes();
+    n = tab_prompts(STAB_NOTES, pr);
+    CHECK(n >= 5);
+    tools(9, 6);                                              /* Chord track */
+    CHECK_EQ(studio.sub, SUB_CHORDS);
+    n = tab_prompts(STAB_NOTES, pr);
+    CHECK(n >= 4 && n <= UI_PROMPTS_MAX);
+    st_set_tab(STAB_PLAY);
+    CHECK_EQ(studio.sub, SUB_NONE);                           /* a tab opens on its main screen */
+    st_set_tab(STAB_NOTES);
+    CHECK_EQ(studio.sub, SUB_NONE);
+}
+
+TEST(tools_chord_track_shows_every_part_picks_a_chord_and_undoes)
+{
+    open_notes();
+    tools(9, 6);
+    CHECK_EQ(studio.sub, SUB_CHORDS);
+    press(BTN_RIGHT);                                         /* half bar 2 */
+    CHECK_EQ(studio.stp, 8);
+    press(BTN_A);                                             /* the chord menu: four that fit, all, clear */
+    CHECK_EQ(st_popup_open(), 1);
+    CHECK_EQ(studio.pop_n, 6);
+    press(BTN_A);                                             /* the first: the tonic starts a song, but not in half bar 2 */
+    CHECK(tl_chord_at(&studio.song, 0, 1) >= 0);
+    CHECK_EQ(ed_undo_steps(), 1);
+    CHECK(strstr(studio.msg, "half bar 2") != NULL);
+    press(BTN_DOWN);                                          /* part B */
+    CHECK_EQ(studio.pat, 1);
+    CHECK_EQ(studio.stp, 8);
+    press(BTN_A);
+    pick(4);                                                  /* All chords... */
+    CHECK_EQ(studio.pop_n, 7);
+    CHECK_STR(studio.pop_items[0], "C");
+    CHECK_STR(studio.pop_items[5], "Am");
+    pick(5);
+    CHECK_EQ(tl_chord_at(&studio.song, 1, 1), 5);
+    CHECK_EQ(ed_undo_steps(), 2);
+    press(BTN_A);                                             /* the same chord again: nothing to change */
+    pick(4); pick(5);
+    CHECK_EQ(ed_undo_steps(), 2);
+    CHECK(strstr(studio.msg, "already there") != NULL);
+    press(BTN_A);
+    pick(5);                                                  /* Clear this chord */
+    CHECK_EQ(tl_chord_at(&studio.song, 1, 1), -1);
+    CHECK_STR(studio.msg, "Chord cleared");
+    press(BTN_A);
+    pick(5);
+    CHECK_STR(studio.msg, "Nothing to change there");         /* clearing an empty half bar makes no step */
+    CHECK_EQ(ed_undo_steps(), 3);
+    CHECK(ed_undo()); CHECK(ed_undo()); CHECK(ed_undo());
+    CHECK_EQ(tl_chord_at(&studio.song, 1, 1), -1);
+    CHECK_EQ(tl_chord_at(&studio.song, 0, 1), -1);
+    press(BTN_B);
+    CHECK_EQ(studio.sub, SUB_NONE);
+}
+
+TEST(tools_chord_track_menu_repeats_clears_and_hears_the_part)
+{
+    int i;
+    open_notes();
+    tools(9, 6);
+    tools(0, -1);                                             /* SELECT: Pick a chord (opens the chord menu) ... */
+    press(BTN_A);                                             /* ... the first suggestion into half bar 1 */
+    CHECK_EQ(tl_chord_at(&studio.song, 0, 0), 0);
+    tools(2, -1);                                             /* Repeat to the end */
+    for (i = 1; i < 4; i++) CHECK_EQ(tl_chord_at(&studio.song, 0, i), 0);
+    CHECK_STR(studio.msg, "Chord repeated to the end");
+    tools(2, -1);
+    CHECK_STR(studio.msg, "Nothing to change there");
+    tools(1, -1);                                             /* Clear this chord (half bar 1) */
+    CHECK_EQ(tl_chord_at(&studio.song, 0, 0), -1);
+    tools(3, -1);                                             /* Hear this part */
+    CHECK(song_playing());
+    CHECK(strstr(studio.msg, "Looping part A") != NULL);
+}
+
+TEST(tools_the_new_screens_draw_without_overflowing_a_narrow_row)
+{
+    int sc;
+    for (sc = 0; sc < 2; sc++) {
+        open_notes();
+        studio.song.notes[0][3][0] = SONG_DRUM_KICK;
+        tl_chord_write(&studio.song, 0, 0, 5);
+        tl_chord_write(&studio.song, 1, 3, 6);
+        tools(9, sc ? 6 : 5);
+        frames(3, 0);
+        studio.stp = 31;                                      /* the last step / the last half bar */
+        studio.lane = 7;
+        studio.pat = 3;
+        frames(3, 0);
+        CHECK_EQ(studio.sub, sc ? SUB_CHORDS : SUB_DRUMS);
+        press(BTN_B);
+    }
 }

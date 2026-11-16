@@ -105,6 +105,8 @@ typedef struct Studio {
     uint8_t  kb_flash, kb_note;
     int8_t   clip_pat, clip_trk;
     int8_t   rng_a;             /* ST-TOOLS: the marked start step of the range tools, -1 = none (the cursor's bar) */
+    uint8_t  sub, lane;         /* ST-TOOLS: 0 the grid, SUB_DRUMS the drum editor, SUB_CHORDS the chord track (NOTES). Their
+                                 * cursor: studio.pat (the pattern), studio.stp (the step), studio.lane (the drum lane 0..7) */
     /* ORDER */
     uint8_t  osel, otop;
     uint8_t  o_a;               /* ORDER: the A press that may become a tap (not one that chose a menu item) */
@@ -132,6 +134,8 @@ typedef struct Studio {
     uint32_t pop_lock;
     const char *pop_title;
     const char *pop_items[10];   /* ST-TOOLS: up to 10 (the Pattern tools menu) */
+    const char *const *pop_help; /* ST-TOOLS: the one-line help of each item, the card's last line (NULL = none) */
+    uint16_t pop_hw;             /* the widest of them, in px */
     StudioPopDone pop_done;
     /* toast-ish message bubble */
     uint16_t msg_t;
@@ -184,6 +188,7 @@ int  st_popup_open(void);
 void st_set_tab(int tab);
 void st_play_from(int order_pos);       /* toggles: stops if playing     */
 void st_stop(void);
+void st_popup_help(const char *const *help);   /* ST-TOOLS: call right after st_popup: the card's last line says what the highlighted item does */
 void studio_try_leave(void);
 /* undo journal: ed_touch() the bytes (inside studio.song) an edit is about
  * to change, change them, then ed_commit(). */
@@ -301,6 +306,21 @@ int  st_level(void);
 void st_level_set(int level);
 
 
+/* ---- studio_grid.c (ST-TOOLS): the drum editor and the chord track, two screens of the NOTES tab ---------------- */
+enum { SUB_NONE, SUB_DRUMS, SUB_CHORDS };
+void st_sub_open(int sub);
+void st_sub_update(void);
+void st_sub_draw(StRect r);
+int  st_sub_prompts(UiPrompt *p);
+/* studio_edit.c: shared by the two screens */
+typedef int (*ToolFn)(DoomoSong *s, const int *a);
+int  st_tool_apply(void *reg, int len, ToolFn fn, const int *a);   /* one undo step, none when nothing changes: returns the cells changed */
+void st_tool_done(int n, const char *ok);
+void st_pattern_pills(int x, int y);
+void st_groove_menu(void);
+void st_chord_menu(void);
+void st_drum_hear(int p);                                /* the first drum hit of the pattern sounds */
+
 /* ---- studio_tools.c (ST-TOOLS): pure edits on a song; the caller ed_touch()es the cells and ed_commit()s. Each returns
  * the cells it changed (0 = nothing to do). Ranges are steps [from, to) of track t of pattern p. */
 void tl_range(int mark, int stp, int *from, int *to);      /* the mark..cursor range, or the cursor's bar */
@@ -311,10 +331,15 @@ int  tl_clear(DoomoSong *s, int p, int t, int from, int to);
 int  tl_reverse(DoomoSong *s, int p, int t, int from, int to);
 int  tl_stretch(DoomoSong *s, int p, int t, int from, int to, int faster);
 int  tl_degree(const DoomoSong *s, int midi);
+int  tl_chord_count(const DoomoSong *s);
 int  tl_chord_at(const DoomoSong *s, int p, int h);        /* half bar h 0..3: the chord's degree, -1 none */
 int  tl_suggest_chords(const DoomoSong *s, int p, int h, int n, uint8_t out[4]);
 void tl_chord_name(const DoomoSong *s, int deg, char *buf, int cap);
 int  tl_chord_write(DoomoSong *s, int p, int h, int deg);
+int  tl_chord_clear(DoomoSong *s, int p, int h);           /* the half bar's chord taken out */
+int  tl_chord_repeat(DoomoSong *s, int p, int h);          /* its chord copied to the half bars after it */
+int  tl_drum_toggle(DoomoSong *s, int p, int stp, int drum);   /* the drum editor's cell: set / take out; the new value */
+int  tl_drum_lane_clear(DoomoSong *s, int p, int drum);
 void tl_phrase(const DoomoSong *s, int p, int bar, int variant, uint8_t out[16]);
 int  tl_phrase_write(DoomoSong *s, int p, int bar, const uint8_t ph[16]);
 int  tl_groove_write(DoomoSong *s, int p, int g, int with_fill);

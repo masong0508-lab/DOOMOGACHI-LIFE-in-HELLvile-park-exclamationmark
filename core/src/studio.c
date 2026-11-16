@@ -97,6 +97,7 @@ void st_set_tab(int tab)
     studio.tab = (uint8_t)tab;
     studio.tab_t = 0;
     studio.a_edit = 0;
+    studio.sub = SUB_NONE;                      /* ST-TOOLS: a tab opens on its main screen */
     st_help_arm();
     audio_sfx(SFX_CURSOR);
 }
@@ -438,8 +439,20 @@ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
     while (studio.pop_sel < n - 1 && (lock & (1u << studio.pop_sel))) studio.pop_sel++;
     studio.pop_lock = lock;
     studio.pop_done = done;
+    studio.pop_help = NULL;
+    studio.pop_hw = 0;
     studio.pop_t = 0;
     audio_sfx(SFX_BLIP);
+}
+
+/* ST-TOOLS: the help of the highlighted item is the last line of the card (inside it, so the held frame of a popup
+ * repaints it: the bar under the popup is part of the kept page). The card is as wide as the longest of them. */
+void st_popup_help(const char *const *help)
+{
+    int i, w = 0;
+    studio.pop_help = help;
+    if (help) for (i = 0; i < studio.pop_n; i++) if (help[i]) w = DOOMO_MAX(w, ui_text_width(help[i]));
+    studio.pop_hw = (uint16_t)w;
 }
 
 int st_popup_open(void) { return studio.pop_n != 0; }
@@ -465,13 +478,18 @@ static void popup_update(void)
     }
 }
 
+/* the rows of a long menu (9 or 10 items: the Pattern tools) are 11 px apart, so the card with its help line fits
+ * the 160 px screen */
+static int pop_pitch(void) { return studio.pop_n >= 9 ? 11 : 12; }
+
 static void popup_rect(int *x, int *y, int *w, int *h)
 {
     int i;
     *w = 0;
     for (i = 0; i < studio.pop_n; i++) *w = DOOMO_MAX(*w, ui_text_width(studio.pop_items[i]));
     *w = DOOMO_MAX(*w + 30, ui_text_width(studio.pop_title) + 20);
-    *h = studio.pop_n * 12 + 24;
+    if (studio.pop_help) *w = DOOMO_MAX(*w, studio.pop_hw + 16);
+    *h = studio.pop_n * pop_pitch() + 24 + (studio.pop_help ? 14 : 0);
     *x = (plat_screen_w() - *w) / 2;
     *y = (plat_screen_h() - *h) / 2;
 }
@@ -494,14 +512,19 @@ static void popup_draw(void)
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, studio.pop_t)) return;
     ui_title(sw / 2, y - 5, studio.pop_title, WIN_CUTE);
     for (i = 0; i < studio.pop_n; i++) {
-        int yy = y + 13 + i * 12, locked = (studio.pop_lock >> i) & 1;
+        int pit = pop_pitch(), yy = y + 13 + i * pit, locked = (studio.pop_lock >> i) & 1;
         if (i == studio.pop_sel) {
-            ui_round_rect(x + 5, yy - 2, w - 10, 12, 3, st->accent);
+            ui_round_rect(x + 5, yy - 2, w - 10, pit, 3, st->accent);
             ui_cursor(x + 7, yy);
         }
         ui_text(x + 18, yy, studio.pop_items[i],
                 locked ? st->text_dim : (i == studio.pop_sel ? PAL_WHITE : st->text));
         if (locked) ui_text(x + w - 14, yy, STR_ICON_X, st->text_dim);
+    }
+    if (studio.pop_help && studio.pop_help[studio.pop_sel]) {       /* ST-TOOLS: what the highlighted item does */
+        int fy = y + 13 + studio.pop_n * pop_pitch();
+        plat_rect(x + 8, fy, w - 16, 1, st->text_dim);
+        ui_text(x + 8, fy + 3, studio.pop_help[studio.pop_sel], st->text);
     }
 }
 

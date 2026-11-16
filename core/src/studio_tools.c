@@ -194,6 +194,9 @@ int tl_stretch(DoomoSong *s, int p, int t, int from, int to, int faster)
 }
 
 /* ---- chord suggester ------------------------------------------------------------------------------------------- */
+/* how many chords the song's scale has (7; 5 for the pentatonic, 6 for the blues) */
+int tl_chord_count(const DoomoSong *s) { return deg_count(s); }
+
 /* the degree (0..) of a note in the song's scale; -1 if it is not a scale note */
 int tl_degree(const DoomoSong *s, int midi)
 {
@@ -225,16 +228,30 @@ static const uint8_t next_of[7][4] = {
     { 0, 5, 3, 2 }, { 3, 1, 4, 0 }, { 0, 2, 5, 4 },
 };
 
-/* up to n (<= 4) chord degrees that fit after half bar h of pattern p (the half bar before it; the tonic starts a song) */
+/* the pattern played just before p in the order list (the first time p is played), -1 when p opens the song; a
+ * pattern the order never plays has no before: the one numbered before it */
+static int pattern_before(const DoomoSong *s, int p)
+{
+    int i;
+    for (i = 0; i < s->order_len; i++)
+        if ((s->order[i] & 3) == (p & 3)) return i > 0 ? s->order[i - 1] & 3 : -1;
+    return (p + 3) & 3;
+}
+
+/* up to n (<= 4) chord degrees that fit after half bar h of pattern p (the half bar before it, in the pattern that
+ * plays before it for h = 0; the tonic starts a song). Every degree is a chord of the song's scale. */
 int tl_suggest_chords(const DoomoSong *s, int p, int h, int n, uint8_t out[4])
 {
-    int prev = h > 0 ? tl_chord_at(s, p, h - 1) : tl_chord_at(s, (p + 3) & 3, 3), i, k = 0, cnt = deg_count(s);
+    int cnt = deg_count(s), i, k = 0, prev = -1, pb;
+    static const uint8_t start[4] = { 0, 3, 4, 5 };
     n = DOOMO_CLAMP(n, 1, 4);
-    if (prev < 0) { static const uint8_t start[4] = { 0, 3, 4, 5 }; for (i = 0; i < n; i++) out[i] = start[i]; return n; }
+    if (h > 0) prev = tl_chord_at(s, p, h - 1);
+    else if ((pb = pattern_before(s, p)) >= 0) prev = tl_chord_at(s, pb, 3);
     for (i = 0; i < 4 && k < n; i++) {
-        int d = next_of[prev % 7][i];
+        int d = prev < 0 ? start[i] : next_of[prev % 7][i], j, dup = 0;
         if (cnt < 7) d %= cnt;                      /* a pentatonic song has fewer chords to choose from */
-        { int j, dup = 0; for (j = 0; j < k; j++) if (out[j] == d) dup = 1; if (!dup) out[k++] = (uint8_t)d; }
+        for (j = 0; j < k; j++) if (out[j] == d) dup = 1;
+        if (!dup) out[k++] = (uint8_t)d;
     }
     return k;
 }
@@ -245,10 +262,13 @@ void tl_chord_name(const DoomoSong *s, int deg, char *buf, int cap)
     int root = deg_note(s, tonic_at(s, 60), deg), third = deg_note(s, tonic_at(s, 60), deg + 2);
     char nm[6];
     int i;
+    if (cap < 1) return;
     song_note_name(root, nm);
     for (i = 0; nm[i] && !(nm[i] >= '0' && nm[i] <= '9') && nm[i] != '-'; i++) {}
     nm[i] = 0;
-    doomo_snprintf(buf, (size_t)cap, "%s%s", nm, (third - root) % 12 == 3 ? "m" : "");
+    for (i = 0; nm[i] && i < cap - 1; i++) buf[i] = nm[i];             /* no printf: the chord screen names 16 cells a frame */
+    if ((third - root) % 12 == 3 && i < cap - 1) buf[i++] = 'm';
+    buf[i] = 0;
 }
 
 /* write chord `deg` into half bar h of pattern p: the bass plays the root (held), the harmony the third above it
@@ -268,6 +288,47 @@ int tl_chord_write(DoomoSong *s, int p, int h, int deg)
     return n;
 }
 
+/* take the chord out of half bar h of pattern p (the bass and the harmony rest there); cells changed */
+int tl_chord_clear(DoomoSong *s, int p, int h)
+{
+    int i, n = 0;
+    if (h < 0 || h > 3) return 0;
+    for (i = h * 8; i < h * 8 + 8; i++) {
+        if (row(s, p, 2)[i]) { row(s, p, 2)[i] = 0; n++; }
+        if (row(s, p, 1)[i]) { row(s, p, 1)[i] = 0; n++; }
+    }
+    return n;
+}
+
+/* the chord of half bar h written into every half bar after it in the pattern; cells changed (0: no chord there) */
+int tl_chord_repeat(DoomoSong *s, int p, int h)
+{
+    int d = tl_chord_at(s, p, h), k, n = 0;
+    if (d < 0) return 0;
+    for (k = h + 1; k < 4; k++) n += tl_chord_write(s, p, k, d);
+    return n;
+}
+
+/* ---- drum editor ------------------------------------------------------------------------------------------------ */
+/* One drum per step (the format has one drums cell per step). Toggle `drum` (1..8) at step stp of pattern p: set it
+ * (replacing another drum there) or, when it is already there, take it out. Returns the new cell value. */
+int tl_drum_toggle(DoomoSong *s, int p, int stp, int drum)
+{
+    uint8_t *c = row(s, p, 3) + (stp & 31);
+    if (drum < 1 || drum >= SONG_DRUM_COUNT) return *c;
+    *c = (uint8_t)(*c == drum ? 0 : drum);
+    return *c;
+}
+
+/* every hit of one drum taken out of pattern p; cells changed */
+int tl_drum_lane_clear(DoomoSong *s, int p, int drum)
+{
+    uint8_t *c = row(s, p, 3);
+    int i, n = 0;
+    for (i = 0; i < SONG_STEPS; i++) if (c[i] == drum && drum > 0) { c[i] = 0; n++; }
+    return n;
+}
+
 /* ---- melody helper ----------------------------------------------------------------------------------------------- */
 void studio_phrase(const DoomoSong *s, int base, int chord0, int chord1, uint32_t seed, uint8_t out[16]);
 
@@ -284,9 +345,10 @@ void tl_phrase(const DoomoSong *s, int p, int bar, int variant, uint8_t out[16])
 
 int tl_phrase_write(DoomoSong *s, int p, int bar, const uint8_t ph[16])
 {
-    uint8_t *c = row(s, p, 0) + bar * 16;
+    uint8_t *c;
     int i, n = 0;
     if (bar < 0 || bar > 1) return 0;
+    c = row(s, p, 0) + bar * 16;
     for (i = 0; i < 16; i++) { if (c[i] != ph[i]) n++; c[i] = ph[i]; }
     return n;
 }
@@ -358,18 +420,33 @@ int tl_free_pattern(const DoomoSong *s, int src)
 }
 
 /* ---- mix helper ------------------------------------------------------------------------------------------------- */
-/* the balance by role: the lead on top, the bass under it, the harmony and the drums behind; scaled so the loudest
- * track keeps the song's level (the largest of the four volumes). Returns the number of tracks whose volume changed. */
+/* the balance by role: the lead on top, the bass under it, the drums and the harmony behind. The reference is the
+ * lead's volume (raised to the loudest track's, so the song keeps its level); a song without a lead takes the first
+ * track it has in the order bass, drums, harmony and keeps that one's volume. Either way the reference never moves,
+ * so a second run changes nothing. Returns the number of tracks whose volume changed. */
 int tl_mix_balance(DoomoSong *s)
 {
     static const uint8_t role[SONG_TRACKS] = { 12, 8, 10, 9 };      /* of 12 */
-    int t, top = 0, n = 0;
-    for (t = 0; t < SONG_TRACKS; t++) top = DOOMO_MAX(top, s->vol[t]);
-    top = DOOMO_CLAMP(top, 8, 15);
+    static const uint8_t ref_order[SONG_TRACKS] = { 0, 2, 3, 1 };
+    uint8_t used[SONG_TRACKS];
+    int t, i, ref = -1, top, n = 0;
     for (t = 0; t < SONG_TRACKS; t++) {
-        int any = 0, i, v;
-        for (i = 0; i < SONG_PATTERNS * SONG_STEPS; i++) if (s->notes[i / SONG_STEPS][t][i % SONG_STEPS] >= 1) any = 1;
-        if (!any) continue;                         /* an empty track keeps what it has */
+        used[t] = 0;
+        for (i = 0; i < SONG_PATTERNS * SONG_STEPS; i++)
+            if (s->notes[i / SONG_STEPS][t][i % SONG_STEPS] >= (t == 3 ? 1 : 2)) { used[t] = 1; break; }
+    }
+    for (i = 0; i < SONG_TRACKS && ref < 0; i++) if (used[ref_order[i]]) ref = ref_order[i];
+    if (ref < 0) return 0;                          /* nothing is played: nothing to balance */
+    if (ref == 0) {
+        top = 0;
+        for (t = 0; t < SONG_TRACKS; t++) if (used[t]) top = DOOMO_MAX(top, s->vol[t]);
+        top = DOOMO_CLAMP(top, 8, 15);
+    } else {
+        top = (s->vol[ref] * 12 + role[ref] / 2) / role[ref];       /* the level the lead would have */
+    }
+    for (t = 0; t < SONG_TRACKS; t++) {
+        int v;
+        if (!used[t] || (ref > 0 && t == ref)) continue;            /* an empty track keeps its volume; the reference stays */
         v = DOOMO_CLAMP((role[t] * top + 6) / 12, 1, 15);
         if (s->vol[t] != v) { s->vol[t] = (uint8_t)v; n++; }
     }
