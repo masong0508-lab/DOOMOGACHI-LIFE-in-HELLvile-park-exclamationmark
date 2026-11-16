@@ -371,6 +371,7 @@ static void do_pass_del(int at)
 static void to_mix_view(void) { studio.aview = 2; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 static void to_expert_view(void) { studio.aview = 3; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 static void to_part_view(void) { studio.aview = 1; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
+static void to_lyric_view(void) { studio.aview = 5; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 
 static void arrange_tools(int c)
 {
@@ -448,7 +449,8 @@ static void arrange_update(void)
     if (studio.osel >= studio.otop + vis) studio.otop = (uint8_t)(studio.osel - vis + 1);
 }
 
-static int part_rows(void) { return 4 + X->sect[cur_sec()].npat + (X->sect[cur_sec()].npat < SX_SECT_PATS ? 1 : 0); }
+static int part_lyric_row(void) { return 4 + X->sect[cur_sec()].npat + (X->sect[cur_sec()].npat < SX_SECT_PATS ? 1 : 0); }   /* the last row opens the lyric lines */
+static int part_rows(void) { return part_lyric_row() + 1; }
 
 static void part_adjust(int d)
 {
@@ -482,7 +484,8 @@ static void part_update(void)
     if (btn_repeat(BTN_RIGHT)) part_adjust(1);
     if (btn_pressed(BTN_A)) {
         int row = studio.asel;
-        if (row >= 4 + npat) do_pass_add(npat - 1);                  /* the "+ Add a pass" row */
+        if (row == part_lyric_row()) to_lyric_view();
+        else if (row >= 4 + npat) do_pass_add(npat - 1);                  /* the "+ Add a pass" row */
         else if (row >= 4) do_pass_add(row - 4);                     /* a pass: another one just after it */
         else part_adjust(1);                                       /* the settings: A is the same as RIGHT */
     }
@@ -500,6 +503,88 @@ static void part_update(void)
     if (vis < 3) vis = 3;
     if (studio.asel < studio.atop) studio.atop = studio.asel;
     if (studio.asel >= studio.atop + vis) studio.atop = (uint8_t)(studio.asel - vis + 1);
+}
+
+/* ---- the Lyric lines view: which lyric line each pass of a part sings ------------------------------------------------------
+ * A part names a lyric line (1..8, or none = instrumental) for each of its first SX_LINES passes (pass k + 4 repeats pass k).
+ * LEFT / RIGHT / A change the line; the line's words are shown beside it. SELECT: fill the passes from the song's lines, clear,
+ * hear the part. Every change is one undo step (the lines are part of the arrangement's bytes). */
+static int ly_rows(void) { return DOOMO_MIN((int)X->sect[cur_sec()].npat, SX_LINES); }
+static int ly_choice(const SxSection *c, int pass) { return c->line[pass] < SONG_LYRIC_LINES ? c->line[pass] + 1 : 0; }   /* 0 = instrumental */
+static int e_line(SongExt *x, int sec, int packed)               /* packed = pass * 16 + choice (0 instrumental, 1..8 = line 1..8) */
+{
+    int pass = packed / 16, ch = packed % 16;
+    if (pass >= SX_LINES || ch > SONG_LYRIC_LINES) return 0;
+    x->sect[sec].line[pass] = ch ? (uint8_t)(ch - 1) : (uint8_t)SX_NO_LINE;
+    return 1;
+}
+static int e_lines_clear(SongExt *x, int sec, int unused) { (void)unused; memset(x->sect[sec].line, SX_NO_LINE, SX_LINES); return 1; }
+static int e_lines_fill(SongExt *x, int sec, int start)         /* the next lines that have words, from `start`, on the part's passes */
+{
+    int k, l, tries, n = DOOMO_MIN((int)x->sect[sec].npat, SX_LINES), put = 0;
+    uint8_t out[SX_LINES];
+    memset(out, SX_NO_LINE, sizeof(out));
+    l = start % SONG_LYRIC_LINES;
+    for (k = 0; k < n; k++) {
+        for (tries = 0; tries < SONG_LYRIC_LINES && !SS->lyrics[l][0]; tries++) l = (l + 1) % SONG_LYRIC_LINES;
+        if (!SS->lyrics[l][0]) return 0;                           /* the song has no words at all */
+        out[k] = (uint8_t)l;
+        l = (l + 1) % SONG_LYRIC_LINES;
+        put++;
+    }
+    if (!put) return 0;
+    memcpy(x->sect[sec].line, out, SX_LINES);
+    return 1;
+}
+static void ly_adjust(int d)
+{
+    int sec = cur_sec(), pass = studio.asel, ch = ly_choice(&X->sect[sec], pass);
+    if (pass >= ly_rows()) return;
+    if (adv_edit(e_line, sec, pass * 16 + (ch + d + SONG_LYRIC_LINES + 1) % (SONG_LYRIC_LINES + 1), AK(0x120 + pass))) audio_sfx(SFX_CURSOR);
+}
+static void ly_fill(void)
+{
+    int sec = cur_sec(), i, n = X->arrange_len, hi = -1, k;
+    for (i = 0; i < n; i++) {                                       /* continue after the highest line the other parts sing */
+        int o = sec_of(X, i);
+        if (o == sec) continue;
+        for (k = 0; k < SX_LINES; k++) if (X->sect[o].line[k] < SONG_LYRIC_LINES && X->sect[o].line[k] > hi) hi = X->sect[o].line[k];
+    }
+    if (adv_edit(e_lines_fill, sec, hi + 1, -1)) { st_msg("Lines filled in"); audio_sfx(SFX_SELECT); }
+    else { st_msg("Write some lyrics first"); audio_sfx(SFX_ERROR); }
+}
+static void ly_clear(void)
+{
+    if (adv_edit(e_lines_clear, cur_sec(), 0, -1)) { st_msg("Instrumental part"); audio_sfx(SFX_SELECT); }
+}
+static void ly_tools(int c)
+{
+    switch (c) {
+    case 0: ly_fill(); break;
+    case 1: ly_clear(); break;
+    case 2:
+        if (song_playing()) song_stop();
+        st_adv_play(songx_entry_pass(X, studio.osel), -1);
+        break;
+    default: break;
+    }
+}
+static void lyric_update(void)
+{
+    int rows = ly_rows();
+    if (studio.asel >= rows) studio.asel = (uint8_t)(rows - 1);
+    if (btn_pressed(BTN_B)) { studio.aview = 1; studio.asel = (uint8_t)part_lyric_row(); studio.atop = 0; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_repeat(BTN_UP)) { studio.asel = (uint8_t)((studio.asel + rows - 1) % rows); audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_DOWN)) { studio.asel = (uint8_t)((studio.asel + 1) % rows); audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_LEFT)) ly_adjust(-1);
+    if (btn_repeat(BTN_RIGHT)) ly_adjust(1);
+    if (btn_pressed(BTN_A)) ly_adjust(1);
+    if (studio_sel_tap) {
+        static const char *const items[3] = { "Fill from the lyrics", "All instrumental", "Hear this part" };
+        static const char *const help[3] = { "The next lines that have words.", "No words on this part.", "Play from this part." };
+        st_popup("Lyric lines", items, 3, 0, ly_tools);
+        st_popup_help(help);
+    }
 }
 
 /* ---- the Mix view: pan, sound (envelope) and swing per track, and the lead brightness of the part ------------------------- */
@@ -1274,7 +1359,7 @@ void tab_order_adv_update(void)
     b_eaten = 0;
     if (!X->version) return;
     if (X->arrange_len < 1 || studio.osel >= X->arrange_len) studio.osel = 0;
-    if (studio.aview == 4) grid_update(); else if (studio.aview == 3) expert_update(); else if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
+    if (studio.aview == 5) lyric_update(); else if (studio.aview == 4) grid_update(); else if (studio.aview == 3) expert_update(); else if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
 }
 
 /* ---- draw ------------------------------------------------------------------------------------------------------------- */
@@ -1387,6 +1472,11 @@ static void part_draw(StRect r)
             if (ph >= 0 && songx_entry_of_pass(X, ph) == studio.osel && ph - songx_entry_pass(X, studio.osel) == pass)
                 ui_heart(vx + 22, y + 5, 3 + (song_beat_age() < 3), PAL_PAINT(PAINT_ROSE, 1));
             continue;
+        } else if (row == part_lyric_row()) {
+            int k, sung = 0;
+            for (k = 0; k < ly_rows(); k++) if (c->line[k] < SONG_LYRIC_LINES) sung++;
+            lab = "Lyric lines";
+            doomo_snprintf(buf, sizeof(buf), "%d of %d sung  >", sung, ly_rows());
         } else {
             lab = "+ Add a pass";
             buf[0] = 0;
@@ -1441,17 +1531,63 @@ static void mix_draw(StRect r)
     ui_text(r.x + 12, r.y + r.h - 14, "Sound and light play. Pan, swing: saved.", st->text_dim);
 }
 
+static void fit_text(char *out, int cap, const char *src, int maxw)
+{
+    int k = 0;
+    while (src[k] && k < cap - 1) {
+        out[k] = src[k]; out[k + 1] = 0;
+        if (ui_text_width(out) > maxw) { out[k] = 0; break; }
+        k++;
+    }
+    out[k] = 0;
+}
+
+static void lyric_draw(StRect r)
+{
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int rh = st_wide() ? 15 : 12, sec = cur_sec(), rows = ly_rows(), i, ph = song_playing() ? song_pos_order() : -1;
+    const SxSection *c = &X->sect[sec];
+    char buf[40], txt[SONG_LYRIC_LEN];
+    int y0 = r.y + 6 + rh + 4, vx = r.x + 62, wx = r.x + 118;
+    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+    chip(r.x + 12, r.y + 5, 46, sec, 0);
+    ui_text(r.x + 66, r.y + 6, "Lyric lines", st->text_dim);
+    for (i = 0; i < rows; i++) {
+        int y = y0 + i * rh, sel = i == studio.asel, line = c->line[i];
+        uint8_t tc = sel ? PAL_WHITE : st->text;
+        if (sel) { ui_round_rect(r.x + 4, y - 1, r.w - 8, 12, 4, st->accent); ui_cursor(r.x + 5, y + 1); }
+        doomo_snprintf(buf, sizeof(buf), "Pass %d", i + 1);
+        ui_text(r.x + 16, y + 1, buf, tc);
+        ui_round_rect(vx - 2, y, 14, 10, 3, st_pattern_color(c->pat[i], 0));
+        ui_round_rect(vx - 1, y + 1, 12, 8, 2, st_pattern_color(c->pat[i], 1));
+        { char l[2] = { pat_ch(c->pat[i]), 0 }; ui_text(vx + 2, y + 1, l, PAL_WHITE); }
+        if (line < SONG_LYRIC_LINES) doomo_snprintf(buf, sizeof(buf), "< %d >", line + 1); else doomo_snprintf(buf, sizeof(buf), "< - >");
+        ui_text(vx + 18, y + 1, buf, tc);
+        if (line < SONG_LYRIC_LINES) fit_text(txt, (int)sizeof(txt), SS->lyrics[line][0] ? SS->lyrics[line] : "(no words yet)", r.x + r.w - 12 - wx);
+        else fit_text(txt, (int)sizeof(txt), "instrumental", r.x + r.w - 12 - wx);
+        ui_text(wx, y + 1, txt, sel ? PAL_WHITE : st->text_dim);
+        if (ph >= 0 && songx_entry_of_pass(X, ph) == studio.osel && ph - songx_entry_pass(X, studio.osel) == i)
+            ui_heart(r.x + r.w - 10, y + 5, 3 + (song_beat_age() < 3), PAL_PAINT(PAINT_ROSE, 1));
+    }
+    ui_text(r.x + 12, r.y + r.h - 14, c->npat > SX_LINES ? "Passes 5 to 8 sing passes 1 to 4 again." : "Pick the line each pass sings.", st->text_dim);
+}
+
 void tab_order_adv_draw(StRect r)
 {
     if (!X->version) return;
-    if (studio.aview == 4) grid_draw(r); else if (studio.aview == 3) expert_draw(r); else if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
+    if (studio.aview == 5) lyric_draw(r); else if (studio.aview == 4) grid_draw(r); else if (studio.aview == 3) expert_draw(r); else if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
 }
 
 int st_adv_prompts(UiPrompt *p)
 {
     int n = 0;
 #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
-    if (studio.aview == 4) {
+    if (studio.aview == 5) {
+        PR(BTN_LEFT | BTN_RIGHT, 0, "Line");
+        PR(BTN_START, 1, st_play_verb());
+        PR(BTN_SELECT, 2, "Tools");
+        PR(BTN_B, 3, "Back");
+    } else if (studio.aview == 4) {
         PR(BTN_A, 0, "Note on / off");
         PR(BTN_L | BTN_R, 1, "Track");
         PR(BTN_START, 2, st_play_verb());
@@ -1468,7 +1604,7 @@ int st_adv_prompts(UiPrompt *p)
         PR(BTN_B, 3, "Back");
     } else if (studio.aview) {
         PR(BTN_LEFT | BTN_RIGHT, 0, "Change");
-        PR(BTN_A, 1, studio.asel >= 4 ? "Add a pass" : "Next");
+        PR(BTN_A, 1, studio.asel == part_lyric_row() ? "Open" : studio.asel >= 4 ? "Add a pass" : "Next");
         PR(BTN_START, 2, st_play_verb());
         PR(BTN_SELECT, 3, "Tools");
         PR(BTN_B, 4, "Back");

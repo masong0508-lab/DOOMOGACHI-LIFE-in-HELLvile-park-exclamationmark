@@ -1397,6 +1397,98 @@ TEST(adv_keys_the_key_menu_and_the_pass_rows)
     st_level_set(0);
 }
 
+/* from the arrangement: open the part, go down to its last row (it comes after the passes and the add row) and open the lyric lines */
+static void open_lyric_view(void)
+{
+    int i, n, row;
+    press(BTN_A);                                              /* the part view */
+    n = studio.xw.sect[0].npat;
+    row = 4 + n + (n < SX_SECT_PATS ? 1 : 0);
+    for (i = 0; i < row; i++) press(BTN_DOWN);
+    press(BTN_A);
+}
+
+TEST(adv_lyric_view_opens_from_the_part_view_sets_a_line_and_b_goes_back)
+{
+    int k;
+    open_adv(4);
+    for (k = 0; k < 8; k++) snprintf(studio.song.lyrics[k], sizeof(studio.song.lyrics[k]), "line number %d", k + 1);
+    studio.xw.sect[0].line[0] = SX_NO_LINE;
+    open_lyric_view();
+    CHECK_EQ(studio.aview, 5);
+    press(BTN_RIGHT);                                          /* instrumental -> line 1 */
+    CHECK_EQ(studio.xw.sect[0].line[0], 0);
+    press(BTN_RIGHT); press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.sect[0].line[0], 2);
+    press(BTN_LEFT); press(BTN_LEFT); press(BTN_LEFT);         /* line 2, line 1, then instrumental */
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
+    press(BTN_LEFT);                                           /* ... and on round to line 8 */
+    CHECK_EQ(studio.xw.sect[0].line[0], 7);
+    CHECK(ed_undo());                                          /* the nudges of one pass are one undo step */
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 1);                                 /* back to the part, not out of the studio */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    CHECK(st_adv_on());
+    st_level_set(0);
+}
+
+TEST(adv_lyric_view_a_line_set_here_is_the_one_the_lyrics_tab_finds)
+{
+    int k, sc;
+    open_adv(4);
+    for (k = 0; k < 8; k++) snprintf(studio.song.lyrics[k], sizeof(studio.song.lyrics[k]), "la la %d", k);
+    for (sc = 0; sc < studio.xw.sections; sc++) memset(studio.xw.sect[sc].line, SX_NO_LINE, SX_LINES);
+    CHECK_EQ(st_adv_line_pass(2), -1);                         /* nobody sings line 3 yet */
+    open_lyric_view();
+    press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT);      /* pass 1 of the first part: line 3 */
+    CHECK_EQ(studio.xw.sect[studio.xw.arrange[0]].line[0], 2);
+    CHECK_EQ(st_adv_line_pass(2), 0);                          /* ... which is the first pass of the song */
+    st_level_set(0);
+}
+
+TEST(adv_lyric_view_fill_clear_and_empty_lyrics)
+{
+    int s, k, n;
+    open_adv(4);
+    for (s = 0; s < studio.xw.sections; s++) memset(studio.xw.sect[s].line, SX_NO_LINE, SX_LINES);
+    for (k = 0; k < 8; k++) studio.song.lyrics[k][0] = 0;
+    open_lyric_view();
+    n = studio.xw.sect[0].npat < SX_LINES ? studio.xw.sect[0].npat : SX_LINES;
+    press(BTN_SELECT); pick(0);                                /* no words anywhere: nothing to fill, no undo step */
+    CHECK(strstr(studio.msg, "lyrics first") != NULL);
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
+    for (k = 0; k < 8; k++) snprintf(studio.song.lyrics[k], sizeof(studio.song.lyrics[k]), "words %d", k);
+    press(BTN_SELECT); pick(0);                                /* fill: the lines 1, 2, 3 ... in order */
+    for (k = 0; k < n; k++) CHECK_EQ(studio.xw.sect[0].line[k], k);
+    press(BTN_SELECT); pick(1);                                /* all instrumental */
+    for (k = 0; k < SX_LINES; k++) CHECK_EQ(studio.xw.sect[0].line[k], SX_NO_LINE);
+    CHECK(ed_undo());                                          /* clear is one step ... */
+    for (k = 0; k < n; k++) CHECK_EQ(studio.xw.sect[0].line[k], k);
+    CHECK(ed_undo());                                          /* ... and so is the fill */
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
+    st_level_set(0);
+}
+
+TEST(adv_lyric_lines_are_saved_with_the_page)
+{
+    uint8_t buf[2048];
+    SongExt y;
+    int n;
+    open_adv(4);
+    studio.xw.sect[0].line[0] = 4;
+    studio.xw.sect[0].line[1] = SX_NO_LINE;
+    studio.xw.sect[0].line[2] = 7;
+    n = (int)songx_encode(&studio.song, &studio.xw, buf, (uint32_t)sizeof(buf));
+    CHECK(n > 0);
+    memset(&y, 0, sizeof(y));
+    CHECK(songx_decode(&studio.song, &y, buf, (uint32_t)n));
+    CHECK_EQ(y.sect[0].line[0], 4);
+    CHECK_EQ(y.sect[0].line[1], SX_NO_LINE);
+    CHECK_EQ(y.sect[0].line[2], 7);
+    st_level_set(0);
+}
+
 TEST(adv_mix_view_edits_pan_sound_swing_and_brightness_one_undo_step_each)
 {
     open_adv(4);

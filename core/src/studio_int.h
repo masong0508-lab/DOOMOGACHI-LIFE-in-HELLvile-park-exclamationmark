@@ -99,7 +99,7 @@ typedef struct Studio {
     DoomoSong song;             /* the working song                          */
 #if STUDIO_ADV
     SongExt  xw;                /* ST-ADV: the working arrangement (version 0 = none: a classic song); MUST follow `song` */
-    uint8_t  aview, asel, atop; /* ORDER (Advanced): 0 the arrangement, 1 one part, 2 Mix, 3 Expert, 4 Note grid; its cursor and top row */
+    uint8_t  aview, asel, atop; /* ORDER (Advanced): 0 the arrangement, 1 one part, 2 Mix, 3 Expert, 4 Note grid, 5 Lyric lines; its cursor and top row */
 #endif
     uint32_t t;                 /* ticks in the studio                       */
     uint16_t tab_t;             /* ticks since the tab opened                */

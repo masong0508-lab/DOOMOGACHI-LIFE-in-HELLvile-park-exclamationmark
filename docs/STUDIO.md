@@ -527,6 +527,15 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   **Brightness** (a part's lead): as set / 1 = 50 % pulse, 2 = 25 %, 3 = 12 % (thinner, brighter). Not played: pan (the players have no stereo for the PSG voices) and per-track swing
   (the step clock is shared; the song's swing still applies). The Mix screen footer now says so (\"Sound and light play. Pan, swing: saved.\"). Cost: +3 B in the player state, a few lines of code
   (PS1 resident share: re-measure). Test: `song_ext_sound_shapes_change_how_a_note_dies_away` (`test_song_ext.c`). Brightness has no test (the native platform does not record the wave).
+- **Lyric lines (2026-11-16):** the part view's last row, "Lyric lines  n of m sung  >" (A), opens a screen with one row per pass of the part (the first 4: a part
+  names a line for pass k, and pass k + 4 sings the same one). Each row shows the pass, its pattern, the line (`< 3 >`, or `< - >` for instrumental) and the line's words
+  cut to fit (\"(no words yet)\" for an empty line). LEFT / RIGHT / A step instrumental, line 1..8 and round again; UP / DOWN pick the pass; B goes back to the part view
+  with the cursor on the row. SELECT tools: **Fill from the lyrics** (the next lines that have words on this part's passes, starting after the highest line the other
+  parts sing; \"Write some lyrics first\" and no change when the song has no words), **All instrumental**, **Hear this part**. Each change is one undo step (nudges of one
+  pass join); the lines were already saved with the page. LYRICS tab, fit badges and PERFORM follow the lines at once (`st_adv_line_pass`). Code: `studio_adv.c` (\"the Lyric
+  lines view\"), `studio.aview` 5. Tests (`test_studio_tools.c`): `adv_lyric_view_opens_from_the_part_view_sets_a_line_and_b_goes_back`,
+  `adv_lyric_view_a_line_set_here_is_the_one_the_lyrics_tab_finds`, `adv_lyric_view_fill_clear_and_empty_lyrics`, `adv_lyric_lines_are_saved_with_the_page`.
+  Not run: GBA / PS1 / DC builds, GBA sizes and the speed window of the new view (ROM only: no new `.bss`). Not built: more than 8 lyric lines, naming a part's singers here.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
 - **Not done:** pan and per-track swing playback, the per-note velocity bar, patterns of 1..4 bars.
