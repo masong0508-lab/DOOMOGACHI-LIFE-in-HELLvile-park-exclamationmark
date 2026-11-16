@@ -1202,6 +1202,89 @@ TEST(adv_the_page_is_saved_with_the_song_and_loads_back)
 #endif
 
 #if STUDIO_ADV
+/* ---- ST-ADV: the Start card's Epic length (64 bars) and the FILE fold line ------------------------------------------- */
+TEST(adv_start_card_offers_epic_only_on_advanced)
+{
+    open_notes();
+    st_level_set(0);
+    st_set_tab(STAB_SONG);
+    st_card_open();
+    st_easy()->csel = 3;                                       /* Length */
+    st_easy()->length = SLEN_LONG;
+    press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->length, SLEN_SHORT);                   /* Easy stops at Long and wraps */
+    st_level_set(1);
+    st_easy()->length = SLEN_LONG;
+    press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->length, SLEN_EPIC);
+    press(BTN_RIGHT);
+    CHECK_EQ(st_easy()->length, SLEN_SHORT);
+    st_card_close();
+    st_level_set(0);
+}
+
+TEST(adv_epic_make_lays_out_64_bars_and_undo_takes_it_back_in_two_steps)
+{
+    DoomoSong before;
+    open_notes();
+    st_level_set(1);
+    ed_reset();
+    before = studio.song;
+    st_set_tab(STAB_SONG);
+    st_card_open();
+    st_easy()->length = SLEN_EPIC;
+    st_easy()->csel = 5;                                       /* Make it! */
+    press(BTN_A);
+    CHECK(st_adv_on());
+    CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
+    CHECK_EQ(songx_len(&studio.xw), 32);                       /* 32 passes of 2 bars = 64 bars */
+    CHECK_EQ(studio.xw.arrange_len, 8);
+    CHECK(st_adv_ticks() > song_length_ticks(&studio.song));   /* longer than the classic 16 passes */
+    CHECK(ed_undo());                                          /* first the arrangement ... */
+    CHECK(!st_adv_on());
+    CHECK(ed_undo());                                          /* ... then the take */
+    CHECK(memcmp(&studio.song, &before, sizeof before) == 0);
+    CHECK(ed_redo());
+    CHECK(ed_redo());
+    CHECK(st_adv_on());
+    CHECK_EQ(songx_len(&studio.xw), 32);
+    song_stop();
+    st_level_set(0);
+}
+
+TEST(adv_epic_on_easy_falls_back_to_long)
+{
+    open_notes();
+    st_level_set(1);
+    st_set_tab(STAB_SONG);
+    st_card_open();
+    st_easy()->length = SLEN_EPIC;
+    st_level_set(0);                                           /* switched back before Make it! */
+    st_easy()->csel = 5;
+    press(BTN_A);
+    CHECK(!st_adv_on());
+    CHECK_EQ(studio.song.order_len, SONG_ORDER_MAX);
+    song_stop();
+}
+
+TEST(adv_file_fold_message_only_when_tracks_exceed_the_console)
+{
+    char buf[96];
+    open_notes();
+    st_level_set(1);
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    CHECK(st_adv_on());
+    CHECK_EQ(st_adv_folded(buf, (int)sizeof(buf)), 0);         /* 4 tracks: nothing to say */
+    studio.xw.tracks = 8;
+    CHECK_EQ(st_adv_folded(buf, (int)sizeof(buf)), 8 - songx_tracks_max());
+    CHECK(strstr(buf, "mixed in") != NULL);
+    studio.xw.tracks = 4;
+    st_level_set(0);
+}
+#endif
+
+#if STUDIO_ADV
 /* ---- ST-ADV: the screen's own keys ---------------------------------------------------------------------------------- */
 static void open_adv(int order_len)
 {

@@ -21,7 +21,7 @@ static const char *const style_names[MUSIC_COUNT] = {
 };
 static const char *const mood_names[SMOOD_COUNT] = { "Happy", "Sweet", "Sad", "Spooky", "Fierce" };
 static const char *const tempo_names[STEMPO_COUNT] = { "Slow", "Medium", "Fast", "Frantic" };
-static const char *const length_names[SLEN_COUNT] = { "Short", "Song", "Long" };
+static const char *const length_names[SLEN_COUNT + 1] = { "Short", "Song", "Long", "Epic" };
 /* mood -> key mode + key: major C, soft pentatonic F, minor A, harmonic minor E, blues D.
  * (Tables of 8 bytes or less would land in the PS1's resident .sdata; this one is 10 bytes: overlay rodata.) */
 static const struct { uint8_t scale, key; } mood_tab[SMOOD_COUNT] = {
@@ -32,7 +32,7 @@ static const struct { uint8_t scale, key; } mood_tab[SMOOD_COUNT] = {
 const char *studio_style_name(int style) { return style_names[DOOMO_CLAMP(style, 0, MUSIC_COUNT - 1)]; }
 const char *studio_mood_name(int mood) { return mood_names[DOOMO_CLAMP(mood, 0, SMOOD_COUNT - 1)]; }
 const char *studio_tempo_name(int tempo) { return tempo_names[DOOMO_CLAMP(tempo, 0, STEMPO_COUNT - 1)]; }
-const char *studio_length_name(int length) { return length_names[DOOMO_CLAMP(length, 0, SLEN_COUNT - 1)]; }
+const char *studio_length_name(int length) { return length_names[DOOMO_CLAMP(length, 0, SLEN_EPIC)]; }
 
 int studio_pick_bpm(int style, int tempo)
 {
@@ -108,8 +108,9 @@ static void make(StEasy *ez, int shuffle)
     studio_make_song(SS, &p);
     ed_commit();
     ed_mark_make(&p);
+    if (p.length == SLEN_EPIC && !st_adv_epic()) { ez->length = SLEN_LONG; p.length = SLEN_LONG; }   /* a second step: undo takes it back first */
     studio.slot = -1;
-    song_play_at(SS, -1, 0, 0);
+    st_adv_play(0, -1);                        /* the arrangement when Epic made one */
     audio_sfx(SFX_SPARKLE);
     if (shuffle) {
         st_msg("%s %s, take %u", studio_mood_name(p.mood), studio_style_name(p.style), (unsigned)(p.seed % 100));
@@ -125,7 +126,11 @@ static void change(StEasy *ez, int row, int d)
     case CR_STYLE: ez->style = (uint8_t)((ez->style + d + MUSIC_COUNT) % MUSIC_COUNT); break;
     case CR_MOOD: ez->mood = (uint8_t)((ez->mood + d + SMOOD_COUNT) % SMOOD_COUNT); break;
     case CR_TEMPO: ez->tempo = (uint8_t)((ez->tempo + d + STEMPO_COUNT) % STEMPO_COUNT); break;
-    case CR_LENGTH: ez->length = (uint8_t)((ez->length + d + SLEN_COUNT) % SLEN_COUNT); break;
+    case CR_LENGTH: {
+        int n = SLEN_COUNT + (STUDIO_ADV && st_level() ? 1 : 0);      /* Epic (64 bars) only on Advanced */
+        ez->length = (uint8_t)((ez->length + d + n) % n);
+        break;
+    }
     default: return;
     }
     audio_sfx(SFX_CURSOR);
@@ -198,7 +203,7 @@ void st_card_draw(StRect r)
             case CR_STYLE: v = studio_style_name(ez->style); break;
             case CR_MOOD: v = studio_mood_name(ez->mood); break;
             case CR_TEMPO: v = studio_tempo_name(ez->tempo); bpm = studio_pick_bpm(ez->style, ez->tempo); break;
-            default: v = studio_length_name(ez->length); bpm = -studio_pick_passes(ez->length) * 2; break;
+            default: v = studio_length_name(ez->length); bpm = -(ez->length == SLEN_EPIC ? 64 : studio_pick_passes(ez->length) * 2); break;
             }
             ui_text(r.x + 14, ty, labels[i], sel ? PAL_WHITE : st->text_dim);
             if (bpm > 0) doomo_snprintf(buf, sizeof(buf), "%s %s %s  %d bpm", sel ? "<" : " ", v, sel ? ">" : " ", bpm);

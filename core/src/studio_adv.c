@@ -178,6 +178,27 @@ static int e_from_order(SongExt *x, int a, int b)
     return 1;
 }
 
+/* Epic: the made song as 8 parts of 4 passes = 32 passes = 64 bars: Verse, Chorus, Verse, Chorus, Bridge, Chorus, Chorus, Outro */
+static int e_epic(SongExt *x, int a, int b)
+{
+    static const uint8_t arr[8] = { 0, 1, 0, 1, 2, 1, 1, 3 };
+    (void)a; (void)b;
+    songx_from_order(x, SS);
+    if (x->sections < 4) return 0;
+    memcpy(x->arrange, arr, sizeof(arr));
+    x->arrange_len = 8;
+    return 1;
+}
+
+int st_adv_epic(void)
+{
+    if (!st_level()) return 0;
+    if (!X->version) memset(X, 0, sizeof(*X));
+    return adv_edit(e_epic, 0, 0, -1);
+}
+
+int st_adv_folded(char *buf, int cap) { return X->version ? songx_folded(X, buf, cap) : 0; }
+
 int st_adv_try_open(void)
 {
     int cls = studio.osel, dirty = studio.dirty, ok;
@@ -608,6 +629,8 @@ int st_adv_saved(int slot) { (void)slot; return 1; }
 void st_adv_play(int pos, int singer) { song_play_at(SS, singer, pos, 0); }
 int st_adv_pass_of_cursor(void) { return studio.osel; }
 uint32_t st_adv_ticks(void) { return song_length_ticks(SS); }
+int st_adv_epic(void) { return 0; }
+int st_adv_folded(char *buf, int cap) { (void)buf; (void)cap; return 0; }
 const SongExt *st_adv_ext(void) { return NULL; }
 int st_adv_line_pattern(int line)
 {

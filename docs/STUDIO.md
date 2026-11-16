@@ -463,6 +463,15 @@ Not done: the Advanced screens (sections and arrangement on ORDER, key / tempo /
 fold message), a working copy of the `SongExt` in the scene scratch, per-track pan / envelope / swing playback (stored only),
 the brightness, the note grid, free notes, the expert views, patterns of 1..4 bars.
 
+## ST-ADV: Epic length and the FILE fold line (2026-11-16)
+Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio_file.c`. Tests: `adv_start_card_offers_epic_only_on_advanced`,
+`adv_epic_make_lays_out_64_bars_and_undo_takes_it_back_in_two_steps`, `adv_epic_on_easy_falls_back_to_long`, `adv_file_fold_message_only_when_tracks_exceed_the_console`.
+- **Epic:** on Advanced (host and Dreamcast builds) the Start card's Length also offers Epic, 64 bars: the made song (16 passes) is laid out as an
+  8-entry arrangement of Verse, Chorus, Verse, Chorus, Bridge, Chorus, Chorus, Outro (32 passes). It is a second undo step after the take. On Easy
+  or on the GBA / PS1 it falls back to Long.
+- **FILE:** when the open arrangement has more tracks than the console plays, the FILE tab shows "Extra tracks are mixed in" (full text from `songx_folded`).
+- Still open: LYRICS tab positions for arrangement passes beyond the 16 classic, arrangement-aware autofit / auto parts, per-track pan / envelope playback.
+
 ## ST-ADV screens: the Advanced ORDER tab (2026-11-16, host and Dreamcast builds)
 Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in the player. Where `SONGX_BOOK_PAGES` is 0 (GBA, PS1)
 `STUDIO_ADV` is 0, `studio.xw` does not exist and `studio_adv.c` compiles only no-op stubs: the ORDER tab stays classic there.

@@ -316,7 +316,9 @@ void tab_file_draw(StRect r)
         if (i == SONG_BOOK_SIZE - 1) plat_rect(r.x + 10, y + rowh + 1, lw - 20, 1, st->fill_hi);
     }
     if (FR_COUNT > vis) ui_scroll_arrows(r.x + lw - 8, r.y + 3, r.y + r.h - 3, top > 0, top + vis < FR_COUNT);
-    if (wide) {
+    if (st_adv_folded(buf, (int)sizeof(buf))) {
+        ui_text(r.x + 8, r.y + r.h - (wide ? 11 : 10), "Extra tracks are mixed in", st->text_dim);
+    } else if (wide) {
         doomo_snprintf(buf, sizeof(buf), "Saved %d  Shows %d  Inspired %d", studio_stats.saved,
                        studio_stats.performed, studio_stats.inspired);
         ui_text(r.x + 8, r.y + r.h - 11, buf, st->text_dim);

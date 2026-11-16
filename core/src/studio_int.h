@@ -286,14 +286,15 @@ void stage_leave(void);
 /* ---- studio_start.c / studio_easy.c / studio_help.c (ST-EASY) --------------------- */
 enum { SMOOD_HAPPY, SMOOD_SWEET, SMOOD_SAD, SMOOD_SPOOKY, SMOOD_FIERCE, SMOOD_COUNT };
 enum { STEMPO_SLOW, STEMPO_MEDIUM, STEMPO_FAST, STEMPO_FRANTIC, STEMPO_COUNT };
-enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT };
+enum { SLEN_SHORT, SLEN_SONG, SLEN_LONG, SLEN_COUNT, SLEN_EPIC = SLEN_COUNT };   /* Epic (64 bars) is Advanced only: an arrangement of 8 parts */
 typedef struct StartPick { uint8_t style, mood, tempo, length; uint32_t seed; } StartPick;
 /* A whole working song from four picks and a seed: a pure function of (picks, the song's choir and words). */
 void studio_make_song(DoomoSong *s, const StartPick *p);
 void ed_mark_make(const StartPick *p);          /* the step just committed was studio_make_song(p): redo recomposes it */
 int  ed_undo_make(void);                        /* take back the top step if it is that make (no redo kept); 1 = done */
 int  studio_pick_bpm(int style, int tempo);
-int  studio_pick_passes(int length);            /* order passes (2 bars each) */
+int  studio_pick_passes(int length);
+int  st_adv_folded(char *buf, int cap);        /* FILE: the fold message of the open arrangement (0 = nothing to say) */            /* order passes (2 bars each) */
 const char *studio_style_name(int style);        /* the friendly short name */
 const char *studio_mood_name(int mood);
 const char *studio_tempo_name(int tempo);
@@ -336,6 +337,7 @@ int  st_adv_pass_of_cursor(void);      /* ORDER's cursor as a pass number */
 uint32_t st_adv_ticks(void);           /* the whole song in 30 Hz ticks: the arrangement's (tempo per part) or the classic order's */
 const SongExt *st_adv_ext(void);       /* the arrangement for the Concert Hall, NULL for a classic song */
 int  st_adv_line_pattern(int line);    /* the pattern (0..3) the song sings lyric line `line` over, -1 = never or not in the 4 classic ones */
+int  st_adv_epic(void);                /* Advanced, after a take: lay the made song out as a 64-bar arrangement (one undo step); 1 = did */
 int  st_adv_try_open(void);            /* the ORDER tab opened on Advanced: make the arrangement from the classic order; 1 = did */
 void tab_order_adv_update(void);
 void tab_order_adv_draw(StRect r);
