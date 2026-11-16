@@ -1073,3 +1073,130 @@ TEST(tools_the_screens_have_a_help_line_and_a_control_card_that_fit)
         CHECK(!st_help_is_open());
     }
 }
+
+/* ---- ST-ADV: the Advanced ORDER screen's helpers and its place in the studio (undo, take, save) -------------------- */
+TEST(adv_from_order_plays_like_the_classic_order)
+{
+    DoomoSong s;
+    SongExt x;
+    int i, sec, pass;
+    fresh(&s);
+    s.order_len = 11;
+    for (i = 0; i < 11; i++) s.order[i] = (uint8_t)((i * 3 + 1) & 3);
+    songx_from_order(&x, &s);
+    songx_sanitize(&x);                                        /* (fills the unused spare parts) */
+    CHECK_EQ(songx_sanitize(&x), 0);                           /* ... and then nothing is left to fix */
+    CHECK_EQ(x.sections, 3);                                   /* 4 + 4 + 3 passes */
+    CHECK_EQ(songx_len(&x), 11);
+    for (i = 0; i < 11; i++) {
+        CHECK_EQ(songx_at(&x, i, &sec, &pass), s.order[i]);
+        CHECK_EQ(x.sect[sec].line[pass & 3], SONG_LINE_OF(i));  /* the same lyric line */
+    }
+    CHECK_EQ(songx_ticks(&s, &x), song_length_ticks(&s));
+}
+
+TEST(adv_arrangement_insert_remove_and_entry_passes)
+{
+    DoomoSong s;
+    SongExt x;
+    int n;
+    fresh(&s);
+    s.order_len = 8;
+    songx_from_order(&x, &s);                                  /* two parts of 4 passes */
+    CHECK_EQ(songx_entry_pass(&x, 1), 4);
+    CHECK_EQ(songx_entry_of_pass(&x, 3), 0);
+    CHECK_EQ(songx_entry_of_pass(&x, 4), 1);
+    CHECK(songx_arrange_insert(&x, 1, 0));                     /* part 0 again, between */
+    CHECK_EQ(x.arrange_len, 3);
+    CHECK_EQ(songx_entry_pass(&x, 2), 8);
+    CHECK_EQ(songx_sect_users(&x, 0), 2);
+    n = songx_section_dup(&x, 1);
+    CHECK_EQ(n, 2);
+    CHECK_EQ(x.sect[2].npat, x.sect[1].npat);
+    CHECK(songx_arrange_remove(&x, 2));                        /* the last entry (part 1) goes... */
+    CHECK_EQ(x.arrange_len, 2);
+    CHECK_EQ(songx_sect_users(&x, 1), 0);
+    CHECK(x.sections >= 2);
+    CHECK(songx_arrange_remove(&x, 0));
+    CHECK(!songx_arrange_remove(&x, 0));                       /* never the last entry */
+    CHECK_EQ(x.arrange_len, 1);
+    songx_sanitize(&x);
+    CHECK_EQ(songx_sanitize(&x), 0);
+    CHECK_EQ(songx_len(&x), x.sect[x.arrange[0]].npat);
+}
+
+#if STUDIO_ADV
+TEST(adv_order_tab_opens_the_arrangement_once_and_undo_reaches_it)
+{
+    int key0;
+    open_notes();
+    studio.song.order_len = 8;
+    st_level_set(1);
+    studio.dirty = 0;
+    CHECK(!st_adv_on());
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    CHECK(st_adv_on());
+    CHECK_EQ(studio.dirty, 0);                                 /* opening is not an edit */
+    CHECK_EQ(songx_len(&studio.xw), 8);
+    key0 = studio.xw.sect[0].key;
+    ed_touch(&studio.xw.sect[0].key, 1);                       /* an edit of the arrangement is one undo step */
+    studio.xw.sect[0].key = 3;
+    ed_commit();
+    CHECK(ed_undo());
+    CHECK_EQ(studio.xw.sect[0].key, key0);
+    CHECK(ed_redo());
+    CHECK_EQ(studio.xw.sect[0].key, 3);
+    st_set_tab(STAB_NOTES);                                    /* leaving and coming back keeps it */
+    st_set_tab(STAB_ORDER);
+    CHECK(st_adv_on());
+    CHECK_EQ(studio.xw.sect[0].key, 3);
+    st_level_set(0);
+}
+
+TEST(adv_a_take_drops_the_arrangement_in_the_same_undo_step)
+{
+    open_notes();
+    st_level_set(1);
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    CHECK(st_adv_on());
+    ed_reset();
+    ed_touch(SS, (int)sizeof(DoomoSong));
+    st_adv_take();
+    ed_commit();
+    CHECK(!st_adv_on());
+    CHECK(ed_undo());                                          /* one undo brings the arrangement back */
+    CHECK(st_adv_on());
+    st_level_set(0);
+}
+
+TEST(adv_the_page_is_saved_with_the_song_and_loads_back)
+{
+    DoomoSong *dst = &doomo_song_book[2];
+    int key;
+    open_notes();
+    st_level_set(1);
+    studio.song.order_len = 6;
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    ed_touch(&studio.xw.sect[0].key, 1);
+    studio.xw.sect[0].key = 2;
+    ed_commit();
+    *dst = studio.song;
+    dst->flags |= SONGF_VALID | SONGF_CUSTOM;
+    CHECK(st_adv_saved(2));
+    CHECK(songx_book_has(2));
+    studio.xw.version = 0;                                     /* as after a new song */
+    st_adv_enter(2);
+    CHECK(st_adv_on());
+    key = studio.xw.sect[0].key;
+    CHECK_EQ(key, 2);
+    st_adv_enter(-1);                                          /* a song not from the book is classic */
+    CHECK(!st_adv_on());
+    songx_book_drop(2);
+    CHECK(st_adv_saved(2));                                    /* a classic song saves fine and keeps no page */
+    CHECK(!songx_book_has(2));
+    st_level_set(0);
+}
+#endif
