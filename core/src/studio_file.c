@@ -15,6 +15,7 @@ static int pending_slot, pending_tpl;
 static void save_to(int slot)
 {
     DoomoSong *dst = &doomo_song_book[slot];
+    songx_book_drop(slot);                      /* the studio edits the classic song: an old arrangement would not match it */
     *dst = studio.song;
     dst->flags |= SONGF_VALID | SONGF_CUSTOM;
     song_sanitize(dst);
@@ -45,6 +46,7 @@ static void confirm_delete(int c)
 {
     if (c != 1) return;
     memset(&doomo_song_book[pending_slot], 0, sizeof(DoomoSong));
+    songx_book_drop(pending_slot);
     if (studio.slot == pending_slot) studio.slot = -1;
     st_msg("Page %d is blank again", pending_slot + 1);
     audio_sfx(SFX_CANCEL);

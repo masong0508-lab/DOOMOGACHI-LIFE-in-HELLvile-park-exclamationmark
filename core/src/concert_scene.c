@@ -20,6 +20,7 @@
  */
 #include "concert_int.h"
 #include "doomo/plat_ext.h"
+#include "doomo/song_ext.h"
 
 enum { CS_SETUP, CS_INTRO, CS_SHOW, CS_ENCORE_ASK, CS_ENCORE, CS_BOW, CS_RESULTS, CS_PARADE };
 enum { ROW_ACT, ROW_GENRE, ROW_STAGE, ROW_SIZE, ROW_LAYOUT, ROW_TAKE, ROW_START, ROW_COUNT };
@@ -443,6 +444,7 @@ static void edit_in_studio(void)
         audio_sfx(SFX_ERROR);
         return;
     }
+    songx_book_drop(slot);
     concert_song_export(&C.song, &C.cast, &doomo_song_book[slot]);
     C.exported = 1;
     concert_play_silence();

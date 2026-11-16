@@ -26,6 +26,7 @@
  * (~130 audio_voice_freq calls) - bounded.
  */
 #include "doomo/doomo.h"
+#include "doomo/song_ext.h"
 
 DOOMO_STATIC_ASSERT(SONG_WAVES == (int)WAVE_COUNT, song_waves_match);
 DOOMO_STATIC_ASSERT((int)SONG_KIT_CLASSIC == (int)WAVE_NOISE, kit_classic_is_noise);
@@ -511,10 +512,12 @@ typedef struct { uint16_t freq; uint8_t vol, wave, valid; } Sent;
 /* (field order packs the struct: the GBA's EWRAM is full, ST-PLAY added the range and jam fields at no cost) */
 static struct {
     const DoomoSong *s;
+    const SongExt *x;         /* ST-ADV: the Advanced arrangement, NULL = the classic song */
     int16_t  over;            /* singer override (resident id) or -1        */
     int16_t  prev_music;      /* background song to restore                  */
     uint8_t  on, solo, solo_pat;
-    uint8_t  ord, step;
+    uint16_t ord;
+    uint8_t  step;
     uint8_t  rfrom, rto;      /* range loop (song_play_range): steps rfrom..rto-1 of the solo pattern */
     uint8_t  beat_age;
     uint32_t acc;             /* units into the current step                 */
@@ -585,14 +588,41 @@ static int cur_pattern(void)
 {
     const DoomoSong *s = P.s;
     if (P.solo) return P.solo_pat;
+    if (P.x) return songx_at(P.x, P.ord, 0, 0);
     return s->order[DOOMO_MIN(P.ord, SONG_ORDER_MAX - 1)] % SONG_PATTERNS;
 }
 
 static int order_len(void)
 {
+    if (P.x) return songx_len(P.x);
     return DOOMO_CLAMP(P.s->order_len, 1, SONG_ORDER_MAX);
 }
 
+/* ST-ADV: a cell of pattern p, track t (0..3 = a lane), step i. With an arrangement the extra tracks 5..8 are folded onto the
+ * lane they are heard on, where that lane is empty at the step (a folded track never replaces a played note). */
+static int cell(int p, int t, int i)
+{
+    int v, k;
+    if (!P.x) return P.s->notes[p][t][i];
+    v = songx_cell(P.s, P.x, p, t, i);
+    if (v) return v;
+    for (k = SONG_TRACKS; k < P.x->tracks && k < SX_TRACKS; k++)
+        if (songx_lane_of(k) == t) {
+            v = songx_cell(P.s, P.x, p, k, i);
+            if (v) return v;
+        }
+    return 0;
+}
+
+/* the section the pass is in, its place in the section (0..npat-1) and the fraction through it in 1/256 */
+static int sect_now(int *pass, int *frac)
+{
+    int sec, ps;
+    songx_at(P.x, P.ord, &sec, &ps);
+    if (pass) *pass = ps;
+    if (frac) *frac = (ps * SONG_STEPS + P.step) * 256 / (P.x->sect[sec].npat * SONG_STEPS);
+    return sec;
+}
 static uint32_t step_units(int step)
 {
     uint32_t sw = (uint32_t)DOOMO_MIN(P.s->swing, 8) * 450u;
@@ -766,8 +796,12 @@ static void begin_line(void)
     const DoomoSong *s = P.s;
     int line = -1, k;
     if (P.solo) {
-        for (k = 0; k < order_len(); k++)
+        for (k = 0; k < DOOMO_CLAMP(s->order_len, 1, SONG_ORDER_MAX); k++)
             if (s->order[k] % SONG_PATTERNS == P.solo_pat) { line = SONG_LINE_OF(k); break; }
+    } else if (P.x) {
+        int pass, sec = sect_now(&pass, 0);
+        line = P.x->sect[sec].line[pass % SX_LINES];       /* SX_NO_LINE (0xFF) = an instrumental pass */
+        if (line == SX_NO_LINE) line = -1;
     } else {
         line = SONG_LINE_OF(P.ord);
     }
@@ -799,18 +833,24 @@ static void drum_on(int d)
 static void do_step(void)
 {
     const DoomoSong *s = P.s;
-    int pat = cur_pattern(), t, v;
+    int pat = cur_pattern(), t, v, shift = 0, fade = 256;
+    if (P.x) {
+        int sec = sect_now(0, &fade);
+        shift = P.x->sect[sec].key;
+        fade = P.x->sect[sec].fade == SX_FADE_IN ? fade : P.x->sect[sec].fade == SX_FADE_OUT ? 256 - fade : 256;
+    }
     if (P.step == 0) begin_line();
     if ((P.step & 3) == 0) P.beat_age = 0;
     for (t = 0; t < 3; t++) {
-        v = s->notes[pat][t][P.step];
+        v = cell(pat, t, P.step);
+        if (v >= 2 && shift) v = DOOMO_CLAMP(v + shift, 2, 127);
         if (v == SONG_REST) {
             P.note[t] = 0;
             if (t == 0) { P.singing = 0; P.harm = 0; }
         } else if (v >= 2) {
             P.note[t] = (uint8_t)v;
             P.age[t] = 0;
-            P.base[t] = s->vol[t];
+            P.base[t] = (uint8_t)(fade < 256 ? DOOMO_MAX(1, s->vol[t] * fade / 256) : s->vol[t]);
             P.wave[t] = (uint8_t)(s->wave[t] < SONG_WAVES ? s->wave[t] : WAVE_PULSE50);
             if (t == 0) {
                 if (P.mask && P.over < 0) {
@@ -824,7 +864,7 @@ static void do_step(void)
             }
         }
     }
-    v = s->notes[pat][3][P.step];
+    v = cell(pat, 3, P.step);
     if (v > 0 && v < SONG_DRUM_COUNT) drum_on(v);
 }
 
@@ -835,7 +875,7 @@ static void seek_lyrics(void)
     begin_line();
     if (P.line >= 0) {
         int i, p = cur_pattern();
-        for (i = 0; i < P.step; i++) if (P.s->notes[p][0][i] >= 2 && P.next < P.nsyl) P.next++;
+        for (i = 0; i < P.step; i++) if (cell(p, 0, i) >= 2 && P.next < P.nsyl) P.next++;
     }
 }
 
@@ -922,6 +962,8 @@ static void sustain(void)
 
 /* ====================================================================== */
 /* public API                                                               */
+static const SongExt *next_x;          /* song_play_ext hands its arrangement to start() */
+
 static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int step)
 {
     int keep_music = P.on;
@@ -934,6 +976,8 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int 
     memset(P.age, 0, sizeof(P.age));
     P.drum = 0;
     P.s = s;
+    P.x = next_x;
+    next_x = 0;
     P.over = (int16_t)(over >= 0 && over <= DOOMO_PLAYER_ID ? over : -1);
     P.solo = (uint8_t)solo;
     P.solo_pat = (uint8_t)(pat & (SONG_PATTERNS - 1));
@@ -957,6 +1001,12 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int 
 void song_play_at(const DoomoSong *s, int singer_override, int order_pos, int step)
 {
     start(s, singer_override, 0, 0, order_pos, step);
+}
+
+void song_play_ext(const DoomoSong *s, const SongExt *x, int singer_override)
+{
+    next_x = x;
+    start(s, singer_override, 0, 0, 0, 0);
 }
 
 void song_play(const DoomoSong *s, int singer_override)
@@ -1019,7 +1069,12 @@ void song_tick(void)
     }
     P.ticks++;
     if (P.beat_age < 255) P.beat_age++;
-    P.acc += 16u * DOOMO_CLAMP(P.s->bpm, 60, 220);
+    if (P.x) {
+        uint32_t b = (uint32_t)DOOMO_CLAMP(P.s->bpm, 60, 220) * P.x->sect[sect_now(0, 0)].tempo / 100u;
+        P.acc += 16u * DOOMO_CLAMP(b, 30, 440);
+    } else {
+        P.acc += 16u * DOOMO_CLAMP(P.s->bpm, 60, 220);
+    }
     while (P.acc >= step_units(P.step) && guard++ < 4) {
         P.acc -= step_units(P.step);
         if (!advance()) { song_stop(); return; }
@@ -1033,6 +1088,7 @@ void song_preview(const DoomoSong *s, int track, int cell)
 {
     if (!s || P.on || track < 0 || track >= SONG_TRACKS) return;
     P.s = s;
+    P.x = 0;
     P.over = -1;
     P.singing = 0;
     P.harm = 0;
@@ -1063,6 +1119,7 @@ void song_jam_on(const DoomoSong *s, int ch, int cell)
     if (!s || ch < 0 || ch >= SONG_TRACKS) return;
     if (!P.on) {
         P.s = s;
+        P.x = 0;
         P.over = -1;
         P.singing = 0;
         P.harm = 0;

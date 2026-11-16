@@ -102,6 +102,10 @@ extern DoomoSong doomo_song_book[SONG_BOOK_SIZE];
  * audio_voice_char() with the singer's voice sliders. */
 /* singer_override: -1 = use the song's choir, else a single resident id. */
 void song_play(const DoomoSong *s, int singer_override);
+struct SongExt;
+/* ST-ADV: play a song with its Advanced arrangement (sections, key / tempo per section, fades, folded tracks);
+ * x == NULL is exactly song_play(). The studio's other play calls stay classic. */
+void song_play_ext(const DoomoSong *s, const struct SongExt *x, int singer_override);
 void song_stop(void);
 int  song_playing(void);
 void song_tick(void);                 /* call once per frame while playing */

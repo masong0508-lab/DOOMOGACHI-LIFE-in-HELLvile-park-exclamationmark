@@ -19,10 +19,14 @@
  *     u8 part mask, per line: u32 line_singers
  *     u8 choir layout, u32 seed
  *     u8 1 + 13 section bytes, or u8 0 (all automatic)
+ * ST-ADV (still version 1: the tail is found by the bytes left) appends after the last song: u8 mask (bit i = page i has an Advanced arrangement),
+ *   per set bit u16 length + the encoded SongExt page (song_ext.c). A version 1 chunk has no tail; a console that keeps
+ *   no pages (SONGX_BOOK_PAGES == 0) skips the tail and the song plays as its classic part.
  * A town that never used the studio writes 14 bytes. A full book of busy
  * songs stays well under DOOMO_SAVE_EXT_MAX (worst case ~5.3 KB).
  */
 #include "studio_int.h"
+#include "doomo/song_ext.h"
 
 DoomoSong doomo_song_book[SONG_BOOK_SIZE];
 StudioStats studio_stats;
@@ -42,6 +46,7 @@ int song_book_store(const DoomoSong *s)
     int i = song_book_free_slot();
     if (!s || i < 0) return -1;
     doomo_song_book[i] = *s;
+    songx_book_drop(i);
     doomo_song_book[i].flags |= SONGF_VALID;
     song_sanitize(&doomo_song_book[i]);
     return i;
@@ -216,6 +221,21 @@ static uint32_t encode(uint8_t *dst, uint32_t cap)
     ob(&o, mask);
     for (i = 0; i < SONG_BOOK_SIZE; i++)
         if (mask & (1u << i)) put_song(&o, &doomo_song_book[i]);
+    {
+        uint32_t xm = 0;
+        for (i = 0; i < SONG_BOOK_SIZE; i++) if ((mask & (1u << i)) && songx_book_has(i)) xm |= 1u << i;
+        if (xm) {
+            ob(&o, xm);
+            for (i = 0; i < SONG_BOOK_SIZE; i++) {
+                const uint8_t *raw;
+                uint32_t n, k;
+                if (!(xm & (1u << i))) continue;
+                n = songx_book_raw(i, &raw);
+                o16(&o, n);
+                for (k = 0; k < n; k++) ob(&o, raw[k]);
+            }
+        }
+    }
     return o.n;
 }
 
@@ -228,6 +248,7 @@ static uint32_t ext_write(uint8_t *dst, uint32_t cap) { return encode(dst, cap);
 static void ext_reset(void)
 {
     memset(doomo_song_book, 0, sizeof(doomo_song_book));
+    for (int i = 0; i < SONG_BOOK_SIZE; i++) songx_book_drop(i);
     studio_stats_reset();
 }
 
@@ -258,7 +279,21 @@ static int ext_read(const uint8_t *src, uint32_t len, uint16_t version)
         if (!get_song(&in, &doomo_song_book[i])) { ext_reset(); return 0; }
         doomo_song_book[i].flags |= SONGF_VALID;
     }
-    return !in.err;
+    if (in.err) { ext_reset(); return 0; }
+    if (in.pos < in.len) {              /* ST-ADV: the Advanced arrangements; damaged ones are dropped, the songs stay */
+        uint32_t xm = ib(&in);
+        for (i = 0; i < SONG_BOOK_SIZE && !in.err; i++) {
+            uint32_t n, k;
+            uint8_t tmp[SONGX_PAGE_BYTES];
+            if (!(xm & (1u << i))) continue;
+            n = i16(&in);
+            if (n > SONGX_PAGE_BYTES || in.pos + n > in.len) { in.err = 1; break; }
+            for (k = 0; k < n; k++) tmp[k] = (uint8_t)ib(&in);
+            if (mask & (1u << i)) songx_book_set_raw(i, tmp, n);      /* checked when the page is opened (songx_book_get) */
+        }
+        if (in.err) for (i = 0; i < SONG_BOOK_SIZE; i++) songx_book_drop(i);   /* a torn tail: classic songs only */
+    }
+    return 1;
 }
 
 static const DoomoSaveExt song_ext = {
