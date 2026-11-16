@@ -1200,3 +1200,100 @@ TEST(adv_the_page_is_saved_with_the_song_and_loads_back)
     st_level_set(0);
 }
 #endif
+
+#if STUDIO_ADV
+/* ---- ST-ADV: the screen's own keys ---------------------------------------------------------------------------------- */
+static void open_adv(int order_len)
+{
+    open_notes();
+    studio.song.order_len = (uint8_t)order_len;
+    st_level_set(1);
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    studio.osel = 0;
+}
+
+TEST(adv_keys_insert_a_copy_unique_and_delete_are_undoable_steps)
+{
+    int sec0;
+    open_adv(8);
+    CHECK(st_adv_on());
+    CHECK_EQ(studio.xw.arrange_len, 2);
+    press(BTN_SELECT); pick(1);                                /* Insert a copy */
+    CHECK_EQ(studio.xw.arrange_len, 3);
+    CHECK_EQ(studio.osel, 1);
+    CHECK_EQ(studio.xw.arrange[0], studio.xw.arrange[1]);
+    sec0 = studio.xw.sections;
+    press(BTN_SELECT); pick(2);                                /* Make it unique: the copy gets its own part */
+    CHECK_EQ(studio.xw.sections, sec0 + 1);
+    CHECK(studio.xw.arrange[0] != studio.xw.arrange[1]);
+    CHECK(ed_undo());
+    CHECK_EQ(studio.xw.sections, sec0);
+    CHECK(ed_undo());
+    CHECK_EQ(studio.xw.arrange_len, 2);
+    press(BTN_SELECT); pick(4);                                /* Delete */
+    CHECK_EQ(studio.xw.arrange_len, 1);
+    press(BTN_SELECT); pick(4);                                /* the last entry stays */
+    CHECK_EQ(studio.xw.arrange_len, 1);
+    st_level_set(0);
+}
+
+TEST(adv_keys_part_view_edits_the_part_and_b_goes_back_not_out)
+{
+    int k0, t0;
+    open_adv(4);
+    k0 = studio.xw.sect[0].key;
+    t0 = studio.xw.sect[0].tempo;
+    press(BTN_A);                                              /* a tap opens the part */
+    CHECK_EQ(studio.aview, 1);
+    press(BTN_DOWN);                                           /* the key row */
+    press(BTN_RIGHT); press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.sect[0].key, k0 + 2);
+    press(BTN_DOWN);                                           /* the tempo row: steps of 5 % */
+    press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.sect[0].tempo, t0 + 5);
+    press(BTN_LEFT); press(BTN_LEFT); press(BTN_LEFT);
+    CHECK_EQ(studio.xw.sect[0].tempo, t0 - 10);
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 0);                                 /* back to the list ... */
+    CHECK_EQ(studio.tab, STAB_ORDER);                          /* ... and still in the studio on the same tab */
+    CHECK(st_adv_on());
+    CHECK(ed_undo());                                          /* nudges of one setting made one step each */
+    CHECK_EQ(studio.xw.sect[0].tempo, t0);
+    st_level_set(0);
+}
+
+TEST(adv_keys_the_key_menu_and_the_pass_rows)
+{
+    int n;
+    open_adv(4);
+    press(BTN_SELECT); pick(5);                                /* Key change... */
+    pick(2);                                                   /* Up 2 */
+    CHECK_EQ(studio.xw.sect[0].key, 2);
+    press(BTN_SELECT); pick(5);
+    pick(6);                                                   /* Down 1 */
+    CHECK_EQ(studio.xw.sect[0].key, -1);
+    n = studio.xw.sect[0].npat;
+    press(BTN_A);                                              /* the part view */
+    press(BTN_DOWN); press(BTN_DOWN); press(BTN_DOWN); press(BTN_DOWN);   /* name, key, tempo, fade, then the first pass */
+    press(BTN_RIGHT);                                          /* its pattern becomes the next one (A -> B) */
+    CHECK_EQ(studio.xw.sect[0].pat[0], (studio.song.order[0] + 1) % SONG_PATTERNS);
+    press(BTN_A);                                              /* A on a pass adds a copy after it */
+    CHECK_EQ(studio.xw.sect[0].npat, n + 1);
+    press(BTN_SELECT); pick(1);                                /* Delete this pass */
+    CHECK_EQ(studio.xw.sect[0].npat, n);
+    st_level_set(0);
+}
+
+TEST(adv_keys_start_plays_the_arrangement)
+{
+    open_adv(8);
+    press(BTN_SELECT); pick(1);                                /* three entries: 12 passes, the classic order has 8 */
+    CHECK_EQ(songx_len(&studio.xw), 12);
+    press(BTN_START);
+    frames(3, 0);
+    CHECK(song_playing());
+    song_stop();
+    st_level_set(0);
+}
+#endif
