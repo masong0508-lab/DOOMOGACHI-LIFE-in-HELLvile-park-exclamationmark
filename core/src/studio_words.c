@@ -148,6 +148,14 @@ static void lyric_tools(int c)
         else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
         ed_commit();
         break;
+    case 6: {                                   /* ST-TOOLS: the syllable fitter's report */
+        int w = 0, nn = 0, v = tl_fit_status(SS, studio.lsel, &w, &nn);
+        if (v < 0) st_msg(SS->lyrics[studio.lsel][0] ? "This line is not sung yet" : "Write some words first");
+        else if (v == 0) st_msg("%d words, %d notes: a fit!", w, nn);
+        else if (v == 1) st_msg("%d words, %d notes: la la fills", w, nn);
+        else st_msg("%d words, %d notes: too many", w, nn);
+        audio_sfx(v == 0 ? SFX_SPARKLE : SFX_CURSOR);
+        break; }
     default: break;
     }
 }
@@ -169,10 +177,10 @@ void tab_lyrics_update(void)
         ui_text_entry(prompt, studio.edit, SONG_LYRIC_LEN, lyric_done);
     }
     if (studio_sel_tap) {
-        static const char *const items[6] = { "Sing this line", "Auto-fit all lines",
+        static const char *const items[7] = { "Sing this line", "Auto-fit all lines",
                                               "Share out parts", "Write lyrics for me",
-                                              "Clear this line", "Fit this line" };
-        st_popup("Lyric tools", items, 6, 0, lyric_tools);
+                                              "Clear this line", "Fit this line", "How does it fit?" };
+        st_popup("Lyric tools", items, 7, 0, lyric_tools);
     }
 }
 
@@ -477,6 +485,12 @@ static void fill_menu(int c)
     if (c < 0) return;
     if (c == 5) { ed_touch(SS->line_singers, (int)sizeof(SS->line_singers)); studio_auto_parts(SS); ed_commit(); st_msg("Parts shared out"); return; }
     if (c == 6) { sort_by_section(); st_msg("Sorted: S A T B"); return; }
+    if (c == 8 || c == 9) {                      /* ST-TOOLS: auto-harmony from the lead */
+        int n = st_harmonize_song(c - 8);
+        if (n) { st_msg(c == 8 ? "Harmony: thirds under the lead" : "Harmony: fifths under the lead"); audio_sfx(SFX_SPARKLE); }
+        else { st_msg("Write a lead melody first"); audio_sfx(SFX_ERROR); }
+        return;
+    }
     ed_touch(SS->singer, (int)sizeof(SS->singer));
     ed_touch(SS->section, (int)sizeof(SS->section));
     ed_touch(SS->line_singers, (int)sizeof(SS->line_singers));
@@ -531,11 +545,11 @@ void tab_choir_update(void)
         }
     }
     if (studio_sel_tap) {
-        static const char *const items[8] = { "Friends of this singer", "Hillvile choir",
+        static const char *const items[10] = { "Friends of this singer", "Hillvile choir",
                                                "Hellvile choir", "Both districts!", "Random choir",
                                                "Share out parts", "Sort by section",
-                                               "Clear the choir" };
-        st_popup("Quick fill", items, 8, 0, fill_menu);
+                                               "Clear the choir", "Harmony: thirds", "Harmony: fifths" };
+        st_popup("Quick fill", items, 10, 0, fill_menu);
     }
 }
 

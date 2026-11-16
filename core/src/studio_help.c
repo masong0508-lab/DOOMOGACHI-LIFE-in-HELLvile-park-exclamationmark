@@ -85,7 +85,7 @@ static const UiPrompt card_notes[] = {
     { BTN_A, 0, "Hold, then Up / Down: pitch" },
     { BTN_B, 0, "Erase, or tie a note" },
     { BTN_L | BTN_R, 0, "Other pattern" },
-    { BTN_SELECT, 0, "Copy, paste, clear..." },
+    { BTN_SELECT, 0, "Copy, ranges, helpers" },
 };
 static const UiPrompt card_order[] = {
     { BTN_UP | BTN_DOWN, 0, "Pick a pass" },
@@ -97,7 +97,7 @@ static const UiPrompt card_lyrics[] = {
     { BTN_UP | BTN_DOWN, 0, "Pick a line" },
     { BTN_A, 0, "Write the line" },
     { BTN_LEFT | BTN_RIGHT, 0, "Who sings it" },
-    { BTN_SELECT, 0, "Sing, fit, write for me" },
+    { BTN_SELECT, 0, "Sing, fit, write, check" },
 };
 static const UiPrompt card_choir[] = {
     { BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT, 0, "Move over the choir" },

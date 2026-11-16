@@ -253,6 +253,45 @@ PS1 / Dreamcast / PC layout; the GBA has the first four pads only.
 Not in this package (ST-EASY / ST-TOOLS own them): the "Advanced" level switch (so Replace is always offered), the cursor line,
 the redo, the note grid, per-track velocity.
 
+## ST-TOOLS: range tools and the seven helper tools (2026-11-16)
+
+Where: NOTES, SELECT tap, "Pattern tools" now has 10 items. Item 9 "Range tools..." and item 10 "Helper tools..." open
+a second menu. The work is `core/src/studio_tools.c` (pure functions on a `DoomoSong`, tests `test_studio_tools.c`);
+the tabs only call them. Every tool is tried first: if it would change nothing, no undo step is made and the bar says
+"Nothing to change there". If it changes something, it is exactly one undo step (SELECT + B) and the grid or the
+song card shows the result. The classic 892-byte song is unchanged, so old songs and saves load as before.
+
+**Range** = the steps from the marked start to the cursor on the track under the cursor, or, with no mark, the
+bar under the cursor. "Mark the start" toggles the mark (a mint bar left of the steps shows the range).
+
+| Control | What it does | Feedback | Undo | Tested by |
+|---|---|---|---|---|
+| Range: Mark the start | sets / clears the start step of the range | "Start marked: step 3..." / "Mark cleared: the bar is used"; mint bar on the grid | not a song edit | `tools_mark_makes_the_range_the_marked_steps`, `tools_range_is_the_mark_to_the_cursor_or_the_bar` |
+| Range: Up / Down a scale step | moves the notes of the range along the song's scale (ties stay) | "Up a scale step"; the first note sounds | one step | `tools_shift_moves_scale_steps_and_octaves_only_inside_the_range`, `tools_shift_stays_in_the_scale_of_the_song` |
+| Range: Up / Down an octave | +/- 12; a note that would leave the keyboard stays | "Up an octave"; the first note sounds | one step | `tools_range_octave_is_one_undo_step_and_nothing_to_change_makes_none` |
+| Range: Repeat to the end | copies the range again and again to the end of the pattern | "Repeated to the end" | one step | `tools_repeat_fills_to_the_end_and_refuses_when_nothing_follows` |
+| Range: Reverse | reverses the order of the notes; a long note stays long (drums mirror) | "Reversed" | one step | `tools_reverse_keeps_long_notes_long` |
+| Range: Twice as fast / Half as fast | halves / doubles the lengths of the range | "Twice as fast" / "Half as fast" | one step | `tools_stretch_halves_and_doubles` |
+| Range: Clear range | rests for the range | "Range cleared" | one step | `tools_clear_range_clears_only_the_range` |
+| Helper: Suggest a chord | four next chords for the half bar under the cursor from the key and the chord before it (the tonic starts a song); the pick writes the root in the bass and the third in the harmony | the menu names them ("C", "F", "G", "Am"); "Chord F in half bar 2"; the bass note sounds | one step | `tools_chord_suggester_follows_the_chord_before_and_stays_diatonic`, `tools_chord_write_puts_root_and_third_and_names_them`, `tools_chord_suggester_menu_writes_the_chosen_chord_and_undoes` |
+| Helper: Suggest a phrase | four one-bar lead phrases on the bar's chords (the composer's motif code; the same song gives the same four); the pick writes one into the bar under the cursor | "Phrase written to the lead"; the first note sounds | one step | `tools_melody_helper_gives_four_in_scale_phrases_that_differ_and_repeat`, `tools_phrase_groove_and_harmony_menus_write_and_undo` |
+| Helper: Pick a groove | the 15 composer grooves by name (page 2 "More grooves...", plus Silence), each with its own fill, into the pattern's drum track | "Pop drums in A"; the first hit sounds | one step | `tools_groove_picker_writes_each_groove_and_the_fill_is_optional`, `tools_phrase_groove_and_harmony_menus_write_and_undo` |
+| Helper: Harmonize the lead | a line a third / fifth / octave below the lead, into the harmony track (all in the song's scale) | "Harmony: a third below"; "Write a lead melody first" when there is no lead | one step | `tools_harmonize_writes_a_scale_line_under_the_lead`, `tools_harmonize_without_a_lead_says_so_and_changes_nothing` |
+| Helper (and SONG tools): Balance the mix | track volumes by role: lead on top, then bass, drums, harmony; empty tracks keep theirs | "Mix balanced by role" / "Balanced: the lead is heard" / "The mix is already balanced" | one step | `tools_mix_helper_balances_by_role_and_flags_a_track_that_hides_the_lead`, `tools_balance_the_mix_from_the_song_tools_and_the_helper_menu` |
+| ARRANGE tools: Copy as new part / a step higher / other drums (section copier) | copies the selected pass's pattern into a free pattern (shifted a scale step, or with another groove) and adds a pass using it below | "Part C copied below"; the selection moves to the new pass; when all four parts are used the copy replaces the next one and says so | one step (the part and the pass together) | `tools_section_copier_copies_shifts_and_swaps_drums`, `tools_section_copier_in_arrange_adds_a_pass_with_a_free_part_in_one_undo_step` |
+| CHOIR quick fill: Harmony: thirds / fifths (choir auto-harmony) | writes the harmony line under the lead of every pattern the song plays | "Harmony: thirds under the lead" | one step | `tools_choir_auto_harmony_writes_thirds_for_every_used_pattern_in_one_step` |
+| WORDS tools: How does it fit? (syllable fitter report; "Fit this line" / "Auto-fit all lines" were there) | says how many words sit on how many notes: a fit / la la fills / too many | "2 words, 2 notes: a fit!" | a report: nothing changes | `tools_lyric_fit_report_says_words_against_notes`, `tools_fit_status_says_how_words_sit_on_the_notes` |
+
+A bug found on the way: on ARRANGE the A press that chose a menu item inserted a copy when it was released. Only a tap
+that began on the tab inserts now (`studio.o_a`); covered by the section copier test.
+
+Not in this package (listed, not hidden): the note grid as a piano roll, a rectangle selection across tracks, copy / paste
+of a range between patterns (the pattern / track copy and paste are there), per-track pan and envelope presets, per-track
+swing and a fifth chord lane. They need new song bytes (the `'SNG2'` chunk of `design/STUDIO_PLAN.md` section 3, ST-ADV)
+or a new screen. The chord suggester writes into the bass and harmony tracks instead of a chord lane, so old songs and
+the old player keep working. The helper menus are the full version on every platform (the table of 2.5b allowed
+lighter versions: none was needed, the tools add about 6 KB of code and no resident data).
+
 ## Templates
 
 | # | Template | Genre | Notes |

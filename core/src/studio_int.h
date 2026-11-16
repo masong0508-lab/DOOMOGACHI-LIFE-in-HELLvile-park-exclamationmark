@@ -107,6 +107,7 @@ typedef struct Studio {
     int8_t   rng_a;             /* ST-TOOLS: the marked start step of the range tools, -1 = none (the cursor's bar) */
     /* ORDER */
     uint8_t  osel, otop;
+    uint8_t  o_a;               /* ORDER: the A press that may become a tap (not one that chose a menu item) */
     /* LYRICS */
     uint8_t  lsel, ltop;
     int8_t   sing_pos;          /* previewing one line: its order position  */
@@ -324,6 +325,7 @@ int  tl_section_copy(DoomoSong *s, int src, int dst, int shift, int groove);
 int  tl_free_pattern(const DoomoSong *s, int src);
 int  tl_mix_balance(DoomoSong *s);
 int  tl_mix_flags(const DoomoSong *s);
+int  st_harmonize_song(int kind);                        /* studio_edit.c: the choir's auto-harmony over the whole song */
 int  tl_fit_status(const DoomoSong *s, int line, int *words, int *notes);
 
 /* ---- studio_gen.c --------------------------------------------------------------- */

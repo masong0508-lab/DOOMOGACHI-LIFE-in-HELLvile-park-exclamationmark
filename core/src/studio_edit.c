@@ -42,10 +42,11 @@ int tab_prompts(int tab, UiPrompt *p)
         if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); break; }
         PR(BTN_A, 0, "Note");
         PR(BTN_START, 1, st_play_verb());
-        PR(BTN_B, 2, "Erase / tie");
-        PR(BTN_L | BTN_R, 3, "Pattern");
-        PR(BTN_Y, 4, "Undo");
-        PR(BTN_X, 5, "Redo");
+        PR(BTN_SELECT, 2, "Tools");                  /* ST-TOOLS: range tools + helpers live here */
+        PR(BTN_B, 3, "Erase / tie");
+        PR(BTN_L | BTN_R, 4, "Pattern");
+        PR(BTN_Y, 5, "Undo");
+        PR(BTN_X, 6, "Redo");
         break;
     case STAB_PLAY:
         n = play_prompts(p);
@@ -176,6 +177,63 @@ static void song_value(int row, int d)
     audio_sfx(SFX_CURSOR);
 }
 
+/* ====================================================================== */
+/* ST-TOOLS: the shared plumbing of the range tools and the helper tools (the work itself is in studio_tools.c)    */
+typedef int (*ToolFn)(DoomoSong *s, const int *a);
+
+/* Run an edit that changes only the bytes [reg, reg + len) (at most one pattern) as ONE undo step. It is tried
+ * first: when it changes nothing there is no undo step and 0 comes back, so the caller says so instead of
+ * pretending. */
+static int tool_apply(void *reg, int len, ToolFn fn, const int *a)
+{
+    uint8_t keep[SONG_TRACKS * SONG_STEPS];
+    int n;
+    if (len > (int)sizeof(keep)) return 0;
+    memcpy(keep, reg, (size_t)len);
+    n = fn(SS, a);
+    if (!n) return 0;
+    memcpy(reg, keep, (size_t)len);
+    ed_touch(reg, len);
+    fn(SS, a);
+    ed_commit();
+    return n;
+}
+
+static void tool_done(int n, const char *ok)
+{
+    if (n) { st_msg("%s", ok); audio_sfx(SFX_SPARKLE); }
+    else { st_msg("Nothing to change there"); audio_sfx(SFX_ERROR); }
+}
+
+static int op_balance(DoomoSong *s, const int *a) { (void)a; return tl_mix_balance(s); }
+
+static void tool_balance(void)
+{
+    int flags = tl_mix_flags(SS), n = tool_apply(SS->vol, SONG_TRACKS, op_balance, NULL);
+    if (!n) { st_msg("The mix is already balanced"); audio_sfx(SFX_CURSOR); return; }
+    st_msg(flags ? "Balanced: the lead is heard" : "Mix balanced by role");
+    audio_sfx(SFX_SPARKLE);
+}
+
+
+/* CHOIR "auto-harmony": the harmony line under the lead of every pattern the song plays (kind 0 third, 1 fifth).
+ * One undo step; returns the cells changed (0 = nothing to do or no lead anywhere: no step made). */
+int st_harmonize_song(int kind)
+{
+    DoomoSong *s = SS;
+    uint8_t keep[SONG_PATTERNS][SONG_STEPS], used = 0;
+    int i, p, n = 0;
+    for (i = 0; i < s->order_len; i++) used |= (uint8_t)(1u << (s->order[i] & 3));
+    for (p = 0; p < SONG_PATTERNS; p++) memcpy(keep[p], s->notes[p][1], SONG_STEPS);
+    for (p = 0; p < SONG_PATTERNS; p++) if (used & (1u << p)) n += tl_harmonize(s, p, kind);
+    if (!n) return 0;
+    for (p = 0; p < SONG_PATTERNS; p++) memcpy(s->notes[p][1], keep[p], SONG_STEPS);
+    for (p = 0; p < SONG_PATTERNS; p++) if (used & (1u << p)) ed_touch(s->notes[p][1], SONG_STEPS);
+    for (p = 0; p < SONG_PATTERNS; p++) if (used & (1u << p)) tl_harmonize(s, p, kind);
+    ed_commit();
+    return n;
+}
+
 static void song_tools(int c)
 {
     DoomoSong *s = SS;
@@ -206,6 +264,7 @@ static void song_tools(int c)
         ed_commit();
         st_msg("%d notes snapped to %s", n, doomo_song_scale_names[s->scale]);
         break; }
+    case 4: tool_balance(); break;              /* ST-TOOLS: the mix helper */
     default: break;
     }
 }
@@ -229,9 +288,9 @@ void tab_song_update(void)
         }
     }
     if (studio_sel_tap) {
-        static const char *const items[4] = { "Re-compose music", "Key up", "Key down",
-                                              "Snap notes to scale" };
-        st_popup("Song tools", items, 4, 0, song_tools);
+        static const char *const items[5] = { "Re-compose music", "Key up", "Key down",
+                                              "Snap notes to scale", "Balance the mix" };
+        st_popup("Song tools", items, 5, 0, song_tools);
     }
 }
 
@@ -402,6 +461,161 @@ static void preview_cell(int t, int v)
     if (t < 3 && v >= 2) { studio.kb_note = (uint8_t)v; studio.kb_flash = 10; }
 }
 
+
+/* ---- range tools: the marked steps of the track under the cursor (or the cursor's bar) ------------------------- */
+static int op_shift(DoomoSong *s, const int *a)   { return tl_shift(s, a[0], a[1], a[2], a[3], a[4]); }
+static int op_octave(DoomoSong *s, const int *a)  { return tl_octave(s, a[0], a[1], a[2], a[3], a[4]); }
+static int op_repeat(DoomoSong *s, const int *a)  { return tl_repeat(s, a[0], a[1], a[2], a[3]); }
+static int op_reverse(DoomoSong *s, const int *a) { return tl_reverse(s, a[0], a[1], a[2], a[3]); }
+static int op_stretch(DoomoSong *s, const int *a) { return tl_stretch(s, a[0], a[1], a[2], a[3], a[4]); }
+static int op_clear(DoomoSong *s, const int *a)   { return tl_clear(s, a[0], a[1], a[2], a[3]); }
+
+static void hear_first(int p, int t, int from, int to)
+{
+    int i;
+    for (i = from; i < to && i < SONG_STEPS; i++)
+        if (SS->notes[p][t][i] >= (t == 3 ? 1 : 2)) { preview_cell(t, SS->notes[p][t][i]); return; }
+}
+
+static void range_tools(int c)
+{
+    static const ToolFn fn[10] = { NULL, op_shift, op_shift, op_octave, op_octave, op_repeat, op_reverse,
+                                   op_stretch, op_stretch, op_clear };
+    static const int8_t arg[10] = { 0, 1, -1, 1, -1, 0, 0, 1, 0, 0 };
+    static const char *const ok[10] = { "", "Up a scale step", "Down a scale step", "Up an octave", "Down an octave",
+                                        "Repeated to the end", "Reversed", "Twice as fast", "Half as fast",
+                                        "Range cleared" };
+    DoomoSong *s = SS;
+    int p = studio.pat, t = studio.trk, a[5], from, to, n;
+    if (c < 0) return;
+    if (c == 0) {
+        if (studio.rng_a >= 0) { studio.rng_a = -1; st_msg("Mark cleared: the bar is used"); }
+        else { studio.rng_a = (int8_t)studio.stp; st_msg("Start marked: step %d. Move, then pick", studio.stp + 1); }
+        audio_sfx(SFX_BLIP);
+        return;
+    }
+    if (c <= 4 && t == 3) { st_msg("Drums have no pitch"); audio_sfx(SFX_ERROR); return; }
+    tl_range(studio.rng_a, studio.stp, &from, &to);
+    a[0] = p; a[1] = t; a[2] = from; a[3] = to; a[4] = arg[c];
+    n = tool_apply(s->notes[p], (int)sizeof(s->notes[p]), fn[c], a);
+    if (n && c != 9) hear_first(p, t, from, c == 5 ? SONG_STEPS : to);
+    tool_done(n, ok[c]);
+}
+
+/* ---- helper tools (NOTES) --------------------------------------------------------------------------------------- */
+static int op_chord(DoomoSong *s, const int *a)   { return tl_chord_write(s, a[0], a[1], a[2]); }
+static int op_phrase(DoomoSong *s, const int *a)
+{
+    uint8_t ph[16];
+    tl_phrase(s, a[0], a[1], a[2], ph);
+    return tl_phrase_write(s, a[0], a[1], ph);
+}
+static int op_groove(DoomoSong *s, const int *a)  { return tl_groove_write(s, a[0], a[1], 1); }
+static int op_harm(DoomoSong *s, const int *a)    { return tl_harmonize(s, a[0], a[1]); }
+
+static void chord_pick(int c)
+{
+    uint8_t out[4];
+    int n = tl_suggest_chords(SS, studio.pat, studio.stp / 8, 4, out), a[3], r;
+    char nm[8];
+    if (c < 0 || c >= n) return;
+    a[0] = studio.pat; a[1] = studio.stp / 8; a[2] = out[c];
+    r = tool_apply(SS->notes[studio.pat], (int)sizeof(SS->notes[studio.pat]), op_chord, a);
+    tl_chord_name(SS, out[c], nm, sizeof(nm));
+    if (r) {
+        st_msg("Chord %s in half bar %d", nm, studio.stp / 8 + 1);
+        audio_sfx(SFX_SPARKLE);
+        song_preview(SS, 2, SS->notes[studio.pat][2][studio.stp / 8 * 8]);
+    } else {
+        st_msg("%s is already there", nm);
+        audio_sfx(SFX_CURSOR);
+    }
+}
+
+static void chord_suggest(void)
+{
+    uint8_t out[4];
+    int i, n = tl_suggest_chords(SS, studio.pat, studio.stp / 8, 4, out), at = 0;
+    const char *items[4];
+    for (i = 0; i < n; i++) {                       /* the names live in the text entry buffer (idle while a menu is open) */
+        tl_chord_name(SS, out[i], studio.edit + at, 6);
+        items[i] = studio.edit + at;
+        at += (int)strlen(studio.edit + at) + 1;
+    }
+    st_popup("Next chord", items, n, 0, chord_pick);
+}
+
+static void phrase_pick(int c)
+{
+    int a[3], n;
+    if (c < 0) return;
+    a[0] = studio.pat; a[1] = studio.stp >= 16; a[2] = c;
+    n = tool_apply(SS->notes[studio.pat], (int)sizeof(SS->notes[studio.pat]), op_phrase, a);
+    if (n) hear_first(studio.pat, 0, a[1] * 16, a[1] * 16 + 16);
+    tool_done(n, "Phrase written to the lead");
+}
+
+static void groove_pick(int c);
+static const char *const groove_page2[8] = { "Shanty", "Synth", "Goth", "Punk", "Doom", "Industrial", "Hymn", "Silence" };
+static void groove_page2_pick(int c)
+{
+    if (c >= 0) groove_pick(c == 7 ? 100 : 9 + c);       /* Shanty..Hymn are grooves 9..15 */
+}
+static void groove_pick(int c)
+{
+    int a[2], n, g;
+    if (c < 0) return;
+    if (c == 8) { st_popup("More grooves", groove_page2, 8, 0, groove_page2_pick); return; }
+    g = c == 100 ? 0 : c < 8 ? c + 1 : c;                /* page 1: Pop..Disco are grooves 1..8; 100 = silence */
+    a[0] = studio.pat; a[1] = g;
+    n = tool_apply(SS->notes[studio.pat], (int)sizeof(SS->notes[studio.pat]), op_groove, a);
+    if (n) {
+        hear_first(studio.pat, 3, 0, SONG_STEPS);
+        st_msg("%s drums in %c", studio_groove_name(g), 'A' + studio.pat);
+        audio_sfx(SFX_SPARKLE);
+    } else {
+        st_msg("%s is already there", studio_groove_name(g));
+        audio_sfx(SFX_CURSOR);
+    }
+}
+
+static void harm_pick(int c)
+{
+    static const char *const ok[3] = { "Harmony: a third below", "Harmony: a fifth below", "Harmony: an octave below" };
+    int a[2], n, i, lead = 0;
+    if (c < 0 || c > 2) return;
+    for (i = 0; i < SONG_STEPS; i++) lead |= SS->notes[studio.pat][0][i] >= 2;
+    if (!lead) { st_msg("Write a lead melody first"); audio_sfx(SFX_ERROR); return; }
+    a[0] = studio.pat; a[1] = c;
+    n = tool_apply(SS->notes[studio.pat], (int)sizeof(SS->notes[studio.pat]), op_harm, a);
+    if (n) hear_first(studio.pat, 1, 0, SONG_STEPS);
+    tool_done(n, ok[c]);
+}
+
+static void helper_tools(int c)
+{
+    static const char *const phrases[4] = { "Idea 1", "Idea 2", "Idea 3", "Idea 4" };
+    static const char *const grooves[9] = { "Pop", "Hip-hop", "City", "Chip", "Lullaby", "Jazz", "Folk", "Disco",
+                                            "More grooves..." };
+    static const char *const harms[3] = { "A third below", "A fifth below", "An octave below" };
+    switch (c) {
+    case 0: chord_suggest(); break;
+    case 1: st_popup("Phrase for this bar", phrases, 4, 0, phrase_pick); break;
+    case 2: st_popup("Pick a groove", grooves, 9, 0, groove_pick); break;
+    case 3: st_popup("Harmony under the lead", harms, 3, 0, harm_pick); break;
+    case 4: tool_balance(); break;
+    default: break;
+    }
+}
+
+static void range_menu(void)
+{
+    static const char *const items[10] = { "Mark the start", "Up a scale step", "Down a scale step", "Up an octave",
+                                           "Down an octave", "Repeat to the end", "Reverse", "Twice as fast",
+                                           "Half as fast", "Clear range" };
+    st_popup("Range tools", items, 10, 0, range_tools);
+}
+
 static void notes_tools(int c)
 {
     DoomoSong *s = SS;
@@ -444,6 +658,12 @@ static void notes_tools(int c)
                 s->notes[p][t][i] = (uint8_t)song_scale_shift(s, s->notes[p][t][i], c == 5 ? 1 : -1);
         ed_commit();
         break;
+    case 8: range_menu(); break;                /* ST-TOOLS */
+    case 9: {
+        static const char *const items[5] = { "Suggest a chord", "Suggest a phrase", "Pick a groove",
+                                              "Harmonize the lead", "Balance the mix" };
+        st_popup("Helper tools", items, 5, 0, helper_tools);
+        break; }
     case 7: {                                   /* ST-PLAY: hear what you change: the bar under the cursor loops */
         int from = studio.stp >= 16 ? 16 : 0;
         song_play_range(s, p, from, from + 16);
@@ -517,10 +737,11 @@ void tab_notes_update(void)
             audio_sfx(SFX_BLIP);
         }
         if (studio_sel_tap) {
-            static const char *const items[8] = { "Copy pattern", "Paste pattern", "Copy track",
-                                                  "Paste track", "Clear track", "Track up a step",
-                                                  "Track down a step", "Loop this bar" };
-            st_popup("Pattern tools", items, 8, 0, notes_tools);
+            static const char *const items[10] = { "Copy pattern", "Paste pattern", "Copy track",
+                                                   "Paste track", "Clear track", "Track up a step",
+                                                   "Track down a step", "Loop this bar", "Range tools...",
+                                                   "Helper tools..." };
+            st_popup("Pattern tools", items, 10, 0, notes_tools);
         }
     }
     if (studio.stp < studio.ntop) studio.ntop = studio.stp;
@@ -593,7 +814,9 @@ void tab_notes_draw(StRect r)
     int wide = st_wide(), colw = (r.w - 24) / 4, gx = r.x + 20, gy = r.y + 26;
     int vis = (r.h - 46) / 9, i, t, playing_here, ps = song_pos_step();
     char buf[24];
+    int rfrom = -1, rto = 0;                     /* ST-TOOLS: the marked range, drawn as a mint bar left of the steps */
     if (vis < 4) vis = 4;
+    if (studio.rng_a >= 0) tl_range(studio.rng_a, studio.stp, &rfrom, &rto);
     playing_here = song_playing() && (song_pos_order() < 0 ? 0 : 1);
     /* header: patterns, where this one plays */
     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
@@ -635,6 +858,7 @@ void tab_notes_draw(StRect r)
         plat_rect(gx, y, colw * 4, 9, head ? PAL_PAINT(PAINT_LEMON, 2) : rowbg);
         if ((stp & 15) == 0) plat_rect(gx, y, colw * 4, 1, st->outline);
         ui_text(r.x + 5, y + 1, step_num[stp & 31], (stp & 3) == 0 ? st->text : st->text_dim);   /* "%2d" of stp + 1 */
+        if (rfrom >= 0 && stp >= rfrom && stp < rto) plat_rect(gx - 3, y, 2, 9, PAL_PAINT(PAINT_MINT, 1));
         for (t = 0; t < 4; t++) {
             int x = gx + t * colw, v = s->notes[studio.pat][t][stp];
             int cur = t == studio.trk && stp == studio.stp;
@@ -731,6 +955,33 @@ static void order_move(int d)
     audio_sfx(SFX_CURSOR);
 }
 
+
+/* ARRANGE "section copier": the pattern of the selected pass copied into a free pattern (shifted `shift` scale steps,
+ * the drums swapped when `swap`), and a pass using it added below: one undo step. */
+static void order_copy_section(int shift, int swap)
+{
+    DoomoSong *s = SS;
+    int src = s->order[studio.osel] & 3, dst = tl_free_pattern(s, src), g = -1, i, taken = 0;
+    if (s->order_len >= SONG_ORDER_MAX) { st_msg("The song is full (16)"); audio_sfx(SFX_ERROR); return; }
+    if (swap) {
+        int sum = 0;
+        for (i = 0; i < SONG_STEPS; i++) sum += s->notes[src][3][i] * (i + 1);
+        g = 1 + (sum + dst) % (studio_groove_count() - 1);
+    }
+    for (i = 0; i < s->order_len; i++) taken |= s->order[i] == dst;     /* every part is in use: the copy replaces one */
+    ed_touch(s->notes[dst], (int)sizeof(s->notes[dst]));
+    ed_touch(&s->order_len, 1 + SONG_ORDER_MAX);
+    tl_section_copy(s, src, dst, shift, g);
+    memmove(s->order + studio.osel + 2, s->order + studio.osel + 1, (size_t)(s->order_len - studio.osel - 1));
+    s->order[studio.osel + 1] = (uint8_t)dst;
+    s->order_len++;
+    ed_commit();
+    studio.osel++;
+    if (taken) st_msg("Part %c replaced by the copy", 'A' + dst);
+    else st_msg(swap ? "Part %c copied, new drums" : shift ? "Part %c copied, a step higher" : "Part %c copied below", 'A' + dst);
+    audio_sfx(SFX_SPARKLE);
+}
+
 static void order_tools(int c)
 {
     switch (c) {
@@ -744,6 +995,9 @@ static void order_tools(int c)
         ed_commit();
         st_msg((SS->flags & SONGF_LOOP) ? "The song loops forever" : "The song plays once");
         break;
+    case 5: order_copy_section(0, 0); break;     /* ST-TOOLS: the section copier */
+    case 6: order_copy_section(1, 0); break;
+    case 7: order_copy_section(0, 1); break;
     default: break;
     }
 }
@@ -753,7 +1007,7 @@ void tab_order_update(void)
     DoomoSong *s = SS;
     int n = s->order_len, vis = (st_content().h - 40) / (st_wide() ? 15 : 12);
     if (studio.osel >= n) studio.osel = (uint8_t)(n - 1);
-    if (btn_pressed(BTN_A)) studio.a_edit = 0;
+    if (btn_pressed(BTN_A)) { studio.a_edit = 0; studio.o_a = 1; }
     if (btn_down(BTN_A)) {
         /* hold A + up / down: carry the entry */
         if (btn_held_ticks(BTN_A) > 6) {
@@ -764,12 +1018,12 @@ void tab_order_update(void)
         if (btn_repeat(BTN_UP)) { studio.osel = (uint8_t)((studio.osel + n - 1) % n); audio_sfx(SFX_CURSOR); }
         if (btn_repeat(BTN_DOWN)) { studio.osel = (uint8_t)((studio.osel + 1) % n); audio_sfx(SFX_CURSOR); }
     }
-    if (btn_released(BTN_A) && !studio.a_edit) {
-        /* a tap inserts a copy below */
+    if (btn_released(BTN_A) && !studio.a_edit && studio.o_a) {
+        /* a tap inserts a copy below (only a tap that started here: the A that chose a menu item must not insert one) */
         order_insert(studio.osel + 1, s->order[studio.osel]);
         if (studio.osel + 1 < s->order_len) studio.osel++;
     }
-    if (btn_released(BTN_A)) studio.a_edit = 0;
+    if (btn_released(BTN_A)) { studio.a_edit = 0; studio.o_a = 0; }
     if (btn_repeat(BTN_LEFT) || btn_repeat(BTN_RIGHT)) {
         int d = btn_repeat(BTN_LEFT) ? 3 : 1;
         ed_touch_key(KEY(2, studio.osel), &s->order[studio.osel], 1);
@@ -778,9 +1032,10 @@ void tab_order_update(void)
         audio_sfx(SFX_CURSOR);
     }
     if (studio_sel_tap) {
-        static const char *const items[5] = { "Insert a copy", "Delete", "Move up", "Move down",
-                                              "Repeat on/off" };
-        st_popup("Arrange", items, 5, 0, order_tools);
+        static const char *const items[8] = { "Insert a copy", "Delete", "Move up", "Move down",
+                                              "Repeat on/off", "Copy as new part", "Copy a step higher",
+                                              "Copy, other drums" };
+        st_popup("Arrange", items, 8, 0, order_tools);
     }
     if (vis < 3) vis = 3;
     if (studio.osel < studio.otop) studio.otop = studio.osel;
