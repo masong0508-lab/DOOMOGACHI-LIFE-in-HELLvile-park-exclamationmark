@@ -56,7 +56,7 @@ pattern plays as "in Order 2,3,5" (its slots in the ORDER tab).
 
 ### Easy mode (ST-EASY, 2026-11-15)
 The first package of the studio overhaul (`design/STUDIO_PLAN.md` 2.1, 2.2, 2.3). Easy is the only level there is
-for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothing yet (ST-ADV).
+for now; the Studio level switch (FILE) is stored and shown. Advanced is ST-ADV's: see "ST-ADV screens" below.
 
 * **Start a song.** The studio opens on it when the song is empty (a new save, or an empty page) and FILE's
   "New song..." opens it again. It lives on the SONG tab (`studio.card`; the picks, the seed and the row are in
@@ -95,8 +95,8 @@ for now; the Studio level switch (FILE) is stored and shown, Advanced adds nothi
   L and R beside it (the neighbours that L / R reach) and their number.
 * **Studio level** (FILE row, A or LEFT / RIGHT toggles): Easy or Advanced, in `st_easy()->level` and bit 15 of
   `studio_stats.lines` (`STUDIO_LINES_LEVEL`; the lyric-line count is the low 15 bits, `STUDIO_LINES()`), so it
-  rides in the existing `'SONG'` chunk with no new save tag; an old save reads Easy. Advanced shows no extra tools
-  yet.
+  rides in the existing `'SONG'` chunk with no new save tag; an old save reads Easy. On Advanced the ORDER tab becomes the arrangement
+  (see "ST-ADV screens"), the Start card also offers Epic, and FILE shows the fold line.
 
 ### SONG
 Title (typed with the on-screen keyboard), genre, tempo (60..220 bpm, hold for
@@ -459,9 +459,10 @@ A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song w
 - **Memory:** `SONGX_BOOK_PAGES` is 6 on the host and the Dreamcast and 0 on the GBA and PS1, until the coordinator grants
   resident bytes (plan section 4). Nothing was added to the GBA's `.bss`; the GBA and PS1 builds were not run.
 
-Not done: the Advanced screens (sections and arrangement on ORDER, key / tempo / fade menus, the 32 / 64 bar Start card, the FILE
-fold message), a working copy of the `SongExt` in the scene scratch, per-track pan / envelope / swing playback (stored only),
-the brightness, the note grid, free notes, the expert views, patterns of 1..4 bars.
+Done since this package (see the sections below): the Advanced screens (ORDER arrangement, part view, Mix, Expert, Note grid with Box,
+Lyric lines), the 32 / 64 bar Start card (Epic), the FILE fold message, Sound / Brightness / Swing playback, free notes.
+Not done: a working copy of the `SongExt` in the scene scratch (it lives in `studio.xw`), pan playback, the per-note velocity bar,
+patterns of 1..4 bars.
 
 ## ST-ADV: Epic length and the FILE fold line (2026-11-16)
 Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio_file.c`. Tests: `adv_start_card_offers_epic_only_on_advanced`,
@@ -471,7 +472,7 @@ Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio
   or on the GBA / PS1 it falls back to Long.
 - **FILE:** when the open arrangement has more tracks than the console plays, the FILE tab shows "Extra tracks are mixed in" (full text from `songx_folded`).
 - **LYRICS on an arrangement:** with the arrangement open, `studio_line_pos` / `studio_line_pat` (`studio_gen.c`) answer from the arrangement (`st_adv_line_pass`, `st_adv_line_pattern`): the LYRICS tab's fit badges, onsets strip, pattern chip, autofit, auto parts and the one-line preview all follow the pass the arrangement sings the line on. Test: `adv_lyric_lines_follow_the_arrangement`. Classic songs are unchanged.
-- Still open: more than 8 lyric lines, per-track pan / envelope playback.
+- Still open: more than 8 lyric lines, pan playback.
 
 ## ST-ADV screens: the Advanced ORDER tab (2026-11-16, host and Dreamcast builds)
 Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in the player. Where `SONGX_BOOK_PAGES` is 0 (GBA, PS1)
@@ -545,8 +546,9 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
 - **Not done:** pan playback, the per-note velocity bar, patterns of 1..4 bars.
-- **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
-  `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
+- **Tests:** `adv_from_order_plays_like_the_classic_order`, `adv_arrangement_insert_remove_and_entry_passes`,
+  `adv_order_tab_opens_the_arrangement_once_and_undo_reaches_it`, `adv_a_take_drops_the_arrangement_in_the_same_undo_step`,
+  `adv_the_page_is_saved_with_the_song_and_loads_back`, the `adv_keys_*` journeys and the PERFORM tests (`test_studio_tools.c`).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.
 
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
@@ -577,7 +579,7 @@ what tests it. Keys are GBA names; the pads' names are on the control card. "Jou
 | SELECT + A | Redo | puts back the step the last undo took | toast "Redo! (n more)", "Too big to redo", "Nothing to redo" | SELECT + B | `studio_undo_redo_round_trip` |
 | FILE: Redo | Redo (n) | the same | the same | SELECT + B | the same, runner `studio_easy` |
 | FILE: Undo | Undo (n) | as before | toast "Undone! (n left)" | Redo | the same |
-| FILE: Studio level | Studio level: Easy / Advanced | toggles (A, LEFT, RIGHT) | the row, toast "Advanced: more tools soon" | press again | `studio_level_switch_is_kept_in_the_stats_and_the_save` |
+| FILE: Studio level | Studio level: Easy / Advanced | toggles (A, LEFT, RIGHT) | the row, toast "Advanced: more tools soon" (older than the screens: the text still says soon) | press again | `studio_level_switch_is_kept_in_the_stats_and_the_save` |
 | FILE: New song... | New song... | confirms if unsaved, blanks the song, opens the Start card | the card | journal | `studio_start_card_inspire_templates_and_skip...` |
 | NOTES: cursor line | (under the grid) | describes the cell: bar, beat, track, note, interval, "off the scale" | text under the grid | n/a | `studio_cursor_cell_is_described_in_one_line_that_fits` (every cell, key and scale fits 240 and 320 px) |
 | LYRICS: Fit this line (SELECT tools, was START) | Fit this line | auto-fits the selected line to its notes | toast "Line 2 fits now!" | journal | `studio_fit_one_line_moved_to_the_lyric_tools` |
