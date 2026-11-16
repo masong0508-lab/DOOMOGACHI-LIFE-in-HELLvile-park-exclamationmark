@@ -1297,3 +1297,55 @@ TEST(adv_keys_start_plays_the_arrangement)
     st_level_set(0);
 }
 #endif
+
+#if STUDIO_ADV
+/* ---- ST-ADV: PERFORM plays the arrangement ---------------------------------------------------------------------------- */
+TEST(adv_perform_line_fit_follows_the_arrangement)
+{
+    open_adv(4);
+    CHECK_EQ(st_adv_line_pattern(0), studio.song.order[0] & 3);      /* from_order: line k over pass k */
+    studio.xw.sect[0].pat[2] = 3;
+    studio.xw.sect[0].line[2] = 5;                                     /* the arrangement sings line 5 over pattern D */
+    CHECK_EQ(st_adv_line_pattern(5), 3);
+    studio.xw.sect[0].pat[1] = 9;                                      /* a pattern outside the classic four */
+    studio.xw.sect[0].line[1] = 6;
+    CHECK_EQ(st_adv_line_pattern(6), -1);
+    CHECK_EQ(st_adv_line_pattern(7), -1);                              /* never sung */
+    st_level_set(0);
+}
+
+TEST(adv_perform_length_is_the_arrangements_not_the_classic_orders)
+{
+    open_adv(4);
+    CHECK_EQ(st_adv_ticks(), song_length_ticks(SS));
+    studio.xw.sect[0].tempo = 200;                                     /* twice as fast */
+    CHECK(st_adv_ticks() < song_length_ticks(SS) * 6 / 10);
+    CHECK(st_adv_ext() != NULL);
+    st_adv_enter(-1);
+    CHECK(st_adv_ext() == NULL);
+    st_level_set(0);
+}
+
+TEST(adv_perform_show_runs_the_arrangement_and_ends_with_it)
+{
+    int n = 0, playing_at = -1;
+    open_adv(2);
+    studio.xw.sect[0].npat = 1;                                        /* the arrangement is one pass, the classic order two */
+    studio.xw.arrange_len = 1;
+    st_set_tab(STAB_STAGE);
+    frames(2, 0);
+    press(BTN_A);                                                      /* the curtain goes up */
+    CHECK_EQ(studio.show, 1);
+    while (studio.show == 1 && n < 600) {
+        frames(1, 0);
+        n++;
+        if (playing_at < 0 && song_playing()) playing_at = n;
+    }
+    CHECK(playing_at > 0);
+    CHECK_EQ(studio.show, 2);                                          /* it finished (bows) */
+    CHECK((uint32_t)(n - playing_at) <= st_adv_ticks() + 20);          /* ... when the arrangement ended, not the classic order */
+    CHECK((uint32_t)(n - playing_at) < song_length_ticks(SS));
+    st_stop();
+    st_level_set(0);
+}
+#endif
