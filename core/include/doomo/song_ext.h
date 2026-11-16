@@ -40,7 +40,9 @@ enum { SX_FADE_NONE, SX_FADE_IN, SX_FADE_OUT, SX_FADE_COUNT };
 #endif
 /* encoded pages the book can keep: 0 = none (GBA / PS1 until the coordinator grants resident bytes, plan section 4) */
 #ifndef SONGX_BOOK_PAGES
-#if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_PLATFORM_PS1)
+#if defined(DOOMO_PLATFORM_GBA)
+#define SONGX_BOOK_PAGES 2             /* GBA: two Advanced pages (book slots 0 and 1), 3,072 B of .bss; plan section 4 */
+#elif defined(DOOMO_PLATFORM_PS1)
 #define SONGX_BOOK_PAGES 0
 #else
 #define SONGX_BOOK_PAGES SONG_BOOK_SIZE

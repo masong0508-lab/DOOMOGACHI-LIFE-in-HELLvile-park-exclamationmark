@@ -1,0 +1,95 @@
+# speed2_studio_adv.txt - speed tour 2 (ST-ADV on the GBA): the Advanced ORDER tab ("Arrange") on the "Park United!" song (arg -107).
+# FILE's Studio level is switched to Advanced, ORDER turns the classic order into an arrangement. Windows: list idle, list playing,
+# part view, SELECT tools menu. Window rules: speed2_fair.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+wait 130
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+down SELECT
+press R
+release
+wait 4
+wait 10
+press UP
+wait 6
+press UP
+wait 14
+press A
+wait 14
+shot studio_adv_file_level
+down SELECT
+press L
+release
+wait 4
+down SELECT
+press L
+release
+wait 4
+down SELECT
+press L
+release
+wait 4
+down SELECT
+press L
+release
+wait 4
+wait 30
+fps start
+wait 90
+expect-fps 29 studio adv: arrangement idle
+shot studio_adv_order_list
+press START
+wait 45
+fps start
+wait 90
+expect-fps 29 studio adv: arrangement playing
+press START
+wait 10
+press A
+wait 20
+fps start
+wait 90
+expect-fps 29 studio adv: part view
+shot studio_adv_part_view
+press B
+wait 10
+down SELECT
+press A
+release
+wait 20
+fps start
+wait 60
+expect-fps 29 studio adv: tools menu
+shot studio_adv_tools
+press B
+wait 10

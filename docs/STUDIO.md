@@ -491,6 +491,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **Save and load:** saving to a slot keeps the page (`songx_book_put`); if it does not fit, the song is saved classic and says so.
   Opening a slot loads its page. Make it! / Shuffle, templates, Inspire me! and New drop the arrangement in the same undo step.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
+- **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
 - **Not done:** the LYRICS tab does not know arrangement positions;
   the 32 / 64 bar Start card, the FILE fold message, the note grid, free notes, per-track pan / envelope playback, brightness.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
