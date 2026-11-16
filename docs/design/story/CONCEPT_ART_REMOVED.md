@@ -1,0 +1,1 @@
+The concept sheets that were here (gg_storyboard, gg_closeup, gg_poses, gg_turnaround, gg_feast; 12 MB of PNG) were removed on 2026-11-16 to save space (owner). They are still in git history: `git log --all -- docs/design/story/concept` finds the commit; `git show <commit>^:docs/design/story/concept/<name>.png > <name>.png` brings one back.
