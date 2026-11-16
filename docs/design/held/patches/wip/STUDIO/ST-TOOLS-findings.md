@@ -1,13 +1,16 @@
-# ST-TOOLS findings (2026-11-16)
+# ST-TOOLS findings (2026-11-16): what is still left
 
-Done (committed): see `git log --grep ST-TOOLS`.
+Done: see `git log --grep ST-TOOLS`, docs/STUDIO.md "ST-TOOLS" (both passes) and the ROADMAP Done line. The independent
+review of the first three commits found the mix helper drift, the chord suggester's "before" (order list, pentatonic start),
+a cut-off message, plurals, a mark carried between patterns; all fixed with tests (section "second pass" of docs/STUDIO.md).
 
-- Baseline on this machine: `make -C core -j3 test` 1538 passed, 0 failed (tip 266e8acb).
-- Step 1: `core/src/studio_tools.c` (pure range tools + the seven helper tools as functions on a DoomoSong) and
-  `core/tests/test_studio_tools.c` (13 tests). Composer exports in `studio_gen.c` (groove names, `studio_phrase`).
-  The composer's own output is unchanged (drum role 4 is new: a groove without its fill).
+Still left, all because they need song bytes the classic 892-byte song does not have (ST-ADV's `'SNG2'` chunk and the player
+that reads it, `design/STUDIO_PLAN.md` section 3):
 
-Left: see the bottom of this file as the work goes on.
+- per-track envelope presets, per-track pan, per-track swing (the song has one swing; instrument and volume per track are on the
+  SONG tab already);
+- a true lane mute in the drum editor (the lanes share one drums cell per step; "Clear this lane" is what it offers);
+- the chord lane as a fifth track and "follow chords" styles (the chord track screen edits the bass root and harmony third);
+- the piano-roll note grid and a rectangle selection across tracks.
 
-## Pushed early by the owner (2026-11-16 ~01:05 UTC)
-The three commits above were pushed at the owner's request before the independent review and before the PS1 / Dreamcast gates. Checked before the push: core tests (all passed), check-gen, the GBA build (sizes: .iwram 11,392 B, .iwram_bss 4,088 B, unchanged by ST-TOOLS). NOT yet done: the independent review, the PS1 build with the boot FMV + game_smoke + studio speed2, the Dreamcast build and speed2, the GBA speed2 studio groups with gates (the builder measured studio_tools at 30 on the GBA), and the rest of ST-TOOLS (finish the per-tool help lines and feedback, the drum pattern editor and chord track screens if not complete). Next session: review the pushed commits first, run those gates, fix what they find, then finish the package.
+Open for the lander: the PS1 / Dreamcast gate numbers are in the landing commit message.
