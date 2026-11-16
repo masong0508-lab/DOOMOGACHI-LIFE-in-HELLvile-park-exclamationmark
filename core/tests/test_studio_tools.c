@@ -1980,3 +1980,112 @@ TEST(adv_box_paste_refuses_drums_on_a_pitch_track_and_an_empty_clipboard)
     CHECK(strstr(studio.msg, "Drums and pitches") != NULL);
     st_level_set(0);
 }
+
+/* ---- ST-ADV: the velocity bar (Note grid, "Louder note" / "Softer note"; Box, "Louder" / "Softer") ------------------------------ */
+static int gvel(int pat, int trk, int step) { return songx_vel(&studio.xw, pat, trk, step); }
+
+TEST(adv_velocity_louder_and_softer_note_are_one_undo_step_each_and_stop_at_the_ends)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_SELECT); pick(9); pick(3);                       /* a rest: nothing to make louder */
+    CHECK(strstr(studio.msg, "No note here") != NULL);
+    press(BTN_A);                                              /* the lead's pitch on step 1 */
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_NORMAL);
+    press(BTN_SELECT); pick(9); pick(3);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);
+    press(BTN_SELECT); pick(9); pick(3);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_PEAK);
+    press(BTN_SELECT); pick(9); pick(3);                       /* the top: no change, no step */
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_PEAK);
+    CHECK(strstr(studio.msg, "Peak") != NULL);
+    CHECK(ed_undo());
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);                      /* the refused press made no step: one undo = one level */
+    CHECK(ed_redo());
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_PEAK);
+    press(BTN_SELECT); pick(9); pick(4); press(BTN_SELECT); pick(9); pick(4); press(BTN_SELECT); pick(9); pick(4);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_SOFT);
+    CHECK_EQ(gcell(p, 0, 0), 72);                              /* the pitch never moved */
+    st_level_set(0);
+}
+
+TEST(adv_velocity_is_forgotten_when_the_note_goes_and_drums_keep_their_own_level)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_A);
+    press(BTN_SELECT); pick(9); pick(3);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);
+    press(BTN_A);                                              /* the same pitch again takes the note off */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_NORMAL);                    /* a new note there starts normal */
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);                      /* undo brings back both the note and its loudness */
+    press(BTN_L);                                              /* the drum track */
+    press(BTN_A);
+    press(BTN_SELECT); pick(9); pick(3);
+    CHECK(strstr(studio.msg, "Drums keep their own level") != NULL);
+    st_level_set(0);
+}
+
+TEST(adv_velocity_box_louder_softer_copy_and_paste_carry_the_loudness)
+{
+    int p, i;
+    open_grid();
+    p = grid_pat();
+    studio.song.notes[p][0][0] = 72; studio.song.notes[p][0][1] = 74; studio.song.notes[p][3][0] = SONG_DRUM_KICK;
+    grid_box();
+    press(BTN_RIGHT);                                          /* steps 0..1 */
+    press(BTN_A); pick(5);                                     /* Louder */
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);
+    CHECK_EQ(gvel(p, 0, 1), SX_VEL_LOUD);
+    press(BTN_A); pick(5);
+    press(BTN_A); pick(5);                                     /* already Peak: nothing to do */
+    CHECK(strstr(studio.msg, "Nothing louder") != NULL);
+    CHECK_EQ(gvel(p, 0, 1), SX_VEL_PEAK);
+    CHECK(ed_undo());                                          /* one level back, both notes in one step */
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_LOUD);
+    CHECK_EQ(gvel(p, 0, 1), SX_VEL_LOUD);
+    press(BTN_A); pick(6);                                     /* Softer */
+    CHECK_EQ(gvel(p, 0, 0), SX_VEL_NORMAL);
+    press(BTN_A); pick(5);                                     /* Louder again, then copy the loud pair */
+    press(BTN_A); pick(0);
+    press(BTN_B);                                              /* drop the box: the cursor goes to its corner (step 0) */
+    for (i = 0; i < 8; i++) press(BTN_RIGHT);
+    press(BTN_SELECT); pick(9); pick(1);                       /* Paste here, on step 9 */
+    CHECK_EQ(gcell(p, 0, 8), 72);
+    CHECK_EQ(gvel(p, 0, 8), SX_VEL_LOUD);                      /* the pasted notes are as loud as the copies */
+    CHECK_EQ(gvel(p, 0, 9), SX_VEL_LOUD);
+    CHECK_EQ(gvel(p, 0, 7), SX_VEL_NORMAL);
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 8), 0);
+    CHECK_EQ(gvel(p, 0, 8), SX_VEL_NORMAL);
+    st_level_set(0);
+}
+
+TEST(adv_velocity_is_saved_with_the_page_and_a_new_pattern_copies_it)
+{
+    uint8_t buf[2048];
+    SongExt back;
+    uint32_t n;
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_A);
+    press(BTN_SELECT); pick(9); pick(3);
+    n = songx_encode(&studio.song, &studio.xw, buf, sizeof(buf));
+    CHECK(n > 0);
+    memset(&back, 0, sizeof(back));
+    CHECK(songx_decode(&studio.song, &back, buf, n));
+    CHECK_EQ(songx_vel(&back, p, 0, 0), SX_VEL_LOUD);
+    press(BTN_SELECT); pick(2);                                /* New pattern (copy) */
+    CHECK_EQ(gvel(studio.xw.patterns - 1, 0, 0), SX_VEL_LOUD);
+    CHECK(ed_undo());                                          /* the take-back leaves no stray accents */
+    CHECK_EQ(studio.xw.patterns, SONG_PATTERNS);
+    CHECK_EQ(gvel(SONG_PATTERNS, 0, 0), SX_VEL_NORMAL);
+    st_level_set(0);
+}

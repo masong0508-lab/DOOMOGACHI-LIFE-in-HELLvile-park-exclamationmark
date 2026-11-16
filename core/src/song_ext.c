@@ -7,6 +7,8 @@
  *   per track: pan (2 bits) | env << 2 | swing << 4
  *   per pattern: u8 mask of the tracks that hold a pool block; per set bit the 32 cells run-length coded
  *     (0x00..0x7F a literal cell, 0x80 | (n-1) a run of n empty cells, 0xC0 | (n-1) a run of n cells of value 1)
+ *   velocity tail, only when flags bit 2 (SX_FLAG_VEL) is set: u16 count, then per cell with a non-normal note: pattern << 3 | track,
+ *     then its 8 bytes of 2-bit levels. A page without the bit has no tail (every page written before the velocity bar).
  * A page that does not fit SONGX_PAGE_BYTES is not kept: the song stays classic (the studio says so).
  */
 #include "doomo/doomo.h"
@@ -44,7 +46,7 @@ int songx_sanitize(SongExt *x)
     FIX(x->arrange_len < 1 || x->arrange_len > SX_ARRANGE, x->arrange_len = (uint8_t)DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE));
     FIX(x->patterns < SONG_PATTERNS || x->patterns > SX_PATTERNS,
         x->patterns = (uint8_t)DOOMO_CLAMP(x->patterns, SONG_PATTERNS, SX_PATTERNS));
-    FIX(x->flags & ~3, x->flags &= 3);
+    FIX(x->flags & ~7, x->flags &= 7);
     FIX(x->nblocks > SX_POOL, x->nblocks = SX_POOL);
     for (i = 0; i < SX_SECTIONS; i++) {
         SxSection *c = &x->sect[i];
@@ -88,6 +90,41 @@ int songx_cell(const DoomoSong *s, const SongExt *x, int pat, int trk, int step)
 }
 
 int songx_blocks_free(const SongExt *x) { return SX_POOL - x->nblocks; }
+
+/* ---- velocity: 2 bits a step, stored so that zero means "normal" (an all-zero layer is a song with no accents) ------------- */
+static const uint8_t vel_of_code[4] = { SX_VEL_NORMAL, SX_VEL_LOUD, SX_VEL_PEAK, SX_VEL_SOFT };
+static const uint8_t vel_code[4]    = { 3, 0, 1, 2 };            /* level -> code */
+
+int songx_vel(const SongExt *x, int pat, int trk, int step)
+{
+    if (!x || pat < 0 || pat >= SX_PATTERNS || trk < 0 || trk >= SX_TRACKS || step < 0 || step >= SONG_STEPS) return SX_VEL_NORMAL;
+    return vel_of_code[(x->vel[pat][trk][step >> 2] >> ((step & 3) * 2)) & 3];
+}
+
+int songx_set_vel(SongExt *x, int pat, int trk, int step, int level)
+{
+    uint8_t *b;
+    int sh;
+    if (pat < 0 || pat >= SX_PATTERNS || trk < 0 || trk >= SX_TRACKS || step < 0 || step >= SONG_STEPS || level < 0 || level > 3) return 0;
+    b = &x->vel[pat][trk][step >> 2];
+    sh = (step & 3) * 2;
+    *b = (uint8_t)((*b & ~(3 << sh)) | (vel_code[level] << sh));
+    return 1;
+}
+
+int songx_vel_pct(int level)
+{
+    static const uint8_t pct[4] = { 60, 100, 130, 160 };
+    return pct[level & 3];
+}
+
+int songx_vel_any(const SongExt *x)
+{
+    const uint8_t *b = &x->vel[0][0][0];
+    int i;
+    for (i = 0; i < (int)sizeof(x->vel); i++) if (b[i]) return 1;
+    return 0;
+}
 
 int songx_set_cell(DoomoSong *s, SongExt *x, int pat, int trk, int step, int v)
 {
@@ -180,6 +217,7 @@ int songx_pattern_copy(DoomoSong *s, SongExt *x, int from)
             int v = songx_cell(s, x, from, t, i);
             if (v) songx_set_cell(s, x, np, t, i, v);     /* np >= 4: the pool, never the song */
         }
+    memcpy(x->vel[np], x->vel[from], sizeof(x->vel[0]));      /* the accents come along */
     x->patterns = (uint8_t)(np + 1);
     return np;
 }
@@ -339,7 +377,9 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
     int i, k, p, t;
     (void)s;
     o.d = dst; o.cap = cap; o.n = 0;
-    ob(&o, x->version); ob(&o, x->tracks); ob(&o, x->sections); ob(&o, x->arrange_len); ob(&o, x->patterns); ob(&o, x->flags);
+    int velany = songx_vel_any(x);
+    ob(&o, x->version); ob(&o, x->tracks); ob(&o, x->sections); ob(&o, x->arrange_len); ob(&o, x->patterns);
+    ob(&o, (uint32_t)((x->flags & ~SX_FLAG_VEL) | (velany ? SX_FLAG_VEL : 0)));
     for (i = 0; i < x->sections && i < SX_SECTIONS; i++) {
         const SxSection *c = &x->sect[i];
         ob(&o, c->name); ob(&o, c->npat);
@@ -354,6 +394,18 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
         for (t = 0; t < SX_TRACKS; t++) if (x->map[p][t]) m |= 1u << t;
         ob(&o, m);
         for (t = 0; t < SX_TRACKS; t++) if (m & (1u << t)) put_cells(&o, x->pool[x->map[p][t] - 1]);
+    }
+    if (velany) {
+        uint32_t n = 0;
+        for (p = 0; p < SX_PATTERNS; p++) for (t = 0; t < SX_TRACKS; t++) { for (k = 0; k < 8 && !x->vel[p][t][k]; k++) ; n += k < 8; }
+        ob(&o, n & 255); ob(&o, n >> 8);
+        for (p = 0; p < SX_PATTERNS; p++)
+            for (t = 0; t < SX_TRACKS; t++) {
+                for (k = 0; k < 8 && !x->vel[p][t][k]; k++) ;
+                if (k == 8) continue;
+                ob(&o, (uint32_t)(p << 3 | t));
+                for (k = 0; k < 8; k++) ob(&o, x->vel[p][t][k]);
+            }
     }
     return o.n > cap ? 0 : o.n;
 }
@@ -412,6 +464,16 @@ int songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t le
         }
     }
     if (in.err) return 0;
+    if (x->flags & SX_FLAG_VEL) {                          /* the velocity tail; damaged, it is dropped and the notes play normal */
+        uint32_t n = ib(&in), id;
+        n |= ib(&in) << 8;
+        while (n-- && !in.err) {
+            id = ib(&in);
+            if ((id >> 3) >= SX_PATTERNS) { in.err = 1; break; }
+            for (k = 0; k < 8; k++) x->vel[id >> 3][id & 7][k] = (uint8_t)ib(&in);
+        }
+        if (in.err) memset(x->vel, 0, sizeof(x->vel));
+    }
     songx_sanitize(x);
     return 1;
 }

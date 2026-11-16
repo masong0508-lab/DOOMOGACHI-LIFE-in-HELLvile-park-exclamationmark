@@ -460,8 +460,8 @@ A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song w
   resident bytes (plan section 4). Nothing was added to the GBA's `.bss`; the GBA and PS1 builds were not run.
 
 Done since this package (see the sections below): the Advanced screens (ORDER arrangement, part view, Mix, Expert, Note grid with Box,
-Lyric lines), the 32 / 64 bar Start card (Epic), the FILE fold message, Sound / Brightness / Swing playback, free notes.
-Not done: a working copy of the `SongExt` in the scene scratch (it lives in `studio.xw`), pan playback, the per-note velocity bar,
+Velocity bar, Lyric lines), the 32 / 64 bar Start card (Epic), the FILE fold message, Sound / Brightness / Swing playback, free notes.
+Not done: a working copy of the `SongExt` in the scene scratch (it lives in `studio.xw`), pan playback,
 patterns of 1..4 bars.
 
 ## ST-ADV: Epic length and the FILE fold line (2026-11-16)
@@ -500,7 +500,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **Expert view (2026-11-16):** in the part view, SELECT tools, "Expert view..." (item 10). The **Free notes** switch (A / LEFT / RIGHT, one undo step, saved in `SongExt.flags`):
   when on, a new note in the NOTES tracker keeps the pitch you last used instead of snapping to the scale (`st_adv_free()`, `studio_edit.c`). Under it: notes per track
   for the patterns the arrangement uses, the notes the whole song plays, and a memory meter (parts / 16, entries / 64, note blocks / 48, encoded save page / 1,536 B).
-  B goes back to the part. Not built: the per-note velocity bar (cells have no velocity byte; needs a format change). Tests: `adv_expert_view_free_notes_switch_is_one_undo_step_and_stops_the_scale_snap`,
+  B goes back to the part. (The per-note velocity bar came later: see "Velocity bar" below.) Tests: `adv_expert_view_free_notes_switch_is_one_undo_step_and_stops_the_scale_snap`,
   `adv_expert_free_flag_is_saved_with_the_page`. Not run: GBA / PS1 / DC builds.
 - **Note grid (2026-11-16):** in the part view, SELECT tools, "Notes, expert...", then the Note grid row (A). A piano roll for one pattern (32 steps) of one track:
   pitch rows (the scale's own notes are the light rows) or, on the drum tracks (4 and 8), the 8 drum lanes. LEFT / RIGHT step, UP / DOWN pitch (a scale step; one semitone
@@ -511,7 +511,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   (it journals exactly the bytes it changes, pool included). Code: `studio_adv.c` ("the Note grid"), `songx_pattern_cost` / `songx_pattern_copy` in `song_ext.c`.
   Tests: nine `adv_note_grid_*` in `test_studio_tools.c`. Lyrics fit still reads patterns A..D only (`st_adv_line_pattern` answers -1 for a later one).
   Not run: GBA / PS1 / DC builds, GBA sizes and speed windows for the grid (the GBA keeps 2 Advanced pages, so it compiles there).
-- **Box (2026-11-16):** rectangle selection in the Note grid. Grid tools item 10 "Box and paste..." opens "Select a box" / "Paste here" / "Hear this part"
+- **Box (2026-11-16):** rectangle selection in the Note grid. Grid tools item 10 "Box and paste..." (now "Box and loudness...") opens "Select a box" / "Paste here" / "Hear this part"
   ("Hear this part" moved here; START plays as everywhere). "Select a box" anchors a corner at the cursor; LEFT / RIGHT stretch it over steps, L / R over tracks, and
   the grid shows every track at once (the box view: a row per track, notes as blocks, ties as lines, the box framed). A or SELECT open the box tools: Copy, Cut (copy, empty,
   drop the box), Clear, Octave up / down (pitch tracks only; refuses if one note would leave the keyboard), Paste here, Drop the box. B drops the box (the next B leaves
@@ -522,7 +522,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   Each command is one undo step. Tests (`test_studio_tools.c`): `adv_box_selects_over_steps_and_tracks_and_b_drops_it_without_leaving_the_grid`,
   `adv_box_copy_paste_moves_a_two_track_phrase_and_one_undo_step_takes_it_back`, `adv_box_cut_and_clear_take_the_ties_of_their_notes_and_undo_puts_them_back`,
   `adv_box_octave_moves_pitch_rows_only_and_refuses_out_of_range`, `adv_box_paste_refuses_drums_on_a_pitch_track_and_an_empty_clipboard`.
-  Not run: GBA / PS1 / DC builds, GBA sizes (+259 B `.bss`) and the speed window of the box view.
+  Not run: GBA / PS1 / DC builds, GBA sizes (+259 B `.bss`) and the speed window of the box view. (Later: Louder / Softer in the box tools, see "Velocity bar".)
 - **Mix playback (2026-11-16):** the player now uses two Mix settings (`song_player.c`, only with an arrangement; a classic song plays bit-identically). **Sound** (per lane 1..3, track 1..3's
   setting): soft = the classic fall (the default), punchy falls to half in about a third of a second, long rings on, pluck dies away fast; the choir doubling and jam pads keep the classic shape.
   **Brightness** (a part's lead): as set / 1 = 50 % pulse, 2 = 25 %, 3 = 12 % (thinner, brighter). Not played: pan (the players have no stereo for the PSG voices) and per-track swing
@@ -543,9 +543,28 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   clock. A waiting note sounds before the next step's work, so nothing is lost at fast tempos. Cost: +8 B of player state (`late[4]`, `lv[4]`; PS1 resident share: re-measure).
   The Mix footer now reads \"Sound, light, swing play. Pan: saved.\" (the players have no stereo for the PSG voices). A classic song plays bit-identically (golden music and
   concert tests pass). Test: `song_ext_track_swing_delays_an_off_beat_note_and_the_song_swing_comes_first`.
+- **Velocity bar (2026-11-16):** the per-note loudness of the Expert views. A pitch note has one of four levels: Soft (60 % of its track's volume), Normal (the default,
+  100 %), Loud (130 %) and Peak (160 %, never over 15). Code: `song_ext.c` (`songx_vel`, `songx_set_vel`, `songx_vel_pct`), `song_player.c` (`cell_vel`, `lane_on`),
+  `studio_adv.c` (Note grid and Box). Tests: `song_ext_velocity_*` (3, `test_song_ext.c`), `adv_velocity_*` (4, `test_studio_tools.c`).
+  - **Format:** a cell's byte does not change, so the classic song and every old page stay valid. `SongExt` gets a last field `vel[32][8][8]` (2 bits a step, 2,048 B; zero = every note
+    Normal; the code is stored as 0 = Normal so a fresh layer is all Normal). A saved page gets a tail only when some note is not Normal (`SX_FLAG_VEL` in the flags byte, then a u16 count and,
+    per pattern / track that has one, one id byte and its 8 level bytes). A page with no accents is byte for byte the old page; a page cut inside the tail keeps the song and drops the accents.
+    A copied pattern (New pattern) brings its accents. The undo journal reaches the layer because it covers the whole `SongExt`.
+  - **Note grid:** under the roll of a pitch track a **Vel strip** shows a bar for every note, as tall as it is loud (Soft short and dim, Peak full), with the cursor's step marked; the line
+    under it names the level of the note at the cursor. Grid tools item 10 is now "Box and loudness...": Select a box, Paste here, Hear this part, **Louder note**, **Softer note**
+    (the note at the cursor, one level a press; "No note here", "Already at Peak", "Already Soft", "Drums keep their own level" and no undo step when nothing changes).
+    The roll has about 10 px fewer for pitch rows to make room for the strip. A note that goes (taken off, cut, cleared) forgets its loudness, and undo brings both back.
+  - **Box:** the box tools are now Copy, Cut, Clear, Octave up, Octave down, **Louder**, **Softer**, Paste here, Drop the box. Louder / Softer move every pitch note in the box one level
+    (one undo step). Copy and Cut keep each note's loudness (a 64 B clipboard beside the 256 B of cells) and Paste puts it back with the note. The box view shows Soft as a half block and
+    Loud / Peak with a bright cap (1 px / 2 px).
+  - **Played:** `do_step` multiplies the lane's volume by the note's level (the lead, harmony and bass lanes; a note folded from tracks 5..7 takes its own track's level; a swung note keeps
+    its level while it waits: +4 B of player state, `lvl[4]`). A Normal note is the classic note (test). Drums keep their kit levels (the drum cells are not accented).
+  - **Memory:** the working `SongExt` grows from 2,176 to 4,224 B and the box clipboard by 64 B: expected `.bss` +2,112 B on the GBA (about 43 KB EWRAM left), host and Dreamcast the same. Not
+    measured here: `make -C gba sizes`, GBA speed windows (the grid draws one more strip), PS1 resident share (`song_player.c` +4 B). The saved page is still at most 1,536 B (a page that does not
+    fit is saved classic, as before); the worst-case book chunk in the test output is unchanged at 5,305 B.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** pan playback, the per-note velocity bar, patterns of 1..4 bars.
+- **Not done:** pan playback, patterns of 1..4 bars.
 - **Tests:** `adv_from_order_plays_like_the_classic_order`, `adv_arrangement_insert_remove_and_entry_passes`,
   `adv_order_tab_opens_the_arrangement_once_and_undo_reaches_it`, `adv_a_take_drops_the_arrangement_in_the_same_undo_step`,
   `adv_the_page_is_saved_with_the_song_and_loads_back`, the `adv_keys_*` journeys and the PERFORM tests (`test_studio_tools.c`).

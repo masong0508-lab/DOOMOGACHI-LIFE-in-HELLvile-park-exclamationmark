@@ -12,6 +12,7 @@
 uint8_t nat_fb[NAT_MAX_W * NAT_MAX_H];
 int nat_w = 240, nat_h = 160;
 uint32_t nat_tone_calls, nat_sample_calls;
+uint8_t nat_tone_vol[4];                   /* the volume of the last plat_tone on each of channels 0..3 (tests) */
 int nat_last_sample;
 
 static uint32_t ticks;
@@ -352,6 +353,7 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
 void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 {
     nat_tone_calls++;
+    if ((unsigned)channel < 4) nat_tone_vol[channel] = vol;
     nat_wav_tone(channel, freq_hz, vol, wave);   /* --- music: musrender --- */
     if (verbose) fprintf(stderr, "[tone] ch%d %uHz vol%u wave%u\n", channel, freq_hz, vol, wave);
 }

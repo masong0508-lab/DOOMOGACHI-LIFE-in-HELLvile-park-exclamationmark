@@ -299,3 +299,93 @@ TEST(song_ext_track_swing_delays_an_off_beat_note_and_the_song_swing_comes_first
         CHECK_EQ(at, straight);
     }
 }
+
+/* ---- the velocity bar: a note's loudness is its own layer, saved with the page, and the player multiplies the track's volume ---- */
+TEST(song_ext_velocity_is_a_layer_that_saves_and_loads_and_an_unaccented_page_is_the_old_page)
+{
+    DoomoSong s;
+    SongExt x, y;
+    uint8_t buf[SONGX_PAGE_BYTES], plain[SONGX_PAGE_BYTES];
+    uint32_t n, n0;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK_EQ(songx_vel(&x, 0, 0, 0), SX_VEL_NORMAL);              /* a fresh layer: every note normal */
+    CHECK(!songx_vel_any(&x));
+    n0 = songx_encode(&s, &x, plain, sizeof(plain));
+    CHECK(n0 > 0);
+    CHECK_EQ(plain[5] & SX_FLAG_VEL, 0);                           /* no accents: no tail, the old bytes */
+    CHECK(songx_set_vel(&x, 0, 0, 0, SX_VEL_PEAK));
+    CHECK(songx_set_vel(&x, 0, 0, 5, SX_VEL_SOFT));
+    CHECK(songx_set_vel(&x, 31, 7, 31, SX_VEL_LOUD));
+    CHECK(!songx_set_vel(&x, 32, 0, 0, SX_VEL_LOUD));
+    CHECK(!songx_set_vel(&x, 0, 0, 0, 4));
+    CHECK_EQ(songx_vel(&x, 0, 0, 0), SX_VEL_PEAK);
+    CHECK_EQ(songx_vel(&x, 0, 0, 5), SX_VEL_SOFT);
+    CHECK_EQ(songx_vel(&x, 0, 0, 6), SX_VEL_NORMAL);               /* its neighbours are untouched */
+    CHECK_EQ(songx_vel(&x, 31, 7, 31), SX_VEL_LOUD);
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(n > n0);
+    CHECK(buf[5] & SX_FLAG_VEL);
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_vel(&y, 0, 0, 0), SX_VEL_PEAK);
+    CHECK_EQ(songx_vel(&y, 0, 0, 5), SX_VEL_SOFT);
+    CHECK_EQ(songx_vel(&y, 31, 7, 31), SX_VEL_LOUD);
+    CHECK_EQ(songx_vel(&y, 3, 3, 3), SX_VEL_NORMAL);
+    CHECK(memcmp(x.vel, y.vel, sizeof(x.vel)) == 0);
+    /* a page cut inside the tail keeps the song and drops the accents */
+    CHECK(songx_decode(&s, &y, buf, n - 4));
+    CHECK(!songx_vel_any(&y));
+    CHECK_EQ(y.arrange_len, x.arrange_len);
+    /* a plain page decodes to a layer of normals */
+    CHECK(songx_decode(&s, &y, plain, n0));
+    CHECK(!songx_vel_any(&y));
+    /* an accent is not part of the cell byte: the song's cells are what they were */
+    CHECK_EQ(songx_cell(&s, &x, 0, 0, 0), 60);
+}
+
+TEST(song_ext_pattern_copy_brings_the_accents_along)
+{
+    DoomoSong s;
+    SongExt x;
+    int np;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK(songx_set_vel(&x, 0, 0, 0, SX_VEL_LOUD));
+    np = songx_pattern_copy(&s, &x, 0);
+    CHECK_EQ(np, SONG_PATTERNS);
+    CHECK_EQ(songx_vel(&x, np, 0, 0), SX_VEL_LOUD);
+    CHECK_EQ(songx_vel(&x, np, 0, 1), SX_VEL_NORMAL);
+}
+
+static int ext_note_vol(int level, int ext, int vol)
+{
+    DoomoSong s;
+    SongExt x;
+    int i, got;
+    opt_set(OPT_MUSIC_VOL, 7);
+    base(&s);
+    s.vol[0] = (uint8_t)vol;
+    memset(s.notes, 0, sizeof(s.notes));
+    s.notes[0][0][0] = 72;
+    songx_from_order(&x, &s);
+    songx_set_vel(&x, 0, 0, 0, level);
+    nat_tone_vol[0] = 0;
+    if (ext) song_play_ext(&s, &x, -1); else song_play(&s, -1);
+    for (i = 0; i < 2; i++) song_tick();
+    got = nat_tone_vol[0];                                        /* (song_stop sends the silence) */
+    song_stop();
+    return got;
+}
+
+TEST(song_ext_velocity_scales_the_tracks_volume_and_normal_plays_as_a_classic_song)
+{
+    int soft = ext_note_vol(SX_VEL_SOFT, 1, 10), norm = ext_note_vol(SX_VEL_NORMAL, 1, 10), loud = ext_note_vol(SX_VEL_LOUD, 1, 10),
+        peak = ext_note_vol(SX_VEL_PEAK, 1, 10);
+    CHECK(soft > 0);
+    CHECK(soft < norm);
+    CHECK(norm < loud);
+    CHECK(loud < peak);
+    CHECK(peak <= 15);
+    CHECK_EQ(norm, ext_note_vol(SX_VEL_NORMAL, 0, 10));          /* a normal note is the classic note */
+    CHECK_EQ(ext_note_vol(SX_VEL_PEAK, 1, 15), 15);              /* nothing goes over the top */
+}

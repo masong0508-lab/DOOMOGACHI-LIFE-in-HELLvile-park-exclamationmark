@@ -542,6 +542,7 @@ static struct {
     uint8_t  harm;            /* choir doubling note on ch1 (0 = none)       */
     uint8_t  harm_vol;
     uint8_t  late[4], lv[4];  /* ST-ADV Mix view swing: a lane's off-beat note waits `late` ticks (value lv); 0 = nothing waiting */
+    uint8_t  lvl[4];          /* ... and its velocity level (SX_VEL_*) */
     uint8_t  shape[3];        /* ST-ADV Mix view: the sound (0 soft = as always, 1 punchy, 2 long, 3 pluck) of each lane's note */
     uint8_t  voice[VOICE_COUNT];
     /* preview */
@@ -845,7 +846,7 @@ static void sect_ctx(int *shift, int *bright, int *fade)
 }
 
 /* one lane's cell `v` (already shifted) sounds now */
-static void lane_on(int t, int v, int fade, int bright)
+static void lane_on(int t, int v, int fade, int bright, int vel)
 {
     const DoomoSong *s = P.s;
     if (t == 3) {
@@ -859,6 +860,7 @@ static void lane_on(int t, int v, int fade, int bright)
         P.note[t] = (uint8_t)v;
         P.age[t] = 0;
         P.base[t] = (uint8_t)(fade < 256 ? DOOMO_MAX(1, s->vol[t] * fade / 256) : s->vol[t]);
+        if (vel != SX_VEL_NORMAL) P.base[t] = (uint8_t)DOOMO_CLAMP(P.base[t] * songx_vel_pct(vel) / 100, 1, 15);   /* the velocity bar */
         P.wave[t] = (uint8_t)(s->wave[t] < SONG_WAVES ? s->wave[t] : WAVE_PULSE50);
         P.shape[t] = P.x ? (uint8_t)(P.x->trk[t].env & 3) : 0;
         if (t == 0 && bright) P.wave[0] = (uint8_t)(bright == 1 ? WAVE_PULSE50 : bright == 2 ? WAVE_PULSE25 : WAVE_PULSE12);   /* the part's lead brightness */
@@ -873,6 +875,18 @@ static void lane_on(int t, int v, int fade, int bright)
             retrigger(t, song_note_hz(v), P.base[t], P.wave[t]);
         }
     }
+}
+
+/* the velocity (SX_VEL_*) of the note lane t sounds at step i: the arrangement's own layer, and for a lane that a folded track fills the
+ * track the note came from (the same rule as cell()) */
+static int cell_vel(int p, int t, int i)
+{
+    int k;
+    if (!P.x || t > 2) return SX_VEL_NORMAL;
+    if (songx_cell(P.s, P.x, p, t, i)) return songx_vel(P.x, p, t, i);
+    for (k = SONG_TRACKS; k < P.x->tracks && k < SX_TRACKS; k++)
+        if (songx_lane_of(k) == t && songx_cell(P.s, P.x, p, k, i)) return songx_vel(P.x, p, k, i);
+    return SX_VEL_NORMAL;
 }
 
 /* units that one tick adds to the step clock (tempo of the part included) */
@@ -903,7 +917,7 @@ static void do_step(void)
     for (t = 0; t < 4; t++) if (P.late[t]) {                  /* a note still waiting sounds before the next step's work */
         P.late[t] = 0;
         sect_ctx(&shift, &bright, &fade);
-        lane_on(t, P.lv[t], fade, bright);
+        lane_on(t, P.lv[t], fade, bright, P.lvl[t]);
     }
     sect_ctx(&shift, &bright, &fade);
     if (P.step == 0) begin_line();
@@ -913,8 +927,8 @@ static void do_step(void)
         v = cell(pat, t, P.step);
         if (t < 3 && v >= 2 && shift) v = DOOMO_CLAMP(v + shift, 2, 127);
         w = v ? lane_wait(t) : 0;
-        if (w) { P.late[t] = (uint8_t)w; P.lv[t] = (uint8_t)v; }
-        else lane_on(t, v, fade, bright);
+        if (w) { P.late[t] = (uint8_t)w; P.lv[t] = (uint8_t)v; P.lvl[t] = (uint8_t)cell_vel(pat, t, P.step); }
+        else lane_on(t, v, fade, bright, v >= 2 ? cell_vel(pat, t, P.step) : SX_VEL_NORMAL);
     }
 }
 
@@ -1137,7 +1151,7 @@ void song_tick(void)
         for (t = 0; t < 4; t++) if (P.late[t] && --P.late[t] == 0) {      /* a swung note's wait is over */
             int shift, bright, fade;
             sect_ctx(&shift, &bright, &fade);
-            lane_on(t, P.lv[t], fade, bright);
+            lane_on(t, P.lv[t], fade, bright, P.lvl[t]);
         }
     }
     P.acc += tick_units();

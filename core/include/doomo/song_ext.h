@@ -29,6 +29,11 @@
 #define SX_NO_LINE       0xFF
 #define SX_FLAG_ADVANCED 1             /* written in Advanced */
 #define SX_FLAG_FREE     2             /* free notes (no scale snap) */
+#define SX_FLAG_VEL      4             /* in a saved page: a velocity tail follows the cells (set by songx_encode) */
+#define SX_VEL_SOFT      0             /* the four loudness levels of a note (the velocity bar) */
+#define SX_VEL_NORMAL    1             /* the default: a note plays at its track's volume */
+#define SX_VEL_LOUD      2
+#define SX_VEL_PEAK      3
 
 /* the language of the sections */
 enum { SX_INTRO, SX_VERSE, SX_PRECHORUS, SX_CHORUS, SX_BRIDGE, SX_OUTRO, SX_NAMES };
@@ -70,6 +75,7 @@ typedef struct SongExt {
     SxTrack  trk[SX_TRACKS];
     uint8_t  map[SX_PATTERNS][SX_TRACKS];   /* pool block + 1 for a cell outside the classic 4 x 4, 0 = empty */
     uint8_t  pool[SX_POOL][SONG_STEPS];
+    uint8_t  vel[SX_PATTERNS][SX_TRACKS][SONG_STEPS / 4];   /* per-note loudness, 2 bits a step (see songx_vel); all zero = every note normal */
 } SongExt;
 
 /* a fresh Advanced song: the classic song's order becomes one section per run (all in one is fine): sections = 1, its
@@ -81,6 +87,12 @@ int  songx_sanitize(SongExt *x);
 int  songx_cell(const DoomoSong *s, const SongExt *x, int pat, int trk, int step);
 int  songx_set_cell(DoomoSong *s, SongExt *x, int pat, int trk, int step, int v);   /* 1 = stored, 0 = pool full / out of range */
 int  songx_blocks_free(const SongExt *x);
+/* the velocity bar (ST-ADV expert): a note's loudness SX_VEL_SOFT..PEAK, SX_VEL_NORMAL unless set. Kept in its own layer, so a cell's
+ * byte (and the classic song) never changes. songx_vel_pct is what the player multiplies the track's volume by. */
+int  songx_vel(const SongExt *x, int pat, int trk, int step);
+int  songx_set_vel(SongExt *x, int pat, int trk, int step, int level);   /* 1 = stored, 0 = out of range */
+int  songx_vel_pct(int level);
+int  songx_vel_any(const SongExt *x);                                    /* any note that is not normal */
 /* the arrangement as one flat list of pattern passes */
 int  songx_len(const SongExt *x);                                    /* passes in the whole song (>= 1) */
 int  songx_at(const SongExt *x, int pos, int *sect, int *pass);      /* pattern id of pass `pos`; its section and its pass in the section */
