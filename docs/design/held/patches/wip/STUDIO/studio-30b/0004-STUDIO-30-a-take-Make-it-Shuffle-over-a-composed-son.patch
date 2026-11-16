@@ -1,7 +1,7 @@
-From 145ab403bf4e732ea1044c8920019a7e195310b7 Mon Sep 17 00:00:00 2001
+From 092b220ec504408e48939755c5d8335b15f56a2d Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sun, 15 Nov 2026 23:17:32 +0000
-Subject: [PATCH 4/5] STUDIO-30: a take (Make it! / Shuffle) over a composed
+Subject: [PATCH 4/6] STUDIO-30: a take (Make it! / Shuffle) over a composed
  song is undoable: before-image kept in the scene scratch
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

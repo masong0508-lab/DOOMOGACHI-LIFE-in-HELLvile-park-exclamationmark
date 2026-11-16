@@ -1,7 +1,7 @@
-From bade5a9a84c4628ac822ccd2a665ac40a68fa91b Mon Sep 17 00:00:00 2001
+From 532180ed369458be03afaeb9f56aa83d549209bc Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sun, 15 Nov 2026 23:47:40 +0000
-Subject: [PATCH 5/5] STUDIO-30: PS1 resident +0 (no sprite planner / bulb
+Subject: [PATCH 5/6] STUDIO-30: PS1 resident +0 (no sprite planner / bulb
  pictures there, one redo_push call site), expect-fps floors on the studio
  windows
 

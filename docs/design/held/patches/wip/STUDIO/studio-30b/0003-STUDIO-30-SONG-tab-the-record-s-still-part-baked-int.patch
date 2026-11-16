@@ -1,7 +1,7 @@
-From b83edb20bcb762221b9786f2d50fca1bedda0a28 Mon Sep 17 00:00:00 2001
+From bc6de8f7e8275e4b3a8df7b6b2a03460a71a0d1e Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sun, 15 Nov 2026 22:50:45 +0000
-Subject: [PATCH 3/5] STUDIO-30: SONG tab: the record's still part baked into
+Subject: [PATCH 3/6] STUDIO-30: SONG tab: the record's still part baked into
  one picture (GBA 31.0 -> 26.9 ms, made song playing 28.5 -> 30.0 fps)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

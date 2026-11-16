@@ -73,3 +73,23 @@ to remove the concept art (12 MB) and the trailer video (6.8 MB) from the reposi
 
 ## Stopped at 100% (2026-11-16 ~00:00 UTC)
 STUDIO-30 was in review / landing: saved in patches/wip/STUDIO/studio-30/ (STAGE tab 22.5 -> 30.0, a made song playing 30.0, the take-over-a-song undo, a speed2 window per tab, PS1 +0). Apply with git am -3 and land it first. CONCERT-30 landed partial (band 23.2 fps; what is left is in its status line and findings).
+
+## Studio: exact next steps (written 2026-11-16 ~00:10 UTC, allowance at 100%)
+1. **Land STUDIO-30 first** (built, gates passed on the landing tree except the push; it was stopped one step
+   before pushing). Patches: `patches/wip/STUDIO/studio-30b/` (6 commits incl. the landing docs commit).
+   `git worktree add -b fut-studio-30 .claude/worktrees/fut-studio-30 origin/claude/nice-allen-gr6czm`,
+   `git am -3 docs/design/held/patches/wip/STUDIO/studio-30b/*.patch`, run the gates (core test, check-gen,
+   GBA build + test + `make -C gba test-speed2 SPEED2="studio studio_tabs" SPEED2_GATES=1`, the PS1 build with
+   the boot FMV), push, delete `studio-30b/` and `STUDIO-30-findings.md`. It brings: STAGE tab 22.5 -> 30.0,
+   a made song playing 30.0, undo of a take over a composed song, a speed2 window per tab.
+2. **ST-TOOLS** (not started: no commits): the note grid edits, per-track instrument / envelope / volume / pan,
+   swing, chord track, drum pattern editor, then the seven helper tools one by one (chord suggester, melody
+   helper, groove picker, lyric syllable fitter, choir auto-harmony, section copier, mix helper).
+3. **ST-ADV** (not started): the Advanced switch for full songs (sections, key / tempo changes, automation,
+   more tracks, several minutes, lyrics and choir across the song; versioned format, old songs load).
+4. **ST-USE**: user songs in the Concert Hall and PERFORM; the studio look decluttered.
+5. **Concert to 30**: CONCERT-30 landed partial (band 23.2 fps); what is left with measured costs is in
+   `patches/wip/STUDIO/CONCERT-30-findings.md` (instruments as kept pictures ~3 ms, crowd rows as OBJ sprites
+   ~7 ms (OBJ VRAM is full: free it first), the approved 15 Hz / flame trades last; Dreamland and Disco stages
+   25-27.6; the choir's 35.4 ms peak).
+Run each with `tools/agents/wave-runner.js` (stream STUDIO; `"model": "sonnet"` keeps the cost down).

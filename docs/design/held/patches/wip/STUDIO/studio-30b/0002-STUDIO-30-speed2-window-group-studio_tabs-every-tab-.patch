@@ -1,7 +1,7 @@
-From 47c0ce81850b8448360b3cb737910ad7c37de9d6 Mon Sep 17 00:00:00 2001
+From 3a467a5b0d9b1776310d579f0466fad5c9cc9b18 Mon Sep 17 00:00:00 2001
 From: Claude <noreply@anthropic.com>
 Date: Sun, 15 Nov 2026 22:46:36 +0000
-Subject: [PATCH 2/5] STUDIO-30: speed2 window group studio_tabs (every tab and
+Subject: [PATCH 2/6] STUDIO-30: speed2 window group studio_tabs (every tab and
  mode the other two groups lack)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

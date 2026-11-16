@@ -1,0 +1,1108 @@
+From b576134cbd32d81a5b2a654a7ad05b29bb8d0f69 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 16 Nov 2026 00:03:04 +0000
+Subject: [PATCH 6/6] STUDIO-30 landed: status and RESUME, wip patches removed
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+---
+ docs/design/held/RESUME.md                    |   2 +-
+ .../patches/wip/STUDIO/STUDIO-30-findings.md  |  30 ---
+ ...tab-poster-choir-as-sprites-marquee-.patch | 243 -----------------
+ ...-window-group-studio_tabs-every-tab-.patch | 162 ------------
+ ...ab-the-record-s-still-part-baked-int.patch | 155 -----------
+ ...-Make-it-Shuffle-over-a-composed-son.patch | 182 -------------
+ ...sident-0-no-sprite-planner-bulb-pict.patch | 244 ------------------
+ docs/design/held/status/STUDIO.md             |   3 +-
+ 8 files changed, 3 insertions(+), 1018 deletions(-)
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/studio-30/0001-STUDIO-30-STAGE-tab-poster-choir-as-sprites-marquee-.patch
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/studio-30/0002-STUDIO-30-speed2-window-group-studio_tabs-every-tab-.patch
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/studio-30/0003-STUDIO-30-SONG-tab-the-record-s-still-part-baked-int.patch
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/studio-30/0004-STUDIO-30-a-take-Make-it-Shuffle-over-a-composed-son.patch
+ delete mode 100644 docs/design/held/patches/wip/STUDIO/studio-30/0005-STUDIO-30-PS1-resident-0-no-sprite-planner-bulb-pict.patch
+
+diff --git a/docs/design/held/RESUME.md b/docs/design/held/RESUME.md
+index ca93d3ad..ab892aaf 100644
+--- a/docs/design/held/RESUME.md
++++ b/docs/design/held/RESUME.md
+@@ -72,4 +72,4 @@ the NG+ cold open); "huggle" meaning (INTRO_REDO.md default); the GBA rent defau
+ to remove the concept art (12 MB) and the trailer video (6.8 MB) from the repository.
+ 
+ ## Stopped at 100% (2026-11-16 ~00:00 UTC)
+-STUDIO-30 was in review / landing: saved in patches/wip/STUDIO/studio-30/ (STAGE tab 22.5 -> 30.0, a made song playing 30.0, the take-over-a-song undo, a speed2 window per tab, PS1 +0). Apply with git am -3 and land it first. CONCERT-30 landed partial (band 23.2 fps; what is left is in its status line and findings).
++STUDIO-30 landed 2026-11-16 (STAGE tab 30.0, made song 30.0, take-over undo, studio_tabs speed2 group, PS1 +0). CONCERT-30 landed partial (band 23.2 fps; what is left is in its status line and findings).
+diff --git a/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md b/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+deleted file mode 100644
+index 87c22855..00000000
+--- a/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
++++ /dev/null
+@@ -1,30 +0,0 @@
+-# STUDIO-30 findings (running file, 2026-11-15)
+-
+-Baseline on the tip 2c948ea5 (GBA, libmgba, `make -C gba test-speed2 SPEED2="studio studio_play"`):
+-stage tab 22.5 fps (36.5 ms avg / 37.0 max, 65 frames over 33 ms); every other window 30.0 fps; templates
+-29.1 / 35.1 ms, picker 23.4 / 33.1, play loop 25.2 / 33.0, drum loop 26.9 / 34.4.
+-
+-## STAGE tab (GBA)
+-Experiments (work avg ms): no chibis 30.5; no marquee bulbs 29.6. So the 16 chibis cost 6 ms and the 56 bulb
+-circles (112 rect calls) 4.2 ms.
+-1. Poster chibis as hardware sprites (the show's option C planner, backwards from the front; the button and the
+-   show count are the only later bitmap parts): 36.5 -> 33.8 ms (12 of 16 singers are sprites; the edge ones
+-   touch the button).
+-2. Marquee bulbs as 32x5 pictures (4 bulbs, 2 phases, ROM), 7 plat_image calls a row: 33.8 -> 31.3 ms avg / 33.0
+-   max, 30.0 fps. Exact (test studio_bulbs_equal_the_circles); sprites exact (studio_poster_sprites_equal_the_bitmap).
+-
+-## New windows: gba/harness/scripts/speed2_studio_tabs.txt (every tab / mode the other two groups lack)
+-Baseline (tip): song idle 31.0 / 32.3, song playing 31.6 / 35.8, notes idle 27.4, notes playing 28.8, order 24.6,
+-lyrics 31.5 / 33.1, choir 28.8, perform early 20.5, perform later 21.3, start card 21.0, control card 13.5,
+-made song playing 28.5 fps (32.5 / 38.6, 10 frames over 33 ms), file top 30.4, file end 29.7.
+-
+-## SONG tab (GBA)
+-The record is 7 circles, ~70 rect calls: 5.5 ms. Its still part is now one baked picture (st_bake, the studio's
+-pool): song idle 31.0 -> 26.9 ms, made song playing 32.5 -> 28.5 ms, 30.0 fps. Screenshots of every
+-studio_tabs window byte-identical to the tip's (cmp).
+-
+-## ST-EASY gap: a take over a composed song cannot be undone
+-Cause: the whole-song before-image (892 B raw) RLE-encodes to over the 768 B journal for a dense song. Fix: the raw
+-before-image goes in StEasy.before (scene scratch, BakeSt's pixel pool shrank by 892 B: 9,796 B left; no new
+-.bss) and the journal holds one 6 byte record (BIG_OFF) that names it. Test
+-studio_take_over_a_composed_song_undoes_and_redoes (fails without the fix).
+diff --git a/docs/design/held/patches/wip/STUDIO/studio-30/0001-STUDIO-30-STAGE-tab-poster-choir-as-sprites-marquee-.patch b/docs/design/held/patches/wip/STUDIO/studio-30/0001-STUDIO-30-STAGE-tab-poster-choir-as-sprites-marquee-.patch
+deleted file mode 100644
+index 84b4f80e..00000000
+--- a/docs/design/held/patches/wip/STUDIO/studio-30/0001-STUDIO-30-STAGE-tab-poster-choir-as-sprites-marquee-.patch
++++ /dev/null
+@@ -1,243 +0,0 @@
+-From d4a77d04bd7cc35281f96b036dd494c23f81c7f7 Mon Sep 17 00:00:00 2001
+-From: Claude <noreply@anthropic.com>
+-Date: Sun, 15 Nov 2026 22:46:06 +0000
+-Subject: [PATCH 1/5] STUDIO-30: STAGE tab poster: choir as sprites, marquee
+- bulbs as pictures (GBA 22.5 -> 30.0 fps)
+-
+-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+-Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+----
+- core/src/studio_int.h                         |  1 +
+- core/src/studio_stage.c                       | 68 +++++++++++++--
+- core/tests/test_studio.c                      | 87 +++++++++++++++++++
+- .../patches/wip/STUDIO/STUDIO-30-findings.md  | 14 +++
+- 4 files changed, 163 insertions(+), 7 deletions(-)
+- create mode 100644 docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-
+-diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+-index f49ac2b3..12d4e52e 100644
+---- a/core/src/studio_int.h
+-+++ b/core/src/studio_int.h
+-@@ -197,6 +197,7 @@ void ed_reset(void);
+- uint8_t st_track_color(int t, int shade);    /* shade 0 dark, 1 base, 2 light */
+- uint8_t st_pattern_color(int p, int shade);
+- void st_panel(int x, int y, int w, int h, int style);
+-+int st_bulbs(int rx, int ry, int rw, int rh, int phase);   /* the stage poster's marquee (studio_stage.c) */
+- void st_chibi(int id, int x, int y, int dir, int frame, int flags, uint8_t col);
+- void st_chibi_ui(int id, int x, int y, int dir, int frame, int flags, uint8_t col);   /* S3-2 */
+- /* Baked shapes (GBA, or any build with DOOMO_STUDIO_BAKE): a shape drawn from many rects is painted once into an image
+-diff --git a/core/src/studio_stage.c b/core/src/studio_stage.c
+-index d3993336..74777136 100644
+---- a/core/src/studio_stage.c
+-+++ b/core/src/studio_stage.c
+-@@ -827,16 +827,41 @@ void stage_draw_full(void)
+-     }
+- }
+- 
+-+/* ---- the marquee bulbs (S3-8's studio part) ------------------------------------------------------------------
+-+ * 28 bulbs a row, two rows, each a radius-2 circle (a 5x5 square less its corners): 112 rect calls, 4 ms on the GBA.
+-+ * Four bulbs are one 32x5 picture (two phases, the bulbs alternate), so a row is 7 plat_image calls. The pictures are
+-+ * what ui_fill_circle(.., 2, ..) paints (test_studio.c studio_bulbs_equal_the_circles). Returns how many bulbs it drew
+-+ * (a multiple of 4; the rest are drawn as circles). */
+-+#define BL_ON PAL_PAINT(PAINT_LEMON, 2)
+-+#define BL_OFF PAL_PAINT(PAINT_HONEY, 0)
+-+#define BL_E(c) 0, c, c, c, 0, 0, 0, 0
+-+#define BL_M(c) c, c, c, c, c, 0, 0, 0
+-+#define BL_ROW(f, a, b) f(a), f(b), f(a), f(b)
+-+#define BL_TILE(a, b) { BL_ROW(BL_E, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_M, a, b), BL_ROW(BL_E, a, b) }
+-+static const uint8_t bulb_pix[2][5 * 32] = { BL_TILE(BL_OFF, BL_ON), BL_TILE(BL_ON, BL_OFF) };
+-+static const DoomoImage bulb_img[2] = { { 32, 5, bulb_pix[0], 0 }, { 32, 5, bulb_pix[1], 0 } };
+-+
+-+int st_bulbs(int rx, int ry, int rw, int rh, int phase)
+-+{
+-+    int n = ((rw - 8) / 8) & ~3, i;
+-+    for (i = 0; i < n; i += 4) {
+-+        plat_image(rx + 4 + i * 8, ry + 2, &bulb_img[phase & 1], 1, 0, 0);
+-+        plat_image(rx + 4 + i * 8, ry + rh - 7, &bulb_img[(phase & 1) ^ 1], 1, 0, 0);
+-+    }
+-+    return n;
+-+}
+-+
+- /* ---- the poster ----------------------------------------------------------- */
+- void tab_stage_draw(StRect r)
+- {
+--    int t = (int)studio.t, i, n = 0, k, wide = st_wide();
+-+    int t = (int)studio.t, i, n = 0, k, wide = st_wide(), x, y;
+-     uint8_t slots[SONG_SINGERS], secs[SONG_SINGERS];
+-     StageBox b;
+-     char buf[48];
+-     st_panel(r.x, r.y, r.w, r.h, WIN_DARK);
+-     /* marquee bulbs */
+--    for (i = 0; i < (r.w - 8) / 8; i++) {
+-+    i = st_bulbs(r.x, r.y, r.w, r.h, t / 6);
+-+    for (; i < (r.w - 8) / 8; i++) {
+-         int on = ((i + t / 6) & 1);
+-         ui_fill_circle(r.x + 6 + i * 8, r.y + 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-         ui_fill_circle(r.x + 6 + i * 8, r.y + r.h - 5, 2, !on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-@@ -862,11 +887,40 @@ void tab_stage_draw(StRect r)
+-         plat_rect(r.x + r.w - 12 - i * 4, r.y + 9, 4, b.floor - r.y - 9, PAL_PAINT(PAINT_BLOOD, (i & 1) ? 0 : 1));
+-     }
+-     spot(r.x + r.w / 2 + ui_wave(t, 120, r.w / 5), r.x + r.w / 2, r.y + 36, b.floor, PAL_PAINT(PAINT_LEMON, 2));
+--    for (k = 0; k < n; k++) {
+--        int x, y;
+--        place(SS->choir_layout, k, n, &b, secs, &x, &y);
+--        st_chibi(song_singer_id(SS, slots[k]), x - BODYSPR_W / 2,
+--                 y - BODYSPR_H - (((t / 10) + k) % 8 == 0), 0, 0, 0, 0);
+-+    {
+-+        /* The poster's choir as hardware sprites (the show's option C, above): a singer whose 16x24 box nothing drawn
+-+         * later in the frame touches (a later chibi that stays in the bitmap, the button, the show count) is a
+-+         * sprite; the rest are drawn as before. Decided backwards from the front. Not while a popup, the card, the
+-+         * picker, a message or a toast is over the tab. Platforms without sprites: plat_stage_obj_begin says 0. */
+-+        int bx[SONG_SINGERS], by[SONG_SINGERS];
+-+        uint8_t spr[SONG_SINGERS];
+-+        int bt = r.y + r.h - 25;                              /* the button's rows (it bobs one row) and the stats line */
+-+        int sx1 = studio_stats.performed && wide ? r.x + 8 + 6 * 30 : 0;
+-+        memset(spr, 0, sizeof(spr));
+-+        for (k = 0; k < n; k++) {
+-+            place(SS->choir_layout, k, n, &b, secs, &x, &y);
+-+            bx[k] = x - BODYSPR_W / 2;
+-+            by[k] = y - BODYSPR_H - (((t / 10) + k) % 8 == 0);
+-+        }
+-+        if (n > 0 && !studio.pop_n && !studio.msg_t && !studio.picking && !studio.help && !ui_toast_pending() &&
+-+            !tip_active() && plat_stage_obj_begin()) {
+-+            for (k = n - 1; k >= 0; k--) {
+-+                int hit = (by[k] + BODYSPR_H > bt && bx[k] < r.x + r.w / 2 + 62 && bx[k] + BODYSPR_W > r.x + r.w / 2 - 62) ||
+-+                          (sx1 && by[k] + BODYSPR_H > r.y + r.h - 20 && bx[k] < sx1), j;
+-+                for (j = k + 1; j < n && !hit; j++)            /* a later chibi that stays in the bitmap */
+-+                    if (!spr[j] && bx[k] < bx[j] + BODYSPR_W && bx[j] < bx[k] + BODYSPR_W && by[k] < by[j] + BODYSPR_H &&
+-+                        by[j] < by[k] + BODYSPR_H) hit = 1;
+-+                spr[k] = (uint8_t)!hit;
+-+            }
+-+        }
+-+        for (k = 0; k < n; k++) {
+-+            int id = song_singer_id(SS, slots[k]);
+-+            if (spr[k]) {
+-+                const DoomoImage *img = bodyspr_image(id, 0, 0);
+-+                if (img && plat_stage_obj(slots[k], bx[k], by[k], img, 0, NULL, 0)) continue;
+-+            }
+-+            st_chibi(id, bx[k], by[k], 0, 0, 0, 0);
+-+        }
+-     }
+-     if (!n) ui_text_center(r.x + r.w / 2, b.floor - 20, "No singers yet: an instrumental!", PAL_GRAY_L);
+-     {
+-diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+-index 6cbbe027..3946f722 100644
+---- a/core/tests/test_studio.c
+-+++ b/core/tests/test_studio.c
+-@@ -1642,6 +1642,93 @@ TEST(studio_stage_sprites_equal_the_bitmap)
+-     CHECK(tot > 0);                                         /* the planner really does choose sprites */
+- }
+- 
+-+/* the poster tab's choir (tab_stage_draw): sprites painted over the bitmap equal the all-bitmap picture, at every
+-+ * layout, a few singer counts, both screen sizes, with and without the show count; and sprites really are used */
+-+static int tp_run(int w, int h, int layout, int nsing, long *sprites, int over)
+-+{
+-+    int i, t, bad = 0, resid[SONG_SINGERS], n = 0;
+-+    nat_w = w; nat_h = h;
+-+    test_reset();
+-+    town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
+-+    scene_set(&base_scene, 0);
+-+    scene_push(&SCENE_STUDIO, -2);
+-+    for (i = 0; i < DOOMO_MAX_RESIDENTS && n < SONG_SINGERS; i++) if (st_alive(i)) resid[n++] = i;
+-+    for (i = 0; i < SONG_SINGERS; i++) SS->singer[i] = (uint16_t)(i < n && i < nsing ? resid[i] : SONG_NO_SINGER);
+-+    SS->choir_layout = (uint8_t)layout;
+-+    st_set_tab(STAB_STAGE);
+-+    studio_stats.performed = (uint16_t)(w > 240 ? 3 : 0);
+-+    studio.pop_n = (uint8_t)over;
+-+    *sprites = 0;
+-+    for (t = 0; t < 90; t += 3) {
+-+        int d;
+-+        studio.t = (uint32_t)t;
+-+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 0; ts_n = 0;
+-+        tab_stage_draw(st_content());
+-+        memcpy(ts_a, nat_fb, (size_t)(nat_w * nat_h));
+-+        memset(nat_fb, 0, sizeof(nat_fb)); ts_on = 1; ts_n = 0; ts_chibis = 0;
+-+        tab_stage_draw(st_content());
+-+        *sprites += ts_chibis;
+-+        ts_paint_sprites();
+-+        ts_on = 0;
+-+        d = memcmp(ts_a, nat_fb, (size_t)(nat_w * nat_h)) != 0;
+-+        if (d && bad == 0)
+-+            for (i = 0; i < nat_w * nat_h; i++)
+-+                if (ts_a[i] != nat_fb[i]) { fprintf(stderr, "  poster first diff t=%d at %d,%d (%d vs %d)\n", t, i % nat_w, i / nat_w, ts_a[i], nat_fb[i]); break; }
+-+        bad += d;
+-+    }
+-+    studio_stats.performed = 0;
+-+    scene_pop();
+-+    test_reset();
+-+    nat_w = 240; nat_h = 160;
+-+    return bad;
+-+}
+-+
+-+TEST(studio_poster_sprites_equal_the_bitmap)
+-+{
+-+    static const int counts[] = { 1, 5, 9, 16, 25 };
+-+    long sp, tot = 0;
+-+    int layout, c;
+-+    for (layout = 0; layout < CHOIR_LAYOUT_COUNT; layout++)
+-+        for (c = 0; c < 5; c++) {
+-+            int bad = tp_run(240, 160, layout, counts[c], &sp, 0);
+-+            CHECK_MSG(bad == 0, "240x160 layout %d, %d singers: %d frames differ", layout, counts[c], bad);
+-+            tot += sp;
+-+            bad = tp_run(320, 240, layout, counts[c], &sp, 0);
+-+            CHECK_MSG(bad == 0, "320x240 layout %d, %d singers: %d frames differ", layout, counts[c], bad);
+-+            tot += sp;
+-+        }
+-+    CHECK(tot > 0);                                             /* the planner really chooses sprites */
+-+}
+-+
+-+TEST(studio_poster_sprites_stay_out_when_a_popup_is_over)
+-+{
+-+    long sp;
+-+    tp_run(240, 160, CHOIR_RISERS, 9, &sp, 0);
+-+    CHECK(sp > 0);
+-+    tp_run(240, 160, CHOIR_RISERS, 9, &sp, 1);                  /* a popup over the tab: every singer stays in the bitmap */
+-+    CHECK(sp == 0);
+-+}
+-+
+-+/* the marquee: st_bulbs paints exactly what the circles painted */
+-+TEST(studio_bulbs_equal_the_circles)
+-+{
+-+    int phase, w, i;
+-+    for (w = 232; w <= 320; w += 29)
+-+        for (phase = 0; phase < 2; phase++) {
+-+            int rx = 4, ry = 6, rh = 120, n = ((w - 8) / 8) & ~3;
+-+            memset(nat_fb, 0, sizeof(nat_fb));
+-+            for (i = 0; i < n; i++) {
+-+                int on = ((i + phase) & 1);
+-+                ui_fill_circle(rx + 6 + i * 8, ry + 4, 2, on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-+                ui_fill_circle(rx + 6 + i * 8, ry + rh - 5, 2, !on ? PAL_PAINT(PAINT_LEMON, 2) : PAL_PAINT(PAINT_HONEY, 0));
+-+            }
+-+            memcpy(ts_a, nat_fb, sizeof(ts_a));
+-+            memset(nat_fb, 0, sizeof(nat_fb));
+-+            CHECK(st_bulbs(rx, ry, w, rh, phase) == n);
+-+            CHECK_MSG(memcmp(ts_a, nat_fb, sizeof(ts_a)) == 0, "bulbs differ, width %d phase %d", w, phase);
+-+        }
+-+}
+-+
+- TEST(studio_stage_sprites_wrong_planner_is_caught)
+- {
+-     static const int faults[] = { 1 | 64, 2, 8, 32 | 64 };
+-diff --git a/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md b/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-new file mode 100644
+-index 00000000..e38e6f24
+---- /dev/null
+-+++ b/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-@@ -0,0 +1,14 @@
+-+# STUDIO-30 findings (running file, 2026-11-15)
+-+
+-+Baseline on the tip 2c948ea5 (GBA, libmgba, `make -C gba test-speed2 SPEED2="studio studio_play"`):
+-+stage tab 22.5 fps (36.5 ms avg / 37.0 max, 65 frames over 33 ms); every other window 30.0 fps; templates
+-+29.1 / 35.1 ms, picker 23.4 / 33.1, play loop 25.2 / 33.0, drum loop 26.9 / 34.4.
+-+
+-+## STAGE tab (GBA)
+-+Experiments (work avg ms): no chibis 30.5; no marquee bulbs 29.6. So the 16 chibis cost 6 ms and the 56 bulb
+-+circles (112 rect calls) 4.2 ms.
+-+1. Poster chibis as hardware sprites (the show's option C planner, backwards from the front; the button and the
+-+   show count are the only later bitmap parts): 36.5 -> 33.8 ms (12 of 16 singers are sprites; the edge ones
+-+   touch the button).
+-+2. Marquee bulbs as 32x5 pictures (4 bulbs, 2 phases, ROM), 7 plat_image calls a row: 33.8 -> 31.3 ms avg / 33.0
+-+   max, 30.0 fps. Exact (test studio_bulbs_equal_the_circles); sprites exact (studio_poster_sprites_equal_the_bitmap).
+--- 
+-2.43.0
+-
+diff --git a/docs/design/held/patches/wip/STUDIO/studio-30/0002-STUDIO-30-speed2-window-group-studio_tabs-every-tab-.patch b/docs/design/held/patches/wip/STUDIO/studio-30/0002-STUDIO-30-speed2-window-group-studio_tabs-every-tab-.patch
+deleted file mode 100644
+index a23fea8b..00000000
+--- a/docs/design/held/patches/wip/STUDIO/studio-30/0002-STUDIO-30-speed2-window-group-studio_tabs-every-tab-.patch
++++ /dev/null
+@@ -1,162 +0,0 @@
+-From 47c0ce81850b8448360b3cb737910ad7c37de9d6 Mon Sep 17 00:00:00 2001
+-From: Claude <noreply@anthropic.com>
+-Date: Sun, 15 Nov 2026 22:46:36 +0000
+-Subject: [PATCH 2/5] STUDIO-30: speed2 window group studio_tabs (every tab and
+- mode the other two groups lack)
+-
+-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+-Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+----
+- gba/harness/scripts/speed2_studio_tabs.txt | 140 +++++++++++++++++++++
+- 1 file changed, 140 insertions(+)
+- create mode 100644 gba/harness/scripts/speed2_studio_tabs.txt
+-
+-diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+-new file mode 100644
+-index 00000000..d9d117a7
+---- /dev/null
+-+++ b/gba/harness/scripts/speed2_studio_tabs.txt
+-@@ -0,0 +1,140 @@
+-+# speed2_studio_tabs.txt - speed tour 2 (STUDIO-30): every studio tab and mode that speed2_studio.txt and
+-+# speed2_studio_play.txt do not time: SONG idle / playing, NOTES idle / playing, ORDER, LYRICS, CHOIR, the PERFORM show
+-+# (the lead alone, then the full choir), and on the empty song (arg -2) the Start card, the control card, the song
+-+# Make it! made playing on SONG, and the FILE list top and end. Window rules: speed2_fair.txt.
+-+wait 40
+-+expect-log doomo: init
+-+sync on 61
+-+seed 1
+-+scene TITLE
+-+wait 20
+-+push STUDIO -107
+-+wait 100
+-+expect-scene STUDIO
+-+
+-+# ---- SONG ---------------------------------------------------------------
+-+wait 130
+-+fps start
+-+wait 90
+-+fps studio tabs: song idle
+-+press START
+-+wait 45
+-+fps start
+-+wait 90
+-+fps studio tabs: song playing
+-+press START
+-+wait 10
+-+
+-+# ---- NOTES --------------------------------------------------------------
+-+press R
+-+wait 20
+-+fps start
+-+wait 90
+-+fps studio tabs: notes idle
+-+press START
+-+wait 40
+-+fps start
+-+wait 90
+-+fps studio tabs: notes playing
+-+press START
+-+wait 10
+-+
+-+# ---- ORDER, LYRICS, CHOIR (PLAY is between NOTES and ORDER: speed2_studio_play) ----------
+-+down SELECT
+-+press R
+-+release
+-+wait 20
+-+down SELECT
+-+press R
+-+release
+-+wait 20
+-+fps start
+-+wait 90
+-+fps studio tabs: order
+-+down SELECT
+-+press R
+-+release
+-+wait 20
+-+press DOWN
+-+wait 10
+-+fps start
+-+wait 90
+-+fps studio tabs: lyrics
+-+down SELECT
+-+press R
+-+release
+-+wait 20
+-+fps start
+-+wait 90
+-+fps studio tabs: choir
+-+
+-+# ---- PERFORM (the show) -------------------------------------------------
+-+press R
+-+wait 20
+-+press A
+-+wait 60
+-+fps start
+-+wait 20
+-+fps studio tabs: perform early
+-+fps start
+-+wait 90
+-+fps studio tabs: perform later
+-+
+-+# ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+-+scene TITLE
+-+wait 20
+-+push STUDIO -2
+-+wait 100
+-+expect-scene STUDIO
+-+wait 130
+-+fps start
+-+wait 90
+-+fps studio tabs: start card
+-+down SELECT
+-+press UP
+-+release
+-+wait 30
+-+fps start
+-+wait 60
+-+fps studio tabs: control card
+-+press B
+-+wait 10
+-+press A
+-+wait 45
+-+fps start
+-+wait 90
+-+fps studio tabs: made song playing
+-+press START
+-+wait 10
+-+down SELECT
+-+press R
+-+release
+-+wait 4
+-+down SELECT
+-+press R
+-+release
+-+wait 4
+-+down SELECT
+-+press R
+-+release
+-+wait 4
+-+down SELECT
+-+press R
+-+release
+-+wait 4
+-+down SELECT
+-+press R
+-+release
+-+wait 4
+-+down SELECT
+-+press R
+-+release
+-+wait 20
+-+fps start
+-+wait 90
+-+fps studio tabs: file top
+-+press UP
+-+wait 20
+-+fps start
+-+wait 90
+-+fps studio tabs: file end
+--- 
+-2.43.0
+-
+diff --git a/docs/design/held/patches/wip/STUDIO/studio-30/0003-STUDIO-30-SONG-tab-the-record-s-still-part-baked-int.patch b/docs/design/held/patches/wip/STUDIO/studio-30/0003-STUDIO-30-SONG-tab-the-record-s-still-part-baked-int.patch
+deleted file mode 100644
+index e0d9091b..00000000
+--- a/docs/design/held/patches/wip/STUDIO/studio-30/0003-STUDIO-30-SONG-tab-the-record-s-still-part-baked-int.patch
++++ /dev/null
+@@ -1,155 +0,0 @@
+-From b83edb20bcb762221b9786f2d50fca1bedda0a28 Mon Sep 17 00:00:00 2001
+-From: Claude <noreply@anthropic.com>
+-Date: Sun, 15 Nov 2026 22:50:45 +0000
+-Subject: [PATCH 3/5] STUDIO-30: SONG tab: the record's still part baked into
+- one picture (GBA 31.0 -> 26.9 ms, made song playing 28.5 -> 30.0 fps)
+-
+-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+-Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+----
+- core/src/studio_edit.c                     | 19 +++++++++++++++----
+- gba/harness/scripts/speed2_studio_tabs.txt | 14 ++++++++++++++
+- 2 files changed, 29 insertions(+), 4 deletions(-)
+-
+-diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+-index 1d50a32f..f60b487f 100644
+---- a/core/src/studio_edit.c
+-+++ b/core/src/studio_edit.c
+-@@ -270,16 +270,27 @@ static void song_row_label(int row, char *buf, int cap)
+- }
+- 
+- /* a spinning record with the title on its label */
+--static void draw_record(int cx, int cy, int r, int t, int playing)
+-+/* the record's still part: the shadow, the grooves and the label (a[0] = radius, a[1] = the genre's pattern). On the GBA
+-+ * it is painted once into the studio's bake pool and drawn with one plat_image (7 circles, ~70 rect calls, 5.5 ms:
+-+ * STUDIO-30); the shine that sweeps round is drawn live over it. */
+-+static void record_rects(int ox, int oy, const int *a)
+- {
+--    int a = playing ? t * 3 : t / 2;
+-+    int r = a[0], g = a[1], cx = ox + r + 3, cy = oy + r + 3;      /* (ox, oy): the top-left, so the bake paints on-screen */
+-     ui_fill_circle(cx + 2, cy + 3, r, PAL_PAINT(PAINT_GRAPE, 0));
+-     ui_fill_circle(cx, cy, r, PAL_PAINT(PAINT_JET, 1));
+-     ui_fill_circle(cx, cy, r - 3, PAL_PAINT(PAINT_CHARCOAL, 0));
+-     ui_fill_circle(cx, cy, r - 5, PAL_PAINT(PAINT_JET, 1));
+--    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(SS->genre & 3, 1));
+--    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(SS->genre & 3, 2));
+-+    ui_fill_circle(cx, cy, r / 2 - 1, st_pattern_color(g, 1));
+-+    ui_fill_circle(cx, cy, r / 2 - 3, st_pattern_color(g, 2));
+-     ui_fill_circle(cx, cy, 1, PAL_PAINT(PAINT_JET, 1));
+-+}
+-+
+-+static void draw_record(int cx, int cy, int r, int t, int playing)
+-+{
+-+    int a = playing ? t * 3 : t / 2, g[2];
+-+    g[0] = r; g[1] = SS->genre & 3;
+-+    if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
+-+        record_rects(cx - r - 3, cy - r - 3, g);
+-     /* the shine sweeps around */
+-     {
+-         int dx = ui_wave(a, 120, r - 3), dy = ui_wave(a + 30, 120, r - 3);
+-diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+-index d9d117a7..e081e257 100644
+---- a/gba/harness/scripts/speed2_studio_tabs.txt
+-+++ b/gba/harness/scripts/speed2_studio_tabs.txt
+-@@ -17,11 +17,13 @@ wait 130
+- fps start
+- wait 90
+- fps studio tabs: song idle
+-+shot studio_tabs_song_idle
+- press START
+- wait 45
+- fps start
+- wait 90
+- fps studio tabs: song playing
+-+shot studio_tabs_song_playing
+- press START
+- wait 10
+- 
+-@@ -31,11 +33,13 @@ wait 20
+- fps start
+- wait 90
+- fps studio tabs: notes idle
+-+shot studio_tabs_notes_idle
+- press START
+- wait 40
+- fps start
+- wait 90
+- fps studio tabs: notes playing
+-+shot studio_tabs_notes_playing
+- press START
+- wait 10
+- 
+-@@ -51,6 +55,7 @@ wait 20
+- fps start
+- wait 90
+- fps studio tabs: order
+-+shot studio_tabs_order
+- down SELECT
+- press R
+- release
+-@@ -60,6 +65,7 @@ wait 10
+- fps start
+- wait 90
+- fps studio tabs: lyrics
+-+shot studio_tabs_lyrics
+- down SELECT
+- press R
+- release
+-@@ -67,6 +73,7 @@ wait 20
+- fps start
+- wait 90
+- fps studio tabs: choir
+-+shot studio_tabs_choir
+- 
+- # ---- PERFORM (the show) -------------------------------------------------
+- press R
+-@@ -76,9 +83,11 @@ wait 60
+- fps start
+- wait 20
+- fps studio tabs: perform early
+-+shot studio_tabs_perform_early
+- fps start
+- wait 90
+- fps studio tabs: perform later
+-+shot studio_tabs_perform_later
+- 
+- # ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+- scene TITLE
+-@@ -90,6 +99,7 @@ wait 130
+- fps start
+- wait 90
+- fps studio tabs: start card
+-+shot studio_tabs_start_card
+- down SELECT
+- press UP
+- release
+-@@ -97,6 +107,7 @@ wait 30
+- fps start
+- wait 60
+- fps studio tabs: control card
+-+shot studio_tabs_control_card
+- press B
+- wait 10
+- press A
+-@@ -104,6 +115,7 @@ wait 45
+- fps start
+- wait 90
+- fps studio tabs: made song playing
+-+shot studio_tabs_made_song_playing
+- press START
+- wait 10
+- down SELECT
+-@@ -133,8 +145,10 @@ wait 20
+- fps start
+- wait 90
+- fps studio tabs: file top
+-+shot studio_tabs_file_top
+- press UP
+- wait 20
+- fps start
+- wait 90
+- fps studio tabs: file end
+-+shot studio_tabs_file_end
+--- 
+-2.43.0
+-
+diff --git a/docs/design/held/patches/wip/STUDIO/studio-30/0004-STUDIO-30-a-take-Make-it-Shuffle-over-a-composed-son.patch b/docs/design/held/patches/wip/STUDIO/studio-30/0004-STUDIO-30-a-take-Make-it-Shuffle-over-a-composed-son.patch
+deleted file mode 100644
+index e2d7f08f..00000000
+--- a/docs/design/held/patches/wip/STUDIO/studio-30/0004-STUDIO-30-a-take-Make-it-Shuffle-over-a-composed-son.patch
++++ /dev/null
+@@ -1,182 +0,0 @@
+-From 145ab403bf4e732ea1044c8920019a7e195310b7 Mon Sep 17 00:00:00 2001
+-From: Claude <noreply@anthropic.com>
+-Date: Sun, 15 Nov 2026 23:17:32 +0000
+-Subject: [PATCH 4/5] STUDIO-30: a take (Make it! / Shuffle) over a composed
+- song is undoable: before-image kept in the scene scratch
+-
+-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+-Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+----
+- core/src/studio.c                             | 35 ++++++++++++++--
+- core/src/studio_int.h                         |  2 +
+- core/tests/test_studio.c                      | 42 +++++++++++++++++++
+- .../patches/wip/STUDIO/STUDIO-30-findings.md  | 16 +++++++
+- 4 files changed, 92 insertions(+), 3 deletions(-)
+-
+-diff --git a/core/src/studio.c b/core/src/studio.c
+-index 67b0adf4..03c1de45 100644
+---- a/core/src/studio.c
+-+++ b/core/src/studio.c
+-@@ -104,6 +104,7 @@ void st_set_tab(int tab)
+- /* ====================================================================== */
+- /* undo journal                                                             */
+- #define JOIN 0x8000u
+-+#define BIG_OFF 0xFFFEu              /* a journal record with no bytes: the before-image is StEasy.before (STUDIO-30) */
+- 
+- static int rle_encode(const uint8_t *src, int n, uint8_t *dst, int cap)
+- {
+-@@ -202,7 +203,7 @@ static void redo_clear(void)
+- void ed_reset(void)
+- {
+-     StEasy *ez = st_easy();
+--    if (ez) ez->mk_valid = 0;
+-+    if (ez) { ez->mk_valid = 0; ez->before_ok = 0; }
+-     studio.undo_used = 0;
+-     studio.undo_open = 0;
+-     studio.undo_steps = 0;
+-@@ -220,6 +221,25 @@ static void touch_rec(const void *field, int len, int keep_redo)
+-     off = (int)(p - base);
+-     enc = rle_encode(p, len, NULL, 0);
+-     if (enc + 6 > STUDIO_UNDO_BYTES) {
+-+        StEasy *ez = off == 0 && len == (int)sizeof(DoomoSong) && !studio.undo_open ? st_easy() : NULL;
+-+        if (ez) {
+-+            /* STUDIO-30: a whole song too big for the journal (a composed song a take is made over): the before-image
+-+             * is kept raw in the scene scratch and the journal holds one record that names it. The history before it
+-+             * is dropped as it always was (it could not be reached past this step), the redo journal stays when a
+-+             * redo is replaying. */
+-+            uint16_t ru = ez->redo_used;
+-+            uint8_t rs = ez->redo_steps;
+-+            memcpy(ez->before, base, sizeof(DoomoSong));
+-+            ed_reset();
+-+            if (keep_redo) { ez->redo_used = ru; ez->redo_steps = rs; }
+-+            ez->before_ok = 1;
+-+            wr16(studio.undo, BIG_OFF);
+-+            wr16(studio.undo + 2, (uint32_t)sizeof(DoomoSong));
+-+            wr16(studio.undo + 4, 0);
+-+            studio.undo_used = 6;
+-+            studio.undo_open = 1;
+-+            return;
+-+        }
+-         /* too big to remember: the history before it is useless now */
+-         ed_reset();
+-         studio.undo_open = 2;              /* this step cannot be undone */
+-@@ -323,7 +343,16 @@ int ed_undo(void)
+-         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+-         int join = (ln & JOIN) != 0;
+-         ln &= ~JOIN;
+--        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+-+        if (off == BIG_OFF && enc == 0) {
+-+            /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
+-+            if (ez && ez->before_ok) {
+-+                if (keep && !redo_push(ez, 0, (int)sizeof(DoomoSong), !first)) keep = 0;
+-+                first = 0;
+-+                memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+-+            } else {
+-+                keep = 0;
+-+            }
+-+        } else if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+-             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
+-             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
+-             first = 0;
+-@@ -744,7 +773,7 @@ static void ez_init(StEasy *e)
+-     e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+- }
+- #define BAKE_ENTS  40
+--#define BAKE_POOL  (10752 - STUDIO_TABSTATE)  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+-+#define BAKE_POOL  (10752 - STUDIO_TABSTATE - (int)sizeof(DoomoSong))  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
+- typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
+- /* xs: the open tab's own small state (st_tab_state, the PLAY tab's pads); xs[0] is 0 on a fresh claim */
+- typedef struct { uint16_t top, n; BakeEnt e[BAKE_ENTS]; uint8_t xs[STUDIO_TABSTATE]; uint8_t pix[BAKE_POOL]; StEasy ez; } BakeSt;   /* ez: ST-EASY (+448 B) */
+-diff --git a/core/src/studio_int.h b/core/src/studio_int.h
+-index 12d4e52e..bc7937f6 100644
+---- a/core/src/studio_int.h
+-+++ b/core/src/studio_int.h
+-@@ -159,6 +159,8 @@ typedef struct StEasy {
+-     uint8_t  mk_style, mk_mood, mk_tempo, mk_length;
+-     uint16_t mk_mark;           /* studio.undo_used right after that step */
+-     uint32_t mk_seed;
+-+    uint8_t  before_ok;         /* STUDIO-30: `before` holds the song a take (Make it! / Shuffle / a template) was made over */
+-+    uint8_t  before[sizeof(DoomoSong)];   /* its raw image, for a step whose RLE image is over the journal's size */
+-     uint8_t  csel, style, mood, tempo, length;   /* the Start card */
+-     uint16_t help_t;            /* ticks of the one-line help left on the bar */
+-     uint32_t seed;              /* the Start card's seed */
+-diff --git a/core/tests/test_studio.c b/core/tests/test_studio.c
+-index 3946f722..67652b01 100644
+---- a/core/tests/test_studio.c
+-+++ b/core/tests/test_studio.c
+-@@ -1229,6 +1229,48 @@ TEST(studio_make_it_undoes_and_redoes_whole)
+-     test_reset();
+- }
+- 
+-+/* STUDIO-30: a take over an already composed song (the before-image is over the journal's 768 bytes) is undoable and
+-+ * redoable too; the before-image lives in the scene scratch */
+-+TEST(studio_take_over_a_composed_song_undoes_and_redoes)
+-+{
+-+    DoomoSong composed, take1, take2;
+-+    open_blank_studio();
+-+    ed_reset();
+-+    press(BTN_A);                                           /* Make it! on the blank song: a composed song */
+-+    {   /* hand edits make it dense: every note and lyric byte differs, so the RLE image is over the journal */
+-+        int i;
+-+        uint8_t *n = &studio.song.notes[0][0][0];
+-+        for (i = 0; i < (int)sizeof(studio.song.notes); i++) n[i] = (uint8_t)(2 + (i * 7 + i / 5) % 29);
+-+        for (i = 0; i < SONG_LYRIC_LINES; i++) {
+-+            int j;
+-+            for (j = 0; j < SONG_LYRIC_LEN - 1; j++) studio.song.lyrics[i][j] = (char)('a' + (i * 13 + j * 7 + j / 3) % 26);
+-+            studio.song.lyrics[i][SONG_LYRIC_LEN - 1] = 0;
+-+        }
+-+        for (i = 0; i < SONG_SINGERS; i++) studio.song.singer[i] = (uint16_t)(i * 37 + 5);
+-+    }
+-+    composed = studio.song;
+-+    CHECK(!studio.card);
+-+    ed_reset();
+-+    st_card_open();                                         /* the card over the composed song */
+-+    CHECK(studio.card);
+-+    press(BTN_UP);                                          /* Shuffle */
+-+    press(BTN_A);
+-+    take1 = studio.song;
+-+    CHECK(memcmp(&take1, &composed, sizeof composed) != 0);
+-+    CHECK_EQ(ed_undo_steps(), 1);
+-+    press(BTN_A);                                           /* a second take replaces the first */
+-+    take2 = studio.song;
+-+    CHECK(memcmp(&take2, &take1, sizeof take1) != 0);
+-+    CHECK_EQ(ed_undo_steps(), 1);
+-+    CHECK(ed_undo());                                       /* one undo: the composed song, not a half song */
+-+    CHECK(memcmp(&studio.song, &composed, sizeof composed) == 0);
+-+    CHECK(ed_redo());                                       /* and the last take comes back whole */
+-+    CHECK(memcmp(&studio.song, &take2, sizeof take2) == 0);
+-+    CHECK(ed_undo());
+-+    CHECK(memcmp(&studio.song, &composed, sizeof composed) == 0);
+-+    test_reset();
+-+}
+-+
+- TEST(studio_redo_clears_when_the_scratch_is_taken)
+- {
+-     open_blank_studio();
+-diff --git a/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md b/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-index e38e6f24..87c22855 100644
+---- a/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-+++ b/docs/design/held/patches/wip/STUDIO/STUDIO-30-findings.md
+-@@ -12,3 +12,19 @@ circles (112 rect calls) 4.2 ms.
+-    touch the button).
+- 2. Marquee bulbs as 32x5 pictures (4 bulbs, 2 phases, ROM), 7 plat_image calls a row: 33.8 -> 31.3 ms avg / 33.0
+-    max, 30.0 fps. Exact (test studio_bulbs_equal_the_circles); sprites exact (studio_poster_sprites_equal_the_bitmap).
+-+
+-+## New windows: gba/harness/scripts/speed2_studio_tabs.txt (every tab / mode the other two groups lack)
+-+Baseline (tip): song idle 31.0 / 32.3, song playing 31.6 / 35.8, notes idle 27.4, notes playing 28.8, order 24.6,
+-+lyrics 31.5 / 33.1, choir 28.8, perform early 20.5, perform later 21.3, start card 21.0, control card 13.5,
+-+made song playing 28.5 fps (32.5 / 38.6, 10 frames over 33 ms), file top 30.4, file end 29.7.
+-+
+-+## SONG tab (GBA)
+-+The record is 7 circles, ~70 rect calls: 5.5 ms. Its still part is now one baked picture (st_bake, the studio's
+-+pool): song idle 31.0 -> 26.9 ms, made song playing 32.5 -> 28.5 ms, 30.0 fps. Screenshots of every
+-+studio_tabs window byte-identical to the tip's (cmp).
+-+
+-+## ST-EASY gap: a take over a composed song cannot be undone
+-+Cause: the whole-song before-image (892 B raw) RLE-encodes to over the 768 B journal for a dense song. Fix: the raw
+-+before-image goes in StEasy.before (scene scratch, BakeSt's pixel pool shrank by 892 B: 9,796 B left; no new
+-+.bss) and the journal holds one 6 byte record (BIG_OFF) that names it. Test
+-+studio_take_over_a_composed_song_undoes_and_redoes (fails without the fix).
+--- 
+-2.43.0
+-
+diff --git a/docs/design/held/patches/wip/STUDIO/studio-30/0005-STUDIO-30-PS1-resident-0-no-sprite-planner-bulb-pict.patch b/docs/design/held/patches/wip/STUDIO/studio-30/0005-STUDIO-30-PS1-resident-0-no-sprite-planner-bulb-pict.patch
+deleted file mode 100644
+index 8181d830..00000000
+--- a/docs/design/held/patches/wip/STUDIO/studio-30/0005-STUDIO-30-PS1-resident-0-no-sprite-planner-bulb-pict.patch
++++ /dev/null
+@@ -1,244 +0,0 @@
+-From bade5a9a84c4628ac822ccd2a665ac40a68fa91b Mon Sep 17 00:00:00 2001
+-From: Claude <noreply@anthropic.com>
+-Date: Sun, 15 Nov 2026 23:47:40 +0000
+-Subject: [PATCH 5/5] STUDIO-30: PS1 resident +0 (no sprite planner / bulb
+- pictures there, one redo_push call site), expect-fps floors on the studio
+- windows
+-
+-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+-Claude-Session: https://claude.ai/code/session_01RLcGbHBa2kju7ynbaJLHT6
+----
+- core/src/studio.c                          | 15 +++++-------
+- core/src/studio_edit.c                     |  2 ++
+- core/src/studio_stage.c                    | 10 ++++++++
+- gba/harness/scripts/speed2_studio.txt      |  2 +-
+- gba/harness/scripts/speed2_studio_tabs.txt | 28 +++++++++++-----------
+- 5 files changed, 33 insertions(+), 24 deletions(-)
+-
+-diff --git a/core/src/studio.c b/core/src/studio.c
+-index 03c1de45..1fe5310e 100644
+---- a/core/src/studio.c
+-+++ b/core/src/studio.c
+-@@ -343,20 +343,17 @@ int ed_undo(void)
+-         uint32_t off = rd16(tr), ln = rd16(tr + 2), enc = rd16(tr + 4);
+-         int join = (ln & JOIN) != 0;
+-         ln &= ~JOIN;
+-+        int big = 0;
+-         if (off == BIG_OFF && enc == 0) {
+-             /* the whole-song before-image in the scene scratch (gone if another scene took the scratch: the step stays) */
+--            if (ez && ez->before_ok) {
+--                if (keep && !redo_push(ez, 0, (int)sizeof(DoomoSong), !first)) keep = 0;
+--                first = 0;
+--                memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+--            } else {
+--                keep = 0;
+--            }
+--        } else if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+-+            if (ez && ez->before_ok) { off = 0; big = 1; } else { off = 0xFFFFu; keep = 0; }
+-+        }
+-+        if (off + ln <= sizeof(DoomoSong) && enc + 6 <= studio.undo_used) {
+-             /* the first record pushed is the last one a redo pops: it carries no JOIN, the rest do */
+-             if (keep && !redo_push(ez, (int)off, (int)ln, !first)) keep = 0;
+-             first = 0;
+--            rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+-+            if (big) memcpy(&studio.song, ez->before, sizeof(DoomoSong));
+-+            else rle_decode(tr - enc, (int)enc, (uint8_t *)&studio.song + off, (int)ln);
+-         }
+-         studio.undo_used = (uint16_t)(studio.undo_used - 6 - enc);
+-         if (!join || studio.undo_used < 6) break;
+-diff --git a/core/src/studio_edit.c b/core/src/studio_edit.c
+-index f60b487f..86bd6aaf 100644
+---- a/core/src/studio_edit.c
+-+++ b/core/src/studio_edit.c
+-@@ -289,7 +289,9 @@ static void draw_record(int cx, int cy, int r, int t, int playing)
+- {
+-     int a = playing ? t * 3 : t / 2, g[2];
+-     g[0] = r; g[1] = SS->genre & 3;
+-+#if ST_BAKE
+-     if (!st_bake(0x40u | (uint32_t)r << 8, (uint32_t)g[1], cx - r - 3, cy - r - 3, record_rects, g, 4200))
+-+#endif
+-         record_rects(cx - r - 3, cy - r - 3, g);
+-     /* the shine sweeps around */
+-     {
+-diff --git a/core/src/studio_stage.c b/core/src/studio_stage.c
+-index 74777136..692a489e 100644
+---- a/core/src/studio_stage.c
+-+++ b/core/src/studio_stage.c
+-@@ -832,6 +832,7 @@ void stage_draw_full(void)
+-  * Four bulbs are one 32x5 picture (two phases, the bulbs alternate), so a row is 7 plat_image calls. The pictures are
+-  * what ui_fill_circle(.., 2, ..) paints (test_studio.c studio_bulbs_equal_the_circles). Returns how many bulbs it drew
+-  * (a multiple of 4; the rest are drawn as circles). */
+-+#if !defined(DOOMO_PLATFORM_PS1)           /* the PS1 keeps the circles (no resident bytes for it: PS1.md) */
+- #define BL_ON PAL_PAINT(PAINT_LEMON, 2)
+- #define BL_OFF PAL_PAINT(PAINT_HONEY, 0)
+- #define BL_E(c) 0, c, c, c, 0, 0, 0, 0
+-@@ -850,6 +851,9 @@ int st_bulbs(int rx, int ry, int rw, int rh, int phase)
+-     }
+-     return n;
+- }
+-+#else
+-+int st_bulbs(int rx, int ry, int rw, int rh, int phase) { (void)rx; (void)ry; (void)rw; (void)rh; (void)phase; return 0; }
+-+#endif
+- 
+- /* ---- the poster ----------------------------------------------------------- */
+- void tab_stage_draw(StRect r)
+-@@ -902,6 +906,7 @@ void tab_stage_draw(StRect r)
+-             bx[k] = x - BODYSPR_W / 2;
+-             by[k] = y - BODYSPR_H - (((t / 10) + k) % 8 == 0);
+-         }
+-+#if !defined(DOOMO_PLATFORM_PS1)                          /* the PS1 has no sprites: no code there */
+-         if (n > 0 && !studio.pop_n && !studio.msg_t && !studio.picking && !studio.help && !ui_toast_pending() &&
+-             !tip_active() && plat_stage_obj_begin()) {
+-             for (k = n - 1; k >= 0; k--) {
+-@@ -913,12 +918,17 @@ void tab_stage_draw(StRect r)
+-                 spr[k] = (uint8_t)!hit;
+-             }
+-         }
+-+#else
+-+        (void)bt; (void)sx1; (void)spr;
+-+#endif
+-         for (k = 0; k < n; k++) {
+-             int id = song_singer_id(SS, slots[k]);
+-+#if !defined(DOOMO_PLATFORM_PS1)
+-             if (spr[k]) {
+-                 const DoomoImage *img = bodyspr_image(id, 0, 0);
+-                 if (img && plat_stage_obj(slots[k], bx[k], by[k], img, 0, NULL, 0)) continue;
+-             }
+-+#endif
+-             st_chibi(id, bx[k], by[k], 0, 0, 0, 0);
+-         }
+-     }
+-diff --git a/gba/harness/scripts/speed2_studio.txt b/gba/harness/scripts/speed2_studio.txt
+-index 84c6c59d..cb87c8c8 100644
+---- a/gba/harness/scripts/speed2_studio.txt
+-+++ b/gba/harness/scripts/speed2_studio.txt
+-@@ -68,7 +68,7 @@ press R
+- wait 20
+- fps start
+- wait 130
+--fps studio: stage tab
+-+expect-fps 29 studio: stage tab
+- shot studio_stage
+- press R
+- wait 20
+-diff --git a/gba/harness/scripts/speed2_studio_tabs.txt b/gba/harness/scripts/speed2_studio_tabs.txt
+-index e081e257..7095082a 100644
+---- a/gba/harness/scripts/speed2_studio_tabs.txt
+-+++ b/gba/harness/scripts/speed2_studio_tabs.txt
+-@@ -16,13 +16,13 @@ expect-scene STUDIO
+- wait 130
+- fps start
+- wait 90
+--fps studio tabs: song idle
+-+expect-fps 29 studio tabs: song idle
+- shot studio_tabs_song_idle
+- press START
+- wait 45
+- fps start
+- wait 90
+--fps studio tabs: song playing
+-+expect-fps 29 studio tabs: song playing
+- shot studio_tabs_song_playing
+- press START
+- wait 10
+-@@ -32,13 +32,13 @@ press R
+- wait 20
+- fps start
+- wait 90
+--fps studio tabs: notes idle
+-+expect-fps 29 studio tabs: notes idle
+- shot studio_tabs_notes_idle
+- press START
+- wait 40
+- fps start
+- wait 90
+--fps studio tabs: notes playing
+-+expect-fps 29 studio tabs: notes playing
+- shot studio_tabs_notes_playing
+- press START
+- wait 10
+-@@ -54,7 +54,7 @@ release
+- wait 20
+- fps start
+- wait 90
+--fps studio tabs: order
+-+expect-fps 29 studio tabs: order
+- shot studio_tabs_order
+- down SELECT
+- press R
+-@@ -64,7 +64,7 @@ press DOWN
+- wait 10
+- fps start
+- wait 90
+--fps studio tabs: lyrics
+-+expect-fps 29 studio tabs: lyrics
+- shot studio_tabs_lyrics
+- down SELECT
+- press R
+-@@ -72,7 +72,7 @@ release
+- wait 20
+- fps start
+- wait 90
+--fps studio tabs: choir
+-+expect-fps 29 studio tabs: choir
+- shot studio_tabs_choir
+- 
+- # ---- PERFORM (the show) -------------------------------------------------
+-@@ -82,11 +82,11 @@ press A
+- wait 60
+- fps start
+- wait 20
+--fps studio tabs: perform early
+-+expect-fps 29 studio tabs: perform early
+- shot studio_tabs_perform_early
+- fps start
+- wait 90
+--fps studio tabs: perform later
+-+expect-fps 29 studio tabs: perform later
+- shot studio_tabs_perform_later
+- 
+- # ---- the empty song: Start card, control card, Make it!, FILE -----------------------
+-@@ -98,7 +98,7 @@ expect-scene STUDIO
+- wait 130
+- fps start
+- wait 90
+--fps studio tabs: start card
+-+expect-fps 29 studio tabs: start card
+- shot studio_tabs_start_card
+- down SELECT
+- press UP
+-@@ -106,7 +106,7 @@ release
+- wait 30
+- fps start
+- wait 60
+--fps studio tabs: control card
+-+expect-fps 29 studio tabs: control card
+- shot studio_tabs_control_card
+- press B
+- wait 10
+-@@ -114,7 +114,7 @@ press A
+- wait 45
+- fps start
+- wait 90
+--fps studio tabs: made song playing
+-+expect-fps 29 studio tabs: made song playing
+- shot studio_tabs_made_song_playing
+- press START
+- wait 10
+-@@ -144,11 +144,11 @@ release
+- wait 20
+- fps start
+- wait 90
+--fps studio tabs: file top
+-+expect-fps 29 studio tabs: file top
+- shot studio_tabs_file_top
+- press UP
+- wait 20
+- fps start
+- wait 90
+--fps studio tabs: file end
+-+expect-fps 29 studio tabs: file end
+- shot studio_tabs_file_end
+--- 
+-2.43.0
+-
+diff --git a/docs/design/held/status/STUDIO.md b/docs/design/held/status/STUDIO.md
+index 6e1bba50..a2857796 100644
+--- a/docs/design/held/status/STUDIO.md
++++ b/docs/design/held/status/STUDIO.md
+@@ -3,12 +3,13 @@
+ Kept by the stream's lead (rules: ../PARALLEL_WAVES.md section 5). Update it with every landing.
+ 
+ - **Last update:** 2026-11-15 (ST-PLAY land agent): ST-PLAY landed on top of ST-EASY (commit titles `STUDIO ST-PLAY: ...`). Rebased tree: core 1533 tests pass, SAN only the old reports, xcheck 434 files OK; PS1 margin 110,352 B below the stack top with the boot FMV (resident +256 B, all in `song_player.c`), PLAY windows 30.13-30.25 fps and the studio windows 30.0-30.5; GBA PLAY windows 30.0 (work 23.1-27.3 ms avg), the STAGE tab is still 22.5 fps (37 ms, S3-8's, not this package); `make -C dc` builds, `dc-host-test` passes.
++- **STUDIO-30 (2026-11-16, landed, commits `STUDIO-30: ...`):** GBA STAGE tab 22.5 -> 30.0 fps (choir as sprites, marquee bulbs as pictures; 36.5 -> 31.3 ms avg), SONG tab record's still part baked (song idle 31.0 -> 26.9 ms, made song playing 28.5 -> 30.0 fps), a take (Make it! / Shuffle) over a composed song is undoable (before-image in the scene scratch, test `studio_take_over_a_composed_song_undoes_and_redoes`), new speed2 group `studio_tabs` with expect-fps floors; PS1 resident +0, GBA EWRAM net zero. Gate numbers and margins: see the landing commit / findings in the commit messages.
+ - **Lead:** `session_01Xd63cx71nhiXXY4Jbxr864` (Sonnet, from 2026-11-15)
+ - **ST-PLAY (2026-11-15, landed by the commits of this push, 1492 core tests pass):** PLAY tab (`studio_play.c`: jam pads, live recording with quantize and count-in, one undo step per take, range loop, drum pads), player `song_jam_on/off`, `song_play_range`, `song_pos_note`; function ledger in `docs/STUDIO.md`; GBA all PLAY windows 30.0 fps (work 23.5-27.7 ms avg, the loop peaks 33.4 ms: add no per-frame work to PLAY), EWRAM net zero (the 64 B state lives in the bake block's pixel pool). PS1: 110,352 B below the stack top with the boot FMV (gate 72 KB); resident +256 B in `song_player.c` (jam / range code), still to be granted by the coordinator or trimmed (merge `song_jam_off` into `song_jam_on`). GBA IWRAM 25,728 / 32,768, 6,272 B main stack left; EWRAM 50,740 B free. PS1 PLAY windows 30.13-30.25 fps. The Dreamcast pad cannot make SELECT+START (START+Y is SELECT): a take starts from SELECT, Tools, "Record a take" there. The Dreamcast build was not rebuilt on the landing tree (KallistiOS absent on the land machine; `make dc-host-test` passes). Open: the GBA 4-pad row toggle has no scripted test; ST-EASY may gate Replace. Rebase notes for ST-EASY: the tab enum gained `STAB_PLAY` after `STAB_NOTES` (tests and the three GBA scripts that walk the tabs by SELECT+R got one more step); `studio.c` has small hooks (tab name / icon / routing, `st_tab_state`, the global Y / L2 / R2 / B / L / R exceptions for PLAY); the PLAY state is `st_tab_state()` (64 B of the scene scratch: a good home for ST-EASY's own small per-tab state too).
+ - **CONCERT-30 (2026-11-15, partial, exact step only):** s4-c silhouette loops plus the lead's figure and shadow baked into one image (`CLITE_LEAD`, GBA only, compiled out on PS1 and DC). GBA drawn fps / work avg / max ms: solo 30.0 / 27.0 / 30.2, band 23.2 / 36.0 / 39.5, choir 12 29.9 / 30.3 / 35.4 (still over 33 ms), setup 30.0 / 7.5 / 9.0. PS1 perf_concert 29.88 fps, margin 110,352 B. GBA .iwram +104 B (s4-c), EWRAM +0. NOT at 30: the band, the choir max, the Dreamland and Disco stages, the notes show, the curtain opening. Left, by cost: band instruments as kept pictures (~3 ms), crowd rows as OBJ sprites (~7 ms, needs OBJ VRAM), then the approved 15 Hz and flame trades. Ledger row for CLITE_LEAD: EWRAM +0, IWRAM +0, ROM small. The stage table rows of s4-c (Graveyard, Hellfire, Sugar Bowl) were not re-measured here. Package stays open.
+ - **Landed:** ST-0: `docs/design/STUDIO_PLAN.md` (flow, screens, controls, format, memory), defaults in OWNER_DECISIONS.
+ - **Landed (ST-EASY, round 1):** the Start card, help line + control card, redo, START plays, cursor line, labels, Studio level (docs/STUDIO.md "Easy mode" and its function ledger). Review fix: Make it! / Shuffle undo and redo whole (a 14 byte recipe record in the redo journal; takes replace each other), test `studio_make_it_undoes_and_redoes_whole`. Measured on the rebased tree: core 1508 tests passed, SAN run 1508 passed, check-gen and xcheck (433 files, gcc arm mipsel sh4) OK; GBA build + test OK, `.iwram` 11288 B, `.iwram_bss` 4088 B, `.bss` 210508 B (the package adds only the tail of `BakeSt`, 448 B + 10 B recipe), `profile-studio` song / notes / order / lyrics / choir windows 30.0 fps, `speed2 studio` every window 30 except the STAGE tab (22.6 fps, 36.3 ms work: the known S3-8 miss, 37.8 -> 37.3 ms with this package, not caused by it); PS1 margin 110,608 B below the stack top (resident share 0), game_smoke PASS, speed2 studio all 30; Dreamcast builds, dc-host-test OK, speed2 studio all 30.0 (work max 12.6 ms), the dc audio-test timing check failed on the busy host (no audio code touched).
+-- **Open (measured gaps):** the made song playing on the SONG tab is 28.8 fps on the GBA (32.7 / 39.0 ms avg / worst); Shuffle or Make it! on a first take over an already composed song (before-image over 768 B) cannot be undone; Advanced shows nothing yet.
++- **Open (measured gaps):** Advanced shows nothing yet. (The STAGE tab, the made song on the SONG tab and the take-over undo gaps are closed by STUDIO-30.)
+ - **Rebase notes (ST-PLAY):** ST-EASY's `studio_play.c` is now `studio_easy.c` (`studio_play.c` is the PLAY tab). One scratch claim holds the tab state (64 B) and ST-EASY's `StEasy`. On the PLAY tab X, SELECT+A, SELECT+UP, START, L2 / R2 stay with the pads and the tab's own bar, so redo, the control card and START = play are not there; the PLAY bar names its own keys.
+ - **Next up:** ST-TOOLS, ST-ADV, ST-USE (`../leads/STUDIO.md`). ST-ADV: lengths of 32 / 64 bars (the Start card stops at 16 passes = 32 bars), what Advanced shows.
+ - **Blockers:** none.
+-- 
+2.43.0
+
