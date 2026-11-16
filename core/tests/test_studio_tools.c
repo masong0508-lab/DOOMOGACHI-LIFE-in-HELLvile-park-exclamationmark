@@ -1422,8 +1422,12 @@ TEST(adv_lyric_view_opens_from_the_part_view_sets_a_line_and_b_goes_back)
     CHECK_EQ(studio.xw.sect[0].line[0], 2);
     press(BTN_LEFT); press(BTN_LEFT); press(BTN_LEFT);         /* line 2, line 1, then instrumental */
     CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
-    press(BTN_LEFT);                                           /* ... and on round to line 8 */
-    CHECK_EQ(studio.xw.sect[0].line[0], 7);
+    press(BTN_LEFT);                                           /* ... and on round to line 16 (an Advanced song has 16 lines) */
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_LYRIC_LINES - 1);
+    press(BTN_LEFT);
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_LYRIC_LINES - 2);   /* line 15 */
+    press(BTN_RIGHT); press(BTN_RIGHT);                        /* line 16, then round to instrumental */
+    CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
     CHECK(ed_undo());                                          /* the nudges of one pass are one undo step */
     CHECK_EQ(studio.xw.sect[0].line[0], SX_NO_LINE);
     press(BTN_B);
@@ -2115,4 +2119,67 @@ TEST(adv_pattern_length_one_bar_clamps_the_cursor_keeps_the_second_bar_and_undoe
     CHECK_EQ(songx_plen(&studio.xw, p), SONG_STEPS);
     CHECK_EQ(gcell(p, 0, 20), 72);
     st_level_set(0);
+}
+
+TEST(adv_lyric_lines_9_to_16_are_edited_through_the_helpers_and_one_undo_step_takes_them_back)
+{
+    char *b;
+    int steps0;
+    open_adv(4);
+    CHECK(st_adv_on());
+    steps0 = ed_undo_steps();
+    CHECK_EQ(st_line_count(&studio.song), SX_LYRIC_LINES);
+    CHECK_EQ(st_line_text(&studio.song, 12)[0], 0);
+    st_line_touch_text(&studio.song, 12);                      /* words of line 13 */
+    b = st_line_buf(&studio.song, 12);
+    CHECK(b != NULL);
+    strcpy(b, "far away words");
+    ed_commit();
+    CHECK(strcmp(st_line_text(&studio.song, 12), "far away words") == 0);
+    CHECK_EQ(studio.song.lyrics[4][0], 0);                     /* the classic lines did not move */
+    st_line_touch_mask(&studio.song, 12);
+    st_line_set_raw(&studio.song, 12, 0x3u);
+    ed_commit();
+    CHECK_EQ(ed_undo_steps(), steps0 + 2);
+    CHECK(ed_undo());                                          /* the mask goes back first ... */
+    CHECK(ed_undo());                                          /* ... then the words */
+    CHECK_EQ(st_line_text(&studio.song, 12)[0], 0);
+    CHECK(ed_redo());
+    CHECK(strcmp(st_line_text(&studio.song, 12), "far away words") == 0);
+    st_level_set(0);
+}
+
+TEST(adv_lyric_lines_9_to_16_do_not_exist_in_a_classic_song)
+{
+    open_notes();
+    st_level_set(0);
+    CHECK_EQ(st_line_count(&studio.song), SONG_LYRIC_LINES);
+    CHECK(st_line_buf(&studio.song, 8) == NULL);
+    CHECK_EQ(st_line_text(&studio.song, 8)[0], 0);
+}
+
+TEST(adv_lyrics_tab_scrolls_16_lines_over_8_rows)
+{
+    int i;
+    open_adv(4);
+    st_set_tab(STAB_LYRICS);
+    frames(2, 0);
+    CHECK_EQ(studio.lsel, 0);
+    CHECK_EQ(studio.ltop, 0);
+    for (i = 0; i < 7; i++) press(BTN_DOWN);
+    CHECK_EQ(studio.lsel, 7);
+    CHECK_EQ(studio.ltop, 0);                                  /* still inside the first 8 rows */
+    press(BTN_DOWN);
+    CHECK_EQ(studio.lsel, 8);
+    CHECK_EQ(studio.ltop, 1);                                  /* the list follows the cursor */
+    for (i = 0; i < 7; i++) press(BTN_DOWN);
+    CHECK_EQ(studio.lsel, 15);
+    CHECK_EQ(studio.ltop, 8);
+    press(BTN_DOWN);                                           /* round to the top */
+    CHECK_EQ(studio.lsel, 0);
+    CHECK_EQ(studio.ltop, 0);
+    press(BTN_UP);                                             /* and back round to the end */
+    CHECK_EQ(studio.lsel, 15);
+    CHECK_EQ(studio.ltop, 8);
+    st_level_set(0);                                           /* Easy keeps the song's extension, so its 16 lines stay in view */
 }

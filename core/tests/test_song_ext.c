@@ -466,3 +466,103 @@ TEST(song_ext_a_one_bar_pattern_ends_its_pass_early_and_is_saved_with_the_page)
     CHECK(songx_decode(&s, &y, plain, n0));
     CHECK_EQ(songx_plen(&y, 0), SONG_STEPS);
 }
+
+TEST(song_ext_lyric_lines_9_to_16_read_write_and_stay_out_of_the_classic_song)
+{
+    DoomoSong s;
+    SongExt x;
+    char *b;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK_EQ(songx_lines(&x), SX_LYRIC_LINES);
+    CHECK_EQ(songx_lines(NULL), SONG_LYRIC_LINES);
+    CHECK(!songx_lyr_any(&x));
+    CHECK_EQ(songx_line_text(&s, &x, 12)[0], 0);
+    CHECK_EQ(songx_line_text(&s, NULL, 12)[0], 0);                 /* no SongExt: only the classic 8 */
+    CHECK_EQ(songx_line_text(&s, &x, 16)[0], 0);                   /* past the last line */
+    CHECK_EQ(songx_line_text(&s, &x, -1)[0], 0);
+    CHECK(songx_line_buf(&s, NULL, 9) == NULL);
+    CHECK(songx_line_buf(&s, &x, 16) == NULL);
+    b = songx_line_buf(&s, &x, 10);
+    CHECK(b != NULL);
+    strcpy(b, "la la la");
+    CHECK(strcmp(songx_line_text(&s, &x, 10), "la la la") == 0);
+    CHECK(songx_lyr_any(&x));
+    CHECK_EQ(s.lyrics[0][0], 0);                                   /* the classic lines did not move */
+    CHECK_EQ(s.lyrics[7][0], 0);
+    songx_set_line_singers(&s, &x, 13, 0x5u);
+    CHECK_EQ(songx_line_singers(&s, &x, 13), 0x5u);
+    CHECK_EQ(songx_line_singers(&s, &x, 3), s.line_singers[3]);    /* a classic line reads the song's mask */
+}
+
+TEST(song_ext_lyric_lines_9_to_16_are_saved_with_the_page_and_a_page_without_them_is_the_old_page)
+{
+    DoomoSong s;
+    SongExt x, y;
+    uint8_t buf[SONGX_PAGE_BYTES], plain[SONGX_PAGE_BYTES];
+    uint32_t n, n0;
+    base(&s);
+    songx_init(&x, &s);
+    n0 = songx_encode(&s, &x, plain, sizeof(plain));
+    CHECK(n0 > 0);
+    CHECK_EQ(plain[5] & SX_FLAG_LYR, 0);                           /* no words past line 8: the old bytes */
+    strcpy(songx_line_buf(&s, &x, 9), "nine");
+    strcpy(songx_line_buf(&s, &x, 15), "sixteen");
+    songx_set_line_singers(&s, &x, 12, 0x3u);
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(n > n0);
+    CHECK(n <= n0 + 257);                                          /* the documented worst case */
+    CHECK(buf[5] & SX_FLAG_LYR);
+    memset(&y, 0, sizeof(y));
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK(strcmp(songx_line_text(&s, &y, 9), "nine") == 0);
+    CHECK(strcmp(songx_line_text(&s, &y, 15), "sixteen") == 0);
+    CHECK_EQ(songx_line_singers(&s, &y, 12), 0x3u);
+    CHECK_EQ(songx_line_text(&s, &y, 10)[0], 0);                   /* a line left empty stays empty */
+    CHECK(songx_lyr_any(&y));
+    /* with the old page the lines are empty */
+    memset(&y, 0xAA, sizeof(y));
+    CHECK(songx_decode(&s, &y, plain, n0));
+    CHECK(!songx_lyr_any(&y));
+    /* a page cut inside the lyric tail keeps the song and drops lines 9..16 only */
+    CHECK(songx_decode(&s, &y, buf, n - 3));
+    CHECK(!songx_lyr_any(&y));
+    CHECK_EQ(y.sections, x.sections);
+    CHECK_EQ(y.arrange_len, x.arrange_len);
+}
+
+TEST(song_ext_sanitize_cleans_lyric_lines_9_to_16_and_clamps_section_lines_to_16)
+{
+    DoomoSong s;
+    SongExt x;
+    base(&s);
+    songx_init(&x, &s);
+    memset(x.lyr[2], 'x', sizeof(x.lyr[2]));                       /* no NUL at all */
+    x.lyr[3][0] = 'o'; x.lyr[3][1] = 1; x.lyr[3][2] = 'k'; x.lyr[3][3] = 0;   /* an unprintable byte */
+    x.sect[0].line[0] = 15;
+    x.sect[0].line[1] = 99;
+    songx_sanitize(&x);
+    CHECK_EQ(x.lyr[2][SONG_LYRIC_LEN - 1], 0);                     /* always terminated */
+    CHECK(strlen(x.lyr[2]) < SONG_LYRIC_LEN);
+    {
+        int i;
+        for (i = 0; x.lyr[3][i]; i++) CHECK(x.lyr[3][i] >= 32 && x.lyr[3][i] < 127);
+    }
+    CHECK_EQ(x.sect[0].line[0], 15);                               /* line 16 is a real line now */
+    CHECK(x.sect[0].line[1] <= 15 || x.sect[0].line[1] == SX_NO_LINE);
+}
+
+TEST(song_ext_the_player_reads_lyric_lines_9_to_16_through_the_extension)
+{
+    DoomoSong s;
+    SongExt x;
+    base(&s);
+    s.singer[0] = 0; s.singer[1] = 1;                              /* a two-voice choir: the mask only keeps singers that exist */
+    songx_init(&x, &s);
+    songx_set_line_singers(&s, &x, 9, 0x2u);
+    CHECK_EQ(song_line_mask_x(&s, &x, 9), 0x2u);
+    CHECK_EQ(song_line_mask_x(&s, &x, 10), 0x1u);                  /* no mask = the first singer */
+    CHECK_EQ(song_line_mask_x(&s, NULL, 9), 0);                    /* a classic song has no line 10 */
+    CHECK_EQ(song_line_mask_x(&s, &x, 16), 0);
+    CHECK_EQ(song_line_mask_x(&s, &x, 2), song_line_mask(&s, 2));
+}

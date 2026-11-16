@@ -609,14 +609,15 @@ live in the `SongExt`.
   (`studio.ltop`; two-digit numbers drawn at x + 8), every line tool (clear, fit, auto-fit all, auto parts, part cycler, choir fills, remove singer, sort by section)
   covers lines 9..16 and is one undo step. The Lyric lines view picks 1..16 (`e_line` packs `pass * 32 + choice`) and Fill cycles over 16. The stage and the Concert Hall
   karaoke read the words through the same helpers.
-- **Not done:** no tests written, no build or test run (only `gcc -fsyntax-only` on the changed files), no GBA / PS1 / DC build (GBA scratch +256 B), no look at the
+- **Tested (2026-11-16, host):** 7 new tests plus one stale test fixed. `test_song_ext.c`: lines 9..16 read / write / stay out of the classic song; the saved page (old page bytes unchanged with no words, a tail within the 257 B worst case, a page cut inside the tail drops lines 9..16 only); sanitize (no NUL, unprintable bytes, section lines clamp to 16); the player mask (limited to singers that exist, empty mask = first singer). `test_studio_tools.c`: `st_line_*` edits with undo / redo, a classic song has no lines 9..16, the LYRICS tab scrolls 16 lines over 8 rows. The Lyric lines view test still expected the wrap-around to end at line 8; it now ends at line 16. Easy keeps an Advanced song's SongExt, so its 16 lines stay in view after the switch back (words are never hidden).
+- **Not done:** no GBA / PS1 / DC build (GBA scratch +256 B unmeasured), no look at the LYRICS tab on screen, `studio_write_lyrics` (the "New words" tool) still writes lines 1..8 only and leaves 9..16 as they are.
   LYRICS tab on screen, `studio_write_lyrics` still writes lines 1..8 only.
 
 ## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
 Two items are open (pan playback and lyric lines 9..16 are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
 
 1. **Pan playback (built 2026-11-16, see "Pan playback" below).** Left / middle / right per lane, heard on the GBA, PS1 and Dreamcast ports (code written, not built here: see the section).
-2. **More than 8 lyric lines (built, see \"ST-ADV: Lyric lines 9..16\" below; not compiled or run when written).**
+2. **More than 8 lyric lines (built and unit-tested on the host, see \"ST-ADV: Lyric lines 9..16\" below).**
 3. **Patterns of 3 and 4 bars.** One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
    `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
    would then address a block, not a pattern. Decide that chain model before writing code.
