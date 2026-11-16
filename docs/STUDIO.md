@@ -579,6 +579,32 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   `adv_the_page_is_saved_with_the_song_and_loads_back`, the `adv_keys_*` journeys and the PERFORM tests (`test_studio_tools.c`).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.
 
+## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
+Four items are open. Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+
+1. **Pan playback.** The Mix view stores a pan per track (`SxTrack.pan`: 0 left, 1 middle, 2 right) and the page keeps it, but nothing plays it.
+   - *Why not yet:* `plat_tone(channel, freq_hz, vol, wave)` (`core/include/doomo/platform.h`) has no pan argument, and the three ports answer it differently. PS1 (`ps1/src/spu.c`)
+     writes the same value to both `SPU_CH_VOL_L` and `SPU_CH_VOL_R`, so a pan is two different writes there. Dreamcast (`dc/src/mixer.c`) already has a fixed `tone_pan` table per tone
+     channel (`{128,128}, {152,104}, {128,128}, {104,152}`), so a per-track pan means replacing that table with a value the core sends. The GBA PSG (`gba/src/audio.c`) was not read for
+     this note: its hardware has a left / right enable per channel, which would give left / middle / right only if the driver exposes it. Check it before promising pan there.
+   - *Shape of the change:* a new additive platform call, for example `plat_tone_pan(int channel, int8_t pan)`, with an empty default so a port that cannot pan stays as it is; the
+     player (`song_player.c`, `lane_on`) sends the lane's `trk[t].pan` once at a note start, the same place Sound and velocity are applied. It is `cross-stream:` (SPEED / DC own the audio
+     code) and needs the PS1 and Dreamcast builds and one listening check each. The Mix footer ("Pan: saved") changes to say where pan plays.
+2. **More than 8 lyric lines.** A song has 8 lines (`SONG_LYRIC_LINES` in `song.h`: `lyrics[8][28]`, `line_singers[8]`, the classic `'SONG'` chunk). The Advanced part view names a line per
+   pass (0..7, `SX_NO_LINE`), so a long Epic song repeats lines.
+   - *Why not yet:* the constant is used about 40 times across 12 files, so this is a change to the classic format's neighbours, not to the extension: `song_book.c` (save and load of the
+     lines and singers), `song_player.c` (`begin_line`, the line text, the sanitizer), `studio_gen.c` (autofit, fit badges, parts, choir assignment), `studio_words.c` (the LYRICS tab rows),
+     `studio_adv.c` (the Lyric lines view and its Fill tool), `concert_scene.c` and `concert_song.c` (the stage lyrics, the `pair[]` singer table).
+   - *Shape of the change, to keep the classic song untouched:* put lines 9..16 in the `SongExt` (`lyr[8][28]` = 224 B, `singers[8]` = 32 B, saved in a page tail with its own flag bit like the
+     velocity and one-bar tails), let `SxSection.line` hold 0..15, and route every reader through two helpers, `song_line_text(s, x, line)` and `song_line_singers(s, x, line)`, so the code stops
+     indexing `s->lyrics[]` directly. Do the helpers and move the readers first (no behaviour change, tests stay green), then add the lines. Count about 260 B more for the working `SongExt`.
+3. **Patterns of 3 and 4 bars.** One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
+   `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
+   would then address a block, not a pattern. Decide that chain model before writing code.
+4. **PS1 pages.** `SONGX_BOOK_PAGES` is 0 on the PS1, so the Advanced ORDER tab is classic there (stubs). It needs resident bytes granted by the coordinator (plan section 4) and a measurement
+   of the margin below the stack top (gate: 72 KB; it was 110,352 B on the last landing). The Advanced `SongExt` is now 4,228 B in RAM, so ask for that plus the pages.
+Also still unmeasured for everything built in ST-ADV: GBA `.bss` / sizes, the GBA speed windows of the Note grid, the Box, the velocity strip and the Lyric lines view, the Dreamcast and PS1 builds.
+
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),
 Static (20 lyric lines), Toy Box drums (2 songs), Bone Rattle (Inspire me),
