@@ -541,6 +541,7 @@ static struct {
     uint8_t  sing_age;
     uint8_t  harm;            /* choir doubling note on ch1 (0 = none)       */
     uint8_t  harm_vol;
+    uint8_t  late[4], lv[4];  /* ST-ADV Mix view swing: a lane's off-beat note waits `late` ticks (value lv); 0 = nothing waiting */
     uint8_t  shape[3];        /* ST-ADV Mix view: the sound (0 soft = as always, 1 punchy, 2 long, 3 pluck) of each lane's note */
     uint8_t  voice[VOICE_COUNT];
     /* preview */
@@ -831,45 +832,90 @@ static void drum_on(int d)
     P.sent[3].valid = 0;               /* always restart the hit */
 }
 
-static void do_step(void)
+/* the part's key shift, lead brightness and fade level (256 = full) at this moment; all neutral for a classic song */
+static void sect_ctx(int *shift, int *bright, int *fade)
+{
+    *shift = 0; *bright = 0; *fade = 256;
+    if (P.x) {
+        int sec = sect_now(0, fade);
+        *shift = P.x->sect[sec].key;
+        *bright = P.x->sect[sec].bright;
+        *fade = P.x->sect[sec].fade == SX_FADE_IN ? *fade : P.x->sect[sec].fade == SX_FADE_OUT ? 256 - *fade : 256;
+    }
+}
+
+/* one lane's cell `v` (already shifted) sounds now */
+static void lane_on(int t, int v, int fade, int bright)
 {
     const DoomoSong *s = P.s;
-    int pat = cur_pattern(), t, v, shift = 0, fade = 256, bright = 0;
-    if (P.x) {
-        int sec = sect_now(0, &fade);
-        shift = P.x->sect[sec].key;
-        bright = P.x->sect[sec].bright;
-        fade = P.x->sect[sec].fade == SX_FADE_IN ? fade : P.x->sect[sec].fade == SX_FADE_OUT ? 256 - fade : 256;
+    if (t == 3) {
+        if (v > 0 && v < SONG_DRUM_COUNT) drum_on(v);
+        return;
     }
-    if (P.step == 0) begin_line();
-    if ((P.step & 3) == 0) P.beat_age = 0;
-    for (t = 0; t < 3; t++) {
-        v = cell(pat, t, P.step);
-        if (v >= 2 && shift) v = DOOMO_CLAMP(v + shift, 2, 127);
-        if (v == SONG_REST) {
-            P.note[t] = 0;
-            if (t == 0) { P.singing = 0; P.harm = 0; }
-        } else if (v >= 2) {
-            P.note[t] = (uint8_t)v;
-            P.age[t] = 0;
-            P.base[t] = (uint8_t)(fade < 256 ? DOOMO_MAX(1, s->vol[t] * fade / 256) : s->vol[t]);
-            P.wave[t] = (uint8_t)(s->wave[t] < SONG_WAVES ? s->wave[t] : WAVE_PULSE50);
-            P.shape[t] = P.x ? (uint8_t)(P.x->trk[t].env & 3) : 0;
-            if (t == 0 && bright) P.wave[0] = (uint8_t)(bright == 1 ? WAVE_PULSE50 : bright == 2 ? WAVE_PULSE25 : WAVE_PULSE12);   /* the part's lead brightness */
-            if (t == 0) {
-                if (P.mask && P.over < 0) {
-                    int n = popcount32(P.mask);
-                    P.base[0] = (uint8_t)DOOMO_MIN(15, P.base[0] + (n >= 4) + (n >= 12));
-                }
-                retrigger(0, song_note_hz(v), P.base[0], P.wave[0]);
-                sing_onset();
-            } else {
-                retrigger(t, song_note_hz(v), P.base[t], P.wave[t]);
+    if (v == SONG_REST) {
+        P.note[t] = 0;
+        if (t == 0) { P.singing = 0; P.harm = 0; }
+    } else if (v >= 2) {
+        P.note[t] = (uint8_t)v;
+        P.age[t] = 0;
+        P.base[t] = (uint8_t)(fade < 256 ? DOOMO_MAX(1, s->vol[t] * fade / 256) : s->vol[t]);
+        P.wave[t] = (uint8_t)(s->wave[t] < SONG_WAVES ? s->wave[t] : WAVE_PULSE50);
+        P.shape[t] = P.x ? (uint8_t)(P.x->trk[t].env & 3) : 0;
+        if (t == 0 && bright) P.wave[0] = (uint8_t)(bright == 1 ? WAVE_PULSE50 : bright == 2 ? WAVE_PULSE25 : WAVE_PULSE12);   /* the part's lead brightness */
+        if (t == 0) {
+            if (P.mask && P.over < 0) {
+                int n = popcount32(P.mask);
+                P.base[0] = (uint8_t)DOOMO_MIN(15, P.base[0] + (n >= 4) + (n >= 12));
             }
+            retrigger(0, song_note_hz(v), P.base[0], P.wave[0]);
+            sing_onset();
+        } else {
+            retrigger(t, song_note_hz(v), P.base[t], P.wave[t]);
         }
     }
-    v = cell(pat, 3, P.step);
-    if (v > 0 && v < SONG_DRUM_COUNT) drum_on(v);
+}
+
+/* units that one tick adds to the step clock (tempo of the part included) */
+static uint32_t tick_units(void)
+{
+    if (P.x) {
+        uint32_t b = (uint32_t)DOOMO_CLAMP(P.s->bpm, 60, 220) * P.x->sect[sect_now(0, 0)].tempo / 100u;
+        return 16u * DOOMO_CLAMP(b, 30, 440);
+    }
+    return 16u * DOOMO_CLAMP(P.s->bpm, 60, 220);
+}
+
+/* ST-ADV Mix swing: how many ticks lane t's note on an off-beat step waits beyond the song's own swing. A track's swing (1..8) is the
+ * lateness it wants; the clock already gives the song's, so only a lateness above it shows, and it is as fine as a tick. */
+static int lane_wait(int t)
+{
+    uint32_t want, have;
+    if (!P.x || !(P.step & 1) || t < 0 || t > 3) return 0;
+    want = (uint32_t)DOOMO_MIN(P.x->trk[t].swing, 8) * 450u;
+    have = (uint32_t)DOOMO_MIN(P.s->swing, 8) * 450u;
+    if (want <= have) return 0;
+    return (int)((want - have + tick_units() / 2) / tick_units());
+}
+
+static void do_step(void)
+{
+    int pat = cur_pattern(), t, v, shift, fade, bright;
+    for (t = 0; t < 4; t++) if (P.late[t]) {                  /* a note still waiting sounds before the next step's work */
+        P.late[t] = 0;
+        sect_ctx(&shift, &bright, &fade);
+        lane_on(t, P.lv[t], fade, bright);
+    }
+    sect_ctx(&shift, &bright, &fade);
+    if (P.step == 0) begin_line();
+    if ((P.step & 3) == 0) P.beat_age = 0;
+    for (t = 0; t < 4; t++) {
+        int w;
+        v = cell(pat, t, P.step);
+        if (t < 3 && v >= 2 && shift) v = DOOMO_CLAMP(v + shift, 2, 127);
+        w = v ? lane_wait(t) : 0;
+        if (w) { P.late[t] = (uint8_t)w; P.lv[t] = (uint8_t)v; }
+        else lane_on(t, v, fade, bright);
+    }
 }
 
 /* a loop (or a start) in the middle of a pass: the lyric line of the pass, and its syllables skipped for the onsets
@@ -995,6 +1041,7 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int 
     P.pv_ticks = 0;
     P.ticks = 0;
     P.acc = 0;
+    memset(P.late, 0, sizeof(P.late));
     P.rot = 0;
     P.lead = -1;
     P.beat_age = 0;
@@ -1085,12 +1132,15 @@ void song_tick(void)
     }
     P.ticks++;
     if (P.beat_age < 255) P.beat_age++;
-    if (P.x) {
-        uint32_t b = (uint32_t)DOOMO_CLAMP(P.s->bpm, 60, 220) * P.x->sect[sect_now(0, 0)].tempo / 100u;
-        P.acc += 16u * DOOMO_CLAMP(b, 30, 440);
-    } else {
-        P.acc += 16u * DOOMO_CLAMP(P.s->bpm, 60, 220);
+    {
+        int t;
+        for (t = 0; t < 4; t++) if (P.late[t] && --P.late[t] == 0) {      /* a swung note's wait is over */
+            int shift, bright, fade;
+            sect_ctx(&shift, &bright, &fade);
+            lane_on(t, P.lv[t], fade, bright);
+        }
     }
+    P.acc += tick_units();
     while (P.acc >= step_units(P.step) && guard++ < 4) {
         P.acc -= step_units(P.step);
         if (!advance()) { song_stop(); return; }

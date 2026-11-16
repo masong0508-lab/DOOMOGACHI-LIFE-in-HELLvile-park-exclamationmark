@@ -536,9 +536,15 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   lines view\"), `studio.aview` 5. Tests (`test_studio_tools.c`): `adv_lyric_view_opens_from_the_part_view_sets_a_line_and_b_goes_back`,
   `adv_lyric_view_a_line_set_here_is_the_one_the_lyrics_tab_finds`, `adv_lyric_view_fill_clear_and_empty_lyrics`, `adv_lyric_lines_are_saved_with_the_page`.
   Not run: GBA / PS1 / DC builds, GBA sizes and the speed window of the new view (ROM only: no new `.bss`). Not built: more than 8 lyric lines, naming a part's singers here.
+- **Swing playback (2026-11-16):** the Mix view's Swing is played (`song_player.c`, only with an arrangement). A track's swing 1..8 is the lateness it wants for its notes on the
+  off-beat steps; the step clock already gives the song's own swing, so only what is above it shows (a track at or under the song's swing, or \"song\", plays as before). The wait is
+  whole ticks (30 Hz): at 120 bpm swing 1..2 rounds to nothing, 3..5 wait one tick, 6..8 two. Tracks 1..4 (lead, harmony, bass, drums); folded tracks 5..8 follow their lane's
+  clock. A waiting note sounds before the next step's work, so nothing is lost at fast tempos. Cost: +8 B of player state (`late[4]`, `lv[4]`; PS1 resident share: re-measure).
+  The Mix footer now reads \"Sound, light, swing play. Pan: saved.\" (the players have no stereo for the PSG voices). A classic song plays bit-identically (golden music and
+  concert tests pass). Test: `song_ext_track_swing_delays_an_off_beat_note_and_the_song_swing_comes_first`.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** pan and per-track swing playback, the per-note velocity bar, patterns of 1..4 bars.
+- **Not done:** pan playback, the per-note velocity bar, patterns of 1..4 bars.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
   `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.

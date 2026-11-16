@@ -248,3 +248,54 @@ TEST(song_ext_sound_shapes_change_how_a_note_dies_away)
     CHECK(pluck > soft);
     CHECK(longer < soft);          /* a long note rings on: fewer level changes */
 }
+
+/* ---- Mix view playback: Swing (a track's off-beat notes come later than the song's own swing) ---------------------------- */
+static int ext_first_tone_tick(int swing, int song_swing)
+{
+    DoomoSong s;
+    SongExt x;
+    uint32_t c0;
+    int i, at = -1;
+    opt_set(OPT_MUSIC_VOL, 7);
+    base(&s);
+    s.vol[0] = 15;
+    s.bpm = 120;
+    s.swing = (uint8_t)song_swing;
+    memset(s.notes, 0, sizeof(s.notes));
+    s.notes[0][0][1] = 72;                                        /* one note, on an off-beat step */
+    songx_from_order(&x, &s);
+    x.trk[0].swing = (uint8_t)swing;
+    song_play_ext(&s, &x, -1);
+    c0 = nat_tone_calls;
+    for (i = 0; i < 40 && at < 0; i++) {
+        song_tick();
+        if (nat_tone_calls != c0) at = i;
+    }
+    song_stop();
+    return at;
+}
+
+TEST(song_ext_track_swing_delays_an_off_beat_note_and_the_song_swing_comes_first)
+{
+    int straight = ext_first_tone_tick(0, 0), swung = ext_first_tone_tick(8, 0);
+    CHECK(straight >= 0);
+    CHECK(swung > straight);                       /* the most swing waits a tick or two longer */
+    CHECK_EQ(ext_first_tone_tick(2, 0), straight); /* a swing finer than a tick rounds away */
+    /* a track swing at or under the song's own adds nothing */
+    CHECK_EQ(ext_first_tone_tick(3, 5), ext_first_tone_tick(0, 5));
+    /* and a classic song is untouched: the same note, no arrangement, plays when the straight one does */
+    {
+        DoomoSong s;
+        uint32_t c0;
+        int i, at = -1;
+        base(&s);
+        s.vol[0] = 15; s.bpm = 120; s.swing = 0;
+        memset(s.notes, 0, sizeof(s.notes));
+        s.notes[0][0][1] = 72;
+        song_play(&s, -1);
+        c0 = nat_tone_calls;
+        for (i = 0; i < 40 && at < 0; i++) { song_tick(); if (nat_tone_calls != c0) at = i; }
+        song_stop();
+        CHECK_EQ(at, straight);
+    }
+}
