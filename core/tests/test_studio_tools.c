@@ -1397,6 +1397,62 @@ TEST(adv_keys_the_key_menu_and_the_pass_rows)
     st_level_set(0);
 }
 
+TEST(adv_mix_view_edits_pan_sound_swing_and_brightness_one_undo_step_each)
+{
+    open_adv(4);
+    press(BTN_A);                                              /* the part view, then its tools: Mix and sound... */
+    press(BTN_SELECT); pick(8);
+    CHECK_EQ(studio.aview, 2);
+    CHECK_EQ(studio.xw.trk[0].pan, 1);
+    press(BTN_RIGHT);                                          /* pan: middle -> right */
+    CHECK_EQ(studio.xw.trk[0].pan, 2);
+    press(BTN_RIGHT);                                          /* stays at the edge */
+    CHECK_EQ(studio.xw.trk[0].pan, 2);
+    press(BTN_A);                                              /* A moves to the Sound column */
+    press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.trk[0].env, 1);
+    press(BTN_LEFT); press(BTN_LEFT);                          /* wraps: 0 -> 3 */
+    CHECK_EQ(studio.xw.trk[0].env, 3);
+    press(BTN_A);                                              /* Swing column */
+    press(BTN_DOWN);                                           /* harmony track */
+    press(BTN_RIGHT); press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.trk[1].swing, 2);
+    press(BTN_LEFT); press(BTN_LEFT); press(BTN_LEFT);         /* clamps at 0 = the song's own */
+    CHECK_EQ(studio.xw.trk[1].swing, 0);
+    press(BTN_DOWN); press(BTN_DOWN); press(BTN_DOWN);         /* the brightness row of the part */
+    press(BTN_RIGHT);
+    CHECK_EQ(studio.xw.sect[0].bright, 1);
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 0);                                 /* back to the list, still in the studio */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    CHECK(ed_undo());                                          /* brightness */
+    CHECK_EQ(studio.xw.sect[0].bright, 0);
+    CHECK(ed_undo());                                          /* the swing nudges joined into steps; one more takes it back */
+    CHECK(ed_undo());
+    st_level_set(0);
+}
+
+TEST(adv_mix_settings_are_saved_with_the_page)
+{
+    uint8_t buf[2048];
+    SongExt back;
+    uint32_t n;
+    open_adv(4);
+    press(BTN_A);
+    press(BTN_SELECT); pick(8);
+    press(BTN_LEFT);                                           /* pan left */
+    press(BTN_A); press(BTN_RIGHT); press(BTN_RIGHT);          /* sound: long */
+    CHECK_EQ(studio.xw.trk[0].pan, 0);
+    CHECK_EQ(studio.xw.trk[0].env, 2);
+    n = songx_encode(&studio.song, &studio.xw, buf, sizeof(buf));
+    CHECK(n > 0);
+    memset(&back, 0, sizeof(back));
+    CHECK(songx_decode(&studio.song, &back, buf, n));
+    CHECK_EQ(back.trk[0].pan, 0);
+    CHECK_EQ(back.trk[0].env, 2);
+    st_level_set(0);
+}
+
 TEST(adv_keys_start_plays_the_arrangement)
 {
     open_adv(8);

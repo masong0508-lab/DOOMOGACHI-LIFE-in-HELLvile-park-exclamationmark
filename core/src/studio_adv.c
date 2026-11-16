@@ -20,9 +20,10 @@
 #define X (&studio.xw)
 /* the bytes of a SongExt an arrangement edit can change: header, the 16 parts and the 64 entries (the pool and the cell map
  * are the note grid's, not touched here) */
-#define META ((int)(offsetof(SongExt, arrange) + SX_ARRANGE))
+#define META ((int)(offsetof(SongExt, trk) + sizeof(((SongExt *)0)->trk)))   /* ... and the 8 track settings of the Mix view */
 #define AK(r) (0x4000 + (r))            /* coalescing keys: repeated nudges of one setting are one undo step */
 
+static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing */
 static uint8_t b_eaten;                 /* B left the part view this frame: the studio must not take it as "leave" */
 
 int st_adv_on(void) { return studio.xw.version != 0; }
@@ -30,7 +31,7 @@ int st_adv_eats_b(void) { return b_eaten; }
 
 void st_adv_enter(int slot)
 {
-    studio.aview = 0; studio.asel = 0; studio.atop = 0;
+    studio.aview = 0; studio.asel = 0; studio.atop = 0; mix_col = 0;
     studio.osel = studio.otop = 0;
     if (slot >= 0 && songx_book_get(slot, SS, X)) return;
     X->version = 0;                     /* a failed decode may leave a half-read header */
@@ -180,6 +181,10 @@ static int e_pass_del(SongExt *x, int sec, int at)
     c->pat[--c->npat] = 0;
     return 1;
 }
+static int e_trk_pan(SongExt *x, int t, int v) { x->trk[t].pan = (uint8_t)DOOMO_CLAMP(v, 0, 2); return 1; }
+static int e_trk_env(SongExt *x, int t, int v) { x->trk[t].env = (uint8_t)(v & 3); return 1; }
+static int e_trk_swing(SongExt *x, int t, int v) { x->trk[t].swing = (uint8_t)DOOMO_CLAMP(v, 0, 8); return 1; }
+static int e_bright(SongExt *x, int sec, int v) { x->sect[sec].bright = (uint8_t)(v & 3); return 1; }
 static int e_chorus_up(SongExt *x, int steps, int unused) { (void)unused; return songx_last_chorus_up(x, steps); }
 
 /* ---- opening: the classic order becomes the first arrangement ---------------------------------------------------------- */
@@ -347,6 +352,7 @@ static void do_pass_del(int at)
     }
 }
 
+static void to_mix_view(void) { studio.aview = 2; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 static void to_part_view(void) { studio.aview = 1; studio.asel = 0; studio.atop = 0; audio_sfx(SFX_SELECT); }
 
 static void arrange_tools(int c)
@@ -381,6 +387,7 @@ static void part_tools(int c)
         if (song_playing()) song_stop();
         st_adv_play(songx_entry_pass(X, studio.osel), -1);
         break;
+    case 8: to_mix_view(); break;
     default: break;
     }
 }
@@ -462,13 +469,14 @@ static void part_update(void)
         else part_adjust(1);                                       /* the settings: A is the same as RIGHT */
     }
     if (studio_sel_tap) {
-        static const char *const items[8] = { "Add a pass", "Delete this pass", "Make it unique", "Name...", "Key change...",
-                                              "Tempo change...", "Fade...", "Hear this part" };
-        static const char *const help[8] = { "A copy of the pass, just after.", "Take the pass out.",
+        static const char *const items[9] = { "Add a pass", "Delete this pass", "Make it unique", "Name...", "Key change...",
+                                              "Tempo change...", "Fade...", "Hear this part", "Mix and sound..." };
+        static const char *const help[9] = { "A copy of the pass, just after.", "Take the pass out.",
                                              "Its own copy: edits stay here.", "Verse, chorus, bridge...",
                                              "Lift or drop the whole part.", "Faster or slower part.",
-                                             "Fade the part in or out.", "Play from this part." };
-        st_popup("This part", items, 8, 0, part_tools);
+                                             "Fade the part in or out.", "Play from this part.",
+                                             "Pan, sound and swing per track." };
+        st_popup("This part", items, 9, 0, part_tools);
         st_popup_help(help);
     }
     if (vis < 3) vis = 3;
@@ -476,12 +484,44 @@ static void part_update(void)
     if (studio.asel >= studio.atop + vis) studio.atop = (uint8_t)(studio.asel - vis + 1);
 }
 
+/* ---- the Mix view: pan, sound (envelope) and swing per track, and the lead brightness of the part ------------------------- */
+static int mix_tracks(void) { return DOOMO_CLAMP((int)X->tracks, 4, SX_TRACKS); }
+static int mix_rows(void) { return mix_tracks() + 1; }              /* the last row is the part's brightness */
+
+static void mix_adjust(int d)
+{
+    int row = studio.asel, nt = mix_tracks();
+    const SxTrack *t;
+    if (row >= nt) {
+        int sec = cur_sec(), v = (X->sect[sec].bright + d + 4) & 3;
+        if (adv_edit(e_bright, sec, v, AK(0x200))) audio_sfx(SFX_CURSOR);
+        return;
+    }
+    t = &X->trk[row];
+    if (mix_col == 0) { if (adv_edit(e_trk_pan, row, t->pan + d, AK(0x210 + row))) audio_sfx(SFX_CURSOR); }
+    else if (mix_col == 1) { if (adv_edit(e_trk_env, row, t->env + d + 4, AK(0x220 + row))) audio_sfx(SFX_CURSOR); }
+    else if (adv_edit(e_trk_swing, row, t->swing + d, AK(0x230 + row))) audio_sfx(SFX_CURSOR);
+}
+
+static void mix_update(void)
+{
+    int rows = mix_rows();
+    if (studio.asel >= rows) studio.asel = (uint8_t)(rows - 1);
+    if (btn_pressed(BTN_B)) { studio.aview = 0; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_repeat(BTN_UP)) { studio.asel = (uint8_t)((studio.asel + rows - 1) % rows); audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_DOWN)) { studio.asel = (uint8_t)((studio.asel + 1) % rows); audio_sfx(SFX_CURSOR); }
+    if (btn_repeat(BTN_LEFT)) mix_adjust(-1);
+    if (btn_repeat(BTN_RIGHT)) mix_adjust(1);
+    if (btn_pressed(BTN_A) && studio.asel < mix_tracks()) { mix_col = (uint8_t)((mix_col + 1) % 3); audio_sfx(SFX_CURSOR); }
+    else if (btn_pressed(BTN_A)) mix_adjust(1);
+}
+
 void tab_order_adv_update(void)
 {
     b_eaten = 0;
     if (!X->version) return;
     if (X->arrange_len < 1 || studio.osel >= X->arrange_len) studio.osel = 0;
-    if (studio.aview) part_update(); else arrange_update();
+    if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
 }
 
 /* ---- draw ------------------------------------------------------------------------------------------------------------- */
@@ -604,17 +644,66 @@ static void part_draw(StRect r)
     ui_scroll_arrows(r.x + r.w - 10, ptop - 2, ptop + vis * rh - 8, studio.atop > 0, studio.atop + vis < rows);
 }
 
+static void mix_draw(StRect r)
+{
+    static const char *const tname[SX_TRACKS] = { "Lead", "Harmony", "Bass", "Drums", "Extra 5", "Extra 6", "Extra 7", "Extra 8" };
+    static const char *const pan_s[3] = { "Left", "Middle", "Right" };
+    static const char *const env_s[4] = { "Soft", "Punchy", "Long", "Pluck" };
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int rh = st_wide() ? 15 : 12, nt = mix_tracks(), i, y0 = r.y + 6 + rh;
+    int cx[3] = { r.x + 78, r.x + 130, r.x + 186 };
+    char buf[24];
+    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+    ui_text(r.x + 12, r.y + 5, "Mix", st->text);
+    ui_text(cx[0] + 4, r.y + 5, "Pan", mix_col == 0 ? st->accent : st->text_dim);
+    ui_text(cx[1] + 4, r.y + 5, "Sound", mix_col == 1 ? st->accent : st->text_dim);
+    ui_text(cx[2] + 4, r.y + 5, "Swing", mix_col == 2 ? st->accent : st->text_dim);
+    for (i = 0; i <= nt; i++) {
+        int y = y0 + i * rh, sel = i == studio.asel;
+        uint8_t tc = sel ? PAL_WHITE : st->text;
+        if (sel) { ui_round_rect(r.x + 4, y - 1, r.w - 8, 12, 4, st->accent); ui_cursor(r.x + 5, y + 1); }
+        if (i == nt) {
+            const SxSection *c = &X->sect[cur_sec()];
+            ui_text(r.x + 16, y + 1, "Brightness", tc);
+            if (c->bright) doomo_snprintf(buf, sizeof(buf), "< %d >", c->bright); else doomo_snprintf(buf, sizeof(buf), "< as set >");
+            ui_text(cx[0], y + 1, buf, tc);
+            ui_text(cx[1] + 20, y + 1, songx_name(c->name), tc);
+            continue;
+        }
+        ui_text(r.x + 16, y + 1, tname[i], tc);
+        {
+            int col;
+            const char *v[3];
+            char sw[8];
+            if (X->trk[i].swing) doomo_snprintf(sw, sizeof(sw), "%d", X->trk[i].swing); else doomo_snprintf(sw, sizeof(sw), "song");
+            v[0] = pan_s[X->trk[i].pan % 3]; v[1] = env_s[X->trk[i].env & 3]; v[2] = sw;
+            for (col = 0; col < 3; col++) {
+                int hot = sel && col == mix_col;
+                doomo_snprintf(buf, sizeof(buf), hot ? "<%s>" : "%s", v[col]);
+                ui_text(cx[col] + (hot ? 0 : 4), y + 1, buf, tc);
+            }
+        }
+        if (i >= songx_tracks_max()) ui_text(r.x + r.w - 40, y + 1, "mixed in", sel ? PAL_WHITE : st->text_dim);
+    }
+    ui_text(r.x + 12, r.y + r.h - 14, "Saved with the song; heard on bigger consoles.", st->text_dim);
+}
+
 void tab_order_adv_draw(StRect r)
 {
     if (!X->version) return;
-    if (studio.aview) part_draw(r); else arrange_draw(r);
+    if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
 }
 
 int st_adv_prompts(UiPrompt *p)
 {
     int n = 0;
 #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
-    if (studio.aview) {
+    if (studio.aview == 2) {
+        PR(BTN_LEFT | BTN_RIGHT, 0, "Change");
+        PR(BTN_A, 1, studio.asel < mix_tracks() ? "Next column" : "More");
+        PR(BTN_START, 2, st_play_verb());
+        PR(BTN_B, 3, "Back");
+    } else if (studio.aview) {
         PR(BTN_LEFT | BTN_RIGHT, 0, "Change");
         PR(BTN_A, 1, studio.asel >= 4 ? "Add a pass" : "Next");
         PR(BTN_START, 2, st_play_verb());

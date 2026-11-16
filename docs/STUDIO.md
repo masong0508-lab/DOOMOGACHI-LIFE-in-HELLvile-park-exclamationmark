@@ -490,6 +490,12 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **PERFORM and the Concert Hall:** the stage show plays the arrangement (`st_adv_play(0)`), ends at its exact length (`st_adv_ticks`, tempo per part) and scores line fit over the pattern the arrangement sings the line on (`st_adv_line_pattern`). The Concert Hall button hands it over with `concert_stage_song_x(s, x)` (`cross-stream:` a small hook in `concert_scene.c`; `concert_stage_song(s)` is unchanged). Three PERFORM tests in `test_studio_tools.c`.
 - **Save and load:** saving to a slot keeps the page (`songx_book_put`); if it does not fit, the song is saved classic and says so.
   Opening a slot loads its page. Make it! / Shuffle, templates, Inspire me! and New drop the arrangement in the same undo step.
+- **Mix view (2026-11-16):** in the part view, SELECT tools, "Mix and sound...". One row per track (4, up to 8) with Pan (left / middle / right),
+  Sound (soft / punchy / long / pluck) and Swing (song / 1..8), and a last row for the part's Brightness (as set / 1..3). UP / DOWN pick the row,
+  A moves the column, LEFT / RIGHT change the value, B goes back. Tracks the console folds say "mixed in". Each edit is one undo step (nudges join);
+  the settings are saved with the page. They are stored only: the player does not use pan / sound / swing / brightness yet (the screen says so).
+  The undo journal range now covers the track settings (`META` in `studio_adv.c`). Tests: `adv_mix_view_edits_pan_sound_swing_and_brightness_one_undo_step_each`,
+  `adv_mix_settings_are_saved_with_the_page`. The Arrange popup is full (10 items is the popup limit), so Mix is reached from the part view.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
 - **Not done:** the LYRICS tab does not know arrangement positions;
