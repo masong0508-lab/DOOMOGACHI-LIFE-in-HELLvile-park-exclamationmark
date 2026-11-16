@@ -316,7 +316,13 @@ static int edge_strength(const DoomoEdge *e)
  * alias the records and the attribute.) The host tests build it too (core/Makefile). */
 #if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_EDGE_GAP_LOOP)
 typedef uint16_t __attribute__((may_alias)) EdgeHalf;
-__attribute__((optimize("no-tree-loop-distribute-patterns")))
+/* clang (Termux host build) has no 'optimize' attribute and -Werror makes the warning fatal; GCC keeps it */
+#if defined(__clang__)
+#define EDGE_NO_DISTRIBUTE
+#else
+#define EDGE_NO_DISTRIBUTE __attribute__((optimize("no-tree-loop-distribute-patterns")))
+#endif
+EDGE_NO_DISTRIBUTE
 static void edges_open_gap(int i, int n)
 {
     const EdgeHalf *s = (const EdgeHalf *)&doomo_town.edges[n];
@@ -329,7 +335,7 @@ static void edges_open_gap(int i, int n)
     while (h-- > 0) *--d = *--s;
 }
 /* and the other way: close the gap at edge i of n (the edges i+1..n-1 move down by one), from the bottom up */
-__attribute__((optimize("no-tree-loop-distribute-patterns")))
+EDGE_NO_DISTRIBUTE
 static void edges_close_gap(int i, int n)
 {
     EdgeHalf *d = (EdgeHalf *)&doomo_town.edges[i];
