@@ -472,7 +472,7 @@ Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio
   or on the GBA / PS1 it falls back to Long.
 - **FILE:** when the open arrangement has more tracks than the console plays, the FILE tab shows "Extra tracks are mixed in" (full text from `songx_folded`).
 - **LYRICS on an arrangement:** with the arrangement open, `studio_line_pos` / `studio_line_pat` (`studio_gen.c`) answer from the arrangement (`st_adv_line_pass`, `st_adv_line_pattern`): the LYRICS tab's fit badges, onsets strip, pattern chip, autofit, auto parts and the one-line preview all follow the pass the arrangement sings the line on. Test: `adv_lyric_lines_follow_the_arrangement`. Classic songs are unchanged.
-- Still open: more than 8 lyric lines, pan playback.
+- Still open: pan playback (built since), more than 8 lyric lines (built since: see "ST-ADV: Lyric lines 9..16").
 
 ## ST-ADV screens: the Advanced ORDER tab (2026-11-16, host and Dreamcast builds)
 Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in the player. Where `SONGX_BOOK_PAGES` is 0 (GBA, PS1)
@@ -536,7 +536,7 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   pass join); the lines were already saved with the page. LYRICS tab, fit badges and PERFORM follow the lines at once (`st_adv_line_pass`). Code: `studio_adv.c` (\"the Lyric
   lines view\"), `studio.aview` 5. Tests (`test_studio_tools.c`): `adv_lyric_view_opens_from_the_part_view_sets_a_line_and_b_goes_back`,
   `adv_lyric_view_a_line_set_here_is_the_one_the_lyrics_tab_finds`, `adv_lyric_view_fill_clear_and_empty_lyrics`, `adv_lyric_lines_are_saved_with_the_page`.
-  Not run: GBA / PS1 / DC builds, GBA sizes and the speed window of the new view (ROM only: no new `.bss`). Not built: more than 8 lyric lines, naming a part's singers here.
+  Not run: GBA / PS1 / DC builds, GBA sizes and the speed window of the new view (ROM only: no new `.bss`). Lines 9..16 were added afterwards (see "ST-ADV: Lyric lines 9..16"). Not built: naming a part's singers here.
 - **Swing playback (2026-11-16):** the Mix view's Swing is played (`song_player.c`, only with an arrangement). A track's swing 1..8 is the lateness it wants for its notes on the
   off-beat steps; the step clock already gives the song's own swing, so only what is above it shows (a track at or under the song's swing, or \"song\", plays as before). The wait is
   whole ticks (30 Hz): at 120 bpm swing 1..2 rounds to nothing, 3..5 wait one tick, 6..8 two. Tracks 1..4 (lead, harmony, bass, drums); folded tracks 5..8 follow their lane's
@@ -593,18 +593,30 @@ Code: `plat_tone_pan` (`core/include/doomo/plat_ext.h`, weak default in `plat_we
 - **Mix footer:** now "Sound, light, swing and pan play."
 - **Not run:** the GBA / PS1 / DC builds, the GBA speed windows (the player does one compare per sounding note), the listening check on each console.
 
+## ST-ADV: Lyric lines 9..16 (core + studio; syntax-checked only, not built or tested)
+An Advanced song has 16 lyric lines. Lines 1..8 are the classic song's (`lyrics[]`, `line_singers[]`, the `'SONG'` chunk: untouched); lines 9..16
+live in the `SongExt`.
+- **Data (`song_ext.h`, `song_ext.c`):** `SX_XLINES` 8, `SX_LYRIC_LINES` 16, `SongExt.lyr[8][28]` and `lsing[8][4]` (little endian u32 as plain bytes, so the
+  struct stays byte aligned), the last two members (the undo journal covers them: `STUDIO_JBYTES` is song + SongExt). `SxSection.line[k]` holds 0..15.
+  Helpers: `songx_lines`, `songx_line_text`, `songx_line_buf`, `songx_line_singers`, `songx_set_line_singers`, `songx_lyr_any`. `songx_sanitize` clamps lines to
+  0..15, fixes the words (printable, one NUL) and the singer bits, and `flags` may carry bit 5.
+- **Saved page:** a lyric tail after the one-bar tail, only when `SX_FLAG_LYR` (16) is set (some line 9..16 has words or a singer mask): a u8 mask of the lines, then
+  per set line its words (up to 27 bytes) + NUL and 4 mask bytes. A damaged tail drops lines 9..16 only. Pages without it encode as before. Worst case about 257 B
+  more against `SONGX_PAGE_BYTES` (a page that does not fit still falls back to classic).
+- **Player:** `song_line_mask_x(s, x, line)` (`song_line_mask` = the same with no SongExt); `begin_line` and the syllable vowel read the words through `songx_line_text`.
+- **Studio:** `st_line_count / text / buf / mask / set_raw / touch_text / touch_mask` and `st_xmasks(XM_TOUCH / CLEAR / DROP / REMAP)` (`studio_adv.c`, with classic
+  stubs when `STUDIO_ADV` is 0) are the only way studio code reads or writes a line; only the working song has more than 8. The LYRICS tab scrolls 16 lines over 8 rows
+  (`studio.ltop`; two-digit numbers drawn at x + 8), every line tool (clear, fit, auto-fit all, auto parts, part cycler, choir fills, remove singer, sort by section)
+  covers lines 9..16 and is one undo step. The Lyric lines view picks 1..16 (`e_line` packs `pass * 32 + choice`) and Fill cycles over 16. The stage and the Concert Hall
+  karaoke read the words through the same helpers.
+- **Not done:** no tests written, no build or test run (only `gcc -fsyntax-only` on the changed files), no GBA / PS1 / DC build (GBA scratch +256 B), no look at the
+  LYRICS tab on screen, `studio_write_lyrics` still writes lines 1..8 only.
+
 ## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
-Three items are open (pan playback is built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+Two items are open (pan playback and lyric lines 9..16 are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
 
 1. **Pan playback (built 2026-11-16, see "Pan playback" below).** Left / middle / right per lane, heard on the GBA, PS1 and Dreamcast ports (code written, not built here: see the section).
-2. **More than 8 lyric lines.** A song has 8 lines (`SONG_LYRIC_LINES` in `song.h`: `lyrics[8][28]`, `line_singers[8]`, the classic `'SONG'` chunk). The Advanced part view names a line per
-   pass (0..7, `SX_NO_LINE`), so a long Epic song repeats lines.
-   - *Why not yet:* the constant is used about 40 times across 12 files, so this is a change to the classic format's neighbours, not to the extension: `song_book.c` (save and load of the
-     lines and singers), `song_player.c` (`begin_line`, the line text, the sanitizer), `studio_gen.c` (autofit, fit badges, parts, choir assignment), `studio_words.c` (the LYRICS tab rows),
-     `studio_adv.c` (the Lyric lines view and its Fill tool), `concert_scene.c` and `concert_song.c` (the stage lyrics, the `pair[]` singer table).
-   - *Shape of the change, to keep the classic song untouched:* put lines 9..16 in the `SongExt` (`lyr[8][28]` = 224 B, `singers[8]` = 32 B, saved in a page tail with its own flag bit like the
-     velocity and one-bar tails), let `SxSection.line` hold 0..15, and route every reader through two helpers, `song_line_text(s, x, line)` and `song_line_singers(s, x, line)`, so the code stops
-     indexing `s->lyrics[]` directly. Do the helpers and move the readers first (no behaviour change, tests stay green), then add the lines. Count about 260 B more for the working `SongExt`.
+2. **More than 8 lyric lines (built, see \"ST-ADV: Lyric lines 9..16\" below; not compiled or run when written).**
 3. **Patterns of 3 and 4 bars.** One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
    `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
    would then address a block, not a pattern. Decide that chain model before writing code.
