@@ -135,9 +135,18 @@ static int line_syls(const DoomoSong *s, int line)
 int studio_line_pos(const DoomoSong *s, int line)
 {
     int p;
+    if (s == &studio.song && st_adv_on()) return st_adv_line_pass(line);
     for (p = 0; p < s->order_len && p < SONG_ORDER_MAX; p++)
         if (SONG_LINE_OF(p) == line) return p;
     return -1;
+}
+
+int studio_line_pat(const DoomoSong *s, int line)
+{
+    int pos;
+    if (s == &studio.song && st_adv_on()) return st_adv_line_pattern(line);
+    pos = studio_line_pos(s, line);
+    return pos < 0 ? -1 : s->order[pos] & 3;
 }
 
 /* the most syllables of a lyric line sung over pattern `pat` (0 = none) */
@@ -962,7 +971,7 @@ void studio_auto_parts(DoomoSong *s)
     for (line = 0; line < SONG_LYRIC_LINES; line++) {
         int pos = studio_line_pos(s, line);
         if (pos < 0 || !s->lyrics[line][0]) continue;
-        if ((s->order[pos] & 3) == best && uses[best] >= 2) {
+        if (studio_line_pat(s, line) == best && uses[best] >= 2) {
             studio_set_part(s, line, PART_CHOIR, 0);
         } else if (n >= 8) {
             static const uint8_t secs[4] = { SECTION_SOPRANO, SECTION_BASS, SECTION_ALTO, SECTION_TENOR };
@@ -989,7 +998,8 @@ int studio_autofit(DoomoSong *s, int line)
     int pos = studio_line_pos(s, line), pat, m, n, changed = 0, guard;
     char *t = s->lyrics[line];
     if (pos < 0 || !t[0]) return 0;
-    pat = s->order[pos] & 3;
+    pat = studio_line_pat(s, line);
+    if (pat < 0) return 0;
     m = song_lead_onsets(s, pat);
     n = song_syllables(t, NULL, 0);
     /* too few words: la la la */
@@ -1008,6 +1018,9 @@ int studio_autofit(DoomoSong *s, int line)
         for (p2 = 0; p2 < s->order_len && p2 < SONG_ORDER_MAX; p2++)
             if ((s->order[p2] & 3) == pat && SONG_LINE_OF(p2) != line &&
                 s->lyrics[SONG_LINE_OF(p2)][0]) shared = 1;
+        if (s == &studio.song && st_adv_on())           /* the arrangement's own passes decide */
+            for (shared = 0, p2 = 0; p2 < SONG_LYRIC_LINES; p2++)
+                if (p2 != line && s->lyrics[p2][0] && studio_line_pat(s, p2) == pat) shared = 1;
         if (shared) guard = SONG_STEPS;
         else guard = 0;
     }

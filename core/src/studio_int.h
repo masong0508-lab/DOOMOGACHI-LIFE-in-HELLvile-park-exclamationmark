@@ -336,6 +336,7 @@ void st_adv_play(int pos, int singer); /* play (the arrangement when there is on
 int  st_adv_pass_of_cursor(void);      /* ORDER's cursor as a pass number */
 uint32_t st_adv_ticks(void);           /* the whole song in 30 Hz ticks: the arrangement's (tempo per part) or the classic order's */
 const SongExt *st_adv_ext(void);       /* the arrangement for the Concert Hall, NULL for a classic song */
+int  st_adv_line_pass(int line);       /* the flat pass the arrangement first sings lyric line `line` on, -1 = none or no arrangement */
 int  st_adv_line_pattern(int line);    /* the pattern (0..3) the song sings lyric line `line` over, -1 = never or not in the 4 classic ones */
 int  st_adv_epic(void);                /* Advanced, after a take: lay the made song out as a 64-bar arrangement (one undo step); 1 = did */
 int  st_adv_try_open(void);            /* the ORDER tab opened on Advanced: make the arrangement from the classic order; 1 = did */
@@ -424,6 +425,7 @@ int  studio_clean_text(char *t, int cap);
 /* Auto-fit lyric line `line` to the lead notes of its pattern. 1 = changed. */
 int  studio_autofit(DoomoSong *s, int line);
 /* first order position singing `line`, -1 if none */
-int  studio_line_pos(const DoomoSong *s, int line);
+int  studio_line_pos(const DoomoSong *s, int line);   /* the pass it is sung on (the arrangement's when `s` is the open song and has one) */
+int  studio_line_pat(const DoomoSong *s, int line);   /* the pattern 0..3 it is sung over, -1 = never */
 
 #endif

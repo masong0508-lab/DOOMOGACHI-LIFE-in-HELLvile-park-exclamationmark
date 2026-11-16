@@ -470,7 +470,7 @@ int tl_fit_status(const DoomoSong *s, int line, int *words, int *notes)
     int pos = studio_line_pos(s, line), w, n;
     if (pos < 0 || !s->lyrics[line][0]) return -1;
     w = song_syllables(s->lyrics[line], NULL, 0);
-    n = song_lead_onsets(s, s->order[pos] & 3);
+    n = song_lead_onsets(s, studio_line_pat(s, line) & 3);
     if (words) *words = w;
     if (notes) *notes = n;
     return w == n ? 0 : (w < n ? 1 : 2);

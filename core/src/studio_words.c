@@ -40,7 +40,7 @@ static void preview_line(int pos, int singer)
 {
     song_stop();
     if (pos < 0) { st_msg("That line isn't in the song"); return; }
-    song_play_at(SS, singer, pos, 0);
+    st_adv_play(pos, singer);
     studio.sing_pos = (int8_t)pos;
 }
 
@@ -65,9 +65,9 @@ static void lyric_done(int ok)
  * never sung */
 static int line_fit(const DoomoSong *s, int line, int *onsets, int *syls)
 {
-    int pos = studio_line_pos(s, line);
+    int pos = studio_line_pos(s, line), pt = studio_line_pat(s, line);
     *syls = song_syllables(s->lyrics[line], NULL, 0);
-    *onsets = pos >= 0 ? song_lead_onsets(s, s->order[pos] & 3) : -1;
+    *onsets = pos >= 0 && pt >= 0 ? song_lead_onsets(s, pt) : -1;
     return pos >= 0;
 }
 
@@ -284,9 +284,9 @@ void tab_lyrics_draw(StRect r)
         int pos = studio_line_pos(s, i);
         uint8_t sts[SONG_LYRIC_LEN];
         sy = song_syllables(s->lyrics[i], sts, SONG_LYRIC_LEN);   /* once a line a frame (it was 2-3 lookups) */
-        sung = pos >= 0;
+        sung = pos >= 0 && studio_line_pat(s, i) >= 0;
         if (sung) {
-            int pt = s->order[pos] & 3;
+            int pt = studio_line_pat(s, i);
             if (onc[pt] < 0) onc[pt] = song_lead_onsets(s, pt);
             on = onc[pt];
         }
@@ -298,8 +298,8 @@ void tab_lyrics_draw(StRect r)
         buf[0] = (char)('1' + i); buf[1] = 0;                      /* lines 1..8: no snprintf */
         ui_text(r.x + 13, y + (rowh - 9) / 2, buf, st->text_dim);
         if (pos >= 0) {
-            char pc[2] = { (char)('A' + (s->order[pos] & 3)), 0 };
-            ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(s->order[pos], 1));
+            char pc[2] = { (char)('A' + (studio_line_pat(s, i) & 3)), 0 };
+            ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(studio_line_pat(s, i), 1));
             ui_text(r.x + 23, y + (rowh - 9) / 2, pc, PAL_WHITE);
         }
         if (s->lyrics[i][0]) {
@@ -334,7 +334,7 @@ void tab_lyrics_draw(StRect r)
         ui_text(gx + 12 + ui_text_width(buf), dy + 4, STR_ICON_ARROW_R, ui_style_text(WIN_MINT));
         nsy = sel_n;
         if (pos >= 0 && s->lyrics[line][0]) {
-            const uint8_t *lead = s->notes[s->order[pos] & 3][0];
+            const uint8_t *lead = s->notes[studio_line_pat(s, line) & 3][0];
             int sx = gw / SONG_STEPS, ky = dy + 17, syl = 0, lastx = -100;
             for (k = 0; k < SONG_STEPS; k++) {
                 int x = gx + k * sx;

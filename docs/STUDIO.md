@@ -470,7 +470,8 @@ Code: `studio_start.c`, `studio_adv.c` (`st_adv_epic`, `st_adv_folded`), `studio
   8-entry arrangement of Verse, Chorus, Verse, Chorus, Bridge, Chorus, Chorus, Outro (32 passes). It is a second undo step after the take. On Easy
   or on the GBA / PS1 it falls back to Long.
 - **FILE:** when the open arrangement has more tracks than the console plays, the FILE tab shows "Extra tracks are mixed in" (full text from `songx_folded`).
-- Still open: LYRICS tab positions for arrangement passes beyond the 16 classic, arrangement-aware autofit / auto parts, per-track pan / envelope playback.
+- **LYRICS on an arrangement:** with the arrangement open, `studio_line_pos` / `studio_line_pat` (`studio_gen.c`) answer from the arrangement (`st_adv_line_pass`, `st_adv_line_pattern`): the LYRICS tab's fit badges, onsets strip, pattern chip, autofit, auto parts and the one-line preview all follow the pass the arrangement sings the line on. Test: `adv_lyric_lines_follow_the_arrangement`. Classic songs are unchanged.
+- Still open: more than 8 lyric lines, per-track pan / envelope playback.
 
 ## ST-ADV screens: the Advanced ORDER tab (2026-11-16, host and Dreamcast builds)
 Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in the player. Where `SONGX_BOOK_PAGES` is 0 (GBA, PS1)

@@ -1267,6 +1267,35 @@ TEST(adv_epic_on_easy_falls_back_to_long)
     song_stop();
 }
 
+TEST(adv_lyric_lines_follow_the_arrangement)
+{
+    int line, pass0;
+    open_notes();
+    st_level_set(1);
+    studio.song.order_len = 8;
+    st_set_tab(STAB_ORDER);
+    frames(2, 0);
+    CHECK(st_adv_on());
+    /* from_order: lyric line k is over pass k, so the arrangement answers the same as the classic order */
+    for (line = 0; line < 8; line++) {
+        CHECK_EQ(studio_line_pos(&studio.song, line), line);
+        CHECK_EQ(studio_line_pat(&studio.song, line), studio.song.order[line] & 3);
+    }
+    /* move line 5 to the first pass of part 0: the line is now sung over that part's first pattern, on pass 0 */
+    studio.xw.sect[studio.xw.arrange[0]].line[0] = 5;
+    studio.xw.sect[studio.xw.arrange[0]].line[1] = SX_NO_LINE;
+    pass0 = studio_line_pos(&studio.song, 5);
+    CHECK_EQ(pass0, 0);
+    CHECK_EQ(studio_line_pat(&studio.song, 5), st_adv_line_pattern(5));
+    CHECK_EQ(studio_line_pos(&studio.song, 1), -1 + (st_adv_line_pass(1) + 1));   /* line 1 may be sung elsewhere or not at all */
+    /* a classic song (another struct) is untouched by the open arrangement */
+    {
+        DoomoSong c = studio.song;
+        CHECK_EQ(studio_line_pos(&c, 5), 5);
+    }
+    st_level_set(0);
+}
+
 TEST(adv_file_fold_message_only_when_tracks_exceed_the_console)
 {
     char buf[96];

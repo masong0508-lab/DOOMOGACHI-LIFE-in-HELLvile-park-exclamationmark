@@ -69,6 +69,18 @@ uint32_t st_adv_ticks(void)
 
 const SongExt *st_adv_ext(void) { return X->version ? X : NULL; }
 
+int st_adv_line_pass(int line)
+{
+    int i, n, sec, pass;
+    if (!X->version) return -1;
+    n = songx_len(X);
+    for (i = 0; i < n; i++) {
+        songx_at(X, i, &sec, &pass);
+        if (X->sect[sec].line[pass % SX_LINES] == line) return i;
+    }
+    return -1;
+}
+
 int st_adv_line_pattern(int line)
 {
     int i, n, sec, pass, pat;
@@ -631,6 +643,7 @@ int st_adv_pass_of_cursor(void) { return studio.osel; }
 uint32_t st_adv_ticks(void) { return song_length_ticks(SS); }
 int st_adv_epic(void) { return 0; }
 int st_adv_folded(char *buf, int cap) { (void)buf; (void)cap; return 0; }
+int st_adv_line_pass(int line) { (void)line; return -1; }
 const SongExt *st_adv_ext(void) { return NULL; }
 int st_adv_line_pattern(int line)
 {
