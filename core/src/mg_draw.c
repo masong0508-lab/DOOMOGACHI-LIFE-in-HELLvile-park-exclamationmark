@@ -541,7 +541,7 @@ int mg_common_stamp_keys(uint32_t *out, int cap)
     }
     for (i = 1; i <= 7; i++)                        /* the score pill, 1 to 7 digits, both looks */
         for (m = 0; m < 2; m++) {
-            if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_PILL | (ui_text_width("0000000" + 7 - i) + 44)) | (m ? MG_BK_HELL : 0u);
+            if (n < cap) out[n] = (uint32_t)(MCS_HUD | HUDP_PILL | (ui_text_width(&"0000000"[7 - i]) + 44)) | (m ? MG_BK_HELL : 0u);
             n++;
         }
     for (i = 1; i <= 3; i++)                        /* the sparkle's three sizes in each colour */
