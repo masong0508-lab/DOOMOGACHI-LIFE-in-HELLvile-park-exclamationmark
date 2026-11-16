@@ -477,10 +477,11 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
 - **Part view:** name, key (-12..+12), tempo (50..200 %, steps of 5), fade, and 1..8 passes (a pass is a pattern A..D). A part
   used by several entries changes everywhere ("used 3 times"); Make it unique gives one entry its own copy. B goes back.
 - **Play:** START plays the arrangement from the cursor's pass (`st_adv_play`).
+- **PERFORM and the Concert Hall:** the stage show plays the arrangement (`st_adv_play(0)`), ends at its exact length (`st_adv_ticks`, tempo per part) and scores line fit over the pattern the arrangement sings the line on (`st_adv_line_pattern`). The Concert Hall button hands it over with `concert_stage_song_x(s, x)` (`cross-stream:` a small hook in `concert_scene.c`; `concert_stage_song(s)` is unchanged). Three PERFORM tests in `test_studio_tools.c`.
 - **Save and load:** saving to a slot keeps the page (`songx_book_put`); if it does not fit, the song is saved classic and says so.
   Opening a slot loads its page. Make it! / Shuffle, templates, Inspire me! and New drop the arrangement in the same undo step.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
-- **Not done:** PERFORM and the Concert Hall still play the classic order; the LYRICS tab does not know arrangement positions;
+- **Not done:** the LYRICS tab does not know arrangement positions;
   the 32 / 64 bar Start card, the FILE fold message, the note grid, free notes, per-track pan / envelope playback, brightness.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
   `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
