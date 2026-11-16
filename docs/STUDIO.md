@@ -439,7 +439,7 @@ are skipped, damaged ones reset. `town_new()` resets it.
 
 ## ST-ADV: the Advanced song extension (core only, 2026-11-15)
 Code: `core/include/doomo/song_ext.h`, `core/src/song_ext.c`, `song_play_ext()` in `song_player.c`. Tests: `core/tests/test_song_ext.c`.
-No studio screen uses it yet (see "Not done").
+The ORDER tab uses it on Advanced (see "ST-ADV screens" below).
 
 A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song with no `SongExt` is classic and plays as before
 (`song_play(s, singer)` is `song_play_ext(s, NULL, singer)`). A `SongExt` is 2,176 bytes in RAM.
@@ -462,6 +462,29 @@ A `SongExt` rides beside the classic `DoomoSong`, which is not changed. A song w
 Not done: the Advanced screens (sections and arrangement on ORDER, key / tempo / fade menus, the 32 / 64 bar Start card, the FILE
 fold message), a working copy of the `SongExt` in the scene scratch, per-track pan / envelope / swing playback (stored only),
 the brightness, the note grid, free notes, the expert views, patterns of 1..4 bars.
+
+## ST-ADV screens: the Advanced ORDER tab (2026-11-16, host and Dreamcast builds)
+Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in the player. Where `SONGX_BOOK_PAGES` is 0 (GBA, PS1)
+`STUDIO_ADV` is 0, `studio.xw` does not exist and `studio_adv.c` compiles only no-op stubs: the ORDER tab stays classic there.
+- **Opening:** with the Studio level on Advanced, the first time the ORDER tab opens the classic order becomes an arrangement
+  (`songx_from_order`: up to 4 parts of 4 passes: Verse, Chorus, Bridge, Outro; the same patterns, lyric lines and length).
+  It plays the same until edited. Opening is not an edit: the song stays clean and the help line stays.
+- **Working copy:** `studio.xw` (a `SongExt`, 2,176 B in `.bss` on the host) sits right behind `studio.song`; the undo journal
+  reaches both (`STUDIO_JBYTES`), so every edit is one undo / redo step (nudges of one setting join into one).
+- **Arrangement list:** one row per entry: part chip, its passes (A..D), key, tempo %, fade; a timeline under it. LEFT / RIGHT
+  picks another part for the entry, hold A + UP / DOWN carries it, A opens the part. SELECT tools: Edit this part, Insert a copy,
+  Make it unique, New part, Delete, Key change, Tempo change, Fade, Last chorus up, Repeat on/off.
+- **Part view:** name, key (-12..+12), tempo (50..200 %, steps of 5), fade, and 1..8 passes (a pass is a pattern A..D). A part
+  used by several entries changes everywhere ("used 3 times"); Make it unique gives one entry its own copy. B goes back.
+- **Play:** START plays the arrangement from the cursor's pass (`st_adv_play`).
+- **Save and load:** saving to a slot keeps the page (`songx_book_put`); if it does not fit, the song is saved classic and says so.
+  Opening a slot loads its page. Make it! / Shuffle, templates, Inspire me! and New drop the arrangement in the same undo step.
+- **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
+- **Not done:** PERFORM and the Concert Hall still play the classic order; the LYRICS tab does not know arrangement positions;
+  the 32 / 64 bar Start card, the FILE fold message, the note grid, free notes, per-track pan / envelope playback, brightness.
+- **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
+  `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
+- **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.
 
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),
