@@ -285,12 +285,83 @@ bar under the cursor. "Mark the start" toggles the mark (a mint bar left of the 
 A bug found on the way: on ARRANGE the A press that chose a menu item inserted a copy when it was released. Only a tap
 that began on the tab inserts now (`studio.o_a`); covered by the section copier test.
 
+### ST-TOOLS, second pass (2026-11-16): review, help lines, the drum editor and the chord track
+
+**Review of the first three commits.** Found and fixed, each with a test: the mix helper drifted (every press on a song
+without a lead lowered the volumes a little more, so "already balanced" never came): the lead, or when there is none the
+bass / drums / harmony in that order, is now the fixed measure (`tools_mix_balance_is_stable_and_never_moves_the_track_it_is_measured_by`);
+the chord suggester took "the half bar before" from the pattern letter before, not from the order list, and a pentatonic song
+could be offered a sixth chord it does not have (`tools_chord_suggester_starts_a_part_after_the_part_before_it_in_the_order`);
+"Start marked: step 32. Move, then pick" was longer than the 31 glyphs of the message bubble and was cut off (now "Start at step 32.
+Now move"; every message of every tool is checked for 31 glyphs and the 240 px screen by `msg_fits` inside the tests' menu helper);
+"1 words" and "1 notes" (plurals); a mark set in one pattern stayed in the next one (L / R clears it); `tl_phrase_write` formed a
+pointer from a bad bar before testing it; "Track up / down a step" (Pattern tools) always made an undo step and said nothing: it
+goes through the same try-first machinery as the range tools, says "Track up a scale step" / "Nothing to change there" and sounds
+the first note; copy / paste / clear now sound (blip / sparkle). Checked and found right: reverse keeps long notes whole, repeat
+and half speed stop at the pattern end, transposing past the keyboard (24..108) leaves a note alone instead of wrapping, an empty
+song makes no step with any tool (`tools_every_tool_leaves_an_empty_song_alone_and_clamps_a_range_past_the_end`,
+`tools_a_full_song_transposes_to_the_keyboard_edge_and_stops_there`), and every range tool on every track is one undo step that
+puts back the exact bytes and redoes (`tools_every_range_tool_on_every_track_is_one_undo_step_and_undoes_to_the_exact_bytes`).
+"Half as fast" writes over the steps after the range (a note twice as long needs them); it says so in its help line.
+
+**A help line for every item.** A menu can give each item one line (`st_popup_help`, 36 glyphs at most): the card's last line
+says what the highlighted item does, so it is part of the card and a held popup frame repaints it. The Pattern tools, Range
+tools, Helper tools, Next chord, All chords, Phrase, Groove (both pages), Harmony, Song tools, Arrange, Lyric tools, Quick fill,
+Drum tools and Chord tools menus have them (`tools_every_menu_item_has_a_help_line_that_fits_the_card` opens each and measures
+every line against 240 px). The ten item menus draw their rows 11 px apart, so the card and its help line fit 160 px. Opening a
+menu clears the message bubble (the card covers it, and with the bubble up the popup frame cannot be held: a full frame of
+the chord track under a card was 55 ms on the GBA).
+
+**Drum editor** (Helper tools, "Drum editor"): the drums of one pattern as eight lanes (Kick, Snare, Hat, Open hat, Clap,
+Tom, Crash, Cowbell) by 32 steps, the beat blocks shaded, the bar line marked, the playing step lit.
+The song format has one drums cell per step, so a step holds one drum: a new drum replaces the one there (this is said on the
+control card). It is a screen of the NOTES tab on the same song bytes, so old songs and saves are untouched.
+
+| Control | What it does | Feedback | Undo | Tested by |
+|---|---|---|---|---|
+| Drum editor: d-pad | up / down the lane, left / right the step (they wrap) | cursor blip, the frame moves, the line under the grid names "Step 9: Hat" | not a song edit | `tools_drum_editor_puts_one_drum_per_step_in_its_lane_and_undoes_each_press` |
+| Drum editor: A | puts the lane's drum on the step; on the same drum again takes it off; another drum there is replaced | the drum sounds (a blip when it goes), the block appears | one step per press | the same |
+| Drum editor: L / R | the other pattern | cursor blip, the pills | not a song edit | the same |
+| Drum editor: B | back to the NOTES grid | cancel blip | n/a | the same |
+| Drum editor: SELECT, Pick a groove | the groove menu of the helper tools | as the groove picker | one step | `tools_drum_editor_menu_grooves_clears_and_repeats_with_one_step_each` |
+| Drum editor: Clear this lane | takes every hit of the lane under the cursor out | "Lane cleared" / "Nothing to change there" | one step | the same |
+| Drum editor: Clear all drums | the drums of the pattern | "Drums cleared" | one step | the same |
+| Drum editor: Repeat bar 1 in bar 2 | copies bar 1's beat over bar 2 | "Bar 1 repeated in bar 2", the first hit sounds | one step | the same |
+| Drum editor: Loop this bar | the bar under the cursor loops | "Looping bar 1 of A" | not a song edit | the same |
+
+**Chord track** (Helper tools, "Chord track"): every pattern A to D as a row, the four half bars of each as cells, each cell the
+chord's name in the key and its number ("Am  VI"), "-" where nothing plays. The chord is what the chord suggester writes (the bass
+root and the harmony third of the half bar), so it needs no new song bytes; the chord lane of the plan as a fifth track and
+"follow chords" arrangement styles are ST-ADV's (`'SNG2'`).
+
+| Control | What it does | Feedback | Undo | Tested by |
+|---|---|---|---|---|
+| Chord track: d-pad / L / R | left / right the half bar, up / down (or L / R) the pattern | cursor blip; the chord under the cursor sounds; the line under the grid says "B, half bar 2: Am" | not a song edit | `tools_chord_track_shows_every_part_picks_a_chord_and_undoes` |
+| Chord track: A | the Next chord menu: four chords that fit, "All chords..." (every chord of the scale, named in the key), "Clear this chord" | the names; the chord sounds; "Chord G in half bar 2" / "G is already there" | one step per chord; none when it is already there | the same |
+| Chord track: SELECT, Pick a chord | the same menu | | | `tools_chord_track_menu_repeats_clears_and_hears_the_part` |
+| Chord track: Clear this chord | the bass and harmony rest in the half bar | "Chord cleared" / "Nothing to change there" | one step | the same |
+| Chord track: Repeat to the end | the chord is written into the half bars after it | "Chord repeated to the end", it sounds | one step | the same |
+| Chord track: Hear this part | the pattern loops | "Looping part A" | not a song edit | the same |
+| Chord track: B | back to the NOTES grid | | n/a | the same |
+
+Pure functions behind them (`studio_tools.c`): `tl_drum_toggle`, `tl_drum_lane_clear`, `tl_chord_clear`, `tl_chord_repeat`,
+`tl_chord_count`; screens and menus in `studio_grid.c`. Tests: `tools_drum_toggle_replaces_the_drum_on_a_step_and_lane_clear_takes_one_drum_out`,
+`tools_chord_clear_and_repeat_work_on_half_bars`, `tools_the_new_screens_draw_without_overflowing_a_narrow_row`.
+
+**Instrument, volume, swing.** Already in the SONG tab (one instrument and one volume per track, one swing for the song, the
+drum kit); their rows say what they do on the control card and the bar. **Not here, and why:** a per-track envelope, a per-track
+pan and a per-track swing need song bytes the classic 892-byte song does not have (the volume byte's top bits would clash with
+every reader of it, the saved books and the concert players), and the player would need to read them: both are `'SNG2'` and the
+player of ST-ADV, which the plan puts there. A true lane mute (the drum editor's lanes share one cell, so a muted lane cannot
+be kept) is the same: "Clear this lane" is what the editor offers. The note grid as a piano roll and a rectangle selection are
+the same plan item; the range tools and the marked range cover the editing they were for.
+
 Not in this package (listed, not hidden): the note grid as a piano roll, a rectangle selection across tracks, copy / paste
 of a range between patterns (the pattern / track copy and paste are there), per-track pan and envelope presets, per-track
 swing and a fifth chord lane. They need new song bytes (the `'SNG2'` chunk of `design/STUDIO_PLAN.md` section 3, ST-ADV)
 or a new screen. The chord suggester writes into the bass and harmony tracks instead of a chord lane, so old songs and
 the old player keep working. The helper menus are the full version on every platform (the table of 2.5b allowed
-lighter versions: none was needed, the tools add about 6 KB of code and no resident data).
+lighter versions: none was needed, the tools add about 6 KB of code and no resident data beyond 8 bytes of `Studio`).
 
 ## Templates
 

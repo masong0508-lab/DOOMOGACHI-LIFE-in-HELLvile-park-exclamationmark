@@ -1,6 +1,6 @@
 # speed2_studio_tools.txt - speed tour 2 for the ST-TOOLS menus of the Music Studio: the ten item Pattern tools menu on
-# NOTES, the Range tools menu, the Helper tools menu, the next chord menu, the groove page, and the NOTES grid with a
-# marked range. STUDIO -107: the premade citizens and the "Park United!" template. Window rules: speed2_fair.txt.
+# NOTES, the Range tools menu, the Helper tools menu, the next chord menu, the groove page, the NOTES grid with a
+# marked range, the drum editor (with its tools menu) and the chord track (with its menus). STUDIO -107: the premade citizens and the "Park United!" template. Window rules: speed2_fair.txt.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -65,5 +65,92 @@ fps start
 wait 90
 expect-fps 29 studio tools: next chord menu
 shot tools_chord_menu
+press B
+wait 20
+
+# ---- the drum editor (Helper tools, item 6) -----------------------------------
+press SELECT
+wait 30
+press UP
+wait 10
+press A
+wait 30
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: drum editor
+shot tools_drum_editor
+press A
+press DOWN
+press RIGHT
+press RIGHT
+press A
+press DOWN
+press RIGHT
+press RIGHT
+press A
+wait 5
+fps start
+wait 90
+expect-fps 29 studio tools: drum editor with hits
+shot tools_drum_editor_hits
+press SELECT
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: drum tools menu
+shot tools_drum_menu
+press B
+wait 20
+press B
+wait 20
+
+# ---- the chord track (Helper tools, item 7) -----------------------------------
+press SELECT
+wait 30
+press UP
+wait 10
+press A
+wait 30
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: chord track
+shot tools_chord_track
+press RIGHT
+press DOWN
+wait 5
+fps start
+wait 90
+expect-fps 29 studio tools: chord track, cursor moved
+press A
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: chord track, next chord menu
+shot tools_chord_track_menu
+press A
+wait 30
+press SELECT
+wait 30
+fps start
+wait 90
+expect-fps 29 studio tools: chord tools menu
+shot tools_chord_tools_menu
+press B
+wait 20
 press B
 wait 20

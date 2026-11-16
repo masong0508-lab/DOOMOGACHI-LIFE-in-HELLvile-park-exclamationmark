@@ -442,6 +442,8 @@ void st_popup(const char *title, const char *const *items, int n, uint32_t lock,
     studio.pop_help = NULL;
     studio.pop_hw = 0;
     studio.pop_t = 0;
+    studio.msg_t = 0;                       /* ST-TOOLS: the card covers the bubble; with it gone the popup frame can be held (a full frame
+                                             * of the chord track + the card is 55 ms on the GBA, two frames) */
     audio_sfx(SFX_BLIP);
 }
 

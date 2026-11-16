@@ -1047,3 +1047,27 @@ TEST(tools_the_new_screens_draw_without_overflowing_a_narrow_row)
         press(BTN_B);
     }
 }
+
+TEST(tools_the_screens_have_a_help_line_and_a_control_card_that_fit)
+{
+    int sub, wide;
+    for (sub = SUB_DRUMS; sub <= SUB_CHORDS; sub++) {
+        const char *h, *g;
+        int x, y, w, hh;
+        open_notes();
+        tools(9, sub == SUB_DRUMS ? 5 : 6);
+        CHECK_EQ(studio.sub, sub);
+        h = st_tab_help(STAB_NOTES);
+        CHECK(ui_text_width(h) + 16 <= 240 - 8);
+        studio.sub = SUB_NONE;
+        g = st_tab_help(STAB_NOTES);
+        CHECK(strcmp(h, g) != 0);                             /* the notes grid keeps its own line */
+        studio.sub = (uint8_t)sub;
+        frames(1, BTN_SELECT | BTN_UP); frames(2, 0);
+        CHECK(st_help_is_open());
+        (void)st_help_rect(&x, &y, &w, &hh);
+        for (wide = 0; wide < 1; wide++) CHECK(y >= 0 && y + hh <= 160 && w <= 240);   /* the card on the GBA screen */
+        press(BTN_A);
+        CHECK(!st_help_is_open());
+    }
+}

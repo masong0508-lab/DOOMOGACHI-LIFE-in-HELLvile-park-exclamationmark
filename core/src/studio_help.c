@@ -29,6 +29,8 @@ static const char *const tab_help[STAB_COUNT] = {
 const char *st_tab_help(int tab)
 {
     if (tab == STAB_SONG && studio.card) return "Pick style and mood, then Make it!";
+    if (tab == STAB_NOTES && studio.sub == SUB_DRUMS) return "One drum a step; a new one replaces.";     /* ST-TOOLS */
+    if (tab == STAB_NOTES && studio.sub == SUB_CHORDS) return "Chords for each part's half bars.";
     return tab_help[(tab + STAB_COUNT) % STAB_COUNT];
 }
 
@@ -87,6 +89,20 @@ static const UiPrompt card_notes[] = {
     { BTN_L | BTN_R, 0, "Other pattern" },
     { BTN_SELECT, 0, "Copy, ranges, helpers" },
 };
+static const UiPrompt card_drums[] = {                  /* ST-TOOLS: the drum editor */
+    { BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT, 0, "Move over lanes and steps" },
+    { BTN_A, 0, "Drum on / off" },
+    { BTN_L | BTN_R, 0, "Other pattern" },
+    { BTN_SELECT, 0, "Groove, clear, repeat" },
+    { BTN_B, 0, "Back to the notes" },
+};
+static const UiPrompt card_chords[] = {                 /* ST-TOOLS: the chord track */
+    { BTN_UP | BTN_DOWN, 0, "Pick a pattern" },
+    { BTN_LEFT | BTN_RIGHT, 0, "Pick a half bar" },
+    { BTN_A, 0, "Pick the chord" },
+    { BTN_SELECT, 0, "Clear, repeat, hear" },
+    { BTN_B, 0, "Back to the notes" },
+};
 static const UiPrompt card_order[] = {
     { BTN_UP | BTN_DOWN, 0, "Pick a pass" },
     { BTN_LEFT | BTN_RIGHT, 0, "Change its pattern" },
@@ -125,7 +141,11 @@ static int card_rows(UiPrompt *out)
     switch (studio.tab) {
     case STAB_SONG: if (studio.card) { t = card_start; n = DOOMO_COUNTOF(card_start); }
                     else { t = card_song; n = DOOMO_COUNTOF(card_song); } break;
-    case STAB_NOTES: t = card_notes; n = DOOMO_COUNTOF(card_notes); break;
+    case STAB_NOTES:
+        if (studio.sub == SUB_DRUMS) { t = card_drums; n = DOOMO_COUNTOF(card_drums); }
+        else if (studio.sub == SUB_CHORDS) { t = card_chords; n = DOOMO_COUNTOF(card_chords); }
+        else { t = card_notes; n = DOOMO_COUNTOF(card_notes); }
+        break;
     case STAB_ORDER: t = card_order; n = DOOMO_COUNTOF(card_order); break;
     case STAB_LYRICS: t = card_lyrics; n = DOOMO_COUNTOF(card_lyrics); break;
     case STAB_CHOIR: t = card_choir; n = DOOMO_COUNTOF(card_choir); break;
