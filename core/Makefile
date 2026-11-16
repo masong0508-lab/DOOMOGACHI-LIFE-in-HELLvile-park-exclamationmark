@@ -187,7 +187,7 @@ talk-census: $(BUILD)/talk_census talk
 	$(BUILD)/talk_census --full --grid $(CORE)/data/talk/census_en.tsv
 # --- end T7 ---
 
-scripts: $(BUILD)/runner
+scripts: $(BUILD)/runner talk
 	sh $(CORE)/tests/run_scripts.sh $(BUILD)/runner $(CORE)/tests/scripts $(BUILD)/shots
 	@# CR-BODY: every build slider moved the preview in the creator_sliders walk-through (both resolutions)
 	@for r in 240x160 320x240; do $(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(BUILD)/shots/$$r/creator_sliders | tail -1 || exit 1; done
@@ -196,7 +196,7 @@ scripts: $(BUILD)/runner
 	@for x in 2 3 4; do for r in 240x160 320x240; do $(PYTHON) -I $(ROOT)/tools/slider_shots_check.py $(BUILD)/shots/$$r/creator_sliders_x$$x | tail -1 || exit 1; done; done
 
 # --- M0: the journey and tap meter (docs/GAME_DESIGN.md "UX budgets") ---
-journeys: $(BUILD)/runner
+journeys: $(BUILD)/runner talk
 	sh $(CORE)/tests/run_journeys.sh $(BUILD)/runner $(CORE)/tests/journeys $(BUILD)/journeys
 # --- end M0 ---
 
