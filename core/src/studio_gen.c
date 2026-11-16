@@ -129,7 +129,8 @@ static int is_minorish(int scale)
 
 static int line_syls(const DoomoSong *s, int line)
 {
-    return s->lyrics[line][0] ? song_syllables(s->lyrics[line], NULL, 0) : 0;
+    const char *w = st_line_text(s, line);
+    return w[0] ? song_syllables(w, NULL, 0) : 0;
 }
 
 int studio_line_pos(const DoomoSong *s, int line)
@@ -767,6 +768,7 @@ int studio_choir_fill(DoomoSong *s, int mode, int anchor, uint32_t seed)
     for (i = 0; i < SONG_SINGERS; i++) s->singer[i] = SONG_NO_SINGER;
     memset(s->section, 0, sizeof(s->section));
     memset(s->line_singers, 0, sizeof(s->line_singers));
+    if (s == &studio.song) st_xmasks(XM_CLEAR, 0, NULL);       /* lines 9..16 too (the caller journals them with XM_TOUCH) */
     switch (mode) {
     case FILL_FRIENDS: {
         uint16_t ids[SONG_SINGERS * 2];
@@ -845,11 +847,11 @@ int studio_part_choices(const DoomoSong *s, int part)
 void studio_set_part(DoomoSong *s, int line, int part, int who)
 {
     uint32_t m;
-    if (line < 0 || line >= SONG_LYRIC_LINES) return;
+    if (line < 0 || line >= st_line_count(s)) return;
     m = part_mask(s, part, who);
     /* a solo of the first singer is the format's default (0) */
     if (part == PART_SOLO && m == 1u && song_singer_id(s, 0) >= 0) m = 0;
-    s->line_singers[line] = m;
+    st_line_set_raw(s, line, m);
 }
 
 /* studio_part_of is asked for every line every frame by the LYRICS tab and costs
@@ -862,7 +864,7 @@ static struct {
     uint16_t singer[SONG_SINGERS];
     uint8_t  section[(SONG_SINGERS + 1) / 2];
     uint8_t  valid;
-    struct { uint32_t mask; int8_t part, who, ok; } line[SONG_LYRIC_LINES];
+    struct { uint32_t mask; int8_t part, who, ok; } line[SX_LYRIC_LINES];
 } part_memo;
 
 void studio_part_memo_reset(void) { part_memo.valid = 0; }
@@ -873,7 +875,7 @@ int studio_part_of(const DoomoSong *s, int line, int *who)
 {
     uint32_t m;
     int part, w = 0;
-    if (!s || line < 0 || line >= SONG_LYRIC_LINES) return studio_part_of_raw(s, line, who);
+    if (!s || line < 0 || line >= SX_LYRIC_LINES || line >= st_line_count(s)) return studio_part_of_raw(s, line, who);
     if (!part_memo.valid || memcmp(part_memo.singer, s->singer, sizeof(part_memo.singer)) ||
         memcmp(part_memo.section, s->section, sizeof(part_memo.section))) {
         memset(&part_memo, 0, sizeof(part_memo));
@@ -881,7 +883,7 @@ int studio_part_of(const DoomoSong *s, int line, int *who)
         memcpy(part_memo.section, s->section, sizeof(part_memo.section));
         part_memo.valid = 1;
     }
-    m = song_line_mask(s, line);
+    m = st_line_mask(s, line);
     if (part_memo.line[line].ok && part_memo.line[line].mask == m) {
         if (who) *who = part_memo.line[line].who;
         return part_memo.line[line].part;
@@ -905,7 +907,7 @@ int studio_part_of(const DoomoSong *s, int line, int *who)
 static int studio_part_of_raw(const DoomoSong *s, int line, int *who)
 {
     uint8_t v[SONG_SINGERS];
-    uint32_t m = song_line_mask(s, line), all = 0, half[2] = { 0, 0 }, sec[SECTION_COUNT];
+    uint32_t m = st_line_mask(s, line), all = 0, half[2] = { 0, 0 }, sec[SECTION_COUNT];
     int n = valid_list(s, v), i, k;
     if (who) *who = 0;
     if (n <= 1 || !m) return PART_SOLO;
@@ -934,7 +936,7 @@ void studio_part_label(const DoomoSong *s, int line, char *buf, int cap)
 {
     uint8_t v[SONG_SINGERS];
     int who, n = valid_list(s, v), part = studio_part_of(s, line, &who);
-    uint32_t m = song_line_mask(s, line);
+    uint32_t m = st_line_mask(s, line);
     int cnt = 0;
     while (m) { m &= m - 1; cnt++; }
     if (n == 0) { doomo_snprintf(buf, cap, "No singers"); return; }
@@ -964,13 +966,14 @@ void studio_auto_parts(DoomoSong *s)
     uint8_t v[SONG_SINGERS];
     int n = valid_list(s, v), line, uses[SONG_PATTERNS] = { 0, 0, 0, 0 }, p, best = 0, k = 0;
     memset(s->line_singers, 0, sizeof(s->line_singers));
+    if (s == &studio.song) st_xmasks(XM_CLEAR, 0, NULL);
     if (n <= 1) return;
     for (p = 0; p < s->order_len && p < SONG_ORDER_MAX; p++)
         if (s->lyrics[SONG_LINE_OF(p)][0]) uses[s->order[p] & 3]++;
     for (p = 1; p < SONG_PATTERNS; p++) if (uses[p] > uses[best]) best = p;
-    for (line = 0; line < SONG_LYRIC_LINES; line++) {
+    for (line = 0; line < st_line_count(s); line++) {
         int pos = studio_line_pos(s, line);
-        if (pos < 0 || !s->lyrics[line][0]) continue;
+        if (pos < 0 || !st_line_text(s, line)[0]) continue;
         if (studio_line_pat(s, line) == best && uses[best] >= 2) {
             studio_set_part(s, line, PART_CHOIR, 0);
         } else if (n >= 8) {
@@ -996,8 +999,8 @@ void studio_auto_parts(DoomoSong *s)
 int studio_autofit(DoomoSong *s, int line)
 {
     int pos = studio_line_pos(s, line), pat, m, n, changed = 0, guard;
-    char *t = s->lyrics[line];
-    if (pos < 0 || !t[0]) return 0;
+    char *t = st_line_buf(s, line);
+    if (!t || pos < 0 || !t[0]) return 0;
     pat = studio_line_pat(s, line);
     if (pat < 0) return 0;
     m = song_lead_onsets(s, pat);
@@ -1019,8 +1022,8 @@ int studio_autofit(DoomoSong *s, int line)
             if ((s->order[p2] & 3) == pat && SONG_LINE_OF(p2) != line &&
                 s->lyrics[SONG_LINE_OF(p2)][0]) shared = 1;
         if (s == &studio.song && st_adv_on())           /* the arrangement's own passes decide */
-            for (shared = 0, p2 = 0; p2 < SONG_LYRIC_LINES; p2++)
-                if (p2 != line && s->lyrics[p2][0] && studio_line_pat(s, p2) == pat) shared = 1;
+            for (shared = 0, p2 = 0; p2 < st_line_count(s); p2++)
+                if (p2 != line && st_line_text(s, p2)[0] && studio_line_pat(s, p2) == pat) shared = 1;
         if (shared) guard = SONG_STEPS;
         else guard = 0;
     }

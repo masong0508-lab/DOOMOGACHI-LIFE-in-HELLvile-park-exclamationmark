@@ -84,6 +84,34 @@ uint32_t st_adv_ticks(void)
 
 const SongExt *st_adv_ext(void) { return X->version ? X : NULL; }
 
+/* ---- lyric lines 1..16 (lines 9..16 live in the working SongExt) -------------------------------------------------------- */
+static SongExt *line_ext(const DoomoSong *s) { return s == SS && X->version ? X : NULL; }
+int st_line_count(const DoomoSong *s) { return songx_lines(line_ext(s)); }
+const char *st_line_text(const DoomoSong *s, int line) { return songx_line_text(s, line_ext(s), line); }
+char *st_line_buf(DoomoSong *s, int line) { return songx_line_buf(s, line_ext(s), line); }
+uint32_t st_line_mask(const DoomoSong *s, int line) { return song_line_mask_x(s, line_ext(s), line); }
+void st_line_set_raw(DoomoSong *s, int line, uint32_t mask) { songx_set_line_singers(s, line_ext(s), line, mask); }
+void st_line_touch_text(const DoomoSong *s, int line) { char *t = songx_line_buf((DoomoSong *)s, line_ext(s), line); if (t) ed_touch(t, SONG_LYRIC_LEN); }
+void st_line_touch_mask(const DoomoSong *s, int line)
+{
+    if (line >= 0 && line < SONG_LYRIC_LINES) ed_touch(&s->line_singers[line], 4);
+    else if (line_ext(s) && line < SX_LYRIC_LINES) ed_touch(X->lsing[line - SONG_LYRIC_LINES], 4);
+}
+void st_xmasks(int op, int slot, const uint8_t *map)
+{
+    int i, k;
+    if (!X->version) return;
+    for (i = 0; i < SX_XLINES; i++) {
+        uint32_t m = songx_line_singers(SS, X, SONG_LYRIC_LINES + i), nm = 0;
+        if (op == XM_CLEAR) nm = 0;
+        else if (op == XM_DROP) nm = slot >= 0 && slot < 32 ? m & ~(1u << slot) : m;
+        else if (op == XM_REMAP) { for (k = 0; k < SONG_SINGERS; k++) if (((m >> k) & 1) && map && map[k] != 0xFF) nm |= 1u << map[k]; }
+        else nm = m;
+        if (op != XM_TOUCH) songx_set_line_singers(SS, X, SONG_LYRIC_LINES + i, nm);
+    }
+    if (op == XM_TOUCH) ed_touch(X->lsing, (int)sizeof(X->lsing));
+}
+
 int st_adv_line_pass(int line)
 {
     int i, n, sec, pass;
@@ -507,15 +535,15 @@ static void part_update(void)
 }
 
 /* ---- the Lyric lines view: which lyric line each pass of a part sings ------------------------------------------------------
- * A part names a lyric line (1..8, or none = instrumental) for each of its first SX_LINES passes (pass k + 4 repeats pass k).
+ * A part names a lyric line (1..16, or none = instrumental) for each of its first SX_LINES passes (pass k + 4 repeats pass k).
  * LEFT / RIGHT / A change the line; the line's words are shown beside it. SELECT: fill the passes from the song's lines, clear,
  * hear the part. Every change is one undo step (the lines are part of the arrangement's bytes). */
 static int ly_rows(void) { return DOOMO_MIN((int)X->sect[cur_sec()].npat, SX_LINES); }
-static int ly_choice(const SxSection *c, int pass) { return c->line[pass] < SONG_LYRIC_LINES ? c->line[pass] + 1 : 0; }   /* 0 = instrumental */
-static int e_line(SongExt *x, int sec, int packed)               /* packed = pass * 16 + choice (0 instrumental, 1..8 = line 1..8) */
+static int ly_choice(const SxSection *c, int pass) { return c->line[pass] < SX_LYRIC_LINES ? c->line[pass] + 1 : 0; }   /* 0 = instrumental */
+static int e_line(SongExt *x, int sec, int packed)               /* packed = pass * 32 + choice (0 instrumental, 1..16 = line 1..16) */
 {
-    int pass = packed / 16, ch = packed % 16;
-    if (pass >= SX_LINES || ch > SONG_LYRIC_LINES) return 0;
+    int pass = packed / 32, ch = packed % 32;
+    if (pass >= SX_LINES || ch > SX_LYRIC_LINES) return 0;
     x->sect[sec].line[pass] = ch ? (uint8_t)(ch - 1) : (uint8_t)SX_NO_LINE;
     return 1;
 }
@@ -525,12 +553,12 @@ static int e_lines_fill(SongExt *x, int sec, int start)         /* the next line
     int k, l, tries, n = DOOMO_MIN((int)x->sect[sec].npat, SX_LINES), put = 0;
     uint8_t out[SX_LINES];
     memset(out, SX_NO_LINE, sizeof(out));
-    l = start % SONG_LYRIC_LINES;
+    l = start % SX_LYRIC_LINES;
     for (k = 0; k < n; k++) {
-        for (tries = 0; tries < SONG_LYRIC_LINES && !SS->lyrics[l][0]; tries++) l = (l + 1) % SONG_LYRIC_LINES;
-        if (!SS->lyrics[l][0]) return 0;                           /* the song has no words at all */
+        for (tries = 0; tries < SX_LYRIC_LINES && !songx_line_text(SS, x, l)[0]; tries++) l = (l + 1) % SX_LYRIC_LINES;
+        if (!songx_line_text(SS, x, l)[0]) return 0;               /* the song has no words at all */
         out[k] = (uint8_t)l;
-        l = (l + 1) % SONG_LYRIC_LINES;
+        l = (l + 1) % SX_LYRIC_LINES;
         put++;
     }
     if (!put) return 0;
@@ -541,7 +569,7 @@ static void ly_adjust(int d)
 {
     int sec = cur_sec(), pass = studio.asel, ch = ly_choice(&X->sect[sec], pass);
     if (pass >= ly_rows()) return;
-    if (adv_edit(e_line, sec, pass * 16 + (ch + d + SONG_LYRIC_LINES + 1) % (SONG_LYRIC_LINES + 1), AK(0x120 + pass))) audio_sfx(SFX_CURSOR);
+    if (adv_edit(e_line, sec, pass * 32 + (ch + d + SX_LYRIC_LINES + 1) % (SX_LYRIC_LINES + 1), AK(0x120 + pass))) audio_sfx(SFX_CURSOR);
 }
 static void ly_fill(void)
 {
@@ -549,7 +577,7 @@ static void ly_fill(void)
     for (i = 0; i < n; i++) {                                       /* continue after the highest line the other parts sing */
         int o = sec_of(X, i);
         if (o == sec) continue;
-        for (k = 0; k < SX_LINES; k++) if (X->sect[o].line[k] < SONG_LYRIC_LINES && X->sect[o].line[k] > hi) hi = X->sect[o].line[k];
+        for (k = 0; k < SX_LINES; k++) if (X->sect[o].line[k] < SX_LYRIC_LINES && X->sect[o].line[k] > hi) hi = X->sect[o].line[k];
     }
     if (adv_edit(e_lines_fill, sec, hi + 1, -1)) { st_msg("Lines filled in"); audio_sfx(SFX_SELECT); }
     else { st_msg("Write some lyrics first"); audio_sfx(SFX_ERROR); }
@@ -1575,7 +1603,7 @@ static void part_draw(StRect r)
             continue;
         } else if (row == part_lyric_row()) {
             int k, sung = 0;
-            for (k = 0; k < ly_rows(); k++) if (c->line[k] < SONG_LYRIC_LINES) sung++;
+            for (k = 0; k < ly_rows(); k++) if (c->line[k] < SX_LYRIC_LINES) sung++;
             lab = "Lyric lines";
             doomo_snprintf(buf, sizeof(buf), "%d of %d sung  >", sung, ly_rows());
         } else {
@@ -1662,9 +1690,9 @@ static void lyric_draw(StRect r)
         ui_round_rect(vx - 2, y, 14, 10, 3, st_pattern_color(c->pat[i], 0));
         ui_round_rect(vx - 1, y + 1, 12, 8, 2, st_pattern_color(c->pat[i], 1));
         { char l[2] = { pat_ch(c->pat[i]), 0 }; ui_text(vx + 2, y + 1, l, PAL_WHITE); }
-        if (line < SONG_LYRIC_LINES) doomo_snprintf(buf, sizeof(buf), "< %d >", line + 1); else doomo_snprintf(buf, sizeof(buf), "< - >");
+        if (line < SX_LYRIC_LINES) doomo_snprintf(buf, sizeof(buf), "< %d >", line + 1); else doomo_snprintf(buf, sizeof(buf), "< - >");
         ui_text(vx + 18, y + 1, buf, tc);
-        if (line < SONG_LYRIC_LINES) fit_text(txt, (int)sizeof(txt), SS->lyrics[line][0] ? SS->lyrics[line] : "(no words yet)", r.x + r.w - 12 - wx);
+        if (line < SX_LYRIC_LINES) fit_text(txt, (int)sizeof(txt), songx_line_text(SS, X, line)[0] ? songx_line_text(SS, X, line) : "(no words yet)", r.x + r.w - 12 - wx);
         else fit_text(txt, (int)sizeof(txt), "instrumental", r.x + r.w - 12 - wx);
         ui_text(wx, y + 1, txt, sel ? PAL_WHITE : st->text_dim);
         if (ph >= 0 && songx_entry_of_pass(X, ph) == studio.osel && ph - songx_entry_pass(X, studio.osel) == i)
@@ -1737,6 +1765,14 @@ int st_adv_epic(void) { return 0; }
 int st_adv_folded(char *buf, int cap) { (void)buf; (void)cap; return 0; }
 int st_adv_line_pass(int line) { (void)line; return -1; }
 const SongExt *st_adv_ext(void) { return NULL; }
+int st_line_count(const DoomoSong *s) { (void)s; return SONG_LYRIC_LINES; }
+const char *st_line_text(const DoomoSong *s, int line) { return line >= 0 && line < SONG_LYRIC_LINES ? s->lyrics[line] : ""; }
+char *st_line_buf(DoomoSong *s, int line) { return line >= 0 && line < SONG_LYRIC_LINES ? s->lyrics[line] : NULL; }
+uint32_t st_line_mask(const DoomoSong *s, int line) { return song_line_mask(s, line); }
+void st_line_set_raw(DoomoSong *s, int line, uint32_t mask) { if (line >= 0 && line < SONG_LYRIC_LINES) s->line_singers[line] = mask; }
+void st_line_touch_text(const DoomoSong *s, int line) { if (line >= 0 && line < SONG_LYRIC_LINES) ed_touch(s->lyrics[line], SONG_LYRIC_LEN); }
+void st_line_touch_mask(const DoomoSong *s, int line) { if (line >= 0 && line < SONG_LYRIC_LINES) ed_touch(&s->line_singers[line], 4); }
+void st_xmasks(int op, int slot, const uint8_t *map) { (void)op; (void)slot; (void)map; }
 int st_adv_line_pattern(int line)
 {
     int pos = studio_line_pos(SS, line);

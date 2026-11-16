@@ -1029,8 +1029,8 @@ static void draw_karaoke(const StageLayout *L)
     const ConcertPlayer *p = &C.pl;
     if (C.studio) {
         int line = song_pos_line(), syl = song_pos_syllable();
-        if (line >= 0 && line < SONG_LYRIC_LINES && studio_song && studio_song->lyrics[line][0]) {
-            const char *ln = studio_song->lyrics[line];
+        if (line >= 0 && line < songx_lines(studio_x) && studio_song && songx_line_text(studio_song, studio_x, line)[0]) {
+            const char *ln = songx_line_text(studio_song, studio_x, line);
             uint8_t st[CONCERT_SYL_MAX + 1];
             int n = song_syllables(ln, st, CONCERT_SYL_MAX), lit, ball;
             if (syl < 0) syl = -1;

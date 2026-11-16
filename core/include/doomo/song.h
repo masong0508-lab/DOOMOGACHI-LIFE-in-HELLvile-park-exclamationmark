@@ -182,6 +182,7 @@ uint32_t song_pos_ticks(void);
 /* Resolved singer mask of a lyric line (line_singers, 0 = singer[0];
  * only valid choir slots). */
 uint32_t song_line_mask(const DoomoSong *s, int line);
+uint32_t song_line_mask_x(const DoomoSong *s, const struct SongExt *x, int line);   /* lines 8..15 are the SongExt's */
 /* Number of lead-track note onsets in a pattern (lyrics fit). */
 int  song_lead_onsets(const DoomoSong *s, int pattern);
 /* Voice section of choir slot i (explicit, else from the voice pitch). */

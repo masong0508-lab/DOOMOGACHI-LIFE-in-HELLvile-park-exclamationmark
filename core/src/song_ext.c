@@ -7,6 +7,8 @@
  *   per track: pan (2 bits) | env << 2 | swing << 4
  *   per pattern: u8 mask of the tracks that hold a pool block; per set bit the 32 cells run-length coded
  *     (0x00..0x7F a literal cell, 0x80 | (n-1) a run of n empty cells, 0xC0 | (n-1) a run of n cells of value 1)
+ *   lyric tail, only when flags bit 5 (SX_FLAG_LYR) is set, after the one-bar tail: u8 mask of the lines 9..16 that hold words or a
+ *     singer mask; per set bit the words (up to 27 bytes, then a 0) and the singer mask (4 bytes). A page without the bit has none.
  *   one-bar tail, only when flags bit 3 (SX_FLAG_SHORT) is set, after the velocity tail: 4 bytes, bit p of the 32 = pattern p is one bar
  *   velocity tail, only when flags bit 2 (SX_FLAG_VEL) is set: u16 count, then per cell with a non-normal note: pattern << 3 | track,
  *     then its 8 bytes of 2-bit levels. A page without the bit has no tail (every page written before the velocity bar).
@@ -16,6 +18,56 @@
 #include "doomo/song_ext.h"
 
 int songx_tracks_max(void) { return SONGX_TRACKS_MAX; }
+
+/* ---- lyric lines 0..15 (the song's own 8, then the SongExt's 8) ------------------------------------------------------- */
+int songx_lines(const SongExt *x) { return x ? SX_LYRIC_LINES : SONG_LYRIC_LINES; }
+
+const char *songx_line_text(const DoomoSong *s, const SongExt *x, int line)
+{
+    if (line < 0) return "";
+    if (line < SONG_LYRIC_LINES) return s ? s->lyrics[line] : "";
+    if (!x || line >= SX_LYRIC_LINES) return "";
+    return x->lyr[line - SONG_LYRIC_LINES];
+}
+
+char *songx_line_buf(DoomoSong *s, SongExt *x, int line)
+{
+    if (line < 0) return NULL;
+    if (line < SONG_LYRIC_LINES) return s ? s->lyrics[line] : NULL;
+    if (!x || line >= SX_LYRIC_LINES) return NULL;
+    return x->lyr[line - SONG_LYRIC_LINES];
+}
+
+uint32_t songx_line_singers(const DoomoSong *s, const SongExt *x, int line)
+{
+    const uint8_t *b;
+    if (line < 0) return 0;
+    if (line < SONG_LYRIC_LINES) return s ? s->line_singers[line] : 0;
+    if (!x || line >= SX_LYRIC_LINES) return 0;
+    b = x->lsing[line - SONG_LYRIC_LINES];
+    return (uint32_t)b[0] | (uint32_t)b[1] << 8 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24;
+}
+
+void songx_set_line_singers(DoomoSong *s, SongExt *x, int line, uint32_t m)
+{
+    uint8_t *b;
+    if (line < 0) return;
+    if (line < SONG_LYRIC_LINES) { if (s) s->line_singers[line] = m; return; }
+    if (!x || line >= SX_LYRIC_LINES) return;
+    b = x->lsing[line - SONG_LYRIC_LINES];
+    b[0] = (uint8_t)m; b[1] = (uint8_t)(m >> 8); b[2] = (uint8_t)(m >> 16); b[3] = (uint8_t)(m >> 24);
+}
+
+int songx_lyr_any(const SongExt *x)
+{
+    int i, k;
+    if (!x) return 0;
+    for (i = 0; i < SX_XLINES; i++) {
+        if (x->lyr[i][0]) return 1;
+        for (k = 0; k < 4; k++) if (x->lsing[i][k]) return 1;
+    }
+    return 0;
+}
 
 void songx_init(SongExt *x, const DoomoSong *from)
 {
@@ -47,7 +99,7 @@ int songx_sanitize(SongExt *x)
     FIX(x->arrange_len < 1 || x->arrange_len > SX_ARRANGE, x->arrange_len = (uint8_t)DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE));
     FIX(x->patterns < SONG_PATTERNS || x->patterns > SX_PATTERNS,
         x->patterns = (uint8_t)DOOMO_CLAMP(x->patterns, SONG_PATTERNS, SX_PATTERNS));
-    FIX(x->flags & ~15, x->flags &= 15);
+    FIX(x->flags & ~31, x->flags &= 31);
     FIX(x->nblocks > SX_POOL, x->nblocks = SX_POOL);
     for (i = 0; i < SX_SECTIONS; i++) {
         SxSection *c = &x->sect[i];
@@ -58,7 +110,7 @@ int songx_sanitize(SongExt *x)
         FIX(c->key < -12 || c->key > 12, c->key = (int8_t)DOOMO_CLAMP(c->key, -12, 12));
         FIX(c->fade >= SX_FADE_COUNT, c->fade = 0);
         FIX(c->bright > 3, c->bright = 3);
-        for (k = 0; k < SX_LINES; k++) FIX(c->line[k] >= SONG_LYRIC_LINES && c->line[k] != SX_NO_LINE, c->line[k] = SX_NO_LINE);
+        for (k = 0; k < SX_LINES; k++) FIX(c->line[k] >= SX_LYRIC_LINES && c->line[k] != SX_NO_LINE, c->line[k] = SX_NO_LINE);
     }
     for (i = 0; i < SX_ARRANGE; i++) FIX(x->arrange[i] >= x->sections, x->arrange[i] = 0);
     for (i = 0; i < SX_TRACKS; i++) {
@@ -77,6 +129,19 @@ int songx_sanitize(SongExt *x)
             uint8_t *c = &x->pool[i][k];
             FIX(*c > 127, *c = 0);
         }
+    for (i = 0; i < SX_XLINES; i++) {                          /* lyric lines 9..16: printable words, one NUL, real singer bits only */
+        char *w = x->lyr[i];
+        int end = 0;
+        uint32_t m;
+        for (k = 0; k < SONG_LYRIC_LEN; k++) {
+            if (end) { FIX(w[k], w[k] = 0); continue; }
+            if (!w[k]) { end = 1; continue; }
+            FIX(w[k] < 0x20 || w[k] > 0x7E, w[k] = ' ');
+        }
+        FIX(w[SONG_LYRIC_LEN - 1], w[SONG_LYRIC_LEN - 1] = 0);
+        m = songx_line_singers(NULL, x, SONG_LYRIC_LINES + i);
+        FIX(m >> SONG_SINGERS, songx_set_line_singers(NULL, x, SONG_LYRIC_LINES + i, m & ((1u << SONG_SINGERS) - 1u)));
+    }
 #undef FIX
     return n;
 }
@@ -395,8 +460,10 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
     (void)s;
     o.d = dst; o.cap = cap; o.n = 0;
     int velany = songx_vel_any(x), shortany = (x->short_mask[0] | x->short_mask[1] | x->short_mask[2] | x->short_mask[3]) != 0;
+    int lyrany = songx_lyr_any(x);
     ob(&o, x->version); ob(&o, x->tracks); ob(&o, x->sections); ob(&o, x->arrange_len); ob(&o, x->patterns);
-    ob(&o, (uint32_t)((x->flags & ~(SX_FLAG_VEL | SX_FLAG_SHORT)) | (velany ? SX_FLAG_VEL : 0) | (shortany ? SX_FLAG_SHORT : 0)));
+    ob(&o, (uint32_t)((x->flags & ~(SX_FLAG_VEL | SX_FLAG_SHORT | SX_FLAG_LYR)) | (velany ? SX_FLAG_VEL : 0) | (shortany ? SX_FLAG_SHORT : 0) |
+                      (lyrany ? SX_FLAG_LYR : 0)));
     for (i = 0; i < x->sections && i < SX_SECTIONS; i++) {
         const SxSection *c = &x->sect[i];
         ob(&o, c->name); ob(&o, c->npat);
@@ -425,6 +492,21 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
             }
     }
     if (shortany) for (k = 0; k < 4; k++) ob(&o, x->short_mask[k]);
+    if (lyrany) {                                              /* lines 9..16: a mask, then per set line its words + NUL and 4 mask bytes */
+        uint32_t m = 0;
+        for (i = 0; i < SX_XLINES; i++) {
+            int has = x->lyr[i][0] != 0;
+            for (k = 0; k < 4; k++) if (x->lsing[i][k]) has = 1;
+            if (has) m |= 1u << i;
+        }
+        ob(&o, m);
+        for (i = 0; i < SX_XLINES; i++) {
+            if (!(m & (1u << i))) continue;
+            for (k = 0; k < SONG_LYRIC_LEN - 1 && x->lyr[i][k]; k++) ob(&o, (uint8_t)x->lyr[i][k]);
+            ob(&o, 0);
+            for (k = 0; k < 4; k++) ob(&o, x->lsing[i][k]);
+        }
+    }
     return o.n > cap ? 0 : o.n;
 }
 
@@ -495,6 +577,21 @@ int songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t le
     if (!in.err && (x->flags & SX_FLAG_SHORT)) {           /* the one-bar mask; damaged, every pattern is two bars again */
         for (k = 0; k < 4; k++) x->short_mask[k] = (uint8_t)ib(&in);
         if (in.err) memset(x->short_mask, 0, sizeof(x->short_mask));
+    }
+    if (!in.err && (x->flags & SX_FLAG_LYR)) {             /* lines 9..16; damaged, they are dropped (the other lines stay) */
+        uint32_t m = ib(&in);
+        for (i = 0; i < SX_XLINES && !in.err; i++) {
+            if (!(m & (1u << i))) continue;
+            for (k = 0; ; k++) {
+                uint32_t b = ib(&in);
+                if (in.err) break;
+                if (!b) break;
+                if (k >= SONG_LYRIC_LEN - 1) { in.err = 1; break; }
+                x->lyr[i][k] = (char)b;
+            }
+            for (k = 0; k < 4 && !in.err; k++) x->lsing[i][k] = (uint8_t)ib(&in);
+        }
+        if (in.err) { memset(x->lyr, 0, sizeof(x->lyr)); memset(x->lsing, 0, sizeof(x->lsing)); }
     }
     songx_sanitize(x);
     return 1;

@@ -111,8 +111,8 @@ static void finish_show(void)
 static int line_fits(int line)
 {
     int pat = st_adv_line_pattern(line);                 /* ST-ADV: the pattern the arrangement sings it over */
-    if (pat < 0 || !SS->lyrics[line][0]) return 0;
-    return song_syllables(SS->lyrics[line], NULL, 0) == song_lead_onsets(SS, pat);
+    if (pat < 0 || !st_line_text(SS, line)[0]) return 0;
+    return song_syllables(st_line_text(SS, line), NULL, 0) == song_lead_onsets(SS, pat);
 }
 
 void tab_stage_update(void)
@@ -133,7 +133,7 @@ void tab_stage_update(void)
         pl = song_pos_line();
         if (song_playing() && pl >= 0 && pl != studio.last_line) {
             int n = 0;
-            uint32_t m = song_line_mask(SS, pl);
+            uint32_t m = st_line_mask(SS, pl);
             while (m) { m &= m - 1; n++; }
             studio.last_line = (uint8_t)pl;
             studio.sung_lines++;
@@ -422,12 +422,12 @@ static void karaoke(int cx, int y, int w)
     plat_shade_rect(cx - w / 2, y, w, 22, 11);
 #endif
     ui_frame(cx - w / 2, y, w, 22, PAL_PAINT(PAINT_GRAPE, 1));
-    if (line < 0 || !SS->lyrics[line][0]) {
+    if (line < 0 || !st_line_text(SS, line)[0]) {
         ui_text_center(cx, y + 7, song_playing() ? STR_ICON_NOTE " ~ " STR_ICON_NOTE " ~ " STR_ICON_NOTE
                                                  : "", PAL_PAINT(PAINT_LAVENDER, 2));
         return;
     }
-    t = SS->lyrics[line];
+    t = st_line_text(SS, line);
     n = DOOMO_MIN(song_syllables(t, st, SONG_LYRIC_LEN), SONG_LYRIC_LEN);
     len = (int)strlen(t);
     x = cx - len * 3;

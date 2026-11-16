@@ -8,8 +8,9 @@
  *   patterns      up to 32; patterns 0..3 on tracks 0..3 are the classic song's own cells, every other cell lives in a
  *                 small pool of 32-step blocks (an empty cell costs nothing)
  *   tracks        4..8; a console plays songx_tracks_max() of them, the extra ones fold onto the nearest lane
- *   lyrics        a section sings the classic song's lyric lines: section.line[k] (0..7, 0xFF none) is the line of its
- *                 k-th pass (k mod 4), and that line's line_singers choose the singers
+ *   lyrics        a section sings a lyric line: section.line[k] (0..15, 0xFF none) is the line of its k-th pass (k mod 4),
+ *                 and that line's singers choose who sings it. Lines 1..8 are the classic song's own (lyrics[], line_singers[]);
+ *                 lines 9..16 live in the SongExt (lyr[], lsing[]), so the classic song is untouched
  * A classic song is "no SongExt" and plays exactly as before: song_play() is song_play_ext(s, NULL).
  * The studio keeps its working SongExt in the scene scratch; the book keeps encoded copies (songx_book_*).
  */
@@ -27,9 +28,12 @@
 #define SX_POOL          48            /* 32-step blocks for every cell outside the classic 4 x 4 */
 #define SX_LINES         4             /* lyric passes a section names */
 #define SX_NO_LINE       0xFF
+#define SX_XLINES        8             /* lyric lines 9..16 live in the SongExt (lyr[], lsing[]) */
+#define SX_LYRIC_LINES   (SONG_LYRIC_LINES + SX_XLINES)
 #define SX_FLAG_ADVANCED 1             /* written in Advanced */
 #define SX_FLAG_FREE     2             /* free notes (no scale snap) */
 #define SX_FLAG_SHORT    8             /* in a saved page: a 4-byte one-bar mask follows (set by songx_encode) */
+#define SX_FLAG_LYR      16            /* in a saved page: lyric lines 9..16 follow (set by songx_encode) */
 #define SX_FLAG_VEL      4             /* in a saved page: a velocity tail follows the cells (set by songx_encode) */
 #define SX_VEL_SOFT      0             /* the four loudness levels of a note (the velocity bar) */
 #define SX_VEL_NORMAL    1             /* the default: a note plays at its track's volume */
@@ -78,6 +82,10 @@ typedef struct SongExt {
     uint8_t  pool[SX_POOL][SONG_STEPS];
     uint8_t  vel[SX_PATTERNS][SX_TRACKS][SONG_STEPS / 4];   /* per-note loudness, 2 bits a step (see songx_vel); all zero = every note normal */
     uint8_t  short_mask[4];             /* bit p of the 32 bits = pattern p is one bar (16 steps): it plays steps 0..15 and the pass ends; 0 = all two bars */
+    /* lyric lines 9..16 (the last two members: the studio's undo journal touches them as one block). Plain bytes, so the
+     * struct stays byte aligned like the rest: lsing[i] is a little endian u32 (bit n = singer[n] sings it, 0 = singer[0]) */
+    char     lyr[SX_XLINES][SONG_LYRIC_LEN];
+    uint8_t  lsing[SX_XLINES][4];
 } SongExt;
 
 /* a fresh Advanced song: the classic song's order becomes one section per run (all in one is fine): sections = 1, its
@@ -97,6 +105,14 @@ int  songx_vel_pct(int level);
 int  songx_plen(const SongExt *x, int pat);                              /* steps a pass of pattern `pat` plays: 32 (two bars) or 16 (one bar) */
 int  songx_set_plen(SongExt *x, int pat, int steps);                     /* 16 or 32; 1 = stored */
 int  songx_vel_any(const SongExt *x);                                    /* any note that is not normal */
+/* lyric lines: 0..7 are the song's own, 8..15 the SongExt's. x = NULL is a classic song (8 lines). Every reader goes through
+ * these so that nothing indexes lyrics[] / line_singers[] past 7. */
+int  songx_lines(const SongExt *x);                                      /* 16 with a SongExt, else 8 */
+const char *songx_line_text(const DoomoSong *s, const SongExt *x, int line);   /* \"\" for a line that does not exist */
+char *songx_line_buf(DoomoSong *s, SongExt *x, int line);                /* the writable text (SONG_LYRIC_LEN bytes), NULL when the line does not exist */
+uint32_t songx_line_singers(const DoomoSong *s, const SongExt *x, int line);   /* the stored mask, 0 = singer[0] */
+void songx_set_line_singers(DoomoSong *s, SongExt *x, int line, uint32_t mask);
+int  songx_lyr_any(const SongExt *x);                                    /* any of lines 9..16 holds words or a singer mask */
 /* the arrangement as one flat list of pattern passes */
 int  songx_len(const SongExt *x);                                    /* passes in the whole song (>= 1) */
 int  songx_at(const SongExt *x, int pos, int *sect, int *pass);      /* pattern id of pass `pos`; its section and its pass in the section */

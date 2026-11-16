@@ -180,13 +180,15 @@ int song_singer_count(const DoomoSong *s)
     return n;
 }
 
-uint32_t song_line_mask(const DoomoSong *s, int line)
+uint32_t song_line_mask(const DoomoSong *s, int line) { return song_line_mask_x(s, NULL, line); }
+
+uint32_t song_line_mask_x(const DoomoSong *s, const SongExt *x, int line)
 {
     uint32_t m, valid = 0;
     int i;
-    if (!s || line < 0 || line >= SONG_LYRIC_LINES) return 0;
+    if (!s || line < 0 || line >= songx_lines(x)) return 0;
     for (i = 0; i < SONG_SINGERS; i++) if (song_singer_id(s, i) >= 0) valid |= 1u << i;
-    m = s->line_singers[line];
+    m = songx_line_singers(s, x, line);
     if (!m) m = 1;
     return m & valid;
 }
@@ -726,7 +728,7 @@ void song_tune_cache_stats(uint32_t *hits, uint32_t *miss) { *hits = tune_hits; 
 
 static char syllable_vowel(int syl)
 {
-    const char *t = P.s->lyrics[P.line];
+    const char *t = songx_line_text(P.s, P.x, P.line);
     int i = P.starts[syl], end = syl + 1 < P.nsyl ? P.starts[syl + 1] : SONG_LYRIC_LEN;
     char first = 0;
     for (; i < end && t[i]; i++) {
@@ -835,10 +837,10 @@ static void begin_line(void)
     P.singing = 0;
     P.harm = 0;
     P.mask = 0;
-    if (line < 0 || !s->lyrics[line][0]) { P.line = -1; return; }
-    P.nsyl = (uint8_t)DOOMO_MIN(song_syllables(s->lyrics[line], P.starts, SONG_LYRIC_LEN),
+    if (line < 0 || !songx_line_text(s, P.x, line)[0]) { P.line = -1; return; }
+    P.nsyl = (uint8_t)DOOMO_MIN(song_syllables(songx_line_text(s, P.x, line), P.starts, SONG_LYRIC_LEN),
                                 SONG_LYRIC_LEN);
-    P.mask = P.over >= 0 ? 1u : song_line_mask(s, line);
+    P.mask = P.over >= 0 ? 1u : song_line_mask_x(s, P.x, line);
     if (P.over < 0 && P.mask && !(P.mask & (1u << DOOMO_MAX(P.lead, 0))))
         P.lead = -1;
 }

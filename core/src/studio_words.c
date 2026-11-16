@@ -48,10 +48,10 @@ static void preview_line(int pos, int singer)
 /* LYRICS                                                                   */
 static void lyric_done(int ok)
 {
-    char *line = SS->lyrics[studio.lsel & 7];
-    if (!ok) return;
+    char *line = st_line_buf(SS, studio.lsel);
+    if (!ok || !line) return;
     if (studio_clean_text(studio.edit, SONG_LYRIC_LEN)) st_msg("Keep it cute! (fixed a word)");
-    ed_touch(line, SONG_LYRIC_LEN);
+    st_line_touch_text(SS, studio.lsel);
     memset(line, 0, SONG_LYRIC_LEN);
     memcpy(line, studio.edit, strlen(studio.edit) < SONG_LYRIC_LEN ? strlen(studio.edit)
                                                                    : SONG_LYRIC_LEN - 1);
@@ -66,7 +66,7 @@ static void lyric_done(int ok)
 static int line_fit(const DoomoSong *s, int line, int *onsets, int *syls)
 {
     int pos = studio_line_pos(s, line), pt = studio_line_pat(s, line);
-    *syls = song_syllables(s->lyrics[line], NULL, 0);
+    *syls = song_syllables(st_line_text(s, line), NULL, 0);
     *onsets = pos >= 0 && pt >= 0 ? song_lead_onsets(s, pt) : -1;
     return pos >= 0;
 }
@@ -104,7 +104,7 @@ static void cycle_part(int line, int d)
     p = studio_part_of(SS, line, &w);
     for (i = 0; i < n; i++) if (part[i] == p && who[i] == w) { cur = i; break; }
     cur = (cur + d + n) % n;
-    ed_touch(&SS->line_singers[line], 4);
+    st_line_touch_mask(SS, line);
     studio_set_part(SS, line, part[cur], who[cur]);
     ed_commit();
     audio_sfx(SFX_CURSOR);
@@ -118,12 +118,14 @@ static void lyric_tools(int c)
     case 1:
         ed_touch(SS->notes, (int)sizeof(SS->notes));
         ed_touch(SS->lyrics, (int)sizeof(SS->lyrics));
-        for (i = 0; i < SONG_LYRIC_LINES; i++) n += studio_autofit(SS, i);
+        for (i = SONG_LYRIC_LINES; i < st_line_count(SS); i++) st_line_touch_text(SS, i);
+        for (i = 0; i < st_line_count(SS); i++) n += studio_autofit(SS, i);
         ed_commit();
         st_msg(n ? "%d lines fitted" : "Everything fits!", n);
         break;
     case 2:
         ed_touch(SS->line_singers, (int)sizeof(SS->line_singers));
+        st_xmasks(XM_TOUCH, 0, NULL);
         studio_auto_parts(SS);
         ed_commit();
         st_msg("Parts shared out");
@@ -137,20 +139,20 @@ static void lyric_tools(int c)
         st_msg("New words about %s", st_name(muse >= 0 ? muse : DOOMO_PLAYER_ID));
         break; }
     case 4:
-        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
-        memset(SS->lyrics[studio.lsel], 0, SONG_LYRIC_LEN);
+        st_line_touch_text(SS, studio.lsel);
+        memset(st_line_buf(SS, studio.lsel), 0, SONG_LYRIC_LEN);
         ed_commit();
         break;
     case 5:                                   /* was START (START plays now): fit one line to its notes */
         ed_touch(SS->notes, (int)sizeof(SS->notes));
-        ed_touch(SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
+        st_line_touch_text(SS, studio.lsel);
         if (studio_autofit(SS, studio.lsel)) { st_msg("Line %d fits now!", studio.lsel + 1); audio_sfx(SFX_SPARKLE); }
-        else st_msg(SS->lyrics[studio.lsel][0] ? "Already a perfect fit" : "Write some words first");
+        else st_msg(st_line_text(SS, studio.lsel)[0] ? "Already a perfect fit" : "Write some words first");
         ed_commit();
         break;
     case 6: {                                   /* ST-TOOLS: the syllable fitter's report */
         int w = 0, nn = 0, v = tl_fit_status(SS, studio.lsel, &w, &nn);
-        if (v < 0) st_msg(SS->lyrics[studio.lsel][0] ? "This line is not sung yet" : "Write some words first");
+        if (v < 0) st_msg(st_line_text(SS, studio.lsel)[0] ? "This line is not sung yet" : "Write some words first");
         else if (v == 0) st_msg("%d word%s, %d note%s: a fit!", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
         else if (v == 1) st_msg("%d word%s, %d note%s: la la fills", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
         else st_msg("%d word%s, %d note%s: too many", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
@@ -163,8 +165,15 @@ static void lyric_tools(int c)
 void tab_lyrics_update(void)
 {
     preview_watch();
-    if (btn_repeat(BTN_UP)) { studio.lsel = (uint8_t)((studio.lsel + 7) % 8); audio_sfx(SFX_CURSOR); }
-    if (btn_repeat(BTN_DOWN)) { studio.lsel = (uint8_t)((studio.lsel + 1) % 8); audio_sfx(SFX_CURSOR); }
+    {
+        int nl = st_line_count(SS);                      /* 8 lines, or 16 in Advanced: the list scrolls (8 rows are shown) */
+        if (studio.lsel >= nl) studio.lsel = 0;
+        if (btn_repeat(BTN_UP)) { studio.lsel = (uint8_t)((studio.lsel + nl - 1) % nl); audio_sfx(SFX_CURSOR); }
+        if (btn_repeat(BTN_DOWN)) { studio.lsel = (uint8_t)((studio.lsel + 1) % nl); audio_sfx(SFX_CURSOR); }
+        if (nl <= 8) studio.ltop = 0;
+        else if (studio.lsel < studio.ltop) studio.ltop = studio.lsel;
+        else if (studio.lsel >= studio.ltop + 8) studio.ltop = (uint8_t)(studio.lsel - 7);
+    }
     if (btn_repeat(BTN_LEFT)) cycle_part(studio.lsel, -1);
     if (btn_repeat(BTN_RIGHT)) cycle_part(studio.lsel, 1);
     if (btn_pressed(BTN_A)) {
@@ -173,7 +182,7 @@ void tab_lyrics_update(void)
         line_fit(SS, studio.lsel, &on, &sy);
         if (on >= 0) doomo_snprintf(prompt, sizeof(prompt), "Line %d (%d notes)", studio.lsel + 1, on);
         else doomo_snprintf(prompt, sizeof(prompt), "Line %d", studio.lsel + 1);
-        memcpy(studio.edit, SS->lyrics[studio.lsel], SONG_LYRIC_LEN);
+        memcpy(studio.edit, st_line_text(SS, studio.lsel), SONG_LYRIC_LEN);
         ui_text_entry(prompt, studio.edit, SONG_LYRIC_LEN, lyric_done);
     }
     if (studio_sel_tap) {
@@ -279,11 +288,13 @@ void tab_lyrics_draw(StRect r)
     int onc[SONG_PATTERNS] = { -1, -1, -1, -1 };      /* song_lead_onsets once a pattern a frame, not once a line */
     uint8_t sel_st[SONG_LYRIC_LEN];                   /* the selected line's syllables, for the detail strip */
     int sel_n = 0;
-    for (i = 0; i < SONG_LYRIC_LINES; i++) {
-        int y = top + i * rowh, sel = i == studio.lsel, on = -1, sy, sung;
+    int nlines = st_line_count(s), first = nlines > 8 ? DOOMO_MIN((int)studio.ltop, nlines - 8) : 0;
+    for (i = first; i < first + 8 && i < nlines; i++) {
+        int y = top + (i - first) * rowh, sel = i == studio.lsel, on = -1, sy, sung;
         int pos = studio_line_pos(s, i);
+        const char *lw = st_line_text(s, i);
         uint8_t sts[SONG_LYRIC_LEN];
-        sy = song_syllables(s->lyrics[i], sts, SONG_LYRIC_LEN);   /* once a line a frame (it was 2-3 lookups) */
+        sy = song_syllables(lw, sts, SONG_LYRIC_LEN);   /* once a line a frame (it was 2-3 lookups) */
         sung = pos >= 0 && studio_line_pat(s, i) >= 0;
         if (sung) {
             int pt = studio_line_pat(s, i);
@@ -295,22 +306,23 @@ void tab_lyrics_draw(StRect r)
             ui_round_rect(r.x + 3, y - 1, r.w - 6, rowh, 3, st->fill_hi);
             ui_cursor(r.x + 3, y + (rowh - 8) / 2);
         }
-        buf[0] = (char)('1' + i); buf[1] = 0;                      /* lines 1..8: no snprintf */
-        ui_text(r.x + 13, y + (rowh - 9) / 2, buf, st->text_dim);
+        if (i < 9) { buf[0] = (char)('1' + i); buf[1] = 0; }       /* lines 1..9: no snprintf */
+        else { buf[0] = (char)('0' + (i + 1) / 10); buf[1] = (char)('0' + (i + 1) % 10); buf[2] = 0; }
+        ui_text(i < 9 ? r.x + 13 : r.x + 8, y + (rowh - 9) / 2, buf, st->text_dim);
         if (pos >= 0) {
             char pc[2] = { (char)('A' + (studio_line_pat(s, i) & 3)), 0 };
             ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(studio_line_pat(s, i), 1));
             ui_text(r.x + 23, y + (rowh - 9) / 2, pc, PAL_WHITE);
         }
-        if (s->lyrics[i][0]) {
-            draw_syllables(r.x + 35, y + (rowh - 9) / 2, s->lyrics[i], sts, sy, st->text,
+        if (lw[0]) {
+            draw_syllables(r.x + 35, y + (rowh - 9) / 2, lw, sts, sy, st->text,
                            PAL_PAINT(PAINT_GRAPE, 0), maxch, pl == i ? song_pos_syllable() : -1);
         } else {
             ui_text(r.x + 35, y + (rowh - 9) / 2, pos >= 0 ? "~ instrumental ~" : "~ not in the song ~",
                     st->text_dim);
         }
         /* fit badge */
-        if (s->lyrics[i][0] && sung && on >= 0) {
+        if (lw[0] && sung && on >= 0) {
             int bx = r.x + r.w - 22, by = y + rowh / 2 - 1;
             if (sy == on) {
                 ui_heart(bx + 6, by, 3 + (sel && ((studio.t >> 3) & 1)), PAL_PAINT(PAINT_ROSE, 1));
@@ -333,7 +345,8 @@ void tab_lyrics_draw(StRect r)
         ui_text(gx + 10, dy + 4, buf, ui_style_text(WIN_MINT));
         ui_text(gx + 12 + ui_text_width(buf), dy + 4, STR_ICON_ARROW_R, ui_style_text(WIN_MINT));
         nsy = sel_n;
-        if (pos >= 0 && s->lyrics[line][0]) {
+        if (pos >= 0 && st_line_text(s, line)[0]) {
+            const char *ltx = st_line_text(s, line);
             const uint8_t *lead = s->notes[studio_line_pat(s, line) & 3][0];
             int sx = gw / SONG_STEPS, ky = dy + 17, syl = 0, lastx = -100;
             for (k = 0; k < SONG_STEPS; k++) {
@@ -344,8 +357,8 @@ void tab_lyrics_draw(StRect r)
                     ui_fill_circle(x + sx / 2, ky + 4, 2, ok ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_SKY, 0));
                     if (ok && x >= lastx + 2 && dh >= 34) {
                         char sb[8];
-                        int a = stt[syl], b = syl + 1 < nsy ? stt[syl + 1] : (int)strlen(s->lyrics[line]), j;
-                        for (j = 0; j < 6 && a + j < b && s->lyrics[line][a + j] != ' '; j++) sb[j] = s->lyrics[line][a + j];
+                        int a = stt[syl], b = syl + 1 < nsy ? stt[syl + 1] : (int)strlen(ltx), j;
+                        for (j = 0; j < 6 && a + j < b && ltx[a + j] != ' '; j++) sb[j] = ltx[a + j];
                         sb[j] = 0;
                         if (j > (wide ? 4 : 3)) { sb[wide ? 4 : 3] = 0; j = wide ? 4 : 3; }
                         ui_text(x, ky + 8 + ((syl & 1) ? 8 : 0), sb, (syl & 1) ? PAL_PAINT(PAINT_GRAPE, 0)
@@ -359,7 +372,7 @@ void tab_lyrics_draw(StRect r)
             }
             /* who sings it (room permitting) */
             if (dh >= 70) {
-                uint32_t m = song_line_mask(s, line), sing = song_pos_line() == line ? song_pos_singers() : 0;
+                uint32_t m = st_line_mask(s, line), sing = song_pos_line() == line ? song_pos_singers() : 0;
                 int k2, cxp = gx + 4, bob;
                 for (k2 = 0; k2 < SONG_SINGERS && cxp < gx + gw - 16; k2++) {
                     if (!((m >> k2) & 1)) continue;
@@ -423,8 +436,10 @@ static void remove_singer(int slot)
     int i;
     ed_touch(&SS->singer[slot], 2);
     ed_touch(SS->line_singers, (int)sizeof(SS->line_singers));
+    st_xmasks(XM_TOUCH, 0, NULL);
     SS->singer[slot] = SONG_NO_SINGER;
     for (i = 0; i < SONG_LYRIC_LINES; i++) SS->line_singers[i] &= ~(1u << slot);
+    st_xmasks(XM_DROP, slot, NULL);
     ed_commit();
 }
 
@@ -461,6 +476,7 @@ static void sort_by_section(void)
     ed_touch(s->singer, (int)sizeof(s->singer));
     ed_touch(s->section, (int)sizeof(s->section));
     ed_touch(s->line_singers, (int)sizeof(s->line_singers));
+    st_xmasks(XM_TOUCH, 0, NULL);
     for (i = 0; i < SONG_SINGERS; i++) map[i] = 0xFF;
     for (sec = 0; sec < SECTION_COUNT; sec++)
         for (i = 0; i < SONG_SINGERS; i++)
@@ -474,6 +490,7 @@ static void sort_by_section(void)
         for (i = 0; i < SONG_SINGERS; i++) if ((m >> i) & 1 && map[i] != 0xFF) nm |= 1u << map[i];
         s->line_singers[k] = nm;
     }
+    st_xmasks(XM_REMAP, 0, map);
     memset(s->section, 0, sizeof(s->section));
     for (i = 0; i < SONG_SINGERS; i++) {
         s->singer[i] = i < n ? ids[i] : SONG_NO_SINGER;
@@ -488,7 +505,7 @@ static void fill_menu(int c)
                                       FILL_RANDOM };
     int n, anchor = studio.csel < SONG_SINGERS ? song_singer_id(SS, studio.csel) : -1;
     if (c < 0) return;
-    if (c == 5) { ed_touch(SS->line_singers, (int)sizeof(SS->line_singers)); studio_auto_parts(SS); ed_commit(); st_msg("Parts shared out"); return; }
+    if (c == 5) { ed_touch(SS->line_singers, (int)sizeof(SS->line_singers)); st_xmasks(XM_TOUCH, 0, NULL); studio_auto_parts(SS); ed_commit(); st_msg("Parts shared out"); return; }
     if (c == 6) { sort_by_section(); st_msg("Sorted: S A T B"); return; }
     if (c == 8 || c == 9) {                      /* ST-TOOLS: auto-harmony from the lead */
         int n = st_harmonize_song(c - 8);
@@ -499,6 +516,7 @@ static void fill_menu(int c)
     ed_touch(SS->singer, (int)sizeof(SS->singer));
     ed_touch(SS->section, (int)sizeof(SS->section));
     ed_touch(SS->line_singers, (int)sizeof(SS->line_singers));
+    st_xmasks(XM_TOUCH, 0, NULL);
     if (c == 7) {
         studio_choir_fill(SS, FILL_CLEAR, -1, 0);
         ed_commit();

@@ -339,6 +339,19 @@ void st_adv_play(int pos, int singer); /* play (the arrangement when there is on
 int  st_adv_pass_of_cursor(void);      /* ORDER's cursor as a pass number */
 uint32_t st_adv_ticks(void);           /* the whole song in 30 Hz ticks: the arrangement's (tempo per part) or the classic order's */
 const SongExt *st_adv_ext(void);       /* the arrangement for the Concert Hall, NULL for a classic song */
+/* Lyric lines (ST-ADV): lines 1..8 are the song's own, 9..16 live in the working SongExt. Everything in the studio that reads or
+ * writes a line's words or singers goes through these, keyed by the song (only the working song `studio.song` has more than 8). */
+int  st_line_count(const DoomoSong *s);                          /* 16 for the working song in Advanced, else 8 */
+const char *st_line_text(const DoomoSong *s, int line);          /* "" for a line that does not exist */
+char *st_line_buf(DoomoSong *s, int line);                       /* writable (SONG_LYRIC_LEN bytes), NULL when the line does not exist */
+uint32_t st_line_mask(const DoomoSong *s, int line);             /* the singers of the line (song_line_mask_x) */
+void st_line_set_raw(DoomoSong *s, int line, uint32_t mask);     /* store a line's singer mask (the caller ed_touch()ed it with st_line_touch_mask) */
+void st_line_touch_text(const DoomoSong *s, int line);           /* ed_touch the line's words */
+void st_line_touch_mask(const DoomoSong *s, int line);           /* ed_touch the line's singer mask */
+enum { XM_TOUCH, XM_CLEAR, XM_DROP, XM_REMAP };
+/* the singer masks of lines 9..16 as a block: XM_TOUCH journals them, XM_CLEAR zeroes them, XM_DROP removes singer `slot`,
+ * XM_REMAP moves singer bits by `map[slot]` (0xFF = gone). They do nothing for a classic song. */
+void st_xmasks(int op, int slot, const uint8_t *map);
 int  st_adv_line_pass(int line);       /* the flat pass the arrangement first sings lyric line `line` on, -1 = none or no arrangement */
 int  st_adv_line_pattern(int line);    /* the pattern (0..3) the song sings lyric line `line` over, -1 = never or not in the 4 classic ones */
 int  st_adv_epic(void);                /* Advanced, after a take: lay the made song out as a 64-bar arrangement (one undo step); 1 = did */

@@ -468,8 +468,8 @@ int tl_mix_flags(const DoomoSong *s)
 int tl_fit_status(const DoomoSong *s, int line, int *words, int *notes)
 {
     int pos = studio_line_pos(s, line), w, n;
-    if (pos < 0 || !s->lyrics[line][0]) return -1;
-    w = song_syllables(s->lyrics[line], NULL, 0);
+    if (pos < 0 || !st_line_text(s, line)[0]) return -1;
+    w = song_syllables(st_line_text(s, line), NULL, 0);
     n = song_lead_onsets(s, studio_line_pat(s, line) & 3);
     if (words) *words = w;
     if (notes) *notes = n;
