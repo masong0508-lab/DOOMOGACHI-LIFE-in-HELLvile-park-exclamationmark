@@ -161,6 +161,29 @@ int songx_folded(const SongExt *x, char *buf, int cap)
     return have - play;
 }
 
+int songx_pattern_cost(const DoomoSong *s, const SongExt *x, int pat)
+{
+    int t, i, n = 0;
+    for (t = 0; t < SX_TRACKS; t++)
+        for (i = 0; i < SONG_STEPS; i++)
+            if (songx_cell(s, x, pat, t, i)) { n++; break; }
+    return n;
+}
+
+int songx_pattern_copy(DoomoSong *s, SongExt *x, int from)
+{
+    int np = x->patterns, t, i;
+    if (from < 0 || from >= np || np >= SX_PATTERNS) return -1;
+    if (songx_pattern_cost(s, x, from) > songx_blocks_free(x)) return -2;
+    for (t = 0; t < SX_TRACKS; t++)
+        for (i = 0; i < SONG_STEPS; i++) {
+            int v = songx_cell(s, x, from, t, i);
+            if (v) songx_set_cell(s, x, np, t, i, v);     /* np >= 4: the pool, never the song */
+        }
+    x->patterns = (uint8_t)(np + 1);
+    return np;
+}
+
 /* ---- tools -------------------------------------------------------------------------------------------------- */
 int songx_add_section(SongExt *x, int name)
 {

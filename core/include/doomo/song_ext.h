@@ -102,6 +102,10 @@ int  songx_section_dup(SongExt *x, int sect);                        /* a copy o
 const char *songx_name(int name);                                    /* "Intro" .. "Outro", "Part" for a custom id */
 int  songx_entry_pass(const SongExt *x, int entry);                  /* the flat pass number where an entry starts */
 int  songx_entry_of_pass(const SongExt *x, int pass);                /* the entry that plays pass `pass` */
+int  songx_pattern_cost(const DoomoSong *s, const SongExt *x, int pat);  /* note blocks a copy of pattern `pat` takes (its tracks that hold a note) */
+/* the Note grid: a new pattern that is a copy of `from` (it comes last): its id, -1 = the song has 32 patterns, -2 = not enough note blocks.
+ * `s` is not written (a pattern past the classic four lives wholly in the pool). */
+int  songx_pattern_copy(DoomoSong *s, SongExt *x, int from);
 /* start playing the arrangement at pass `pos` (a flat pass number), `step` into it; x = NULL is song_play_at */
 void song_play_ext_at(const DoomoSong *s, const SongExt *x, int singer_override, int pos, int step);
 /* serialization (one page): returns bytes, 0 when it does not fit in cap; songx_decode 1 = ok */

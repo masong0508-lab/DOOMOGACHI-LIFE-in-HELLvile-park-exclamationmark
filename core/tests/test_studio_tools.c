@@ -1492,6 +1492,224 @@ TEST(adv_expert_free_flag_is_saved_with_the_page)
     st_level_set(0);
 }
 
+/* ---- ST-ADV: the Note grid (Expert view, "Note grid") ------------------------------------------------------------------ */
+static void open_grid(void)
+{
+    open_adv(4);
+    press(BTN_A);                                              /* the part view, its tools: Notes, expert... */
+    press(BTN_SELECT); pick(9);
+    press(BTN_DOWN);                                           /* the Note grid row */
+    press(BTN_A);
+}
+
+static int grid_pat(void) { return studio.xw.sect[studio.xw.arrange[0]].pat[0]; }
+static int gcell(int pat, int trk, int step) { return songx_cell(&studio.song, &studio.xw, pat, trk, step); }
+
+TEST(adv_note_grid_opens_from_expert_and_places_and_takes_off_a_note_one_undo_step_each)
+{
+    int p;
+    open_grid();
+    CHECK_EQ(studio.aview, 4);
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    p = grid_pat();
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    press(BTN_A);                                              /* the lead's pitch, on step 1 */
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK_EQ(studio.song.notes[p][0][0], 72);                  /* a classic cell is the song's own */
+    press(BTN_A);                                              /* the same pitch again: off */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 3);                                 /* back to Expert, not out of the studio */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_pitch_follows_the_scale_unless_free_notes_is_on)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_UP);                                             /* C major: 72 -> 74 */
+    press(BTN_A);
+    CHECK_EQ(gcell(p, 0, 0), 74);
+    press(BTN_RIGHT);
+    studio.xw.flags |= SX_FLAG_FREE;
+    press(BTN_UP);                                             /* free: one semitone */
+    press(BTN_A);
+    CHECK_EQ(gcell(p, 0, 1), 75);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_extra_track_uses_a_block_and_undo_gives_it_back)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    CHECK_EQ(studio.xw.tracks, 4);
+    press(BTN_SELECT); pick(7);                                /* Add a track */
+    CHECK_EQ(studio.xw.tracks, 5);
+    press(BTN_A);                                              /* a note on the new track (the cursor is on it) */
+    CHECK_EQ(studio.xw.nblocks, 1);
+    CHECK(gcell(p, 4, 0) >= 2);
+    CHECK(studio.xw.map[p][4] == 1);
+    press(BTN_A);                                              /* taken off again: its block is given back */
+    CHECK_EQ(gcell(p, 4, 0), 0);
+    CHECK_EQ(studio.xw.nblocks, 0);
+    CHECK_EQ(studio.xw.map[p][4], 0);
+    CHECK(ed_undo());                                          /* ... and undo puts it back whole */
+    CHECK_EQ(studio.xw.nblocks, 1);
+    CHECK(gcell(p, 4, 0) >= 2);
+    CHECK(ed_undo());
+    CHECK_EQ(studio.xw.nblocks, 0);
+    CHECK_EQ(gcell(p, 4, 0), 0);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_a_track_with_notes_cannot_be_taken_away)
+{
+    open_grid();
+    press(BTN_SELECT); pick(7);
+    press(BTN_A);
+    press(BTN_SELECT); pick(8);                                /* Take the last track away: it has a note */
+    CHECK_EQ(studio.xw.tracks, 5);
+    press(BTN_A);                                              /* empty it */
+    press(BTN_SELECT); pick(8);
+    CHECK_EQ(studio.xw.tracks, 4);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_new_pattern_copies_every_track_and_a_pass_can_pick_it)
+{
+    uint8_t buf[2048];
+    SongExt back;
+    uint32_t n;
+    int p, c0, c4, bl;
+    open_grid();
+    p = grid_pat();
+    press(BTN_A);                                              /* lead, step 1 */
+    press(BTN_SELECT); pick(7);                                /* a fifth track */
+    press(BTN_RIGHT);
+    press(BTN_A);                                              /* a note on it, step 2 */
+    c0 = gcell(p, 0, 0); c4 = gcell(p, 4, 1);
+    bl = studio.xw.nblocks;
+    press(BTN_SELECT); pick(2);                                /* New pattern (copy) */
+    CHECK_EQ(studio.xw.patterns, 5);
+    CHECK_EQ(gcell(4, 0, 0), c0);
+    CHECK_EQ(gcell(4, 4, 1), c4);
+    CHECK_EQ(studio.xw.nblocks, bl + 2);                       /* the copy lives wholly in the pool */
+    press(BTN_B); press(BTN_B);                                /* Expert, then the part */
+    CHECK_EQ(studio.aview, 1);
+    studio.asel = 4;                                           /* pass 1 */
+    for (n = 0; n < 5; n++) press(BTN_RIGHT);                  /* A B C D E: it can pick the new pattern */
+    CHECK_EQ(studio.xw.sect[studio.xw.arrange[0]].pat[0], p == 0 ? 0 : (p + 5) % 5);
+    n = songx_encode(&studio.song, &studio.xw, buf, sizeof(buf));
+    CHECK(n > 0);
+    memset(&back, 0, sizeof(back));
+    CHECK(songx_decode(&studio.song, &back, buf, n));
+    CHECK_EQ(back.patterns, 5);
+    CHECK_EQ(songx_cell(&studio.song, &back, 4, 4, 1), c4);
+    CHECK_EQ(songx_cell(&studio.song, &back, 4, 0, 0), c0);
+    CHECK(ed_undo());                                          /* the pass change, then the new pattern */
+    CHECK(ed_undo());
+    CHECK_EQ(studio.xw.patterns, 4);
+    CHECK_EQ(studio.xw.nblocks, bl);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_drum_lanes_tie_and_octave)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_R); press(BTN_R); press(BTN_R);                  /* L / R pick the track: Drums */
+    press(BTN_A);
+    CHECK_EQ(gcell(p, 3, 0), SONG_DRUM_KICK);
+    press(BTN_DOWN);                                           /* the next lane: snare */
+    press(BTN_RIGHT);
+    press(BTN_A);
+    CHECK_EQ(gcell(p, 3, 1), SONG_DRUM_SNARE);
+    press(BTN_SELECT); pick(5);                                /* drums have no octaves: nothing changes */
+    CHECK_EQ(gcell(p, 3, 1), SONG_DRUM_SNARE);
+    press(BTN_L); press(BTN_L); press(BTN_L);                  /* back to the lead */
+    press(BTN_LEFT);
+    press(BTN_A);                                              /* 72 on step 1 */
+    press(BTN_RIGHT);
+    press(BTN_SELECT); pick(3);                                /* Tie to the note before */
+    CHECK_EQ(gcell(p, 0, 1), SONG_HOLD);
+    press(BTN_SELECT); pick(3);                                /* again: the tie comes off */
+    CHECK_EQ(gcell(p, 0, 1), 0);
+    press(BTN_SELECT); pick(5);                                /* Octave up */
+    CHECK_EQ(gcell(p, 0, 0), 84);
+    press(BTN_SELECT); pick(6);
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    press(BTN_SELECT); pick(4);                                /* Clear this track here */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_removing_a_note_takes_its_ties_with_it)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_A);
+    press(BTN_RIGHT);
+    press(BTN_SELECT); pick(3);
+    press(BTN_RIGHT);
+    press(BTN_SELECT); pick(3);
+    CHECK_EQ(gcell(p, 0, 1), SONG_HOLD);
+    CHECK_EQ(gcell(p, 0, 2), SONG_HOLD);
+    press(BTN_LEFT); press(BTN_LEFT);
+    press(BTN_A);                                              /* off: the ties would ring on nothing */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK_EQ(gcell(p, 0, 1), 0);
+    CHECK_EQ(gcell(p, 0, 2), 0);
+    CHECK(ed_undo());                                          /* one step brings all three back */
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK_EQ(gcell(p, 0, 2), SONG_HOLD);
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_a_full_pool_refuses_a_note_and_says_so)
+{
+    open_grid();
+    press(BTN_SELECT); pick(7);
+    studio.xw.nblocks = SX_POOL;                               /* every block taken */
+    press(BTN_A);
+    CHECK_EQ(gcell(grid_pat(), 4, 0), 0);
+    CHECK_EQ(studio.xw.nblocks, SX_POOL);
+    CHECK(!studio.undo_open);
+    studio.xw.nblocks = 0;
+    st_level_set(0);
+}
+
+TEST(adv_note_grid_a_pass_on_a_new_pattern_plays_its_notes)
+{
+    open_grid();
+    press(BTN_A);                                              /* lead 72 on step 1 of the part's pattern */
+    press(BTN_SELECT); pick(2);                                /* a copy */
+    press(BTN_LEFT); press(BTN_LEFT);                          /* (no-op: cursor only) */
+    press(BTN_B); press(BTN_B);
+    studio.asel = 4;
+    press(BTN_LEFT);                                           /* A -> the last pattern (E) */
+    CHECK_EQ(studio.xw.sect[studio.xw.arrange[0]].pat[0], 4);
+    studio.song.notes[0][0][0] = 0;                            /* the classic cell is empty: it can only sound from the pool */
+    studio.song.notes[studio.xw.sect[0].pat[0] == 4 ? 0 : 0][0][0] = 0;
+    CHECK_EQ(gcell(4, 0, 0), 72);
+    st_adv_play(0, -1);
+    frames(3, 0);
+    CHECK(song_playing());
+    CHECK_EQ(song_pos_note(0), 72);
+    song_stop();
+    st_level_set(0);
+}
+
 TEST(adv_keys_start_plays_the_arrangement)
 {
     open_adv(8);

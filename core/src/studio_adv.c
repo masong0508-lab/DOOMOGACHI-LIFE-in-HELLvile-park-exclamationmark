@@ -27,6 +27,9 @@
 #define AK(r) (0x4000 + (r))            /* coalescing keys: repeated nudges of one setting are one undo step */
 
 static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing */
+static uint8_t g_pat, g_trk, g_stp, g_top;      /* the Note grid's cursor: pattern, track, step; g_top = the highest pitch on screen */
+static uint8_t g_note[SX_TRACKS];               /* each track's pitch cursor (a drum track: its drum 1..8); 0 = not set yet */
+static char pat_ch(int p) { return (char)(p < 26 ? 'A' + p : 'a' + p - 26); }     /* a pattern's letter: A..Z, then a..f (32 patterns) */
 static uint8_t b_eaten;                 /* B left the part view this frame: the studio must not take it as "leave" */
 
 int st_adv_on(void) { return studio.xw.version != 0; }
@@ -37,6 +40,7 @@ void st_adv_enter(int slot)
 {
     studio.aview = 0; studio.asel = 0; studio.atop = 0; mix_col = 0;
     studio.osel = studio.otop = 0;
+    g_pat = g_trk = g_stp = g_top = 0; memset(g_note, 0, sizeof(g_note));
     if (slot >= 0 && songx_book_get(slot, SS, X)) return;
     X->version = 0;                     /* a failed decode may leave a half-read header */
 }
@@ -165,8 +169,10 @@ static int e_pass_pat(SongExt *x, int sec, int packed)       /* packed = pass * 
 {
     SxSection *c = &x->sect[sec];
     int pass = packed / 8, d = packed % 8 - 4;
+    int n;
     if (pass >= c->npat) return 0;
-    c->pat[pass] = (uint8_t)(((c->pat[pass] & 3) + d + 4) & 3);
+    n = DOOMO_CLAMP(x->patterns, SONG_PATTERNS, SX_PATTERNS);       /* every pattern the song has (the Note grid makes new ones) */
+    c->pat[pass] = (uint8_t)((c->pat[pass] % n + d + n) % n);
     return 1;
 }
 static int e_pass_add(SongExt *x, int sec, int at)           /* a copy of pass `at` just after it */
@@ -477,12 +483,12 @@ static void part_update(void)
     }
     if (studio_sel_tap) {
         static const char *const items[10] = { "Add a pass", "Delete this pass", "Make it unique", "Name...", "Key change...",
-                                              "Tempo change...", "Fade...", "Hear this part", "Mix and sound...", "Expert view..." };
+                                              "Tempo change...", "Fade...", "Hear this part", "Mix and sound...", "Notes, expert..." };
         static const char *const help[10] = { "A copy of the pass, just after.", "Take the pass out.",
                                              "Its own copy: edits stay here.", "Verse, chorus, bridge...",
                                              "Lift or drop the whole part.", "Faster or slower part.",
                                              "Fade the part in or out.", "Play from this part.",
-                                             "Pan, sound and swing per track.", "Free notes, note counts, memory." };
+                                             "Pan, sound and swing per track.", "Note grid, free notes, memory." };
         st_popup("This part", items, 10, 0, part_tools);
         st_popup_help(help);
     }
@@ -524,6 +530,389 @@ static void mix_update(void)
 }
 
 
+/* ---- the Note grid: every note of every pattern and track (a piano roll) ----------------------------------------------------
+ * One pattern (2 bars, 32 steps) of one track. Melodic rows are pitches (the scale's own notes are the light rows), the drum
+ * tracks have their 8 lanes. Patterns past the classic four and tracks 5..8 live in the arrangement's pool of note blocks; the
+ * four classic tracks of A..D are the song's own cells. Every press is one undo step (it journals exactly the bytes it changes). */
+static const char *const trk_names[SX_TRACKS] = { "Lead", "Harmony", "Bass", "Drums", "Extra 5", "Extra 6", "Extra 7", "Extra 8" };
+static const char *const lane_names[8] = { "Kik", "Snr", "Hat", "Opn", "Clp", "Tom", "Crs", "Cow" };
+
+static int g_nt(void) { return mix_tracks(); }
+static int g_npat(void) { return DOOMO_CLAMP((int)X->patterns, SONG_PATTERNS, SX_PATTERNS); }
+static int g_drum(int t) { return songx_lane_of(t) == 3; }
+static int g_cell(int pat, int trk, int step) { return songx_cell(SS, X, pat, trk, step); }
+static int g_classic(int pat, int trk) { return pat < SONG_PATTERNS && trk < SONG_TRACKS; }
+static int g_rowh(int drum) { return drum ? (st_wide() ? 10 : 9) : (st_wide() ? 8 : 6); }
+static int g_vis(int drum)
+{
+    int v = (st_content().h - 17 - 26) / g_rowh(drum);
+    return drum ? 8 : DOOMO_CLAMP(v, 4, 24);
+}
+
+static int g_default_note(int t)
+{
+    int i, v;
+    for (i = 0; i < SONG_STEPS; i++) {
+        v = g_cell(g_pat, t, i);
+        if (g_drum(t) ? (v > 0 && v < SONG_DRUM_COUNT) : v >= 2) return v;
+    }
+    if (g_drum(t)) return SONG_DRUM_KICK;
+    v = songx_lane_of(t) == 2 ? 48 : songx_lane_of(t) == 1 ? 64 : 72;
+    return st_adv_free() ? v : song_scale_snap(SS, v);
+}
+
+static void g_scroll(int centre)
+{
+    int vis = g_vis(g_drum(g_trk)), n = g_note[g_trk];
+    if (g_drum(g_trk)) { g_top = 0; return; }
+    if (centre) g_top = (uint8_t)DOOMO_MIN(SONG_NOTE_MAX, n + vis / 2);
+    if (g_top < SONG_NOTE_MIN + vis - 1) g_top = (uint8_t)(SONG_NOTE_MIN + vis - 1);
+    if (n > g_top) g_top = (uint8_t)n;
+    if (n < g_top - vis + 1) g_top = (uint8_t)(n + vis - 1);
+}
+
+static void g_focus(void)                       /* the track under the cursor has a pitch and it is on screen */
+{
+    if (!g_note[g_trk]) g_note[g_trk] = (uint8_t)g_default_note(g_trk);
+    g_scroll(1);
+}
+
+static void g_preview(int t, int v)
+{
+    if (!song_playing() && v >= (g_drum(t) ? 1 : 2)) song_preview(SS, songx_lane_of(t), v);
+}
+
+/* A cell whose extra block is all rests gives the block back (the last block moves into the hole): a cleared track costs nothing. */
+static int g_free_block(int pat, int trk)
+{
+    int b = X->map[pat][trk], last = X->nblocks, i, p, t;
+    if (g_classic(pat, trk) || !b) return 0;
+    for (i = 0; i < SONG_STEPS; i++) if (X->pool[b - 1][i]) return 0;
+    ed_touch(&X->nblocks, 1);
+    ed_touch(&X->map[pat][trk], 1);
+    if (b != last) {
+        for (p = 0; p < SX_PATTERNS; p++)
+            for (t = 0; t < SX_TRACKS; t++)
+                if (X->map[p][t] == last) {
+                    ed_touch(&X->map[p][t], 1);
+                    X->map[p][t] = (uint8_t)b;
+                    p = SX_PATTERNS; break;
+                }
+        ed_touch(X->pool[b - 1], SONG_STEPS);
+        memcpy(X->pool[b - 1], X->pool[last - 1], SONG_STEPS);
+    }
+    X->map[pat][trk] = 0;
+    X->nblocks--;
+    return 1;
+}
+
+/* Stores v in one cell and journals what that changes (the caller commits): 1 = changed, 0 = it was so already, -1 = no room. */
+static int g_set(int pat, int trk, int step, int v)
+{
+    if (g_cell(pat, trk, step) == v) return 0;
+    if (g_classic(pat, trk)) ed_touch(&SS->notes[pat][trk][step], 1);
+    else if (!X->map[pat][trk]) {
+        if (X->nblocks >= SX_POOL) return -1;
+        ed_touch(&X->nblocks, 1);
+        ed_touch(&X->map[pat][trk], 1);
+        ed_touch(X->pool[X->nblocks], SONG_STEPS);
+    } else ed_touch(&X->pool[X->map[pat][trk] - 1][step], 1);
+    songx_set_cell(SS, X, pat, trk, step, v);
+    return 1;
+}
+
+static int g_count(int pat, int trk)
+{
+    int i, n = 0;
+    for (i = 0; i < SONG_STEPS; i++) {
+        int v = g_cell(pat, trk, i);
+        n += g_drum(trk) ? v > 0 : v >= 2;
+    }
+    return n;
+}
+
+static void g_place(void)                       /* A: this pitch (this drum) on the step, or off it when it is there already */
+{
+    int t = g_trk, v = g_cell(g_pat, t, g_stp), want = g_note[t], nv = v == want ? 0 : want, r, i;
+    r = g_set(g_pat, t, g_stp, nv);
+    if (r < 0) { st_msg("No room for more notes"); audio_sfx(SFX_ERROR); return; }
+    if (!r) return;
+    if (!nv) {
+        if (!g_drum(t)) for (i = g_stp + 1; i < SONG_STEPS && g_cell(g_pat, t, i) == SONG_HOLD; i++) g_set(g_pat, t, i, 0);   /* its ties go too */
+        g_free_block(g_pat, t);
+    }
+    ed_commit();
+    if (nv) g_preview(t, nv); else audio_sfx(SFX_BLIP);
+}
+
+static void g_pitch(int d)                      /* d = +1: the row above */
+{
+    int t = g_trk, n = g_note[t];
+    if (g_drum(t)) n = (n - 1 - d + 16) % 8 + 1;
+    else n = DOOMO_CLAMP(st_adv_free() ? n + d : song_scale_shift(SS, n, d), SONG_NOTE_MIN, SONG_NOTE_MAX);
+    if (n == g_note[t]) return;
+    g_note[t] = (uint8_t)n;
+    g_scroll(0);
+    if (!g_drum(t)) g_preview(t, n); else audio_sfx(SFX_CURSOR);
+}
+
+static void g_track(int d)
+{
+    int nt = g_nt();
+    g_trk = (uint8_t)((g_trk + d + nt) % nt);
+    g_focus();
+    audio_sfx(SFX_CURSOR);
+    st_msg(g_trk >= songx_tracks_max() ? "%s (mixed in here)" : "%s", trk_names[g_trk]);
+}
+
+static void g_pattern(int d)
+{
+    int n = g_npat();
+    g_pat = (uint8_t)((g_pat + d + n) % n);
+    g_note[g_trk] = 0;
+    g_focus();
+    audio_sfx(SFX_CURSOR);
+    st_msg("Pattern %c", pat_ch(g_pat));
+}
+
+static void g_new_pattern(void)
+{
+    int np = X->patterns, cost = songx_pattern_cost(SS, X, g_pat);
+    if (np >= SX_PATTERNS) { st_msg("32 patterns is the most"); audio_sfx(SFX_ERROR); return; }
+    if (cost > songx_blocks_free(X)) { st_msg("No room: needs %d note blocks", cost); audio_sfx(SFX_ERROR); return; }
+    ed_touch(&X->patterns, 1);
+    ed_touch(&X->nblocks, 1);
+    ed_touch(&X->map[np][0], SX_TRACKS);
+    if (cost) ed_touch(X->pool[X->nblocks], cost * SONG_STEPS);
+    if (songx_pattern_copy(SS, X, g_pat) < 0) return;
+    ed_commit();
+    g_pat = (uint8_t)np;
+    g_note[g_trk] = 0;
+    g_focus();
+    st_msg("Pattern %c: pick it in a pass", pat_ch(np));
+    audio_sfx(SFX_SPARKLE);
+}
+
+static void g_tie(void)
+{
+    int t = g_trk, v = g_cell(g_pat, t, g_stp), prev = g_stp ? g_cell(g_pat, t, g_stp - 1) : 0, r;
+    if (g_drum(t)) { st_msg("Drums do not tie"); audio_sfx(SFX_ERROR); return; }
+    if (v == SONG_HOLD) {
+        g_set(g_pat, t, g_stp, 0);
+        g_free_block(g_pat, t);
+        ed_commit();
+        st_msg("Tie taken off");
+        audio_sfx(SFX_BLIP);
+        return;
+    }
+    if (prev < 1) { st_msg("Nothing to tie to"); audio_sfx(SFX_ERROR); return; }
+    r = g_set(g_pat, t, g_stp, SONG_HOLD);
+    if (r < 0) { st_msg("No room for more notes"); audio_sfx(SFX_ERROR); return; }
+    ed_commit();
+    st_msg("Tied: the note rings on");
+    audio_sfx(SFX_SELECT);
+}
+
+static void g_clear_track(void)
+{
+    int i, n = 0, t = g_trk;
+    for (i = 0; i < SONG_STEPS; i++) n += g_set(g_pat, t, i, 0) > 0;
+    if (!n) { st_msg("Nothing to clear"); audio_sfx(SFX_ERROR); return; }
+    g_free_block(g_pat, t);
+    ed_commit();
+    st_msg("%s cleared here", trk_names[t]);
+    audio_sfx(SFX_CANCEL);
+}
+
+static void g_octave(int d)
+{
+    int i, t = g_trk, n = 0;
+    if (g_drum(t)) { st_msg("Drums have no octaves"); audio_sfx(SFX_ERROR); return; }
+    for (i = 0; i < SONG_STEPS; i++) {
+        int v = g_cell(g_pat, t, i);
+        if (v < 2) continue;
+        if (v + d * 12 < SONG_NOTE_MIN || v + d * 12 > SONG_NOTE_MAX) { st_msg("Out of range: it stays"); audio_sfx(SFX_ERROR); return; }
+        n++;
+    }
+    if (!n) { st_msg("No notes to move"); audio_sfx(SFX_ERROR); return; }
+    for (i = 0; i < SONG_STEPS; i++) {
+        int v = g_cell(g_pat, t, i);
+        if (v >= 2) g_set(g_pat, t, i, v + d * 12);          /* the cell is stored already: no new block is needed */
+    }
+    ed_commit();
+    g_note[t] = (uint8_t)DOOMO_CLAMP(g_note[t] + d * 12, SONG_NOTE_MIN, SONG_NOTE_MAX);
+    g_scroll(1);
+    st_msg(d > 0 ? "Up an octave" : "Down an octave");
+    audio_sfx(SFX_SELECT);
+}
+
+static int e_tracks(SongExt *x, int d, int unused)
+{
+    int n = x->tracks + d;
+    (void)unused;
+    if (n < SONG_TRACKS || n > SX_TRACKS) return 0;
+    x->tracks = (uint8_t)n;
+    return 1;
+}
+
+static int g_track_used(int t)                  /* any note of track t in any pattern */
+{
+    int p;
+    for (p = 0; p < g_npat(); p++) if (g_count(p, t)) return 1;
+    return 0;
+}
+
+static void g_more_tracks(int d)
+{
+    int nt = g_nt();
+    if (d > 0 && nt >= SX_TRACKS) { st_msg("8 tracks is the most"); audio_sfx(SFX_ERROR); return; }
+    if (d < 0 && nt <= SONG_TRACKS) { st_msg("The four tracks stay"); audio_sfx(SFX_ERROR); return; }
+    if (d < 0 && g_track_used(nt - 1)) { st_msg("%s has notes: clear it first", trk_names[nt - 1]); audio_sfx(SFX_ERROR); return; }
+    if (!adv_edit(e_tracks, d, 0, -1)) return;
+    if (d < 0) { if (g_trk >= g_nt()) g_trk = (uint8_t)(g_nt() - 1); g_focus(); st_msg("%d tracks", g_nt()); }
+    else { g_trk = (uint8_t)(g_nt() - 1); g_focus(); st_msg("%s added", trk_names[g_trk]); }
+    audio_sfx(d > 0 ? SFX_SPARKLE : SFX_CANCEL);
+}
+
+static void grid_tools(int c)
+{
+    switch (c) {
+    case 0: g_pattern(1); break;
+    case 1: g_pattern(-1); break;
+    case 2: g_new_pattern(); break;
+    case 3: g_tie(); break;
+    case 4: g_clear_track(); break;
+    case 5: g_octave(1); break;
+    case 6: g_octave(-1); break;
+    case 7: g_more_tracks(1); break;
+    case 8: g_more_tracks(-1); break;
+    case 9:
+        if (song_playing()) song_stop();
+        st_adv_play(songx_entry_pass(X, studio.osel), -1);
+        break;
+    default: break;
+    }
+}
+
+static void to_grid(void)
+{
+    const SxSection *c = &X->sect[cur_sec()];
+    g_pat = (uint8_t)(c->pat[0] % g_npat());
+    if (g_trk >= g_nt()) g_trk = 0;
+    g_focus();
+    studio.aview = 4; studio.asel = 0; studio.atop = 0;
+    audio_sfx(SFX_SELECT);
+}
+
+static void grid_update(void)
+{
+    if (g_trk >= g_nt()) g_trk = (uint8_t)(g_nt() - 1);
+    if (g_pat >= g_npat()) g_pat = 0;
+    if (!g_note[g_trk]) g_focus();
+    if (btn_pressed(BTN_B)) { studio.aview = 3; studio.asel = 1; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_repeat(BTN_LEFT)) { g_stp = (uint8_t)((g_stp + SONG_STEPS - 1) % SONG_STEPS); }
+    if (btn_repeat(BTN_RIGHT)) { g_stp = (uint8_t)((g_stp + 1) % SONG_STEPS); }
+    if (btn_repeat(BTN_UP)) g_pitch(1);
+    if (btn_repeat(BTN_DOWN)) g_pitch(-1);
+    if (btn_pressed(BTN_L)) g_track(-1);
+    if (btn_pressed(BTN_R)) g_track(1);
+    if (btn_pressed(BTN_A)) g_place();
+    if (studio_sel_tap) {
+        static const char *const items[10] = { "Next pattern", "Previous pattern", "New pattern (copy)", "Tie to the note before",
+                                               "Clear this track here", "Octave up", "Octave down", "Add a track",
+                                               "Take the last track away", "Hear this part" };
+        static const char *const help[10] = { "Go to the next pattern.", "Go to the one before.",
+                                              "A copy to change; pick it in a pass.", "The note before rings on.",
+                                              "Empty this track in this pattern.", "Move this track's notes up 12.",
+                                              "Move this track's notes down 12.", "Up to 8 tracks.",
+                                              "Only when it is empty.", "Play from this part." };
+        st_popup("Note grid", items, 10, 0, grid_tools);
+        st_popup_help(help);
+    }
+}
+
+static void grid_line(char *buf, int cap)
+{
+    int t = g_trk, v = g_cell(g_pat, t, g_stp), want = g_note[t], bar = g_stp / 16 + 1, beat = g_stp % 16 / 4 + 1;
+    char here[12], put[12];
+    if (g_drum(t)) {
+        doomo_snprintf(here, sizeof(here), "%s", v > 0 && v < SONG_DRUM_COUNT ? lane_names[v - 1] : "rest");
+        doomo_snprintf(put, sizeof(put), "%s", lane_names[(want - 1) & 7]);
+    } else {
+        if (v >= 2) song_note_name(v, here); else doomo_snprintf(here, sizeof(here), "%s", v == SONG_HOLD ? "tied" : "rest");
+        song_note_name(want, put);
+    }
+    doomo_snprintf(buf, (size_t)cap, "Bar %d beat %d: %s. A %s %s", bar, beat, here,
+                   v == want ? "takes it off, puts" : v >= 1 && !(g_drum(t) && v == 0) ? "swaps to" : "puts", put);
+}
+
+static void grid_draw(StRect r)
+{
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int t = g_trk, drum = g_drum(t), rh = g_rowh(drum), rows = g_vis(drum), cur = g_note[t];
+    int lw = 28, cw = DOOMO_MAX(3, (r.w - lw - 8) / SONG_STEPS), x0 = r.x + lw, w = cw * SONG_STEPS, y0 = r.y + 17;
+    int i, s, po = song_playing() ? song_pos_order() : -1, ysum, notes = g_count(g_pat, t);
+    uint8_t dark = ui_darker(st->fill), beat_c = ui_darker(dark), col = st_pattern_color(t, 0), hi = st_pattern_color(t, 2);
+    char buf[48];
+    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+    ui_text(r.x + 8, r.y + 5, "Pattern", st->text_dim);
+    ui_round_rect(r.x + 54, r.y + 4, 14, 10, 3, st_pattern_color(g_pat, 0));
+    buf[0] = pat_ch(g_pat); buf[1] = 0;
+    ui_text(r.x + 58, r.y + 5, buf, PAL_WHITE);
+    doomo_snprintf(buf, sizeof(buf), "< %s >", trk_names[t]);
+    ui_text(r.x + 76, r.y + 5, buf, st->text);
+    doomo_snprintf(buf, sizeof(buf), "%d notes", notes);
+    ui_text(r.x + r.w - 10 - ui_text_width(buf), r.y + 5, buf, st->text_dim);
+    /* the roll: a stripe a row (the scale's own notes are the light ones), the beat lines, the notes, the cursor */
+    for (i = 0; i < rows; i++) {
+        int y = y0 + i * rh, m = g_top - i, on = drum ? (i & 1) == 0 : song_scale_snap(SS, m) == m;
+        plat_rect(x0, y, w, rh, on ? st->fill : dark);
+        if (drum) ui_text(r.x + 4, y + (rh - 8) / 2, lane_names[i], i + 1 == cur ? st->accent : st->text_dim);
+        else if ((m % 12 == 0 && (m > cur ? m - cur : cur - m) > 1) || m == cur) {
+            song_note_name(m, buf);
+            ui_text(r.x + 4, y + (rh - 8) / 2, buf, m == cur ? st->accent : st->text_dim);
+        }
+    }
+    ysum = rows * rh;
+    for (s = 0; s <= SONG_STEPS; s += 4) plat_rect(x0 + s * cw, y0, 1, ysum, s % 16 == 0 ? st->text_dim : beat_c);
+    for (s = 0; s < SONG_STEPS; s++) {
+        int v = g_cell(g_pat, t, s), row, len = 1, x = x0 + s * cw + 1;
+        if (drum ? (v < 1 || v >= SONG_DRUM_COUNT) : v < 2) continue;
+        if (drum) row = v - 1;
+        else {
+            row = g_top - v;
+            while (s + len < SONG_STEPS && g_cell(g_pat, t, s + len) == SONG_HOLD) len++;
+        }
+        if (row < 0) plat_rect(x, y0, DOOMO_MAX(1, len * cw - 1), 1, col);                  /* above the window */
+        else if (row >= rows) plat_rect(x, y0 + ysum - 1, DOOMO_MAX(1, len * cw - 1), 1, col);
+        else {
+            plat_rect(x, y0 + row * rh + 1, len * cw - 1, rh - 2, col);
+            plat_rect(x, y0 + row * rh + 1, len * cw - 1, 1, hi);
+        }
+    }
+    if (po >= 0) {
+        int sec, pass;
+        if (songx_at(X, po, &sec, &pass) == g_pat) plat_rect(x0 + song_pos_step() * cw, y0, 1, ysum, PAL_PAINT(PAINT_ROSE, 0));
+    }
+    {
+        int cx = x0 + g_stp * cw, cy = y0 + (drum ? cur - 1 : g_top - cur) * rh;
+        plat_rect(cx, y0 - 3, cw + 1, 2, st->accent);                                        /* the step marker */
+        if (cy >= y0 && cy < y0 + ysum) {
+            plat_rect(cx, cy, cw + 1, 1, st->accent);
+            plat_rect(cx, cy + rh - 1, cw + 1, 1, st->accent);
+            plat_rect(cx, cy, 1, rh, st->accent);
+            plat_rect(cx + cw, cy, 1, rh, st->accent);
+        }
+    }
+    grid_line(buf, sizeof(buf));
+    ui_text(r.x + 8, y0 + ysum + 4, buf, st->text);
+    if (t >= songx_tracks_max()) doomo_snprintf(buf, sizeof(buf), "Mixed in on this console");
+    else doomo_snprintf(buf, sizeof(buf), "Pattern %c of %d", pat_ch(g_pat), g_npat());
+    ui_text(r.x + 8, y0 + ysum + 14, buf, st->text_dim);
+    doomo_snprintf(buf, sizeof(buf), "Room %d/%d", songx_blocks_free(X), SX_POOL);
+    ui_text(r.x + r.w - 10 - ui_text_width(buf), y0 + ysum + 14, buf, st->text_dim);
+}
+
 /* ---- the Expert view: the Free notes switch, note counts and a memory meter ------------------------------------------------ */
 typedef struct ExStats {
     int per_trk[SX_TRACKS];             /* notes in the patterns the arrangement uses (each pattern once) */
@@ -561,7 +950,9 @@ static void ex_stats(ExStats *e)
 
 static void expert_update(void)
 {
-    if (btn_pressed(BTN_B)) { studio.aview = 1; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_pressed(BTN_B)) { studio.aview = 1; studio.asel = 0; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_repeat(BTN_UP) || btn_repeat(BTN_DOWN)) { studio.asel ^= 1; audio_sfx(SFX_CURSOR); }
+    if (studio.asel == 1) { if (btn_pressed(BTN_A)) to_grid(); return; }
     if ((btn_pressed(BTN_A) || btn_pressed(BTN_LEFT) || btn_pressed(BTN_RIGHT))) {
         int on = (X->flags & SX_FLAG_FREE) == 0;
         if (adv_edit(e_free, on, 0, -1)) { st_msg(on ? "Free notes: on" : "Free notes: off"); audio_sfx(on ? SFX_SPARKLE : SFX_CURSOR); }
@@ -577,7 +968,6 @@ static void bar(int x, int y, int w, int used, int cap, uint8_t col, uint8_t bac
 
 static void expert_draw(StRect r)
 {
-    static const char *const tname[SX_TRACKS] = { "Lead", "Harmony", "Bass", "Drums", "Extra 5", "Extra 6", "Extra 7", "Extra 8" };
     const UiStyle *st = ui_style(WIN_CREAM);
     int rh = st_wide() ? 15 : 12, nt = mix_tracks(), i, y = r.y + 6 + rh, bx = r.x + r.w - 76;
     int blocks = SX_POOL - songx_blocks_free(X);
@@ -587,22 +977,31 @@ static void expert_draw(StRect r)
     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
     ui_text(r.x + 12, r.y + 5, "Expert", st->text);
     {   /* the switch */
-        int sel = 1, on = (X->flags & SX_FLAG_FREE) != 0;
+        int sel = studio.asel == 0, on = (X->flags & SX_FLAG_FREE) != 0;
         uint8_t tc = sel ? PAL_WHITE : st->text;
         if (sel) { ui_round_rect(r.x + 4, y - 1, r.w - 8, 12, 4, st->accent); ui_cursor(r.x + 5, y + 1); }
         ui_text(r.x + 16, y + 1, "Free notes", tc);
         ui_text(r.x + 100, y + 1, on ? "< On >" : "< Off >", tc);
         ui_text(r.x + 140, y + 1, on ? "any pitch" : "snap to scale", sel ? PAL_WHITE : st->text_dim);
     }
+    y += rh;
+    {   /* the way into the Note grid */
+        int sel = studio.asel == 1;
+        uint8_t tc = sel ? PAL_WHITE : st->text;
+        if (sel) { ui_round_rect(r.x + 4, y - 1, r.w - 8, 12, 4, st->accent); ui_cursor(r.x + 5, y + 1); }
+        ui_text(r.x + 16, y + 1, "Note grid", tc);
+        ui_text(r.x + 100, y + 1, sel ? "A: open it" : "every note, every track", sel ? PAL_WHITE : st->text_dim);
+    }
     y += rh + 2;
     ui_text(r.x + 12, y, "Notes in the song", st->text_dim);
     doomo_snprintf(buf, sizeof(buf), "%d played", e.played);
     ui_text(r.x + r.w - 12 - (int)strlen(buf) * 6, y, buf, st->text_dim);
-    y += rh - 2;
-    for (i = 0; i < nt && y + 9 < r.y + r.h - 40; i++, y += 9) {
-        doomo_snprintf(buf, sizeof(buf), "%d", e.per_trk[i]);
-        ui_text(r.x + 16, y, tname[i], st->text);
-        ui_text(r.x + 76, y, buf, st->text);
+    y += 10;
+    for (i = 0; i < nt && y + 8 < r.y + r.h - 38; i++) {         /* two columns: Lead | Harmony, Bass | Drums, ... */
+        int cx = r.x + 16 + (i & 1) * (r.w / 2 - 4);
+        doomo_snprintf(buf, sizeof(buf), "%s %d", trk_names[i], e.per_trk[i]);
+        ui_text(cx, y, buf, st->text);
+        if (i & 1) y += 8;
     }
     y = r.y + r.h - 36;
     doomo_snprintf(buf, sizeof(buf), "Parts %d/%d", X->sections, SX_SECTIONS);
@@ -628,7 +1027,7 @@ void tab_order_adv_update(void)
     b_eaten = 0;
     if (!X->version) return;
     if (X->arrange_len < 1 || studio.osel >= X->arrange_len) studio.osel = 0;
-    if (studio.aview == 3) expert_update(); else if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
+    if (studio.aview == 4) grid_update(); else if (studio.aview == 3) expert_update(); else if (studio.aview == 2) mix_update(); else if (studio.aview) part_update(); else arrange_update();
 }
 
 /* ---- draw ------------------------------------------------------------------------------------------------------------- */
@@ -646,7 +1045,7 @@ static void chip(int x, int y, int w, int sec, int hot)
 static void passes_text(const SxSection *c, char *out, int cap)
 {
     int k;
-    for (k = 0; k < c->npat && k < cap - 1; k++) out[k] = (char)('A' + (c->pat[k] & 3));
+    for (k = 0; k < c->npat && k < cap - 1; k++) out[k] = pat_ch(c->pat[k]);
     out[k] = 0;
 }
 
@@ -731,7 +1130,7 @@ static void part_draw(StRect r)
             lab = "Fade";
             doomo_snprintf(buf, sizeof(buf), "< %s >", c->fade == SX_FADE_IN ? "in" : c->fade == SX_FADE_OUT ? "out" : "none");
         } else if (pass < c->npat) {
-            char l[2] = { (char)('A' + (c->pat[pass] & 3)), 0 };
+            char l[2] = { pat_ch(c->pat[pass]), 0 };
             doomo_snprintf(buf, sizeof(buf), "Pass %d", pass + 1);
             lab = buf;
             ui_text(r.x + 16, y + 1, lab, tc);
@@ -798,15 +1197,21 @@ static void mix_draw(StRect r)
 void tab_order_adv_draw(StRect r)
 {
     if (!X->version) return;
-    if (studio.aview == 3) expert_draw(r); else if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
+    if (studio.aview == 4) grid_draw(r); else if (studio.aview == 3) expert_draw(r); else if (studio.aview == 2) mix_draw(r); else if (studio.aview) part_draw(r); else arrange_draw(r);
 }
 
 int st_adv_prompts(UiPrompt *p)
 {
     int n = 0;
 #define PR(b, pr, v) do { p[n].btn = (uint16_t)(b); p[n].prio = (uint8_t)(pr); p[n].verb = (v); n++; } while (0)
-    if (studio.aview == 3) {
-        PR(BTN_A | BTN_LEFT | BTN_RIGHT, 0, "Switch");
+    if (studio.aview == 4) {
+        PR(BTN_A, 0, "Note on / off");
+        PR(BTN_L | BTN_R, 1, "Track");
+        PR(BTN_START, 2, st_play_verb());
+        PR(BTN_SELECT, 3, "Tools");
+        PR(BTN_B, 4, "Back");
+    } else if (studio.aview == 3) {
+        PR(BTN_A | BTN_LEFT | BTN_RIGHT, 0, studio.asel ? "Open" : "Switch");
         PR(BTN_START, 1, st_play_verb());
         PR(BTN_B, 2, "Back");
     } else if (studio.aview == 2) {
