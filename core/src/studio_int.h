@@ -330,6 +330,7 @@ void st_level_set(int level);
 int  st_adv_free(void);                /* Advanced "Free notes" switch is on: new notes are not snapped to the scale */
 int  st_adv_on(void);                  /* an arrangement is open (the ORDER tab shows it) */
 int  st_adv_grid(void);                 /* the Note grid is open: L / R pick the track there, not the tab */
+int  st_adv_box(void);                 /* the Note grid's box is open (a rectangle over steps and tracks)  */
 int  st_adv_eats_b(void);              /* B left the part view this frame: the studio must not take it as "leave" */
 void st_adv_enter(int slot);           /* a song came in from the book slot (-1: not from the book): load its page or none */
 void st_adv_take(void);                /* a take / template / new song replaces the song: drop the arrangement (inside the open undo step) */

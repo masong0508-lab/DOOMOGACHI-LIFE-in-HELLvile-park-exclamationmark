@@ -510,9 +510,21 @@ Code: `core/src/studio_adv.c`; helpers in `song_ext.c`; `song_play_ext_at()` in 
   (it journals exactly the bytes it changes, pool included). Code: `studio_adv.c` ("the Note grid"), `songx_pattern_cost` / `songx_pattern_copy` in `song_ext.c`.
   Tests: nine `adv_note_grid_*` in `test_studio_tools.c`. Lyrics fit still reads patterns A..D only (`st_adv_line_pattern` answers -1 for a later one).
   Not run: GBA / PS1 / DC builds, GBA sizes and speed windows for the grid (the GBA keeps 2 Advanced pages, so it compiles there).
+- **Box (2026-11-16):** rectangle selection in the Note grid. Grid tools item 10 "Box and paste..." opens "Select a box" / "Paste here" / "Hear this part"
+  ("Hear this part" moved here; START plays as everywhere). "Select a box" anchors a corner at the cursor; LEFT / RIGHT stretch it over steps, L / R over tracks, and
+  the grid shows every track at once (the box view: a row per track, notes as blocks, ties as lines, the box framed). A or SELECT open the box tools: Copy, Cut (copy, empty,
+  drop the box), Clear, Octave up / down (pitch tracks only; refuses if one note would leave the keyboard), Paste here, Drop the box. B drops the box (the next B leaves
+  the grid). Dropping puts the cursor on the box's top-left corner; Paste puts the copy's top-left corner at the cursor, on any pattern (drop the box, pick another
+  pattern, paste). The clipboard is up to 8 tracks x 32 steps (256 B in `.bss`, emptied when a song is opened). A drum row pastes only onto a drum track and a pitch row
+  onto a pitch track ("Pasted; 1 track skipped" / "Drums and pitches do not mix"); steps past the pattern end and tracks past the last one are left out. A tie
+  needs a note before it: after Clear or Paste, ties that lost their note go too. Paste checks the note pool first ("No room: needs n note blocks"), so it never half-pastes.
+  Each command is one undo step. Tests (`test_studio_tools.c`): `adv_box_selects_over_steps_and_tracks_and_b_drops_it_without_leaving_the_grid`,
+  `adv_box_copy_paste_moves_a_two_track_phrase_and_one_undo_step_takes_it_back`, `adv_box_cut_and_clear_take_the_ties_of_their_notes_and_undo_puts_them_back`,
+  `adv_box_octave_moves_pitch_rows_only_and_refuses_out_of_range`, `adv_box_paste_refuses_drums_on_a_pitch_track_and_an_empty_clipboard`.
+  Not run: GBA / PS1 / DC builds, GBA sizes (+259 B `.bss`) and the speed window of the box view.
 - **Limits:** 64 entries, 16 parts, 8 passes per part. Removing the last user of a part removes the part.
 - **GBA (2026-11-16):** `SONGX_BOOK_PAGES` is 2 on the GBA, so the Advanced ORDER screen runs there too (book slots 0 and 1 keep an arrangement page; other slots save classic and say so). `.bss` +5,264 B (210,548 -> 215,812; about 45 KB EWRAM left), IWRAM unchanged. Speed (`make -C gba test-speed2 SPEED2=studio_adv`): arrangement idle 30.0 fps (work 19.7 ms avg), playing 30.0 (19.3), part view 30.0 (21.0), tools menu 30.0 (20.1), 0 frames over 33 ms. PS1 still 0 pages (stubs).
-- **Not done:** per-track pan / sound / swing and brightness playback, the per-note velocity bar, rectangle selection across tracks in the Note grid, patterns of 1..4 bars.
+- **Not done:** per-track pan / sound / swing and brightness playback, the per-note velocity bar, patterns of 1..4 bars.
 - **Tests still to write:** arrangement edits, undo / redo of them, the save round trip, a take over an Advanced song, and
   `songx_from_order` playing identically (the screen has no test of its own yet; core suite 1592 passed, 0 failed).
 - **Not run:** GBA, PS1 and Dreamcast builds, `make -C gba sizes`, speed windows for the new screen.

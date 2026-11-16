@@ -30,18 +30,22 @@ static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing */
 static uint8_t g_pat, g_trk, g_stp, g_top;      /* the Note grid's cursor: pattern, track, step; g_top = the highest pitch on screen */
 static uint8_t g_note[SX_TRACKS];               /* each track's pitch cursor (a drum track: its drum 1..8); 0 = not set yet */
 static char pat_ch(int p) { return (char)(p < 26 ? 'A' + p : 'a' + p - 26); }     /* a pattern's letter: A..Z, then a..f (32 patterns) */
+static uint8_t g_box, g_ax, g_at;       /* the Note grid's box: on, and its anchor step / track (the other corner is the cursor) */
+static uint8_t g_clip[SX_TRACKS * SONG_STEPS];  /* the box clipboard, row by row: g_ch tracks of g_cw steps (256 B in .bss) */
+static uint8_t g_cw, g_ch, g_cdrum;     /* its size, and one bit per row: that row was a drum track */
 static uint8_t b_eaten;                 /* B left the part view this frame: the studio must not take it as "leave" */
 
 int st_adv_on(void) { return studio.xw.version != 0; }
 int st_adv_free(void) { return studio.xw.version != 0 && (studio.xw.flags & SX_FLAG_FREE) != 0; }
 int st_adv_eats_b(void) { return b_eaten; }
 int st_adv_grid(void) { return studio.xw.version != 0 && studio.aview == 4; }
+int st_adv_box(void) { return g_box; }
 
 void st_adv_enter(int slot)
 {
     studio.aview = 0; studio.asel = 0; studio.atop = 0; mix_col = 0;
     studio.osel = studio.otop = 0;
-    g_pat = g_trk = g_stp = g_top = 0; memset(g_note, 0, sizeof(g_note));
+    g_pat = g_trk = g_stp = g_top = 0; g_box = 0; g_cw = g_ch = g_cdrum = 0; memset(g_note, 0, sizeof(g_note));
     if (slot >= 0 && songx_book_get(slot, SS, X)) return;
     X->version = 0;                     /* a failed decode may leave a half-read header */
 }
@@ -775,6 +779,242 @@ static void g_more_tracks(int d)
     audio_sfx(d > 0 ? SFX_SPARKLE : SFX_CANCEL);
 }
 
+
+/* ---- the Box: a rectangle of steps over several tracks of one pattern (Note grid, "Box and paste...") ----------------------
+ * Select a box (anchor at the cursor, stretch with LEFT / RIGHT / L / R), then A (or SELECT) opens the box tools: Copy, Cut, Clear,
+ * Octave up / down, Paste here, Drop the box. Paste puts the copied box with its top-left corner at the cursor, on this pattern
+ * (or any other: leave the box, pick a pattern, paste). A drum row only pastes onto a drum track and a pitch row onto a pitch track.
+ * Every command is one undo step. While the box is open the grid shows every track at once (the box view). */
+static void g_rect(int *s0, int *s1, int *t0, int *t1)
+{
+    *s0 = DOOMO_MIN(g_ax, g_stp); *s1 = DOOMO_MAX(g_ax, g_stp);
+    *t0 = DOOMO_MIN(g_at, g_trk); *t1 = DOOMO_MAX(g_at, g_trk);
+}
+
+static int g_is_note(int t, int v) { return g_drum(t) ? v > 0 && v < SONG_DRUM_COUNT : v >= 2; }
+
+static int g_box_notes(void)
+{
+    int s0, s1, t0, t1, s, t, n = 0;
+    g_rect(&s0, &s1, &t0, &t1);
+    for (t = t0; t <= t1; t++) for (s = s0; s <= s1; s++) n += g_is_note(t, g_cell(g_pat, t, s));
+    return n;
+}
+
+/* A tie needs a note (or a tie) before it: after a clear or a paste, the ties that lost their note go too. */
+static void g_fix_ties(int t)
+{
+    int i, prev;
+    if (g_drum(t)) return;
+    for (i = 0; i < SONG_STEPS; i++) {
+        if (g_cell(g_pat, t, i) != SONG_HOLD) continue;
+        prev = i ? g_cell(g_pat, t, i - 1) : 0;
+        if (prev < 2 && prev != SONG_HOLD) g_set(g_pat, t, i, 0);
+    }
+}
+
+static void g_box_off(void)                     /* the cursor goes back to the box's top-left corner: the place a paste lands */
+{
+    int s0, s1, t0, t1;
+    g_rect(&s0, &s1, &t0, &t1);
+    g_stp = (uint8_t)s0; g_trk = (uint8_t)t0;
+    g_box = 0;
+    g_focus();
+}
+
+static void box_copy_cells(void)
+{
+    int s0, s1, t0, t1, s, t;
+    g_rect(&s0, &s1, &t0, &t1);
+    g_cw = (uint8_t)(s1 - s0 + 1); g_ch = (uint8_t)(t1 - t0 + 1); g_cdrum = 0;
+    for (t = t0; t <= t1; t++) {
+        if (g_drum(t)) g_cdrum |= (uint8_t)(1u << (t - t0));
+        for (s = s0; s <= s1; s++) g_clip[(t - t0) * g_cw + (s - s0)] = (uint8_t)g_cell(g_pat, t, s);
+    }
+}
+
+static int box_clear_cells(void)                 /* returns how many cells it emptied; the caller commits */
+{
+    int s0, s1, t0, t1, s, t, n = 0;
+    g_rect(&s0, &s1, &t0, &t1);
+    for (t = t0; t <= t1; t++) {
+        int any = 0;
+        for (s = s0; s <= s1; s++) any += g_set(g_pat, t, s, 0) > 0;
+        if (any) { g_fix_ties(t); g_free_block(g_pat, t); }
+        n += any;
+    }
+    return n;
+}
+
+static void box_copy(void)
+{
+    int n = g_box_notes();
+    box_copy_cells();
+    st_msg("Copied %d notes", n);
+    audio_sfx(SFX_SELECT);
+}
+
+static void box_clear(int cut)
+{
+    int n = g_box_notes();
+    if (cut) box_copy_cells();
+    if (!box_clear_cells()) {
+        st_msg(cut ? "Copied: nothing to cut" : "Nothing in the box");
+        audio_sfx(SFX_ERROR);
+        return;
+    }
+    ed_commit();
+    st_msg(cut ? "Cut %d notes" : "Cleared %d notes", n);
+    audio_sfx(SFX_CANCEL);
+}
+
+static void box_octave(int d)
+{
+    int s0, s1, t0, t1, s, t, n = 0;
+    g_rect(&s0, &s1, &t0, &t1);
+    for (t = t0; t <= t1; t++) {
+        if (g_drum(t)) continue;
+        for (s = s0; s <= s1; s++) {
+            int v = g_cell(g_pat, t, s);
+            if (v < 2) continue;
+            if (v + d * 12 < SONG_NOTE_MIN || v + d * 12 > SONG_NOTE_MAX) { st_msg("Out of range: it stays"); audio_sfx(SFX_ERROR); return; }
+            n++;
+        }
+    }
+    if (!n) { st_msg("No notes to move"); audio_sfx(SFX_ERROR); return; }
+    for (t = t0; t <= t1; t++) {
+        if (g_drum(t)) continue;
+        for (s = s0; s <= s1; s++) {
+            int v = g_cell(g_pat, t, s);
+            if (v >= 2) g_set(g_pat, t, s, v + d * 12);
+        }
+    }
+    ed_commit();
+    st_msg(d > 0 ? "Box up an octave" : "Box down an octave");
+    audio_sfx(SFX_SELECT);
+}
+
+static void box_paste(void)
+{
+    int c, r, t, i, need = 0, notes = 0, changed = 0, skipped = 0, nt = g_nt();
+    if (!g_cw) { st_msg("Copy a box first"); audio_sfx(SFX_ERROR); return; }
+    for (r = 0; r < g_ch && g_trk + r < nt; r++) {          /* room first: a track with no block yet needs one */
+        t = g_trk + r;
+        if (g_drum(t) != ((g_cdrum >> r) & 1) || g_classic(g_pat, t) || X->map[g_pat][t]) continue;
+        for (c = 0; c < g_cw && g_stp + c < SONG_STEPS; c++) if (g_clip[r * g_cw + c]) { need++; break; }
+    }
+    if (need > songx_blocks_free(X)) { st_msg("No room: needs %d note blocks", need); audio_sfx(SFX_ERROR); return; }
+    for (r = 0; r < g_ch && g_trk + r < nt; r++) {
+        t = g_trk + r;
+        if (g_drum(t) != ((g_cdrum >> r) & 1)) { skipped++; continue; }
+        for (c = 0; c < g_cw && g_stp + c < SONG_STEPS; c++) {
+            i = g_stp + c;
+            if (g_set(g_pat, t, i, g_clip[r * g_cw + c]) > 0) { changed++; notes += g_is_note(t, g_clip[r * g_cw + c]); }
+        }
+        g_fix_ties(t);
+        g_free_block(g_pat, t);
+    }
+    if (!changed) { st_msg(skipped ? "Drums and pitches do not mix" : "Nothing changed"); audio_sfx(SFX_ERROR); return; }
+    ed_commit();
+    if (skipped) st_msg("Pasted; %d track%s skipped", skipped, skipped > 1 ? "s" : "");
+    else st_msg("Pasted %d notes", notes);
+    audio_sfx(SFX_SPARKLE);
+}
+
+static void box_tools(int c)
+{
+    switch (c) {
+    case 0: box_copy(); break;
+    case 1: box_clear(1); g_box_off(); break;
+    case 2: box_clear(0); break;
+    case 3: box_octave(1); break;
+    case 4: box_octave(-1); break;
+    case 5: g_box_off(); box_paste(); break;
+    case 6: g_box_off(); audio_sfx(SFX_CANCEL); break;
+    default: break;
+    }
+}
+
+static void box_menu(void)
+{
+    static const char *const items[7] = { "Copy", "Cut", "Clear", "Octave up", "Octave down", "Paste here", "Drop the box" };
+    static const char *const help[7] = { "Remember the box.", "Copy it, then empty it.", "Empty the box.",
+                                         "Pitch tracks in the box, up 12.", "Pitch tracks in the box, down 12.",
+                                         "Corner of the copy at the cursor.", "Leave the box alone." };
+    st_popup("Box", items, 7, 0, box_tools);
+    st_popup_help(help);
+}
+
+static void box_update(void)
+{
+    int nt = g_nt();
+    if (btn_pressed(BTN_B)) { g_box_off(); b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
+    if (btn_repeat(BTN_LEFT) && g_stp > 0) g_stp--;
+    if (btn_repeat(BTN_RIGHT) && g_stp < SONG_STEPS - 1) g_stp++;
+    if (btn_pressed(BTN_L) && g_trk > 0) { g_trk--; audio_sfx(SFX_CURSOR); }
+    if (btn_pressed(BTN_R) && g_trk < nt - 1) { g_trk++; audio_sfx(SFX_CURSOR); }
+    if (btn_pressed(BTN_A) || studio_sel_tap) box_menu();
+}
+
+static void grid_more(int c)                    /* grid tools item 9: the box and the sound check */
+{
+    switch (c) {
+    case 0:
+        g_box = 1; g_ax = g_stp; g_at = g_trk;
+        st_msg("Box: stretch it, A for tools");
+        audio_sfx(SFX_SELECT);
+        break;
+    case 1: box_paste(); break;
+    case 2:
+        if (song_playing()) song_stop();
+        st_adv_play(songx_entry_pass(X, studio.osel), -1);
+        break;
+    default: break;
+    }
+}
+
+static void box_draw(StRect r)
+{
+    const UiStyle *st = ui_style(WIN_CREAM);
+    int nt = g_nt(), lw = 26, cw = DOOMO_MAX(3, (r.w - lw - 8) / SONG_STEPS), x0 = r.x + lw, y0 = r.y + 17;
+    int rh = DOOMO_CLAMP((st_content().h - 17 - 26) / nt, 4, 10), t, s, s0, s1, t0, t1;
+    uint8_t dark = ui_darker(st->fill), beat_c = ui_darker(dark);
+    static const char *const shorts[SX_TRACKS] = { "Led", "Har", "Bas", "Drm", "X5", "X6", "X7", "X8" };
+    char buf[48];
+    g_rect(&s0, &s1, &t0, &t1);
+    st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
+    buf[0] = pat_ch(g_pat); buf[1] = 0;
+    ui_round_rect(r.x + 8, r.y + 4, 14, 10, 3, st_pattern_color(g_pat, 0));
+    ui_text(r.x + 12, r.y + 5, buf, PAL_WHITE);
+    doomo_snprintf(buf, sizeof(buf), "Box: %d steps, %d tracks", s1 - s0 + 1, t1 - t0 + 1);
+    ui_text(r.x + 30, r.y + 5, buf, st->text);
+    for (t = 0; t < nt; t++) {
+        int y = y0 + t * rh;
+        plat_rect(x0, y, cw * SONG_STEPS, rh, (t & 1) ? dark : st->fill);
+        ui_text(r.x + 2, y + (rh - 8) / 2, shorts[t], t == g_trk ? st->accent : st->text_dim);
+    }
+    for (s = 0; s <= SONG_STEPS; s += 4) plat_rect(x0 + s * cw, y0, 1, nt * rh, s % 16 == 0 ? st->text_dim : beat_c);
+    for (t = 0; t < nt; t++) {
+        uint8_t col = st_pattern_color(t, 0);
+        for (s = 0; s < SONG_STEPS; s++) {
+            int v = g_cell(g_pat, t, s);
+            if (g_is_note(t, v)) plat_rect(x0 + s * cw + 1, y0 + t * rh + 1, cw - 1, rh - 2, col);
+            else if (v == SONG_HOLD && !g_drum(t)) plat_rect(x0 + s * cw, y0 + t * rh + rh / 2, cw + 1, 1, col);
+        }
+    }
+    {   /* the box: a frame, and the cursor corner marked */
+        int bx = x0 + s0 * cw, by = y0 + t0 * rh, bw = (s1 - s0 + 1) * cw + 1, bh = (t1 - t0 + 1) * rh;
+        plat_rect(bx, by, bw, 1, st->accent); plat_rect(bx, by + bh - 1, bw, 1, st->accent);
+        plat_rect(bx, by, 1, bh, st->accent); plat_rect(bx + bw - 1, by, 1, bh, st->accent);
+        plat_rect(x0 + g_stp * cw, y0 - 3, cw + 1, 2, st->accent);
+    }
+    doomo_snprintf(buf, sizeof(buf), "%d notes in the box. A: box tools", g_box_notes());
+    ui_text(r.x + 8, y0 + nt * rh + 4, buf, st->text);
+    if (g_cw) doomo_snprintf(buf, sizeof(buf), "Copied: %d steps x %d tracks", g_cw, g_ch);
+    else doomo_snprintf(buf, sizeof(buf), "B drops the box");
+    ui_text(r.x + 8, y0 + nt * rh + 14, buf, st->text_dim);
+}
+
 static void grid_tools(int c)
 {
     switch (c) {
@@ -787,10 +1027,13 @@ static void grid_tools(int c)
     case 6: g_octave(-1); break;
     case 7: g_more_tracks(1); break;
     case 8: g_more_tracks(-1); break;
-    case 9:
-        if (song_playing()) song_stop();
-        st_adv_play(songx_entry_pass(X, studio.osel), -1);
+    case 9: {
+        static const char *const more[3] = { "Select a box", "Paste here", "Hear this part" };
+        static const char *const mhelp[3] = { "Stretch over steps and tracks.", "Corner of the copy at the cursor.", "Play from this part." };
+        st_popup("Box and sound", more, 3, 0, grid_more);
+        st_popup_help(mhelp);
         break;
+    }
     default: break;
     }
 }
@@ -799,6 +1042,7 @@ static void to_grid(void)
 {
     const SxSection *c = &X->sect[cur_sec()];
     g_pat = (uint8_t)(c->pat[0] % g_npat());
+    g_box = 0;
     if (g_trk >= g_nt()) g_trk = 0;
     g_focus();
     studio.aview = 4; studio.asel = 0; studio.atop = 0;
@@ -810,6 +1054,7 @@ static void grid_update(void)
     if (g_trk >= g_nt()) g_trk = (uint8_t)(g_nt() - 1);
     if (g_pat >= g_npat()) g_pat = 0;
     if (!g_note[g_trk]) g_focus();
+    if (g_box) { box_update(); return; }
     if (btn_pressed(BTN_B)) { studio.aview = 3; studio.asel = 1; b_eaten = 1; audio_sfx(SFX_CANCEL); return; }
     if (btn_repeat(BTN_LEFT)) { g_stp = (uint8_t)((g_stp + SONG_STEPS - 1) % SONG_STEPS); }
     if (btn_repeat(BTN_RIGHT)) { g_stp = (uint8_t)((g_stp + 1) % SONG_STEPS); }
@@ -821,12 +1066,12 @@ static void grid_update(void)
     if (studio_sel_tap) {
         static const char *const items[10] = { "Next pattern", "Previous pattern", "New pattern (copy)", "Tie to the note before",
                                                "Clear this track here", "Octave up", "Octave down", "Add a track",
-                                               "Take the last track away", "Hear this part" };
+                                               "Take the last track away", "Box and paste..." };
         static const char *const help[10] = { "Go to the next pattern.", "Go to the one before.",
                                               "A copy to change; pick it in a pass.", "The note before rings on.",
                                               "Empty this track in this pattern.", "Move this track's notes up 12.",
                                               "Move this track's notes down 12.", "Up to 8 tracks.",
-                                              "Only when it is empty.", "Play from this part." };
+                                              "Only when it is empty.", "Select, copy, paste; hear." };
         st_popup("Note grid", items, 10, 0, grid_tools);
         st_popup_help(help);
     }
@@ -849,6 +1094,7 @@ static void grid_line(char *buf, int cap)
 
 static void grid_draw(StRect r)
 {
+    if (g_box) { box_draw(r); return; }
     const UiStyle *st = ui_style(WIN_CREAM);
     int t = g_trk, drum = g_drum(t), rh = g_rowh(drum), rows = g_vis(drum), cur = g_note[t];
     int lw = 28, cw = DOOMO_MAX(3, (r.w - lw - 8) / SONG_STEPS), x0 = r.x + lw, w = cw * SONG_STEPS, y0 = r.y + 17;
@@ -1243,6 +1489,7 @@ int st_adv_on(void) { return 0; }
 int st_adv_free(void) { return 0; }
 int st_adv_eats_b(void) { return 0; }
 int st_adv_grid(void) { return 0; }
+int st_adv_box(void) { return 0; }
 void st_adv_enter(int slot) { (void)slot; }
 void st_adv_take(void) {}
 int st_adv_saved(int slot) { (void)slot; return 1; }

@@ -1776,3 +1776,115 @@ TEST(adv_perform_show_runs_the_arrangement_and_ends_with_it)
     st_level_set(0);
 }
 #endif
+
+/* ---- ST-ADV: the Note grid's Box (select a rectangle over steps and tracks; copy, cut, clear, octave, paste) -------------- */
+static void grid_box(void)                      /* tools 9: "Box and paste...", then "Select a box" */
+{
+    press(BTN_SELECT); pick(9); pick(0);
+}
+
+TEST(adv_box_selects_over_steps_and_tracks_and_b_drops_it_without_leaving_the_grid)
+{
+    open_grid();
+    grid_box();
+    CHECK(st_adv_box());
+    press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_R);
+    CHECK_EQ(studio.aview, 4);
+    press(BTN_B);
+    CHECK(!st_adv_box());
+    CHECK_EQ(studio.aview, 4);                                 /* B only dropped the box */
+    CHECK_EQ(studio.tab, STAB_ORDER);
+    press(BTN_B);
+    CHECK_EQ(studio.aview, 3);                                 /* the next B leaves the grid as before */
+    st_level_set(0);
+}
+
+TEST(adv_box_copy_paste_moves_a_two_track_phrase_and_one_undo_step_takes_it_back)
+{
+    int p, i;
+    open_grid();
+    p = grid_pat();
+    studio.song.notes[p][0][0] = 72; studio.song.notes[p][0][1] = SONG_HOLD; studio.song.notes[p][1][2] = 64;
+    grid_box();
+    press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT);      /* steps 0..3 */
+    press(BTN_R);                                              /* tracks 0..1 */
+    press(BTN_A); pick(0);                                     /* Copy */
+    CHECK_EQ(studio.aview, 4);
+    press(BTN_B);                                              /* drop the box: the cursor goes back to its top-left corner (step 0, lead) */
+    for (i = 0; i < 11; i++) press(BTN_RIGHT);                 /* step 11 */
+    press(BTN_SELECT); pick(9); pick(1);                       /* Paste here */
+    CHECK_EQ(gcell(p, 0, 11), 72);
+    CHECK_EQ(gcell(p, 0, 12), SONG_HOLD);                      /* the tie came with its note */
+    CHECK_EQ(gcell(p, 1, 13), 64);
+    CHECK_EQ(gcell(p, 0, 0), 72);                              /* the original stays */
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 11), 0);
+    CHECK_EQ(gcell(p, 0, 12), 0);
+    CHECK_EQ(gcell(p, 1, 13), 0);
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    st_level_set(0);
+}
+
+TEST(adv_box_cut_and_clear_take_the_ties_of_their_notes_and_undo_puts_them_back)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    studio.song.notes[p][0][0] = 72; studio.song.notes[p][0][1] = SONG_HOLD; studio.song.notes[p][0][2] = SONG_HOLD;
+    grid_box();                                                /* a box on step 0 alone */
+    press(BTN_A); pick(2);                                     /* Clear */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK_EQ(gcell(p, 0, 1), 0);                               /* no tie is left without its note */
+    CHECK_EQ(gcell(p, 0, 2), 0);
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    CHECK_EQ(gcell(p, 0, 2), SONG_HOLD);
+    press(BTN_B);                                              /* drop the box */
+    grid_box();
+    press(BTN_RIGHT); press(BTN_RIGHT);                        /* steps 0..2: the note with both its ties */
+    press(BTN_A); pick(1);                                     /* Cut: copies, empties, and drops the box */
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    CHECK(!st_adv_box());
+    press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT); press(BTN_RIGHT);
+    press(BTN_SELECT); pick(9); pick(1);                       /* paste it four steps on */
+    CHECK_EQ(gcell(p, 0, 4), 72);
+    CHECK_EQ(gcell(p, 0, 5), SONG_HOLD);
+    CHECK_EQ(gcell(p, 0, 6), SONG_HOLD);
+    st_level_set(0);
+}
+
+TEST(adv_box_octave_moves_pitch_rows_only_and_refuses_out_of_range)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    studio.song.notes[p][0][0] = 72; studio.song.notes[p][3][0] = SONG_DRUM_KICK;
+    grid_box();
+    press(BTN_RIGHT); press(BTN_R); press(BTN_R); press(BTN_R);   /* steps 0..1, tracks 0..3 */
+    press(BTN_A); pick(3);                                     /* Octave up */
+    CHECK_EQ(gcell(p, 0, 0), 84);
+    CHECK_EQ(gcell(p, 3, 0), SONG_DRUM_KICK);                  /* the drums stay */
+    studio.song.notes[p][0][1] = SONG_NOTE_MAX;
+    press(BTN_A); pick(3);
+    CHECK_EQ(gcell(p, 0, 0), 84);                              /* nothing moved: one note would leave the keyboard */
+    CHECK(ed_undo());
+    CHECK_EQ(gcell(p, 0, 0), 72);
+    st_level_set(0);
+}
+
+TEST(adv_box_paste_refuses_drums_on_a_pitch_track_and_an_empty_clipboard)
+{
+    int p;
+    open_grid();
+    p = grid_pat();
+    press(BTN_SELECT); pick(9); pick(1);                       /* nothing copied yet */
+    CHECK(strstr(studio.msg, "Copy a box first") != NULL);
+    studio.song.notes[p][3][0] = SONG_DRUM_KICK;
+    press(BTN_L);                                              /* the drum track (wraps back from the lead) */
+    grid_box(); press(BTN_A); pick(0);                         /* copy a drum box */
+    press(BTN_B);
+    press(BTN_L); press(BTN_L);                                /* a pitch track */
+    press(BTN_SELECT); pick(9); pick(1);
+    CHECK(strstr(studio.msg, "Drums and pitches") != NULL);
+    st_level_set(0);
+}
