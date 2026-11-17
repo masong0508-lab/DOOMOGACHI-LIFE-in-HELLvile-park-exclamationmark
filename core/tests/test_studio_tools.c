@@ -2102,8 +2102,14 @@ TEST(adv_pattern_length_one_bar_clamps_the_cursor_keeps_the_second_bar_and_undoe
     for (i = 0; i < 20; i++) press(BTN_RIGHT);                 /* step 21 */
     press(BTN_A);
     CHECK_EQ(gcell(p, 0, 20), 72);
-    press(BTN_SELECT); pick(9); pick(5);                       /* One bar / two bars */
+    press(BTN_SELECT); pick(9); pick(5);                       /* Length: two bars -> three */
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 3);
+    press(BTN_SELECT); pick(9); pick(5);                       /* -> four */
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 4);
+    press(BTN_SELECT); pick(9); pick(5);                       /* -> one bar */
     CHECK_EQ(songx_plen(&studio.xw, p), 16);
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 1);
+    CHECK_EQ(songx_cont(&studio.xw, p), -1);                   /* the link is gone with the extra block */
     CHECK(strstr(studio.msg, "one bar") != NULL);
     press(BTN_RIGHT);                                          /* the cursor lives in the first bar now */
     press(BTN_A);
@@ -2113,6 +2119,7 @@ TEST(adv_pattern_length_one_bar_clamps_the_cursor_keeps_the_second_bar_and_undoe
     for (i = 16; i < SONG_STEPS; i++) if (i != 20) CHECK_EQ(gcell(p, 0, i), 0);
     press(BTN_SELECT); pick(9); pick(5);                       /* back to two bars */
     CHECK_EQ(songx_plen(&studio.xw, p), SONG_STEPS);
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 2);
     CHECK(ed_undo());
     CHECK_EQ(songx_plen(&studio.xw, p), 16);                   /* the undo of "two bars" is one bar again */
     for (i = 0; i < 4 && songx_plen(&studio.xw, p) < SONG_STEPS; i++) CHECK(ed_undo());   /* back past the two notes and the first switch */
@@ -2182,4 +2189,83 @@ TEST(adv_lyrics_tab_scrolls_16_lines_over_8_rows)
     CHECK_EQ(studio.lsel, 15);
     CHECK_EQ(studio.ltop, 8);
     st_level_set(0);                                           /* Easy keeps the song's extension, so its 16 lines stay in view */
+}
+
+TEST(adv_length_three_and_four_bars_link_a_block_the_other_block_jump_edits_it_and_undo_takes_it_back)
+{
+    int p, c, np;
+    open_grid();
+    p = grid_pat();
+    np = studio.xw.patterns;
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 2);
+    press(BTN_SELECT); pick(9); pick(5);                       /* two -> three bars */
+    c = songx_cont(&studio.xw, p);
+    CHECK(c >= SONG_PATTERNS);
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 3);
+    CHECK_EQ(songx_plen(&studio.xw, c), 16);
+    CHECK(studio.xw.patterns > c);                             /* the block is a real pattern now */
+    CHECK(strstr(studio.msg, "3 bars") != NULL);
+    press(BTN_SELECT); pick(9); pick(5);                       /* -> four: the same block, two bars */
+    CHECK_EQ(songx_cont(&studio.xw, p), c);
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 4);
+    press(BTN_SELECT); pick(9); pick(6);                       /* Other block */
+    CHECK_EQ(grid_pat(), p);                                   /* (the arrangement's pattern did not change) */
+    press(BTN_A);                                              /* a note: it lands in the second block */
+    CHECK_EQ(gcell(c, 0, 0), 72);
+    CHECK_EQ(gcell(p, 0, 0), 0);
+    press(BTN_SELECT); pick(9); pick(5);                       /* the length of a continuation is set on its head */
+    CHECK(strstr(studio.msg, "Set the length") != NULL);
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 4);
+    press(BTN_SELECT); pick(9); pick(6);                       /* and back to the first block */
+    press(BTN_SELECT); pick(9); pick(5);                       /* four -> one bar */
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 1);
+    CHECK_EQ(songx_cont(&studio.xw, p), -1);
+    CHECK_EQ(gcell(c, 0, 0), 72);                              /* the block and its note stay, as a pattern nobody plays */
+    CHECK(ed_undo());
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 4);
+    CHECK_EQ(songx_cont(&studio.xw, p), c);
+    CHECK(ed_undo());                                          /* the failed length on a continuation made no step: this is the note */
+    CHECK_EQ(gcell(c, 0, 0), 0);
+    CHECK(ed_undo());                                          /* four -> back to three */
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 3);
+    CHECK(ed_undo());                                          /* three -> back to two: no link, no new pattern */
+    CHECK_EQ(songx_pass_bars(&studio.xw, p), 2);
+    CHECK_EQ(songx_cont(&studio.xw, p), -1);
+    CHECK_EQ(studio.xw.patterns, np);
+    st_level_set(0);
+}
+
+TEST(adv_other_block_on_a_single_block_pattern_says_so_and_changes_nothing)
+{
+    int p, steps;
+    open_grid();
+    p = grid_pat();
+    steps = ed_undo_steps();
+    press(BTN_SELECT); pick(9); pick(6);
+    CHECK(strstr(studio.msg, "single block") != NULL);
+    CHECK_EQ(ed_undo_steps(), steps);
+    CHECK_EQ(songx_cont(&studio.xw, p), -1);
+    st_level_set(0);
+}
+
+TEST(adv_a_four_bar_pattern_is_saved_with_the_page_and_the_arrangement_lasts_longer)
+{
+    uint8_t buf[2048];
+    SongExt y;
+    uint32_t two, four;
+    int p, n;
+    open_grid();
+    p = grid_pat();
+    two = songx_ticks(&studio.song, &studio.xw);
+    press(BTN_SELECT); pick(9); pick(5);
+    press(BTN_SELECT); pick(9); pick(5);                       /* four bars */
+    four = songx_ticks(&studio.song, &studio.xw);
+    CHECK(four > two);
+    n = (int)songx_encode(&studio.song, &studio.xw, buf, (uint32_t)sizeof(buf));
+    CHECK(n > 0);
+    memset(&y, 0, sizeof(y));
+    CHECK(songx_decode(&studio.song, &y, buf, (uint32_t)n));
+    CHECK_EQ(songx_cont(&y, p), songx_cont(&studio.xw, p));
+    CHECK_EQ(songx_ticks(&studio.song, &y), four);
+    st_level_set(0);
 }

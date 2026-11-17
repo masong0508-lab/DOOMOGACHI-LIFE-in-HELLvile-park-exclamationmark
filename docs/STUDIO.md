@@ -593,7 +593,7 @@ Code: `plat_tone_pan` (`core/include/doomo/plat_ext.h`, weak default in `plat_we
 - **Mix footer:** now "Sound, light, swing and pan play."
 - **Not run:** the GBA / PS1 / DC builds, the GBA speed windows (the player does one compare per sounding note), the listening check on each console.
 
-## ST-ADV: Lyric lines 9..16 (core + studio; syntax-checked only, not built or tested)
+## ST-ADV: Lyric lines 9..16 (core + studio; host-tested, not built for GBA / PS1 / DC)
 An Advanced song has 16 lyric lines. Lines 1..8 are the classic song's (`lyrics[]`, `line_singers[]`, the `'SONG'` chunk: untouched); lines 9..16
 live in the `SongExt`.
 - **Data (`song_ext.h`, `song_ext.c`):** `SX_XLINES` 8, `SX_LYRIC_LINES` 16, `SongExt.lyr[8][28]` and `lsing[8][4]` (little endian u32 as plain bytes, so the
@@ -614,16 +614,32 @@ live in the `SongExt`.
   LYRICS tab on screen, `studio_write_lyrics` still writes lines 1..8 only.
 
 ## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
-Two items are open (pan playback and lyric lines 9..16 are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+One item is open (pan playback, lyric lines 9..16 and patterns of 3 and 4 bars are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
 
 1. **Pan playback (built 2026-11-16, see "Pan playback" below).** Left / middle / right per lane, heard on the GBA, PS1 and Dreamcast ports (code written, not built here: see the section).
 2. **More than 8 lyric lines (built and unit-tested on the host, see \"ST-ADV: Lyric lines 9..16\" below).**
-3. **Patterns of 3 and 4 bars.** One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
+3. **Patterns of 3 and 4 bars (built, see "ST-ADV: Patterns of 3 and 4 bars").** (old plan:) One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
    `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
    would then address a block, not a pattern. Decide that chain model before writing code.
 4. **PS1 pages.** `SONGX_BOOK_PAGES` is 0 on the PS1, so the Advanced ORDER tab is classic there (stubs). It needs resident bytes granted by the coordinator (plan section 4) and a measurement
    of the margin below the stack top (gate: 72 KB; it was 110,352 B on the last landing). The Advanced `SongExt` is now 4,228 B in RAM, so ask for that plus the pages.
 Also still unmeasured for everything built in ST-ADV: GBA `.bss` / sizes, the GBA speed windows of the Note grid, the Box, the velocity strip and the Lyric lines view, the Dreamcast and PS1 builds.
+
+## ST-ADV: Patterns of 3 and 4 bars (2026-11-16; core + studio, host-tested only)
+Chosen model: a **continuation link**, not a block address. Pattern `p` plays its own cells (two bars, or one if short) and then the cells of
+`cont[p]`, another pattern, in the same pass. The arrangement, the sections and the lyric passes still name the first block only. A chain is two
+blocks, so a pass is 1, 2, 3 or 4 bars (16 / 32 / 48 / 64 steps). No cell, pool or classic-song change.
+- **Data:** `SongExt.cont[32]` (0 = none, else next id + 1; +32 B). `songx_cont`, `songx_head_of`, `songx_set_cont` (refuses a link to itself, a chain of three,
+  a block with two heads), `songx_pass_steps`, `songx_pass_bars`, `songx_free_pattern`, `songx_cont_any`. `songx_ticks` counts whole passes.
+- **Saved page:** a tail after the one-bar mask, only when `SX_FLAG_CONT` (32) is set: a count, then (head, next) pairs (at most 65 B). A page without links
+  is the old page; a damaged tail drops the links only. Sanitize drops links that break the rules.
+- **Player:** `P.blk`. `advance()` goes into the second block instead of the next pass, `begin_line()` runs once per pass, the section fade fraction
+  counts real pass lengths, `song_pos_pattern()` tells the block sounding. Solo / range loops are unchanged.
+- **Note grid:** "Length: 1 to 4 bars" (cycles; 3 and 4 take the first free pattern as the block, one undo step) and "Other block" (jump between the two so each is
+  edited like any pattern). Going back to 1 or 2 bars removes the link and keeps the block and its notes as an unplayed pattern. The length of a block is set on its head.
+  The status line says "Pattern A: 4 bars, then F"; the playing cursor follows the block.
+- **Tests:** 6 in `test_song_ext.c`, 3 in `test_studio_tools.c`; the one-bar test follows the new cycle.
+- **Not done:** the ORDER part view does not show a pass's bars; GBA / PS1 / DC builds, GBA scratch (+32 B) and the grid's speed window not run.
 
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),

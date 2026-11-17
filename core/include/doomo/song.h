@@ -112,6 +112,7 @@ void song_tick(void);                 /* call once per frame while playing */
 /* Playback position for karaoke / visuals. */
 int  song_pos_order(void);
 int  song_pos_step(void);
+int  song_pos_pattern(void);           /* ST-ADV: the pattern whose cells sound now (a 3 / 4 bar pass: the block playing), -1 when stopped */
 int  song_pos_line(void);              /* current lyric line index        */
 int  song_pos_syllable(void);          /* syllable index within the line  */
 uint32_t song_pos_singers(void);       /* bitmask of choir members singing now */

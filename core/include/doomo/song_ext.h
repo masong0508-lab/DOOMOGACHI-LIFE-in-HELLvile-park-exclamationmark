@@ -34,6 +34,7 @@
 #define SX_FLAG_FREE     2             /* free notes (no scale snap) */
 #define SX_FLAG_SHORT    8             /* in a saved page: a 4-byte one-bar mask follows (set by songx_encode) */
 #define SX_FLAG_LYR      16            /* in a saved page: lyric lines 9..16 follow (set by songx_encode) */
+#define SX_FLAG_CONT     32            /* in a saved page: the continuation links (3 and 4 bar patterns) follow (set by songx_encode) */
 #define SX_FLAG_VEL      4             /* in a saved page: a velocity tail follows the cells (set by songx_encode) */
 #define SX_VEL_SOFT      0             /* the four loudness levels of a note (the velocity bar) */
 #define SX_VEL_NORMAL    1             /* the default: a note plays at its track's volume */
@@ -82,6 +83,7 @@ typedef struct SongExt {
     uint8_t  pool[SX_POOL][SONG_STEPS];
     uint8_t  vel[SX_PATTERNS][SX_TRACKS][SONG_STEPS / 4];   /* per-note loudness, 2 bits a step (see songx_vel); all zero = every note normal */
     uint8_t  short_mask[4];             /* bit p of the 32 bits = pattern p is one bar (16 steps): it plays steps 0..15 and the pass ends; 0 = all two bars */
+    uint8_t  cont[SX_PATTERNS];         /* 0 = none, else (pattern id + 1) of the block played straight after this pattern in the same pass: a 3 or 4 bar pattern */
     /* lyric lines 9..16 (the last two members: the studio's undo journal touches them as one block). Plain bytes, so the
      * struct stays byte aligned like the rest: lsing[i] is a little endian u32 (bit n = singer[n] sings it, 0 = singer[0]) */
     char     lyr[SX_XLINES][SONG_LYRIC_LEN];
@@ -105,6 +107,17 @@ int  songx_vel_pct(int level);
 int  songx_plen(const SongExt *x, int pat);                              /* steps a pass of pattern `pat` plays: 32 (two bars) or 16 (one bar) */
 int  songx_set_plen(SongExt *x, int pat, int steps);                     /* 16 or 32; 1 = stored */
 int  songx_vel_any(const SongExt *x);                                    /* any note that is not normal */
+/* patterns of 3 and 4 bars (a chain of two blocks): pattern `pat` plays its own cells (two bars, or one if short) and then the cells of its
+ * continuation pattern, all in one pass. The arrangement and the sections name the first block only. A continuation is a pattern like any other
+ * (it has cells, a pool entry, a length of one or two bars), so a chain is 2, 3 or 4 bars: 1 + 1 is two bars too, which is just what two
+ * blocks are. A block is the continuation of one head at most, and a continuation has no continuation of its own. */
+int  songx_cont(const SongExt *x, int pat);                              /* the continuation's pattern id, -1 = none */
+int  songx_head_of(const SongExt *x, int pat);                           /* the pattern whose continuation `pat` is, -1 = none */
+int  songx_set_cont(SongExt *x, int pat, int next);                      /* next = -1 clears the link; 1 = stored, 0 = refused (see above) */
+int  songx_pass_steps(const SongExt *x, int pat);                        /* steps of a whole pass starting at pattern `pat`: 16 .. 64 */
+int  songx_pass_bars(const SongExt *x, int pat);                         /* the same in bars: 1 .. 4 */
+int  songx_free_pattern(const SongExt *x);                               /* a pattern id nobody uses (not in a section, not linked, no cells), -1 = none */
+int  songx_cont_any(const SongExt *x);                                    /* any pattern with a continuation link */
 /* lyric lines: 0..7 are the song's own, 8..15 the SongExt's. x = NULL is a classic song (8 lines). Every reader goes through
  * these so that nothing indexes lyrics[] / line_singers[] past 7. */
 int  songx_lines(const SongExt *x);                                      /* 16 with a SongExt, else 8 */

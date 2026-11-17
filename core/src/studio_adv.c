@@ -879,15 +879,46 @@ static void g_octave(int d)
     audio_sfx(SFX_SELECT);
 }
 
-static void g_length(void)                      /* the pattern is one bar or two (the second bar is kept, just not played, so it can come back) */
+/* The pattern's length in bars: 1, 2, 3 or 4. One bar is a pattern whose second bar is kept but not played; 3 and 4 bars link a second block (a
+ * pattern of its own, one bar or two) that plays straight after this one in the same pass. Growing again re-uses the link: the block and its notes
+ * stay when the pattern is cut back to 1 or 2 bars, as a pattern nobody plays (pick it in a pass or link it again). One undo step. */
+static void g_length(void)
 {
-    int one = g_plen() == SONG_STEPS;
+    int h = songx_head_of(X, g_pat), bars = songx_pass_bars(X, g_pat), want = bars % 4 + 1, c = songx_cont(X, g_pat);
+    if (h >= 0) { st_msg("Set the length on pattern %c", pat_ch(h)); audio_sfx(SFX_ERROR); return; }
+    if (want >= 3 && c < 0) {                                  /* a block to play after this one */
+        c = songx_free_pattern(X);
+        if (c < 0) { st_msg("No pattern left for a block"); audio_sfx(SFX_ERROR); return; }
+    }
     ed_touch(X->short_mask, (int)sizeof(X->short_mask));
-    songx_set_plen(X, g_pat, one ? SONG_STEPS / 2 : SONG_STEPS);
+    ed_touch(X->cont, (int)sizeof(X->cont));
+    ed_touch(&X->patterns, 1);
+    if (want <= 2) {
+        songx_set_cont(X, g_pat, -1);
+        songx_set_plen(X, g_pat, want == 1 ? SONG_STEPS / 2 : SONG_STEPS);
+    } else {
+        songx_set_plen(X, g_pat, SONG_STEPS);
+        songx_set_cont(X, g_pat, c);
+        songx_set_plen(X, c, want == 3 ? SONG_STEPS / 2 : SONG_STEPS);
+        if (c >= X->patterns) X->patterns = (uint8_t)(c + 1);
+    }
     if (g_stp >= g_plen()) g_stp = (uint8_t)(g_plen() - 1);
     ed_commit();
-    st_msg(one ? "Pattern %c: one bar" : "Pattern %c: two bars", pat_ch(g_pat));
+    if (want >= 3) st_msg("Pattern %c: %d bars, then %c", pat_ch(g_pat), want, pat_ch(c));
+    else st_msg("Pattern %c: %s", pat_ch(g_pat), want == 1 ? "one bar" : "two bars");
     audio_sfx(SFX_SELECT);
+}
+
+static void g_block(void)                       /* jump between the blocks of a 3 / 4 bar pattern so each one can be edited */
+{
+    int c = songx_cont(X, g_pat), h = songx_head_of(X, g_pat), to = c >= 0 ? c : h;
+    if (to < 0) { st_msg("Pattern %c is a single block", pat_ch(g_pat)); audio_sfx(SFX_ERROR); return; }
+    g_pat = (uint8_t)to;
+    if (g_stp >= g_plen()) g_stp = (uint8_t)(g_plen() - 1);
+    g_note[g_trk] = 0;
+    g_focus();
+    st_msg(c >= 0 ? "Pattern %c: the second block" : "Pattern %c: the first block", pat_ch(g_pat));
+    audio_sfx(SFX_CURSOR);
 }
 
 static const char *const vel_names[4] = { "Soft", "Normal", "Loud", "Peak" };
@@ -1158,6 +1189,7 @@ static void grid_more(int c)                    /* grid tools item 9: the box an
     case 3: g_louder(1); break;
     case 4: g_louder(-1); break;
     case 5: g_length(); break;
+    case 6: g_block(); break;
     default: break;
     }
 }
@@ -1222,11 +1254,11 @@ static void grid_tools(int c)
     case 7: g_more_tracks(1); break;
     case 8: g_more_tracks(-1); break;
     case 9: {
-        static const char *const more[6] = { "Select a box", "Paste here", "Hear this part", "Louder note", "Softer note", "One bar / two bars" };
-        static const char *const mhelp[6] = { "Stretch over steps and tracks.", "Corner of the copy at the cursor.", "Play from this part.",
+        static const char *const more[7] = { "Select a box", "Paste here", "Hear this part", "Louder note", "Softer note", "Length: 1 to 4 bars", "Other block" };
+        static const char *const mhelp[7] = { "Stretch over steps and tracks.", "Corner of the copy at the cursor.", "Play from this part.",
                                               "The note at the cursor, a level up.", "The note at the cursor, a level down.",
-                                              "Switch this pattern's length." };
-        st_popup("Box, loudness, length", more, 6, 0, grid_more);
+                                              "1, 2, 3 or 4 bars; 3 and 4 add a block.", "Edit the other block of a long pattern." };
+        st_popup("Box, loudness, length", more, 7, 0, grid_more);
         st_popup_help(mhelp);
         break;
     }
@@ -1335,10 +1367,7 @@ static void grid_draw(StRect r)
         }
     }
     if (g_plen() < SONG_STEPS) plat_rect(x0 + g_plen() * cw, y0, (SONG_STEPS - g_plen()) * cw, ysum, beat_c);     /* a one-bar pattern: the rest is not played */
-    if (po >= 0) {
-        int sec, pass;
-        if (songx_at(X, po, &sec, &pass) == g_pat) plat_rect(x0 + song_pos_step() * cw, y0, 1, ysum, PAL_PAINT(PAINT_ROSE, 0));
-    }
+    if (po >= 0 && song_pos_pattern() == g_pat) plat_rect(x0 + song_pos_step() * cw, y0, 1, ysum, PAL_PAINT(PAINT_ROSE, 0));
     {
         int cx = x0 + g_stp * cw, cy = y0 + (drum ? cur - 1 : g_top - cur) * rh;
         plat_rect(cx, y0 - 3, cw + 1, 2, st->accent);                                        /* the step marker */
@@ -1367,6 +1396,8 @@ static void grid_draw(StRect r)
     ui_text(r.x + 8, y0 + ysum + 4, buf, st->text);
     if (t >= songx_tracks_max()) doomo_snprintf(buf, sizeof(buf), "Mixed in on this console");
     else if (!drum && g_cell(g_pat, t, g_stp) >= 2) doomo_snprintf(buf, sizeof(buf), "Pattern %c: %s", pat_ch(g_pat), vel_names[songx_vel(X, g_pat, t, g_stp)]);
+    else if (songx_cont(X, g_pat) >= 0) doomo_snprintf(buf, sizeof(buf), "Pattern %c: %d bars, then %c", pat_ch(g_pat), songx_pass_bars(X, g_pat), pat_ch(songx_cont(X, g_pat)));
+    else if (songx_head_of(X, g_pat) >= 0) doomo_snprintf(buf, sizeof(buf), "Pattern %c: the end of %c", pat_ch(g_pat), pat_ch(songx_head_of(X, g_pat)));
     else if (g_plen() < SONG_STEPS) doomo_snprintf(buf, sizeof(buf), "Pattern %c: one bar", pat_ch(g_pat));
     else doomo_snprintf(buf, sizeof(buf), "Pattern %c of %d", pat_ch(g_pat), g_npat());
     ui_text(r.x + 8, y0 + ysum + 14, buf, st->text_dim);

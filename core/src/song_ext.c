@@ -7,6 +7,7 @@
  *   per track: pan (2 bits) | env << 2 | swing << 4
  *   per pattern: u8 mask of the tracks that hold a pool block; per set bit the 32 cells run-length coded
  *     (0x00..0x7F a literal cell, 0x80 | (n-1) a run of n empty cells, 0xC0 | (n-1) a run of n cells of value 1)
+ *   continuation tail, only when flags bit 6 (SX_FLAG_CONT) is set, after the one-bar tail: u8 count, then per link (head pattern, next pattern)
  *   lyric tail, only when flags bit 5 (SX_FLAG_LYR) is set, after the one-bar tail: u8 mask of the lines 9..16 that hold words or a
  *     singer mask; per set bit the words (up to 27 bytes, then a 0) and the singer mask (4 bytes). A page without the bit has none.
  *   one-bar tail, only when flags bit 3 (SX_FLAG_SHORT) is set, after the velocity tail: 4 bytes, bit p of the 32 = pattern p is one bar
@@ -99,7 +100,7 @@ int songx_sanitize(SongExt *x)
     FIX(x->arrange_len < 1 || x->arrange_len > SX_ARRANGE, x->arrange_len = (uint8_t)DOOMO_CLAMP(x->arrange_len, 1, SX_ARRANGE));
     FIX(x->patterns < SONG_PATTERNS || x->patterns > SX_PATTERNS,
         x->patterns = (uint8_t)DOOMO_CLAMP(x->patterns, SONG_PATTERNS, SX_PATTERNS));
-    FIX(x->flags & ~31, x->flags &= 31);
+    FIX(x->flags & ~63, x->flags &= 63);
     FIX(x->nblocks > SX_POOL, x->nblocks = SX_POOL);
     for (i = 0; i < SX_SECTIONS; i++) {
         SxSection *c = &x->sect[i];
@@ -141,6 +142,17 @@ int songx_sanitize(SongExt *x)
         FIX(w[SONG_LYRIC_LEN - 1], w[SONG_LYRIC_LEN - 1] = 0);
         m = songx_line_singers(NULL, x, SONG_LYRIC_LINES + i);
         FIX(m >> SONG_SINGERS, songx_set_line_singers(NULL, x, SONG_LYRIC_LINES + i, m & ((1u << SONG_SINGERS) - 1u)));
+    }
+    for (i = 0; i < SX_PATTERNS; i++) {                        /* continuation links: in range and not to itself ... */
+        int c = x->cont[i];
+        if (c) FIX(c > SX_PATTERNS || c - 1 == i, x->cont[i] = 0);
+    }
+    for (i = 0; i < SX_PATTERNS; i++) {                        /* ... chains of two blocks, and a block belongs to one head */
+        int c = x->cont[i] - 1, h;
+        if (c < 0) continue;
+        FIX(x->cont[c] != 0, x->cont[i] = 0);
+        if (!x->cont[i]) continue;
+        for (h = 0; h < i; h++) if (x->cont[h] == x->cont[i]) { FIX(1, x->cont[i] = 0); break; }
     }
 #undef FIX
     return n;
@@ -196,6 +208,67 @@ int songx_set_plen(SongExt *x, int pat, int steps)
     if (steps == SONG_STEPS) x->short_mask[pat >> 3] &= (uint8_t)~(1u << (pat & 7));
     else x->short_mask[pat >> 3] |= (uint8_t)(1u << (pat & 7));
     return 1;
+}
+
+int songx_cont(const SongExt *x, int pat)
+{
+    if (!x || pat < 0 || pat >= SX_PATTERNS || !x->cont[pat]) return -1;
+    return (x->cont[pat] - 1) % SX_PATTERNS;
+}
+
+int songx_head_of(const SongExt *x, int pat)
+{
+    int h;
+    if (!x || pat < 0 || pat >= SX_PATTERNS) return -1;
+    for (h = 0; h < SX_PATTERNS; h++) if (songx_cont(x, h) == pat) return h;
+    return -1;
+}
+
+int songx_set_cont(SongExt *x, int pat, int next)
+{
+    if (!x || pat < 0 || pat >= SX_PATTERNS) return 0;
+    if (next < 0) { x->cont[pat] = 0; return 1; }
+    if (next >= SX_PATTERNS || next == pat) return 0;
+    if (songx_cont(x, next) >= 0) return 0;                    /* the block already has a continuation: chains are two blocks */
+    if (songx_head_of(x, pat) >= 0) return 0;                  /* pat is itself a continuation */
+    {
+        int h = songx_head_of(x, next);
+        if (h >= 0 && h != pat) return 0;                      /* the block belongs to another head */
+    }
+    x->cont[pat] = (uint8_t)(next + 1);
+    return 1;
+}
+
+int songx_pass_steps(const SongExt *x, int pat)
+{
+    int n = songx_plen(x, pat), c = songx_cont(x, pat);
+    if (c >= 0) n += songx_plen(x, c);
+    return n;
+}
+
+int songx_pass_bars(const SongExt *x, int pat) { return songx_pass_steps(x, pat) / (SONG_STEPS / 2); }
+
+int songx_cont_any(const SongExt *x)
+{
+    int p;
+    if (!x) return 0;
+    for (p = 0; p < SX_PATTERNS; p++) if (x->cont[p]) return 1;
+    return 0;
+}
+
+int songx_free_pattern(const SongExt *x)
+{
+    int p, s, k, t, i;
+    if (!x) return -1;
+    for (p = SONG_PATTERNS; p < SX_PATTERNS; p++) {
+        int used = songx_cont(x, p) >= 0 || songx_head_of(x, p) >= 0;
+        for (s = 0; s < x->sections && s < SX_SECTIONS && !used; s++)
+            for (k = 0; k < x->sect[s].npat && k < SX_SECT_PATS; k++) if (x->sect[s].pat[k] % SX_PATTERNS == p) used = 1;
+        for (t = 0; t < SX_TRACKS && !used; t++) if (x->map[p][t]) used = 1;
+        for (t = 0; t < SX_TRACKS && !used; t++) for (i = 0; i < SONG_STEPS / 4 && !used; i++) if (x->vel[p][t][i]) used = 1;
+        if (!used) return p;
+    }
+    return -1;
 }
 
 int songx_vel_any(const SongExt *x)
@@ -258,7 +331,7 @@ uint32_t songx_ticks(const DoomoSong *s, const SongExt *x)
         uint32_t b = bpm * DOOMO_CLAMP(c->tempo, 50, 200) / 100u, steps = 0;
         int k, n = sect_passes(x, x->arrange[i]);
         b = DOOMO_CLAMP(b, 30, 440);
-        for (k = 0; k < n; k++) steps += (uint32_t)songx_plen(x, c->pat[k] % SX_PATTERNS);      /* a one-bar pattern is half a pass */
+        for (k = 0; k < n; k++) steps += (uint32_t)songx_pass_steps(x, c->pat[k] % SX_PATTERNS);      /* a one-bar pattern is half a pass, a chain is 3 or 4 bars */
         total += (steps * 450u + b - 1) / b;
     }
     return total;
@@ -459,10 +532,10 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
     int i, k, p, t;
     (void)s;
     o.d = dst; o.cap = cap; o.n = 0;
-    int velany = songx_vel_any(x), shortany = (x->short_mask[0] | x->short_mask[1] | x->short_mask[2] | x->short_mask[3]) != 0;
+    int contany = songx_cont_any(x), velany = songx_vel_any(x), shortany = (x->short_mask[0] | x->short_mask[1] | x->short_mask[2] | x->short_mask[3]) != 0;
     int lyrany = songx_lyr_any(x);
     ob(&o, x->version); ob(&o, x->tracks); ob(&o, x->sections); ob(&o, x->arrange_len); ob(&o, x->patterns);
-    ob(&o, (uint32_t)((x->flags & ~(SX_FLAG_VEL | SX_FLAG_SHORT | SX_FLAG_LYR)) | (velany ? SX_FLAG_VEL : 0) | (shortany ? SX_FLAG_SHORT : 0) |
+    ob(&o, (uint32_t)((x->flags & ~(SX_FLAG_VEL | SX_FLAG_SHORT | SX_FLAG_LYR | SX_FLAG_CONT)) | (contany ? SX_FLAG_CONT : 0) | (velany ? SX_FLAG_VEL : 0) | (shortany ? SX_FLAG_SHORT : 0) |
                       (lyrany ? SX_FLAG_LYR : 0)));
     for (i = 0; i < x->sections && i < SX_SECTIONS; i++) {
         const SxSection *c = &x->sect[i];
@@ -492,6 +565,12 @@ uint32_t songx_encode(const DoomoSong *s, const SongExt *x, uint8_t *dst, uint32
             }
     }
     if (shortany) for (k = 0; k < 4; k++) ob(&o, x->short_mask[k]);
+    if (contany) {                                             /* the continuation links, after the one-bar mask: u8 count, then (head, next) pairs */
+        uint32_t n = 0;
+        for (p = 0; p < SX_PATTERNS; p++) n += x->cont[p] != 0;
+        ob(&o, n);
+        for (p = 0; p < SX_PATTERNS; p++) if (x->cont[p]) { ob(&o, (uint32_t)p); ob(&o, (uint32_t)(x->cont[p] - 1)); }
+    }
     if (lyrany) {                                              /* lines 9..16: a mask, then per set line its words + NUL and 4 mask bytes */
         uint32_t m = 0;
         for (i = 0; i < SX_XLINES; i++) {
@@ -577,6 +656,15 @@ int songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t le
     if (!in.err && (x->flags & SX_FLAG_SHORT)) {           /* the one-bar mask; damaged, every pattern is two bars again */
         for (k = 0; k < 4; k++) x->short_mask[k] = (uint8_t)ib(&in);
         if (in.err) memset(x->short_mask, 0, sizeof(x->short_mask));
+    }
+    if (!in.err && (x->flags & SX_FLAG_CONT)) {            /* the links; damaged, every pattern plays on its own again */
+        uint32_t n = ib(&in);
+        while (n-- && !in.err) {
+            uint32_t h = ib(&in), nx = ib(&in);
+            if (in.err || h >= SX_PATTERNS || nx >= SX_PATTERNS) { in.err = 1; break; }
+            x->cont[h] = (uint8_t)(nx + 1);
+        }
+        if (in.err) memset(x->cont, 0, sizeof(x->cont));
     }
     if (!in.err && (x->flags & SX_FLAG_LYR)) {             /* lines 9..16; damaged, they are dropped (the other lines stay) */
         uint32_t m = ib(&in);

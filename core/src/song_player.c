@@ -519,6 +519,7 @@ static struct {
     int16_t  over;            /* singer override (resident id) or -1        */
     int16_t  prev_music;      /* background song to restore                  */
     uint8_t  on, solo, solo_pat;
+    uint8_t  blk;             /* ST-ADV: 1 = the continuation block of a 3 / 4 bar pattern is playing (same pass, same lyric line) */
     uint16_t ord;
     uint8_t  step;
     uint8_t  rfrom, rto;      /* range loop (song_play_range): steps rfrom..rto-1 of the solo pattern */
@@ -613,7 +614,10 @@ static int cur_pattern(void)
 {
     const DoomoSong *s = P.s;
     if (P.solo) return P.solo_pat;
-    if (P.x) return songx_at(P.x, P.ord, 0, 0);
+    if (P.x) {
+        int head = songx_at(P.x, P.ord, 0, 0), c = P.blk ? songx_cont(P.x, head) : -1;
+        return c >= 0 ? c : head;
+    }
     return s->order[DOOMO_MIN(P.ord, SONG_ORDER_MAX - 1)] % SONG_PATTERNS;
 }
 
@@ -645,7 +649,17 @@ static int sect_now(int *pass, int *frac)
     int sec, ps;
     songx_at(P.x, P.ord, &sec, &ps);
     if (pass) *pass = ps;
-    if (frac) *frac = (ps * SONG_STEPS + P.step) * 256 / (P.x->sect[sec].npat * SONG_STEPS);
+    if (frac) {                                            /* steps played of the section over its steps: passes can be 1 .. 4 bars */
+        const SxSection *c = &P.x->sect[sec];
+        int k, n = DOOMO_CLAMP((int)c->npat, 1, SX_SECT_PATS), done = 0, all = 0;
+        for (k = 0; k < n; k++) {
+            int len = songx_pass_steps(P.x, c->pat[k] % SX_PATTERNS);
+            if (k < ps) done += len;
+            all += len;
+        }
+        if (ps < n && P.blk) done += songx_plen(P.x, c->pat[ps] % SX_PATTERNS);
+        *frac = (done + P.step) * 256 / DOOMO_MAX(all, 1);
+    }
     return sec;
 }
 static uint32_t step_units(int step)
@@ -942,7 +956,7 @@ static void do_step(void)
         lane_on(t, P.lv[t], fade, bright, P.lvl[t]);
     }
     sect_ctx(&shift, &bright, &fade);
-    if (P.step == 0) begin_line();
+    if (P.step == 0 && !P.blk) begin_line();                   /* a continuation block is the same pass: the same line */
     if ((P.step & 3) == 0) P.beat_age = 0;
     for (t = 0; t < 4; t++) {
         int w;
@@ -975,8 +989,10 @@ static int advance(void)
         if (P.rfrom) seek_lyrics();
         return 1;
     }
-    if (P.step < (P.x ? songx_plen(P.x, cur_pattern()) : SONG_STEPS)) return 1;      /* a one-bar pattern ends its pass at step 16 */
+    if (P.step < (P.x ? songx_plen(P.x, cur_pattern()) : SONG_STEPS)) return 1;      /* a one-bar pattern ends its block at step 16 */
     P.step = 0;
+    if (P.x && !P.blk && songx_cont(P.x, songx_at(P.x, P.ord, 0, 0)) >= 0) { P.blk = 1; return 1; }   /* 3 / 4 bars: on into the next block */
+    P.blk = 0;
     P.ord++;
     if (P.ord < order_len()) return 1;
     if (!(P.s->flags & SONGF_LOOP)) return 0;
@@ -1082,6 +1098,7 @@ static void start(const DoomoSong *s, int over, int solo, int pat, int ord, int 
     P.lead = -1;
     P.beat_age = 0;
     P.ord = (uint8_t)DOOMO_CLAMP(ord, 0, order_len() - 1);
+    P.blk = 0;
     P.step = (uint8_t)DOOMO_CLAMP(step, 0, SONG_STEPS - 1);
     silence_all();
     P.rfrom = 0;
@@ -1252,6 +1269,7 @@ int song_jam_note(int ch) { return (ch >= 0 && ch < 3) ? P.jam[ch] : 0; }
 
 int song_pos_note(int ch) { return (P.on && ch >= 0 && ch < 3) ? P.note[ch] : 0; }
 int song_pos_order(void) { return P.on ? P.ord : -1; }
+int song_pos_pattern(void) { return P.on ? cur_pattern() : -1; }
 int song_pos_step(void) { return P.on ? P.step : -1; }
 int song_pos_line(void) { return P.on ? P.line : -1; }
 int song_pos_syllable(void) { return P.on ? P.syl : -1; }

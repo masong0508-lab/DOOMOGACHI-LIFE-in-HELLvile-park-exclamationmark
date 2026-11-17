@@ -566,3 +566,194 @@ TEST(song_ext_the_player_reads_lyric_lines_9_to_16_through_the_extension)
     CHECK_EQ(song_line_mask_x(&s, &x, 16), 0);
     CHECK_EQ(song_line_mask_x(&s, &x, 2), song_line_mask(&s, 2));
 }
+
+TEST(song_ext_continuation_links_follow_the_rules_of_two_block_chains)
+{
+    DoomoSong s;
+    SongExt x;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK_EQ(songx_cont(&x, 0), -1);
+    CHECK_EQ(songx_head_of(&x, 5), -1);
+    CHECK(songx_set_cont(&x, 0, 5));
+    CHECK_EQ(songx_cont(&x, 0), 5);
+    CHECK_EQ(songx_head_of(&x, 5), 0);
+    CHECK(!songx_set_cont(&x, 3, 3));                              /* not to itself */
+    CHECK(!songx_set_cont(&x, 3, 32));                             /* out of range */
+    CHECK(!songx_set_cont(&x, -1, 4));
+    CHECK(!songx_set_cont(&x, 5, 6));                              /* 5 already ends pattern 0: no chain of three */
+    CHECK(!songx_set_cont(&x, 2, 0));                              /* 0 already has a continuation of its own */
+    CHECK(!songx_set_cont(&x, 2, 5));                              /* 5 belongs to pattern 0 */
+    CHECK(songx_set_cont(&x, 0, 5));                               /* the same link again is fine */
+    CHECK(songx_set_cont(&x, 0, 6));                               /* ... and a link can move */
+    CHECK_EQ(songx_head_of(&x, 5), -1);
+    CHECK_EQ(songx_head_of(&x, 6), 0);
+    CHECK(songx_set_cont(&x, 0, -1));
+    CHECK_EQ(songx_cont(&x, 0), -1);
+    CHECK_EQ(songx_cont(NULL, 0), -1);
+    CHECK(!songx_set_cont(NULL, 0, 1));
+}
+
+TEST(song_ext_a_pass_is_one_to_four_bars_and_the_song_lasts_that_long)
+{
+    DoomoSong s;
+    SongExt x;
+    uint32_t t2, t3, t4, t1;
+    base(&s);
+    songx_init(&x, &s);
+    CHECK_EQ(songx_pass_steps(&x, 0), SONG_STEPS);
+    CHECK_EQ(songx_pass_bars(&x, 0), 2);
+    t2 = songx_ticks(&s, &x);
+    CHECK(songx_set_plen(&x, 0, 16));
+    CHECK_EQ(songx_pass_bars(&x, 0), 1);
+    t1 = songx_ticks(&s, &x);
+    CHECK(songx_set_plen(&x, 0, 32));
+    CHECK(songx_set_cont(&x, 0, 5));
+    CHECK(songx_set_plen(&x, 5, 16));
+    CHECK_EQ(songx_pass_steps(&x, 0), 48);
+    CHECK_EQ(songx_pass_bars(&x, 0), 3);
+    t3 = songx_ticks(&s, &x);
+    CHECK(songx_set_plen(&x, 5, 32));
+    CHECK_EQ(songx_pass_steps(&x, 0), 64);
+    CHECK_EQ(songx_pass_bars(&x, 0), 4);
+    t4 = songx_ticks(&s, &x);
+    CHECK(t1 < t2 && t2 < t3 && t3 < t4);
+    CHECK(t4 >= t2 * 2 - 2 && t4 <= t2 * 2 + 2);                   /* four bars = twice the two */
+    CHECK(t3 >= t2 * 3 / 2 - 2 && t3 <= t2 * 3 / 2 + 2);
+    CHECK_EQ(songx_pass_steps(NULL, 0), SONG_STEPS);
+}
+
+TEST(song_ext_the_player_plays_the_second_block_in_the_same_pass_and_keeps_the_lyric_line)
+{
+    DoomoSong s;
+    SongExt x;
+    int i, first_blk = -1, line0, ord0;
+    int ticks2, ticks4;
+    base(&s);
+    songx_init(&x, &s);
+    strcpy(s.lyrics[0], "la la la la");
+    x.sect[0].line[0] = 0;
+    ticks2 = run_to_end(&s, &x, 100000);
+    CHECK(songx_set_cont(&x, 0, 5));
+    CHECK(songx_set_cell(&s, &x, 5, 0, 0, 70));                    /* the second block opens on its own note */
+    song_play_ext(&s, &x, -1);
+    line0 = song_pos_line();
+    ord0 = song_pos_order();
+    CHECK_EQ(song_pos_pattern(), 0);
+    for (i = 0; i < 4000 && song_playing(); i++) {
+        song_tick();
+        if (song_pos_pattern() == 5) { first_blk = i; break; }
+    }
+    CHECK(first_blk > 0);
+    CHECK_EQ(song_pos_order(), ord0);                              /* the same pass: the arrangement did not move on */
+    CHECK_EQ(song_pos_line(), line0);                              /* ... so the same lyric line goes on */
+    CHECK_EQ(song_pos_step(), 0);
+    song_tick();                                                   /* the note of block two sounds on its first step */
+    song_stop();
+    ticks4 = run_to_end(&s, &x, 100000);
+    CHECK(ticks4 >= ticks2 * 2 - 3 && ticks4 <= ticks2 * 2 + 3);   /* the song really lasts twice as long */
+    CHECK(ticks4 >= (int)songx_ticks(&s, &x) - 3 && ticks4 <= (int)songx_ticks(&s, &x) + 3);
+    /* a one-bar second block: three bars */
+    CHECK(songx_set_plen(&x, 5, 16));
+    {
+        int ticks3 = run_to_end(&s, &x, 100000);
+        CHECK(ticks3 > ticks2 && ticks3 < ticks4);
+        CHECK(ticks3 >= (int)songx_ticks(&s, &x) - 3 && ticks3 <= (int)songx_ticks(&s, &x) + 3);
+    }
+}
+
+TEST(song_ext_continuation_links_are_saved_with_the_page_and_a_page_without_them_is_the_old_page)
+{
+    DoomoSong s;
+    SongExt x, y;
+    uint8_t buf[SONGX_PAGE_BYTES], plain[SONGX_PAGE_BYTES];
+    uint32_t n, n0;
+    base(&s);
+    songx_init(&x, &s);
+    n0 = songx_encode(&s, &x, plain, sizeof(plain));
+    CHECK_EQ(plain[5] & SX_FLAG_CONT, 0);                          /* no links: the old bytes */
+    CHECK(songx_set_cont(&x, 0, 5));
+    CHECK(songx_set_cont(&x, 1, 9));
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK_EQ(n, n0 + 1 + 2 * 2);                                   /* a count and two (head, next) pairs */
+    CHECK(buf[5] & SX_FLAG_CONT);
+    memset(&y, 0, sizeof(y));
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_cont(&y, 0), 5);
+    CHECK_EQ(songx_cont(&y, 1), 9);
+    CHECK_EQ(songx_cont(&y, 2), -1);
+    /* with the other tails too: all of them read back */
+    CHECK(songx_set_plen(&x, 5, 16));
+    songx_set_vel(&x, 0, 0, 0, SX_VEL_LOUD);
+    strcpy(songx_line_buf(&s, &x, 9), "nine");
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_cont(&y, 0), 5);
+    CHECK_EQ(songx_plen(&y, 5), 16);
+    CHECK_EQ(songx_vel(&y, 0, 0, 0), SX_VEL_LOUD);
+    CHECK(strcmp(songx_line_text(&s, &y, 9), "nine") == 0);
+    /* a page cut inside the links keeps the song and plays every pattern on its own */
+    CHECK(songx_set_plen(&x, 5, 32));
+    memset(&x.lyr, 0, sizeof(x.lyr));
+    songx_set_vel(&x, 0, 0, 0, SX_VEL_NORMAL);
+    n = songx_encode(&s, &x, buf, sizeof(buf));
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK_EQ(songx_cont(&y, 0), 5);
+    CHECK(songx_decode(&s, &y, buf, n - 2));
+    CHECK_EQ(songx_cont(&y, 0), -1);
+    CHECK_EQ(songx_cont(&y, 1), -1);
+    CHECK_EQ(y.sections, x.sections);
+    CHECK(songx_decode(&s, &y, plain, n0));
+    CHECK(!songx_cont_any(&y));
+    /* a link to a pattern that does not exist is a damaged page too */
+    buf[n - 1] = 99;
+    CHECK(songx_decode(&s, &y, buf, n));
+    CHECK(!songx_cont_any(&y));
+}
+
+TEST(song_ext_sanitize_drops_links_that_break_the_chain_rules)
+{
+    DoomoSong s;
+    SongExt x;
+    base(&s);
+    songx_init(&x, &s);
+    x.cont[0] = 6;                                                 /* 0 -> 5 */
+    x.cont[5] = 8;                                                 /* 5 -> 7: a chain of three */
+    x.cont[1] = 2;                                                 /* 1 -> 1: itself */
+    x.cont[2] = 99;                                                /* past the end */
+    x.cont[3] = 6;                                                 /* 3 -> 5: two heads, one block */
+    songx_sanitize(&x);
+    CHECK_EQ(songx_cont(&x, 0), -1);                               /* 0 -> 5 breaks because 5 has a link of its own ... */
+    CHECK_EQ(songx_cont(&x, 1), -1);
+    CHECK_EQ(songx_cont(&x, 2), -1);
+    CHECK(songx_cont(&x, 3) == 5 || songx_cont(&x, 3) == -1);
+    CHECK(songx_cont(&x, 5) == 7 || songx_cont(&x, 5) == -1);
+    {
+        int p;                                                     /* whatever is left obeys the rules */
+        for (p = 0; p < SX_PATTERNS; p++) {
+            int c = songx_cont(&x, p);
+            if (c < 0) continue;
+            CHECK(c != p);
+            CHECK_EQ(songx_cont(&x, c), -1);
+            CHECK_EQ(songx_head_of(&x, c), p);
+        }
+    }
+}
+
+TEST(song_ext_a_free_pattern_is_one_nobody_uses)
+{
+    DoomoSong s;
+    SongExt x;
+    int f;
+    base(&s);
+    songx_init(&x, &s);
+    f = songx_free_pattern(&x);
+    CHECK_EQ(f, SONG_PATTERNS);                                    /* the first one past the classic four */
+    CHECK(songx_set_cont(&x, 0, f));
+    CHECK_EQ(songx_free_pattern(&x), f + 1);                       /* now linked: taken */
+    CHECK(songx_set_cell(&s, &x, f + 1, 0, 0, 60));
+    CHECK_EQ(songx_free_pattern(&x), f + 2);                       /* now has notes: taken */
+    x.sect[0].pat[0] = (uint8_t)(f + 2);
+    CHECK_EQ(songx_free_pattern(&x), f + 3);                       /* now in a pass: taken */
+    CHECK_EQ(songx_free_pattern(NULL), -1);
+}
