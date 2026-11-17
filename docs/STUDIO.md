@@ -610,8 +610,15 @@ live in the `SongExt`.
   covers lines 9..16 and is one undo step. The Lyric lines view picks 1..16 (`e_line` packs `pass * 32 + choice`) and Fill cycles over 16. The stage and the Concert Hall
   karaoke read the words through the same helpers.
 - **Tested (2026-11-16, host):** 7 new tests plus one stale test fixed. `test_song_ext.c`: lines 9..16 read / write / stay out of the classic song; the saved page (old page bytes unchanged with no words, a tail within the 257 B worst case, a page cut inside the tail drops lines 9..16 only); sanitize (no NUL, unprintable bytes, section lines clamp to 16); the player mask (limited to singers that exist, empty mask = first singer). `test_studio_tools.c`: `st_line_*` edits with undo / redo, a classic song has no lines 9..16, the LYRICS tab scrolls 16 lines over 8 rows. The Lyric lines view test still expected the wrap-around to end at line 8; it now ends at line 16. Easy keeps an Advanced song's SongExt, so its 16 lines stay in view after the switch back (words are never hidden).
-- **Not done:** no GBA / PS1 / DC build (GBA scratch +256 B unmeasured), no look at the LYRICS tab on screen, `studio_write_lyrics` (the "New words" tool) still writes lines 1..8 only and leaves 9..16 as they are.
-  LYRICS tab on screen, `studio_write_lyrics` still writes lines 1..8 only.
+- **Not done:** no GBA / PS1 / DC build (GBA scratch +256 B unmeasured), no look at the LYRICS tab on screen. (`studio_write_lyrics`, the "New words" tool, writes lines 9..16 since 2026-11-17: see below.)
+
+## ST-ADV: New words write lines 9..16 (2026-11-17; core + studio, host-tested only)
+`studio_write_lyrics` (SONG / LYRICS \"New words\", and Inspire on the working song) wrote lines 1..8 by the classic order and left 9..16 alone. On the working Advanced song (`st_line_count` 16) it now walks the 16 lines
+and gives each the kind of the part that sings it first (`SxSection.line[pass % 4]`): Chorus gets the chorus line, Bridge the bridge line, Intro and Outro a hook with no words, any other part a verse (the hell
+verses at 60% for a Hellvile muse, as before); a line no pass sings is emptied. Lines 9..16 are cleared first, so \"New words\" never leaves stale words behind. A classic song, and any song that is not the working one,
+behaves exactly as before. The LYRICS tool touches lines 9..16 for the undo journal before it writes: one undo step takes all 16 back.
+- **Tested:** `adv_new_words_write_lines_9_to_16_by_the_part_that_sings_them` (a verse line 11 gets words, an intro line 13 stays empty, a stale line 15 nobody sings is emptied); the full host suite passes (1660); `xcheck` gcc 438 files `-Werror`.
+- **Not done:** no GBA / PS1 / DC build (the GBA, PS1 and Dreamcast cross compilers are not here: CI builds them), no look at it on screen.
 
 ## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
 One item is open (PS1 pages: tried, not affordable; pan playback, lyric lines 9..16 and patterns of 3 and 4 bars are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.

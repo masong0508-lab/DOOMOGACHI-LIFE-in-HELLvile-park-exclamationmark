@@ -134,6 +134,7 @@ static void lyric_tools(int c)
         int muse = song_singer_id(SS, 0);
         ed_touch(SS->lyrics, (int)sizeof(SS->lyrics));
         ed_touch(SS->title, SONG_TITLE_LEN);
+        { int ln; for (ln = SONG_LYRIC_LINES; ln < st_line_count(SS); ln++) st_line_touch_text(SS, ln); }   /* ST-ADV: lines 9..16 */
         studio_write_lyrics(SS, muse >= 0 ? muse : DOOMO_PLAYER_ID, doomo_hash32(studio.t + 77u));
         ed_commit();
         st_msg("New words about %s", st_name(muse >= 0 ? muse : DOOMO_PLAYER_ID));

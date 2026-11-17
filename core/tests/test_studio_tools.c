@@ -2156,6 +2156,30 @@ TEST(adv_lyric_lines_9_to_16_are_edited_through_the_helpers_and_one_undo_step_ta
     st_level_set(0);
 }
 
+TEST(adv_new_words_write_lines_9_to_16_by_the_part_that_sings_them)
+{
+    SxSection *a, *c;
+    int i;
+    open_adv(8);
+    CHECK(st_adv_on());
+    a = &studio.xw.sect[studio.xw.arrange[0]];
+    c = &studio.xw.sect[studio.xw.arrange[studio.xw.arrange_len > 1 ? 1 : 0]];
+    a->name = SX_VERSE;
+    a->line[0] = 10;                                           /* a verse sings line 11 */
+    for (i = 1; i < SX_LINES; i++) a->line[i] = SX_NO_LINE;
+    if (c != a) {
+        c->name = SX_INTRO;                                    /* an intro sings line 13: a hook, no words */
+        c->line[0] = 12;
+        for (i = 1; i < SX_LINES; i++) c->line[i] = SX_NO_LINE;
+    }
+    strcpy(st_line_buf(&studio.song, 14), "stale words");      /* line 15: no pass sings it */
+    studio_write_lyrics(&studio.song, DOOMO_PLAYER_ID, 4242u);
+    CHECK(st_line_text(&studio.song, 10)[0] != 0);             /* the verse got words */
+    if (c != a) CHECK_EQ(st_line_text(&studio.song, 12)[0], 0);
+    CHECK_EQ(st_line_text(&studio.song, 14)[0], 0);            /* a line nobody sings is empty again */
+    st_level_set(0);
+}
+
 TEST(adv_lyric_lines_9_to_16_do_not_exist_in_a_classic_song)
 {
     open_notes();

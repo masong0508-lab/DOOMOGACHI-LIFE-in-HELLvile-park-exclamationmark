@@ -685,12 +685,42 @@ void studio_write_lyrics(DoomoSong *s, int muse, uint32_t seed)
     char chorus[SONG_LYRIC_LEN], bridge[SONG_LYRIC_LEN];
     uint32_t used_v = 0, used_c = 0, used_b = 0, used_t = 0;
     int hell = muse >= DOOMO_DISTRICT_SIZE && muse < DOOMO_MAX_RESIDENTS, p;
+    int adv = STUDIO_ADV && st_line_count(s) > SONG_LYRIC_LINES;
     rng_seed(&r, seed ^ 0x5EEDu ^ (uint32_t)muse * 31u);
     muse_of(muse, &m);
     pick_line(chorus, chorus_tpl, DOOMO_COUNTOF(chorus_tpl), &m, &r, &used_c);
     pick_line(bridge, bridge_tpl, DOOMO_COUNTOF(bridge_tpl), &m, &r, &used_b);
     memset(s->lyrics, 0, sizeof(s->lyrics));
-    for (p = 0; p < s->order_len && p < SONG_LYRIC_LINES; p++) {
+    if (adv) {
+        /* ST-ADV: the working song has 16 lines. Each line takes the kind of the part that sings it first (Chorus: the
+         * chorus, Bridge: the bridge, Intro / Outro: a hook with no words, any other part: a verse); a line no pass sings stays empty */
+        const SongExt *x = st_adv_ext();
+        int ln;
+        for (ln = SONG_LYRIC_LINES; ln < st_line_count(s); ln++) memset(st_line_buf(s, ln), 0, SONG_LYRIC_LEN);
+        for (ln = 0; ln < st_line_count(s); ln++) {
+            char *line = st_line_buf(s, ln);
+            int i, n = x ? songx_len(x) : 0, kind = -1;
+            for (i = 0; i < n && kind < 0; i++) {
+                int sec, pass;
+                songx_at(x, i, &sec, &pass);
+                if (x->sect[sec].line[pass % SX_LINES] == ln) kind = x->sect[sec].name;
+            }
+            if (!line || kind < 0) continue;
+            switch (kind) {
+            case SX_CHORUS: memcpy(line, chorus, SONG_LYRIC_LEN); break;
+            case SX_BRIDGE: memcpy(line, bridge, SONG_LYRIC_LEN); break;
+            case SX_INTRO: case SX_OUTRO: line[0] = 0; break;
+            default:
+                if (hell && rng_chance(&r, 60))
+                    pick_line(line, verse_tpl_hell, DOOMO_COUNTOF(verse_tpl_hell), &m, &r, &used_v);
+                else
+                    pick_line(line, verse_tpl, DOOMO_COUNTOF(verse_tpl), &m, &r, &used_v);
+                break;
+            }
+            studio_clean_text(line, SONG_LYRIC_LEN);
+        }
+    }
+    for (p = 0; !adv && p < s->order_len && p < SONG_LYRIC_LINES; p++) {
         char *line = s->lyrics[p];
         switch (s->order[p]) {
         case 1: memcpy(line, chorus, SONG_LYRIC_LEN); break;
