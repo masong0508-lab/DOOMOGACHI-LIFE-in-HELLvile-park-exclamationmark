@@ -221,6 +221,35 @@ static void refresh(PlayState *p)
     }
 }
 
+/* The eight-times-a-second refresh, spread over four ticks instead of one (PLAY-32: the refresh was about 1.1 ms in a
+ * single tick, and it landed on ticks where the player starts a note, which is the loop's one slow frame). Same
+ * values as refresh(), a few ticks later; a setting change, the tab opening and a chord press still call the whole
+ * refresh() at once. */
+static void refresh_part(PlayState *p, int phase)
+{
+    int k, c;
+    switch (phase) {
+    case 0:
+        play_song_roots(SS, p->chords, p->roots);
+        break;
+    case 1:
+        for (k = 0; k < PLAY_KEYS / 2; k++) p->notes[k] = (uint8_t)pad_note_calc(p, k);
+        break;
+    case 2:
+        for (k = PLAY_KEYS / 2; k < PLAY_KEYS; k++) p->notes[k] = (uint8_t)pad_note_calc(p, k);
+        break;
+    case 3:
+        for (c = 0; c < 4; c++) {
+            int t[3];
+            play_chord_notes(SS, p->roots[c], p->oct, t);
+            p->ctri[c][0] = (uint8_t)t[0]; p->ctri[c][1] = (uint8_t)t[1]; p->ctri[c][2] = (uint8_t)t[2];
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 /* ====================================================================== */
 /* the jam: pads -> held notes                                              */
 static int pad_note(const PlayState *p, int k)
@@ -377,7 +406,8 @@ static void loop_toggle(PlayState *p)
 /* a tick of the recorder: count-in beats, the loop, a held pad */
 static void service(PlayState *p)
 {
-    if (p->stale || studio.tab_t < 2 || (studio.t & 7) == 0) refresh(p);
+    if (p->stale || studio.tab_t < 2) refresh(p);
+    else if ((studio.t & 7) < 4) refresh_part(p, studio.t & 7);       /* roots, notes, notes, chords: one a tick */
     if (p->take_open && !studio.undo_open) {          /* an undo took the open take away */
         p->take_open = 0;
         p->take_n = 0;

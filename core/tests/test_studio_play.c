@@ -275,7 +275,7 @@ TEST(studio_play_pads_sound_the_songs_notes_and_chords)
     open_play();
     studio.song.key = 7;                                  /* G */
     studio.song.scale = SONG_SCALE_MINOR;
-    frames(1, 0);
+    frames(8, 0);                                         /* the pads follow a key set behind the tab's back within 8 ticks (the refresh is spread over 4) */
     CHECK_EQ(studio.tab, STAB_PLAY);
     frames(1, BTN_A);                                     /* the first pad: degree 1 on the lead channel */
     CHECK_EQ(song_jam_note(0), play_degree_note(&studio.song, 0, 0, 0));
