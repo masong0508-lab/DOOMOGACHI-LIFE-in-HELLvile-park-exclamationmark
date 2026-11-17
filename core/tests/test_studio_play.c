@@ -11,6 +11,10 @@ void play_chord_notes(const DoomoSong *s, int pc, int oct, int out[3]);
 void play_song_roots(const DoomoSong *s, int basic, uint8_t out[4]);
 int  play_loop_pos(const DoomoSong *s, int from, int to, uint32_t ticks, int *frac);
 int  play_quantize_step(int step, int frac, int q, int from, int to);
+const char *play_q_text(int q, int wide);
+const char *play_count_text(int beats, char *buf, int cap);
+void play_head_text(char *buf, int drums, int oct, int row, int keys4, int replace, int range);
+void play_chord_text(char *buf, int root_pc, int third);
 
 static void frames(int n, uint32_t b)
 {
@@ -805,4 +809,42 @@ TEST(studio_notes_loop_this_bar_loops_the_bar_under_the_cursor_and_hears_edits)
     CHECK(heard);
     press(BTN_START);                                     /* START stops it as before */
     CHECK(!song_playing());
+}
+
+/* The PLAY tab's header and chord texts are built without doomo_snprintf (the draw ran it six times a frame). They must
+ * stay the text the old formats made, character for character, for every state the tab can be in. */
+TEST(studio_play_draw_texts_match_the_old_snprintf_formats)
+{
+    static const char *const qn[4] = { "off", "1/4", "1/8", "1/16" };
+    static const char *const rn[3] = { "whole pattern", "bar 1", "bar 2" };
+    char ref[44], got[44], tmp[16];
+    int q, wide, drums, oct, row, keys4, rep, rng, pc, third, b;
+    for (q = 0; q < 4; q++)
+        for (wide = 0; wide < 2; wide++) {
+            doomo_snprintf(ref, sizeof(ref), wide ? "Quantize %s" : "Q %s", qn[q]);
+            CHECK_STR(play_q_text(q, wide), ref);
+        }
+    for (b = 0; b <= 12; b++) {
+        doomo_snprintf(ref, sizeof(ref), "Count %d", b);
+        CHECK_STR(play_count_text(b, tmp, (int)sizeof(tmp)), ref);
+    }
+    for (drums = 0; drums < 2; drums++)
+        for (oct = -2; oct <= 2; oct++)
+            for (row = 0; row < 2; row++)
+                for (keys4 = 0; keys4 < 2; keys4++)
+                    for (rep = 0; rep < 2; rep++)
+                        for (rng = 0; rng < 3; rng++) {
+                            if (drums) doomo_snprintf(ref, sizeof(ref), "%s  Loop %s", rep ? "Replace" : "Overdub", rn[rng]);
+                            else doomo_snprintf(ref, sizeof(ref), "Oct %s%d  %s%s  Loop %s", oct > 0 ? "+" : "", oct,
+                                                keys4 ? (row ? "Notes 5-8  " : "Notes 1-4  ") : "",
+                                                rep ? "Replace" : "Overdub", rn[rng]);
+                            play_head_text(got, drums, oct, row, keys4, rep, rng);
+                            CHECK_STR(got, ref);
+                        }
+    for (pc = 0; pc < 12; pc++)
+        for (third = 0; third < 12; third++) {
+            doomo_snprintf(ref, sizeof(ref), "%s%s", doomo_song_key_names[pc], third == 3 ? "m" : (third == 6 ? "o" : ""));
+            play_chord_text(got, pc, third);
+            CHECK_STR(got, ref);
+        }
 }

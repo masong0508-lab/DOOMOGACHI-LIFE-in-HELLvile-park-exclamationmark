@@ -162,7 +162,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-oldsave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-oldsave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-play profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -675,6 +675,37 @@ profile-sung: harness
 	cat $(BUILD)/sung_spikes.log; \
 	exit $$rc
 # --- end profile-sung ---
+# --- profile-play: the PLAY tab at rest and with the song looping, 330 ticks each (gba/harness/scripts/studio_play_idle.txt,
+# studio_play_loop.txt), as per-tick work logs. tools/worklog_play.py lists the slowest ticks and the gaps between them (a beat
+# means the player, no beat means drawing) and the loop's extra median / peak over idle. A second pass of each window runs with
+# only the frames over PLAY_SLOW_MS counted as "slow", so the functions that cost extra in the spike frames are named
+# (build/play_loop_spikes.log): mus_drv_tick and the song player = the player; ui_round_rect / plat_rect / vid_blit = drawing.
+# Reports, never gates. Needs the harness (libmgba): CI runs it. ---
+PLAY_LOG ?= $(BUILD)/play
+PLAY_SLOW_MS ?= 29
+PLAY_PROFILE_N ?= 95000000
+profile-play: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	$(NM_SYMS)
+	@rc=0; \
+	for w in idle loop; do \
+	  $(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_play_$$w.txt \
+	      --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(PLAY_LOG)_$$w.log 2>&1 || rc=1; \
+	  sed -e '/^fps play_/d' -e '/^wait 330/d' -e 's/^fps end/profile $(PLAY_PROFILE_N)/' \
+	      $(GBA)/harness/scripts/studio_play_$$w.txt > $(BUILD)/play_$${w}_profile.txt; \
+	  HARNESS_SLOW_MS=$(PLAY_SLOW_MS) $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/play_$${w}_profile.txt \
+	      --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(BUILD)/play_$${w}_prof_full.log 2>&1 || rc=1; \
+	  grep -E 'harness: (slow frame|slow frames|slow\+)' $(BUILD)/play_$${w}_prof_full.log > $(BUILD)/play_$${w}_spikes.log || true; \
+	done; \
+	$(PYTHON) $(ROOT)/tools/worklog_play.py $(PLAY_LOG)_loop.log $(PLAY_LOG)_idle.log || rc=1; \
+	for w in idle loop; do \
+	  echo "hottest functions of the PLAY $$w window (harness profile, share of cycles):"; \
+	  grep -E '^harness: +[0-9.]+% ' $(BUILD)/play_$${w}_prof_full.log | head -n 20; \
+	  echo "frames over $(PLAY_SLOW_MS) ms in the $$w window, and what they spend extra time in (build/play_$${w}_spikes.log):"; \
+	  cat $(BUILD)/play_$${w}_spikes.log; \
+	done; \
+	exit $$rc
+# --- end profile-play ---
 
 # --- SA2: speed tour 2 (docs/GBA.md "Speed tour 2"): gba/harness/scripts/speed2_GROUP.txt for every group in
 # SPEED2 (default: all of them), each with --worklog; tools/speed2.py prints one table per group (logic ticks/s,

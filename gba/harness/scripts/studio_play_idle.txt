@@ -1,0 +1,22 @@
+# studio_play_idle.txt - the PLAY tab at rest, as one window of 330 ticks (make -C gba profile-play).
+# Same navigation as studio_profile.txt (the "Park United!" choir, STUDIO -107, NOTES, then SELECT + R to PLAY). The window is the
+# LAST 330 ticks of the run, which tools/worklog_play.py reads; the looping twin is studio_play_loop.txt.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene TITLE
+wait 20
+push STUDIO -107
+wait 100
+expect-scene STUDIO
+press R
+wait 20
+down SELECT
+press R
+release
+wait 20
+wait 130
+fps play_idle
+wait 330
+fps end

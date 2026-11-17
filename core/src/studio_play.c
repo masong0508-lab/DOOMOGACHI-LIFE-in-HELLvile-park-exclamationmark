@@ -55,6 +55,13 @@ DOOMO_STATIC_ASSERT(sizeof(PlayState) <= STUDIO_TABSTATE, play_state_fits_tab_st
 
 static const char *const trk_names[3] = { "Lead", "Harmony", "Bass" };
 static const char *const q_names[Q_COUNT] = { "off", "1/4", "1/8", "1/16" };
+/* The words the draw shows, whole (the header ran doomo_snprintf six times a frame; play_*_text below build the same text
+ * without it: pixel-identical, tests/test_studio_play.c checks every combination against the old formats). */
+static const char *const q_text[2][Q_COUNT] = {
+    { "Q off", "Q 1/4", "Q 1/8", "Q 1/16" },
+    { "Quantize off", "Quantize 1/4", "Quantize 1/8", "Quantize 1/16" } };
+static const char *const oct_text[5] = { "Oct -2", "Oct -1", "Oct 0", "Oct +1", "Oct +2" };    /* oct is -2..+2 */
+static const char *const count_text[5] = { "Count 0", "Count 1", "Count 2", "Count 3", "Count 4" };   /* beats is 0..4 */
 static const char *const range_names[RANGE_COUNT] = { "whole pattern", "bar 1", "bar 2" };
 static const int8_t trk_center[3] = { 72, 62, 48 };
 static const uint16_t melody_keys[8] = { BTN_A, BTN_B, BTN_L, BTN_R, BTN_X, BTN_Y, BTN_L2, BTN_R2 };
@@ -578,6 +585,51 @@ int play_prompts(UiPrompt *pr)
 }
 
 /* ====================================================================== */
+/* the header and chord texts (pure, no doomo_snprintf: see q_text)         */
+const char *play_q_text(int q, int wide)
+{
+    return q_text[wide ? 1 : 0][DOOMO_CLAMP(q, 0, Q_COUNT - 1)];
+}
+
+const char *play_count_text(int beats, char *buf, int cap)
+{
+    if (beats >= 0 && beats < 5) return count_text[beats];
+    doomo_snprintf(buf, (size_t)cap, "Count %d", beats);
+    return buf;
+}
+
+static int put_text(char *d, int n, int cap, const char *s)
+{
+    while (*s && n < cap) d[n++] = *s++;
+    return n;
+}
+
+/* The line under the header: "Oct +1  Notes 5-8  Overdub  Loop bar 1" (notes; "Notes 1-4 / 5-8" only where the pads are
+ * four, keys4) or "Overdub  Loop bar 1" (drums). Cut at 43 characters like the 44-byte snprintf buffer it replaces. */
+void play_head_text(char *buf, int drums, int oct, int row, int keys4, int replace, int range)
+{
+    int n = 0, cap = 43;
+    if (!drums) {
+        n = put_text(buf, n, cap, oct_text[DOOMO_CLAMP(oct + 2, 0, 4)]);
+        n = put_text(buf, n, cap, "  ");
+        if (keys4) n = put_text(buf, n, cap, row ? "Notes 5-8  " : "Notes 1-4  ");
+    }
+    n = put_text(buf, n, cap, replace ? "Replace" : "Overdub");
+    n = put_text(buf, n, cap, "  Loop ");
+    n = put_text(buf, n, cap, range_names[DOOMO_CLAMP(range, 0, RANGE_COUNT - 1)]);
+    buf[n] = 0;
+}
+
+/* A chord pad's name: the root ("C", "F#") and "m" for a minor third, "o" for a diminished one (buf: 4 bytes) */
+void play_chord_text(char *buf, int root_pc, int third)
+{
+    int n = put_text(buf, 0, 2, doomo_song_key_names[((root_pc % 12) + 12) % 12]);
+    if (third == 3) buf[n++] = 'm';
+    else if (third == 6) buf[n++] = 'o';
+    buf[n] = 0;
+}
+
+/* ====================================================================== */
 /* drawing                                                                  */
 /* A pad is drawn straight: the round rect and its shadow line (~6 rect calls a pad, 8 pads). Do NOT bake it
  * (st_bake): PLAY-30 tried, and on the GBA a ~1,300 px blit of a mostly solid pad costs far more than the few
@@ -617,14 +669,13 @@ void tab_play_draw(StRect r)
         ui_round_rect(r.x + 10 + tw, r.y + 4, 16, 11, 4, st_pattern_color(studio.pat, 1));
         nm[0] = (char)('A' + studio.pat); nm[1] = 0;
         ui_text(r.x + 15 + tw, r.y + 6, nm, PAL_WHITE);
-        doomo_snprintf(buf, sizeof(buf), wide ? "Quantize %s" : "Q %s", q_names[p->quant]);
-        ui_text(r.x + 34 + tw, r.y + 6, buf, st->text);
+        ui_text(r.x + 34 + tw, r.y + 6, play_q_text(p->quant, wide), st->text);
     }
     rx = r.x + r.w - 6;
     if (p->rec == REC_COUNT) {
-        doomo_snprintf(buf, sizeof(buf), "Count %d", p->beats);
-        rx -= ui_text_width(buf);
-        ui_text(rx, r.y + 6, buf, PAL_PAINT(PAINT_ROSE, 0));
+        const char *ct = play_count_text(p->beats, buf, (int)sizeof(buf));
+        rx -= ui_text_width(ct);
+        ui_text(rx, r.y + 6, ct, PAL_PAINT(PAINT_ROSE, 0));
     } else if (p->rec == REC_ON) {
         rx -= ui_text_width("REC");
         ui_text(rx, r.y + 6, "REC", PAL_PAINT(PAINT_CHERRY, 0));
@@ -633,10 +684,7 @@ void tab_play_draw(StRect r)
         rx -= ui_text_width("Loop");
         ui_text(rx, r.y + 6, "Loop", PAL_PAINT(PAINT_MINT, 0));
     }
-    if (p->mode) doomo_snprintf(buf, sizeof(buf), "%s  Loop %s", p->replace ? "Replace" : "Overdub", range_names[p->range]);
-    else doomo_snprintf(buf, sizeof(buf), "Oct %s%d  %s%s  Loop %s", p->oct > 0 ? "+" : "", p->oct,
-                        PLAY_KEYS == 4 ? (p->row ? "Notes 5-8  " : "Notes 1-4  ") : "",
-                        p->replace ? "Replace" : "Overdub", range_names[p->range]);
+    play_head_text(buf, p->mode, p->oct, p->row, PLAY_KEYS == 4, p->replace, p->range);
     ui_text(r.x + 8, r.y + 18, buf, st->text_dim);
     /* the pads */
     rows = p->mode ? 2 : (PLAY_KEYS == 8 ? 3 : 2);
@@ -663,9 +711,8 @@ void tab_play_draw(StRect r)
         for (i = 0; i < 4; i++) {
             int px = x0 + i * (cw + gap), third;
             third = (p->ctri[i][1] % 12 + 12 - p->ctri[i][0] % 12) % 12;
-            doomo_snprintf(buf, sizeof(buf), "%s%s", doomo_song_key_names[p->roots[i] % 12],
-                           third == 3 ? "m" : (third == 6 ? "o" : ""));
-            pad_cell(px, y, cw, ch, PAL_PAINT(PAINT_SKY, 2), btn_down(chord_keys[i]), pad_key_name(chord_keys[i]), buf);
+            play_chord_text(nm, p->roots[i], third);
+            pad_cell(px, y, cw, ch, PAL_PAINT(PAINT_SKY, 2), btn_down(chord_keys[i]), pad_key_name(chord_keys[i]), nm);
         }
     }
     /* the 32 steps of the pattern for the track the pads write to: the loop, the playhead and what is there */

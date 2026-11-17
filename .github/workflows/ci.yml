@@ -261,6 +261,20 @@ jobs:
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The PLAY tab, at rest and looping: which ticks spike and what the spike frames spend their time in (the player or the
+      # drawing). Reports, never gates.
+      - name: Profile the Music Studio PLAY tab
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo '## Music Studio PLAY: idle vs looping, the slowest ticks and what the slow frames spend time in'
+            echo '```'
+            make -C gba profile-play 2>&1 | grep -E '^(window|idle |tick |[0-9]+ +[0-9.]+ |the [0-9]+ slowest|gaps|the gaps|loop over|hottest functions|frames over|harness: slow|harness: +[0-9.]+% )|rror' || echo '(profile-play produced no output)'
+            echo '```'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload speed report
         if: always()
         continue-on-error: true
@@ -275,6 +289,10 @@ jobs:
             gba/build/studio_profile.log
             gba/build/sung.log
             gba/build/sung_spikes.log
+            gba/build/play_idle.log
+            gba/build/play_loop.log
+            gba/build/play_idle_spikes.log
+            gba/build/play_loop_spikes.log
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore
