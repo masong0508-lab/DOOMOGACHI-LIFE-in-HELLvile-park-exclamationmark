@@ -52,6 +52,8 @@ wait 20
 press A
 wait 40
 shot sung_start
+# the first fps line below measures everything since the script began (load, title, tab walk: slow catch-up ticks, ~29 logic/s)
+# and is ignored; the `fps end` line after the wait is the 330 sung ticks, and the one tools/worklog_spikes.py gates.
 fps sung_all
 wait 330
 fps end

@@ -37,12 +37,15 @@ def load(path):
     return {t: v for t, v in d.items() if t > last - 330}
 
 def logic_rate(path):
-    """Logic ticks/s of the `fps sung_all` window (the harness prints it; the work log has no rate), or None."""
+    """Logic ticks/s of the LAST `fps` window in the log, or None. studio_sung.txt ends `fps sung_all`, `wait 330`, `fps end`:
+    the first fps line measures everything since the script started (title, load, tab walk, with their catch-up ticks), only
+    the last one is the 330 sung ticks."""
+    rate = None
     for line in open(path):
-        m = re.match(r"harness: fps sung_all: ([\d.]+) logic ticks/s", line)
+        m = re.match(r"harness: fps [^:]*: ([\d.]+) logic ticks/s", line)
         if m:
-            return float(m.group(1))
-    return None
+            rate = float(m.group(1))
+    return rate
 
 def hint(show_t, over):
     h = []
@@ -85,7 +88,7 @@ def main():
             sys.exit(1)
     lps = logic_rate(args[0])
     if lps is None:
-        print("ticks logic per second: not found (no 'harness: fps sung_all' line in the log)")
+        print("ticks logic per second: not found (no 'harness: fps ...' line in the log)")
         bad_logic = True
     else:
         print("ticks logic per second: %.1f (gate %.1f)" % (lps, SUNG_LOGIC_MIN))
