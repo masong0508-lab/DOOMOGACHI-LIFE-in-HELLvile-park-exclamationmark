@@ -621,8 +621,13 @@ One item is open (PS1 pages: tried, not affordable; pan playback, lyric lines 9.
 3. **Patterns of 3 and 4 bars (built, see "ST-ADV: Patterns of 3 and 4 bars").** (old plan:) One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
    `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
    would then address a block, not a pattern. Decide that chain model before writing code.
-4. **PS1 pages (tried 2026-11-16, not affordable: see "ST-ADV: PS1 pages").** About 53 KB of RAM margin against about 12 KB of room; the PS1 stays classic.
-Also still unmeasured for everything built in ST-ADV: GBA `.bss` / sizes, the GBA speed windows of the Note grid, the Box, the velocity strip and the Lyric lines view, the Dreamcast and PS1 builds.
+4. **PS1 pages (tried 2026-11-16, not affordable: see "ST-ADV: PS1 pages").** 63,760 B of RAM margin against about 22 KB of room above the gate; the PS1 stays classic.
+Measured on CI (run on `5a08784`, 2026-11-17, all jobs green): core 1659 tests pass at 240x160 and 320x240 and under ASan / UBSan (the UBSan overflow reports are in `concert_gfx.c`, `fixmath.c`, `test_math.c`,
+`test_concert_gfx.c` and a hash in `test_studio_tools.c:730`, none in song / studio ST-ADV code; they do not fail the run); `xcheck` 438 files `-Werror` on gcc, arm, mipsel and sh4; check-gen; the Dreamcast host tests;
+the PS1 disc (ledger above); the GBA ROM and the headless harness. GBA Music Studio tabs (classic screens): song, notes, play, order, choir, PERFORM 30.0 fps; **LYRICS 29.9 fps (work 32.6 ms average, 34.4 ms max: the only
+tab over the 30 ms budget; it scrolls 16 rows since lines 9..16, no run from before that change is in these logs to compare)**; PERFORM sung phase median 6.4 ms, worst 7.9 ms, 0 slow ticks; GBA `studio` .bss 6,368 B.
+Still unmeasured: the Advanced screens themselves on the GBA (the speed script only opens the classic tabs: Note grid, Box, Mix, Expert, velocity strip, Lyric lines view, part view), GBA `.bss` before / after patterns of 3 and 4 bars
+(+32 B computed), the Dreamcast and PS1 hardware or emulator runs, and a PS1 speed run of the studio.
 
 ## ST-ADV: Patterns of 3 and 4 bars (2026-11-16; core + studio, host-tested only)
 Chosen model: a **continuation link**, not a block address. Pattern `p` plays its own cells (two bars, or one if short) and then the cells of
@@ -638,16 +643,19 @@ blocks, so a pass is 1, 2, 3 or 4 bars (16 / 32 / 48 / 64 steps). No cell, pool 
   edited like any pattern). Going back to 1 or 2 bars removes the link and keeps the block and its notes as an unplayed pattern. The length of a block is set on its head.
   The status line says "Pattern A: 4 bars, then F"; the playing cursor follows the block.
 - **Tests:** 6 in `test_song_ext.c`, 3 in `test_studio_tools.c`; the one-bar test follows the new cycle.
-- **Not done:** the part view's pass rows now say "one bar" / "3 bars, then F" / "4 bars, then F" (drawn, no test: the draw path has none); GBA / PS1 / DC builds, GBA scratch (+32 B) and the grid's speed window not run.
+- **Not done:** the part view's pass rows now say "one bar" / "3 bars, then F" / "4 bars, then F" (drawn, no test: the draw path has none); CI built the GBA, PS1 and host (see the measured lines in "what is left"); the Dreamcast host tests pass; the grid's speed window on the GBA is not in the speed script.
 
 ## ST-ADV: PS1 pages (2026-11-16: tried, measured on CI, NOT affordable; the PS1 stays at 0 pages)
 `SONGX_BOOK_PAGES` 6 on the PS1 (patch `nov16m`) turned every ST-ADV screen on there. The PS1 CI ledger (job summary, `docs/PS1.md` \"RAM headroom\") then read **32,768 B left below the
 stack top, 40,960 B under the 73,728 B gate**, and the job failed. The computed +13.7 KB in `nov16m` was wrong: it counted only `book_data` (9,216 B) and `Studio` (+4.5 KB) and
 missed the code. Ledger lines with it on: `studio_adv` 17,164 B resident, `song_ext` 20,720 B, `book_data` 9,216 B, `studio` .bss 6,388 B, and the **overlay slot 153,600 B** (the studio group,
-152,888 B, became the biggest group; it was 131,072 B). That is about **53 KB** in all, against about 12 KB of room above the gate. The 132.6 KB margin quoted in `docs/PS1.md` is
+152,888 B, became the biggest group; it was 131,072 B). Measured after the revert, the pages cost **63,760 B** of margin in all (see below), against about 22 KB of room above the gate. The 132.6 KB margin quoted in `docs/PS1.md` is
 older than the tip: always read the margin from the latest CI ledger, not from the doc.
 - **Now:** the PS1 is back to 0 pages and the classic ORDER tab (the no-op `studio_adv.c` stubs). Everything else in ST-ADV (patterns of 3 / 4 bars, lyric lines 9..16, the part view's pass lengths)
   is unchanged and runs on the host, Dreamcast and GBA.
+- **Measured after the revert (CI, run on `5a08784`, 2026-11-17):** 96,528 B left below the stack top (22,800 B above the 73,728 B gate, 1,776 B under the 96 KB aim), overlay slot 133,120 B, studio group
+  131,488 B (the biggest group again; the planner's estimate was 132,584 B against story 130,012 B), `studio` .bss 1,868 B, no `book_data` / `studio_adv` in the resident list. With 6 pages the same ledger read
+  32,768 B left, slot 153,600 B, studio group 152,888 B. So the pages cost 63,760 B of margin in total (before the revert I had estimated 53 KB from the ledger lines; the real number is higher because the studio group's growth in the slot and the resident code both count). Every PS1 job step is green (tool tests, tile-row host test, overlay planner tests, game disc, engine-test disc).
 - **To do it later:** the studio group would have to stay under the 131,072 B slot (move ST-ADV code out of the group that sets the slot, or shrink the studio group by about 22 KB), the code
   (about 17 KB) would have to go into an overlay (`MODAL_CALLBACKS[\"studio_adv\"]` in `ps1/tools/ovl_plan.py`: `name_done key_done tempo_done fade_done newpart_done arrange_tools part_tools ly_tools box_tools
   grid_more grid_tools` all go to `st_popup` only), and the 9,216 B of pages would have to be fewer (2 pages = 3,072 B). Measure on CI after each step.

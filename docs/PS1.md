@@ -1978,6 +1978,8 @@ rest of the reserve or CR-UI / SPEED find it elsewhere); hair try-on 27.5.
 
 ## RAM headroom 2026-11-12 (PS1-RAM)
 
+**Tip 2026-11-17 (CI on `5a08784`):** the disc ends at `0x801e86e0`, **96,528 B below the stack top**, overlay slot 133,120 B (studio group 131,488 B, the biggest), 22,800 B above the plan gate. The 128 KB figures below are older than that tip; read the margin from the latest ledger. A trial with 6 Advanced song pages on the PS1 read 32,768 B (docs/STUDIO.md "ST-ADV: PS1 pages").
+
 On `89a28b56` the game disc with the boot FMV ended **65,936 B below the stack top** (65,952 B on `e89f329`):
 416 B above the build's hard limit and 7.8 KB under the 72 KB plan gate. Two packages had already hit that
 wall. This package gives resident memory back without touching the game's logic or a pixel: the disc now ends
