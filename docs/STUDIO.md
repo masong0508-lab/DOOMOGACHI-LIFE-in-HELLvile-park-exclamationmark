@@ -660,6 +660,13 @@ older than the tip: always read the margin from the latest CI ledger, not from t
   (about 17 KB) would have to go into an overlay (`MODAL_CALLBACKS[\"studio_adv\"]` in `ps1/tools/ovl_plan.py`: `name_done key_done tempo_done fade_done newpart_done arrange_tools part_tools ly_tools box_tools
   grid_more grid_tools` all go to `st_popup` only), and the 9,216 B of pages would have to be fewer (2 pages = 3,072 B). Measure on CI after each step.
 
+## ST-ADV: PS1 pages, second try (2026-11-16: written, NOT measured; CI decides)
+Steps 1 and 2 of "To do it later" only: `SONGX_BOOK_PAGES` on the PS1 is **2** (3,072 B of `book_data`, was 9,216 B in the six-page trial), and `ovl_plan.py` `MODAL_CALLBACKS["studio_adv"]` lists
+`name_done key_done tempo_done fade_done newpart_done arrange_tools part_tools ly_tools box_tools grid_more grid_tools` (each is passed to `st_popup()` only, in `studio_adv.c`; the group keeps it in `studio.pop_done`).
+- **Read from the CI ledger:** margin below the stack top (gate 73,728 B; 96,528 B before this), overlay slot (133,120 B before), `studio_adv` resident bytes (17,164 B in the six-page trial).
+- **Revert if** the PS1 job fails or the slot grows past 133,120 B: set `SONGX_BOOK_PAGES` back to 0 (the callbacks entry can stay). Step 3 (the studio group back under the slot) is still open.
+- Nothing built here: no PS1 toolchain.
+
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),
 Static (20 lyric lines), Toy Box drums (2 songs), Bone Rattle (Inspire me),

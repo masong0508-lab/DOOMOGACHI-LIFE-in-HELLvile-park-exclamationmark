@@ -259,6 +259,10 @@ MODAL_CALLBACKS = {
     "playas_scene": ("nl_done", "nl_start", "pf_leave", "pf_renamed", "pf_join"),
     "story_mg": ("te_cb",),
     "studio": ("leave_choice",),
+    # ST-ADV (PS1 pages, second try): the Advanced ORDER screen's popup callbacks. Each is passed to st_popup() only
+    # (studio.pop_done, read by the studio group's own st_popup code), all inside studio_adv.c
+    "studio_adv": ("name_done", "key_done", "tempo_done", "fade_done", "newpart_done", "arrange_tools", "part_tools",
+                   "ly_tools", "box_tools", "grid_more", "grid_tools"),
     "studio_edit": ("notes_tools", "order_tools", "song_tools", "title_done", "range_tools", "helper_tools", "chord_pick",
                     "chord_all_pick", "phrase_pick", "groove_pick", "groove_page2_pick", "harm_pick"),
     "studio_grid": ("drum_tools", "chord_tools"),
