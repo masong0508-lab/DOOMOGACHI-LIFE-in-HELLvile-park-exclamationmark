@@ -1629,6 +1629,14 @@ static void part_draw(StRect r)
             ui_round_rect(vx, y, 14, 10, 3, st_pattern_color(c->pat[pass], 0));
             ui_round_rect(vx + 1, y + 1, 12, 8, 2, st_pattern_color(c->pat[pass], 1));
             ui_text(vx + 4, y + 1, l, PAL_WHITE);
+            {   /* a pass that is not two bars says so: one bar, or 3 / 4 bars and the block that follows */
+                int bars = songx_pass_bars(X, c->pat[pass] % SX_PATTERNS), nx = songx_cont(X, c->pat[pass] % SX_PATTERNS);
+                if (bars != 2) {
+                    if (nx >= 0) doomo_snprintf(buf, sizeof(buf), "%d bars, then %c", bars, pat_ch(nx));
+                    else doomo_snprintf(buf, sizeof(buf), "one bar");
+                    ui_text(vx + 34, y + 1, buf, st->text_dim);
+                }
+            }
             if (ph >= 0 && songx_entry_of_pass(X, ph) == studio.osel && ph - songx_entry_pass(X, studio.osel) == pass)
                 ui_heart(vx + 22, y + 5, 3 + (song_beat_age() < 3), PAL_PAINT(PAINT_ROSE, 1));
             continue;

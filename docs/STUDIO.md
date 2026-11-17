@@ -638,7 +638,7 @@ blocks, so a pass is 1, 2, 3 or 4 bars (16 / 32 / 48 / 64 steps). No cell, pool 
   edited like any pattern). Going back to 1 or 2 bars removes the link and keeps the block and its notes as an unplayed pattern. The length of a block is set on its head.
   The status line says "Pattern A: 4 bars, then F"; the playing cursor follows the block.
 - **Tests:** 6 in `test_song_ext.c`, 3 in `test_studio_tools.c`; the one-bar test follows the new cycle.
-- **Not done:** the ORDER part view does not show a pass's bars; GBA / PS1 / DC builds, GBA scratch (+32 B) and the grid's speed window not run.
+- **Not done:** the part view's pass rows now say "one bar" / "3 bars, then F" / "4 bars, then F" (drawn, no test: the draw path has none); GBA / PS1 / DC builds, GBA scratch (+32 B) and the grid's speed window not run.
 
 ## ST-ADV: PS1 pages (2026-11-16; host-tested only, the PS1 build was not run)
 The PS1 now keeps Advanced pages like the host and the Dreamcast: `SONGX_BOOK_PAGES` is `SONG_BOOK_SIZE` (6) on `DOOMO_PLATFORM_PS1`, so every book slot can
