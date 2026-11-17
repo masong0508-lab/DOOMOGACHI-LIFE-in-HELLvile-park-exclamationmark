@@ -231,7 +231,9 @@ void st_chibi_ui(int id, int x, int y, int dir, int frame, int flags, uint8_t co
 /* Baked shapes (GBA, or any build with DOOMO_STUDIO_BAKE): a shape drawn from many rects is painted once into an image
  * (through ST_RECT / the UI kit's own rasteriser, so the same pixels) and from then on drawn with one plat_image.
  * st_bake() draws fn(x, y, a) that way and returns 1, or returns 0 (nothing drawn) when it cannot and the caller draws
- * it straight. k0 / k1 name the shape: equal keys must mean equal pixels. */
+ * it straight. k0 / k1 name the shape: equal keys must mean equal pixels.
+ * Bake only shapes of MANY small rects. A big, mostly solid shape (a ~1,300 px pad, a 23 x 28 tile) is slower as a blit than
+ * as a few rect fills on the GBA (PLAY-30: +4 ms a frame, reverted). Measure on the GBA; host shots cannot show it. */
 #if defined(DOOMO_PLATFORM_GBA) || defined(DOOMO_STUDIO_BAKE)
 #define ST_BAKE 1
 void ur_rect(int x, int y, int w, int h, uint8_t c);   /* ui_raster.c: plat_rect, or the offscreen target while baking */
