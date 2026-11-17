@@ -660,12 +660,14 @@ older than the tip: always read the margin from the latest CI ledger, not from t
   (about 17 KB) would have to go into an overlay (`MODAL_CALLBACKS[\"studio_adv\"]` in `ps1/tools/ovl_plan.py`: `name_done key_done tempo_done fade_done newpart_done arrange_tools part_tools ly_tools box_tools
   grid_more grid_tools` all go to `st_popup` only), and the 9,216 B of pages would have to be fewer (2 pages = 3,072 B). Measure on CI after each step.
 
-## ST-ADV: PS1 pages, second try (2026-11-16: written, NOT measured; CI decides)
-Steps 1 and 2 of "To do it later" only: `SONGX_BOOK_PAGES` on the PS1 is **2** (3,072 B of `book_data`, was 9,216 B in the six-page trial), and `ovl_plan.py` `MODAL_CALLBACKS["studio_adv"]` lists
-`name_done key_done tempo_done fade_done newpart_done arrange_tools part_tools ly_tools box_tools grid_more grid_tools` (each is passed to `st_popup()` only, in `studio_adv.c`; the group keeps it in `studio.pop_done`).
-- **Read from the CI ledger:** margin below the stack top (gate 73,728 B; 96,528 B before this), overlay slot (133,120 B before), `studio_adv` resident bytes (17,164 B in the six-page trial).
-- **Revert if** the PS1 job fails or the slot grows past 133,120 B: set `SONGX_BOOK_PAGES` back to 0 (the callbacks entry can stay). Step 3 (the studio group back under the slot) is still open.
-- Nothing built here: no PS1 toolchain.
+## ST-ADV: PS1 pages, second try (2026-11-17: tried, measured on CI, NOT affordable; the PS1 is back to 0 pages)
+`SONGX_BOOK_PAGES` 2 on the PS1 plus `ovl_plan.py` `MODAL_CALLBACKS["studio_adv"]` (11 popup callbacks, all passed to `st_popup()` only). PS1 CI ledger: **37,920 B left below the stack top** (96,528 B before; gate 73,728 B,
+35,808 B under it), the job failed. **Overlay slot 172,032 B** (133,120 B before), **studio group 170,176 B** (131,488 B before: +38,688 B, the ST-ADV code and its song_ext sections now sit in the studio group and make it the biggest;
+`home` is 170,744 B but loads over `.borrow`, so it does not set the slot). Resident grew by 19,696 B besides the slot: `book_data` 3,072 B, `song_ext` 14,544 B (11,280 B text, 3,076 B bss).
+- **What worked:** `studio_adv` is out of the 30 biggest resident objects (it was 17,164 B resident), so the callbacks entry did move it into the overlay.
+- **What failed:** the slot. Moving code from resident to the group only shifts the cost into the slot while the studio group is the biggest. 2 pages instead of 6 saved little because the code, not the pages, is the cost.
+- **Now:** back to 0 pages and the classic ORDER tab; the callbacks entry stays (harmless with the stubs).
+- **Only way left:** ST-ADV in a group of its own (a scene edge from the studio, loaded when the ORDER tab opens) or about 37 KB cut from the studio group. Both need design first; do not retry the page count.
 
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),

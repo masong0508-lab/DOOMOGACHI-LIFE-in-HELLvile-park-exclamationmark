@@ -49,12 +49,12 @@ enum { SX_FADE_NONE, SX_FADE_IN, SX_FADE_OUT, SX_FADE_COUNT };
 #ifndef SONGX_TRACKS_MAX
 #define SONGX_TRACKS_MAX 4
 #endif
-/* encoded pages the book can keep: 0 = none (GBA and PS1 keep 2: plan section 4) */
+/* encoded pages the book can keep: 0 = none (GBA keeps 2, PS1 none: the studio group would set the slot, plan section 4) */
 #ifndef SONGX_BOOK_PAGES
 #if defined(DOOMO_PLATFORM_GBA)
 #define SONGX_BOOK_PAGES 2             /* GBA: two Advanced pages (book slots 0 and 1), 3,072 B of .bss; plan section 4 */
 #elif defined(DOOMO_PLATFORM_PS1)
-#define SONGX_BOOK_PAGES 2             /* PS1: two Advanced pages (3,072 B), like the GBA. Six pages cost 63,760 B of margin on CI (2026-11-16); this is the second try, with the ST-ADV popup callbacks in ovl_plan.py MODAL_CALLBACKS: docs/STUDIO.md "ST-ADV: PS1 pages, second try" */
+#define SONGX_BOOK_PAGES 0             /* PS1: none. 6 pages: 32,768 B left; 2 pages with the callbacks in the overlay: 37,920 B left (slot 172,032 B, studio group 170,176 B): docs/STUDIO.md "ST-ADV: PS1 pages, second try" */
 #else
 #define SONGX_BOOK_PAGES SONG_BOOK_SIZE
 #endif
