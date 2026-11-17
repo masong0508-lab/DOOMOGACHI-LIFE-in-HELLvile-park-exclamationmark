@@ -277,6 +277,39 @@ static int draw_syllables(int x, int y, const char *t, const uint8_t *st, int n,
     return x + DOOMO_MIN(len, maxch) * 6;
 }
 
+/* LYRICS-30 step 2: the detail strip under the selected line (32 step ticks, the onset dots, the hold bars) is
+ * a pile of small rects: ~60 plat_rect calls a frame on the GBA, though it only changes when the selected line
+ * (or its words) does. Two halves of 16 steps, each one baked picture (st_bake: the same pixels, drawn once through
+ * the UI kit's rasteriser, then one plat_image). Per step a 2-bit state: 0 tick only, 1 onset with a syllable,
+ * 2 onset without one, 3 hold. a[0] sx, a[1] state bits of this half (step k in bits 2k..2k+1). */
+static void ly_strip_half(int x, int y, const int *a)
+{
+    int sx = a[0], k;
+    uint32_t bits = (uint32_t)a[1];
+    for (k = 0; k < SONG_STEPS / 2; k++) {
+        int st = (int)((bits >> (2 * k)) & 3u), cx = x + k * sx;
+        ST_RECT(cx, y + 4, sx - 1, 1, (k & 3) ? PAL_PAINT(PAINT_MINT, 2) : PAL_PAINT(PAINT_MINT, 0));
+        if (st == 1 || st == 2)
+            ui_fill_circle(cx + sx / 2, y + 4, 2, st == 1 ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_SKY, 0));
+        else if (st == 3)
+            ST_RECT(cx, y + 3, sx, 3, PAL_PAINT(PAINT_ROSE, 2));
+    }
+}
+
+/* st[0] = states of steps 0..15, st[1] = steps 16..31; (gx, ky) = the strip's origin */
+static void ly_strip(int gx, int ky, int sx, const uint32_t st[2])
+{
+    int h;
+    for (h = 0; h < 2; h++) {
+        int a[2], ax = gx + h * (SONG_STEPS / 2) * sx;
+        a[0] = sx; a[1] = (int)st[h];
+#if ST_BAKE
+        if (st_bake(st[h], 0x4C590000u | (uint32_t)h << 8 | (uint32_t)sx, ax, ky, ly_strip_half, a, 1024)) continue;
+#endif
+        ly_strip_half(ax, ky, a);
+    }
+}
+
 void tab_lyrics_draw(StRect r)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
@@ -352,12 +385,12 @@ void tab_lyrics_draw(StRect r)
             const char *ltx = st_line_text(s, line);
             const uint8_t *lead = s->notes[studio_line_pat(s, line) & 3][0];
             int sx = gw / SONG_STEPS, ky = dy + 17, syl = 0, lastx = -100;
+            uint32_t sbits[2] = { 0, 0 };                       /* the strip's 2-bit step states (ly_strip_half) */
             for (k = 0; k < SONG_STEPS; k++) {
                 int x = gx + k * sx;
-                plat_rect(x, ky + 4, sx - 1, 1, (k & 3) ? PAL_PAINT(PAINT_MINT, 2) : PAL_PAINT(PAINT_MINT, 0));
                 if (lead[k] >= 2) {
                     int ok = syl < nsy;
-                    ui_fill_circle(x + sx / 2, ky + 4, 2, ok ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_SKY, 0));
+                    sbits[k >> 4] |= (uint32_t)(ok ? 1 : 2) << (2 * (k & 15));
                     if (ok && x >= lastx + 2 && dh >= 34) {
                         char sb[8];
                         int a = stt[syl], b = syl + 1 < nsy ? stt[syl + 1] : (int)strlen(ltx), j;
@@ -370,9 +403,10 @@ void tab_lyrics_draw(StRect r)
                     }
                     syl++;
                 } else if (lead[k] == SONG_HOLD) {
-                    plat_rect(x, ky + 3, sx, 3, PAL_PAINT(PAINT_ROSE, 2));
+                    sbits[k >> 4] |= 3u << (2 * (k & 15));
                 }
             }
+            ly_strip(gx, ky, sx, sbits);
             /* who sings it (room permitting) */
             if (dh >= 70) {
                 uint32_t m = st_line_mask(s, line), sing = song_pos_line() == line ? song_pos_singers() : 0;
