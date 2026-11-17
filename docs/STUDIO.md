@@ -745,6 +745,14 @@ round rect and a shadow line. RAM: GBA `.bss` / IWRAM identical (the player's st
 taken from the bake block's pixel pool); PS1 resident 0 (scene scratch). The PS1 and Dreamcast were not measured: their toolchains were
 not installed on the build machine.
 
+## PLAY spikes (PLAY-31 / PLAY-32, CI run #857, libmgba)
+`make -C gba profile-play` (CI step "Profile the Music Studio PLAY tab") runs `gba/harness/scripts/studio_play_idle.txt` and `studio_play_loop.txt` (330
+ticks each) and prints the slowest ticks, the gaps between them, the loop's extra median / peak over idle, and the functions the slow frames spend extra
+time in (`gba/build/play_*_spikes.log`). It reports and never gates. Result: idle 22.4 ms median / 25.4 worst, looping 23.4 / 29.8. The one spike in the
+loop is audio and voice setup plus the pad-note refresh, not drawing, so pad drawing is not where to look. The header, Q line, count and chord labels are
+built without `doomo_snprintf` (`play_q_text`, `play_head_text`, `play_chord_text`, `play_count_text`; the test compares them with the old formats).
+Next steps and the open `profile-sung` question: `docs/design/held/status/STUDIO.md`, PLAY-32.
+
 ## Budgets
 ST-EASY adds **no `.bss` and no IWRAM** on the GBA (`make -C gba sizes`: `.bss` 254,820 B before and after, `.iwram`
 11,272, `.iwram_bss` 4,088): its state (`StEasy`, 448 B: the redo journal 384 B, the Start card's picks, the cursor
