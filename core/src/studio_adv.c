@@ -14,7 +14,7 @@
  * EXPERT VIEW (part tools, "Expert view..."): the Free notes switch (new notes keep the pitch you last used instead of snapping to the
  *   scale), note counts per track for the whole song, and a memory meter (parts, entries, pool blocks, page bytes). Free notes is one undo step.
  *
- * Builds with no room for arrangement pages (GBA, PS1: SONGX_BOOK_PAGES 0) compile only the no-op versions at the end.
+ * Builds with no room for arrangement pages (SONGX_BOOK_PAGES 0: none today) compile only the no-op versions at the end.
  */
 #include "studio_int.h"
 
@@ -1779,7 +1779,7 @@ int st_adv_prompts(UiPrompt *p)
     return n;
 }
 
-#else  /* !STUDIO_ADV: the GBA and PS1 have no room for an arrangement yet (docs/STUDIO.md "ST-ADV screens") */
+#else  /* !STUDIO_ADV: a build with no room for an arrangement page (SONGX_BOOK_PAGES 0) */
 
 int st_adv_on(void) { return 0; }
 int st_adv_free(void) { return 0; }

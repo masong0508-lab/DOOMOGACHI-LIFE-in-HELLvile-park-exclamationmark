@@ -614,15 +614,14 @@ live in the `SongExt`.
   LYRICS tab on screen, `studio_write_lyrics` still writes lines 1..8 only.
 
 ## ST-ADV: what is left, and how to build it (written 2026-11-16, read from the code, nothing here is built)
-One item is open (pan playback, lyric lines 9..16 and patterns of 3 and 4 bars are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
+No item is open in the code (pan playback, lyric lines 9..16, patterns of 3 and 4 bars and PS1 pages are built). Each has the files it touches and the reason it was not done with the others. Read this before starting one.
 
 1. **Pan playback (built 2026-11-16, see "Pan playback" below).** Left / middle / right per lane, heard on the GBA, PS1 and Dreamcast ports (code written, not built here: see the section).
 2. **More than 8 lyric lines (built and unit-tested on the host, see \"ST-ADV: Lyric lines 9..16\" below).**
 3. **Patterns of 3 and 4 bars (built, see "ST-ADV: Patterns of 3 and 4 bars").** (old plan:) One-bar patterns are built ("One-bar patterns" above). Longer ones need cells of 64 or 96 or 128 steps, and a cell is 32 bytes in the pool and a fixed
    `[4][4][32]` in the classic song. A pattern would be a chain of 2-bar blocks (the same pool, one more map entry per block) played one after another; the arrangement and the Note grid
    would then address a block, not a pattern. Decide that chain model before writing code.
-4. **PS1 pages.** `SONGX_BOOK_PAGES` is 0 on the PS1, so the Advanced ORDER tab is classic there (stubs). It needs resident bytes granted by the coordinator (plan section 4) and a measurement
-   of the margin below the stack top (gate: 72 KB; it was 110,352 B on the last landing). The Advanced `SongExt` is now 4,228 B in RAM, so ask for that plus the pages.
+4. **PS1 pages (built 2026-11-16, see "ST-ADV: PS1 pages").** Nothing in ST-ADV is left open in the code; what remains is measuring (below).
 Also still unmeasured for everything built in ST-ADV: GBA `.bss` / sizes, the GBA speed windows of the Note grid, the Box, the velocity strip and the Lyric lines view, the Dreamcast and PS1 builds.
 
 ## ST-ADV: Patterns of 3 and 4 bars (2026-11-16; core + studio, host-tested only)
@@ -640,6 +639,19 @@ blocks, so a pass is 1, 2, 3 or 4 bars (16 / 32 / 48 / 64 steps). No cell, pool 
   The status line says "Pattern A: 4 bars, then F"; the playing cursor follows the block.
 - **Tests:** 6 in `test_song_ext.c`, 3 in `test_studio_tools.c`; the one-bar test follows the new cycle.
 - **Not done:** the ORDER part view does not show a pass's bars; GBA / PS1 / DC builds, GBA scratch (+32 B) and the grid's speed window not run.
+
+## ST-ADV: PS1 pages (2026-11-16; host-tested only, the PS1 build was not run)
+The PS1 now keeps Advanced pages like the host and the Dreamcast: `SONGX_BOOK_PAGES` is `SONG_BOOK_SIZE` (6) on `DOOMO_PLATFORM_PS1`, so every book slot can
+hold an arrangement, the studio gets its working `SongExt` (`xw`, `STUDIO_ADV`), and the ORDER tab, Note grid, Mix, Expert and Lyric lines views, Box, velocity and
+the 3 / 4 bar patterns all compile in. A song made on the host or the Dreamcast keeps its arrangement when its save is loaded on the PS1 (before, the PS1 skipped the tail).
+- **Resident cost (computed, not measured):** `book_data` 6 x 1,536 = 9,216 B + `book_len` 12 B; `Studio` 1,936 -> 6,456 B (+4,520 B, the `SongExt` and its undo window).
+  Total about **+13.7 KB** against 132,608 B below the stack top (docs/PS1.md \"RAM headroom\"): about 118.9 KB left, 45 KB above the 72 KB plan gate, 20 KB above the 96 KB aim,
+  under the old 128 KB goal. `song_ext.c` has a static assert that the pages stay under 10 KB on the PS1.
+- **Overlay:** `studio_adv.c` is in the `studio` overlay group (ovl_plan.py `studio(_\w+)?$`); it grows the group by its code (about 49 KB on the host x86 at -O2: the PS1 number is
+  to measure), the group was far under the 131,072 B slot, and its entry load grows with it (about 0.3 s per 70 KB at 2x).
+- **Save:** the `'SONG'` chunk is unchanged (the tail of version 1); the chunk cap (8,192 B) is the same everywhere.
+- **Not done:** `cmake --preset ps1` build, the RAM ledger, `OVL.BIN` size and the studio group's load time, the speed of the Note grid / Box / velocity strip on PCSX-Redux.
+  If the ledger is short, lower `SONGX_BOOK_PAGES` for the PS1 (4 pages = 3 KB less; slots 4 and 5 then stay classic).
 
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),

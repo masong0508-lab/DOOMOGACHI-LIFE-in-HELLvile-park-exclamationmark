@@ -87,8 +87,8 @@ void studio_check_unlocks(void);
 
 typedef void (*StudioPopDone)(int choice);   /* -1 = cancelled */
 
-/* ST-ADV screens: builds with room for arrangement pages (host, Dreamcast) keep a working SongExt `xw` right behind the
- * song, so the undo journal (offsets from &studio.song) covers both. GBA / PS1 (SONGX_BOOK_PAGES 0) have no xw. */
+/* ST-ADV screens: builds with room for arrangement pages (host, Dreamcast, PS1, GBA) keep a working SongExt `xw` right behind the
+ * song, so the undo journal (offsets from &studio.song) covers both. a build with SONGX_BOOK_PAGES 0 has no xw. */
 #if SONGX_BOOK_PAGES > 0
 #define STUDIO_ADV 1
 #else
