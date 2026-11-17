@@ -579,11 +579,25 @@ int play_prompts(UiPrompt *pr)
 
 /* ====================================================================== */
 /* drawing                                                                  */
+/* PLAY-30: a pad's body (the round rect and its shadow line, ~6 rect calls a pad, 8 pads) is one baked picture
+ * (st_bake: same pixels, painted once, then one plat_image); the key name and the label go on top as before.
+ * a[0] w, a[1] h, a[2] fill, a[3] shadow. Key kind 0x34 (0x10 0x11 0x31 0x32 0x33 0x40 are taken). Four to six
+ * variants live at once (idle / pressed, melody / chord / drum colours), ~1.3 KB each of the bake pool. */
+static void pad_body(int x, int y, const int *a)
+{
+    ui_round_rect(x, y, a[0], a[1], 4, (uint8_t)a[2]);
+    ST_RECT(x + 3, y + a[1], a[0] - 6, 1, (uint8_t)a[3]);
+}
+
 static void pad_cell(int x, int y, int w, int h, uint8_t base, int down, const char *key, const char *label)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
-    ui_round_rect(x, y, w, h, 4, down ? PAL_PAINT(PAINT_ROSE, 1) : base);        /* one round rect and a shadow line */
-    plat_rect(x + 3, y + h, w - 6, 1, down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline);
+    int a[4];
+    a[0] = w; a[1] = h; a[2] = down ? PAL_PAINT(PAINT_ROSE, 1) : base; a[3] = down ? PAL_PAINT(PAINT_ROSE, 0) : st->outline;
+#if ST_BAKE
+    if (!st_bake(0x34u | (uint32_t)w << 8 | (uint32_t)h << 16, (uint32_t)a[2] | (uint32_t)a[3] << 8, x, y, pad_body, a, 1536))
+#endif
+        pad_body(x, y, a);
     if (key && key[0] && ui_text_width(key) < w / 2) ui_text(x + 3, y + 2, key, down ? PAL_WHITE : st->text_dim);
     if (label && label[0])
         ui_text(x + (w - ui_text_width(label)) / 2, y + h / 2 - 2, label, down ? PAL_WHITE : st->text);
