@@ -123,6 +123,13 @@ static int is_vowel(char c)
 
 static int is_alpha(char c) { c = (char)(c | 0x20); return c >= 'a' && c <= 'z'; }
 
+/* pitch * 36 * 16 / 31 for the 32 slider steps: the divide by 31 was a library call on the GBA, once per
+ * audio_voice_freq call (the tuning search makes up to ~130 of them). Same values (test_audio.c checks all 32). */
+static const uint16_t voice_base[32] = {
+    0, 18, 37, 55, 74, 92, 111, 130, 148, 167, 185, 204, 222, 241, 260, 278,
+    297, 315, 334, 353, 371, 390, 408, 427, 445, 464, 483, 501, 520, 538, 557, 576
+};
+
 /* Base pitch (1/16 semitones) of a voice for one character. */
 static int32_t voice_pitch(const uint8_t *voice, char c)
 {
@@ -130,7 +137,7 @@ static int32_t voice_pitch(const uint8_t *voice, char c)
     int accent = voice ? clamp_i(voice[VOICE_ACCENT], 0, 31) : 8;
     int lc = (c | 0x20) - 'a';
     /* A2 (110 Hz) .. ~A5: three octaves over the slider */
-    int32_t p = (2 * 12 + 9) * 16 + pitch * 36 * 16 / 31;
+    int32_t p = (2 * 12 + 9) * 16 + voice_base[pitch];
     if (is_alpha(c)) {
         /* each letter has its own little vowel-ish lilt, scaled by accent */
         static const int8_t shape[26] = { 3, -2, 1, -1, 4, 0, -3, 2, 6, -2, 1, -1, -4,

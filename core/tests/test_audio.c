@@ -172,6 +172,26 @@ TEST(audio_sfx_pcm_for_every_effect_within_budget)
     CHECK_EQ(nat_last_sample, SFX_SQUEAK);
 }
 
+/* MS-PF7: audio_voice_freq with the pitch table in place of the divide by 31 gives the old formula's value for every
+ * PITCH, ACCENT and letter (the formula is repeated here on purpose; do not make it follow audio.c). */
+TEST(audio_voice_freq_matches_the_divide_formula)
+{
+    static const int8_t shape[26] = { 3, -2, 1, -1, 4, 0, -3, 2, 6, -2, 1, -1, -4,
+                                      0, -1, 2, -3, 1, 2, -2, -5, 3, -4, 0, 5, -1 };
+    int pitch, accent, c;
+    for (pitch = 0; pitch < 32; pitch++)
+        for (accent = 0; accent < 32; accent++)
+            for (c = 'a'; c <= 'z' + 4; c++) {
+                uint8_t v[VOICE_COUNT] = { 0 };
+                int32_t p = (2 * 12 + 9) * 16 + pitch * 36 * 16 / 31;
+                char ch = (char)(c <= 'z' ? c : ".,' 7"[c - 'z' - 1]);
+                if ((ch | 0x20) >= 'a' && (ch | 0x20) <= 'z') p += shape[(ch | 0x20) - 'a'] * (4 + accent) / 2;
+                v[VOICE_PITCH] = (uint8_t)pitch;
+                v[VOICE_ACCENT] = (uint8_t)accent;
+                CHECK_MSG(audio_voice_freq(v, ch) == audio_int_hz(p), "pitch %d accent %d '%c'", pitch, accent, ch);
+            }
+}
+
 TEST(audio_voice_babble_follows_the_sliders)
 {
     uint8_t lo[VOICE_COUNT] = { 2, 16, 16, 4, 8 }, hi[VOICE_COUNT] = { 29, 16, 16, 4, 8 };

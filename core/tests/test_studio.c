@@ -1568,6 +1568,32 @@ TEST(studio_voice_tuning_memo_is_bit_identical)
     CHECK(miss <= (uint32_t)n / 2);     /* and the second pass is all hits (the table holds the working set or recycles) */
 }
 
+/* MS-PF7: the tuning search by bisection returns what the plain 32 + 96 call loops return, for every voice pitch,
+ * every letter and a few non-letters, every target note the search can reach. Cold every time (cache reset). */
+TEST(studio_voice_tuning_bisection_is_bit_identical)
+{
+    static const char extra[] = ".,' 7";
+    int pitch, midi, ci, spread, n = 0;
+    for (pitch = 0; pitch < 32; pitch++)
+        for (midi = 33; midi <= 93; midi += 2)
+            for (ci = 0; ci < 26 + (int)sizeof(extra) - 1; ci++) {
+                char vowel = ci < 26 ? (char)('a' + ci) : extra[ci - 26];
+                for (spread = -2; spread <= 2; spread += 4) {
+                    uint8_t v[VOICE_COUNT], want[VOICE_COUNT], got[VOICE_COUNT];
+                    int k;
+                    for (k = 0; k < VOICE_COUNT; k++) v[k] = (uint8_t)((pitch * (k + 3) + k * 5) & 31);
+                    v[VOICE_PITCH] = (uint8_t)pitch;
+                    ref_tune(v, midi, vowel, spread, want);
+                    song_tune_cache_reset();
+                    song_tune_voice(v, midi, vowel, spread, got);
+                    CHECK_MSG(memcmp(want, got, VOICE_COUNT) == 0,
+                              "pitch %d midi %d vowel '%c' spread %d", pitch, midi, vowel, spread);
+                    n++;
+                }
+            }
+    CHECK(n > 10000);
+}
+
 /* ---- option C: the choir as hardware sprites (docs/STUDIO_30FPS_PLAN.md section 11) -------------------------------
  * A test platform that has sprites: plat_stage_obj records each one (its pixels baked with the patches through the
  * shared plat_stage_bake) and, after the frame, paints them over nat_fb in call order, which is what a platform

@@ -671,6 +671,48 @@ static uint32_t step_units(int step)
 /* ---- singing ------------------------------------------------------------- */
 static uint32_t hz_diff(int a, int b) { return (uint32_t)(a > b ? a - b : b - a); }
 
+/* MS-PF7. The slider steps 0..31 of `field` (PITCH or ACCENT) of voice `t`, searched for the step whose
+ * audio_voice_freq is nearest `hz`; the first one on a tie, like the plain loop it replaces. `dir` is +1 when the
+ * frequency never falls as the step rises, -1 when it never rises. Returns the step, its distance in *dist. */
+static int tune_scan(uint8_t *t, int field, char vowel, int hz, int dir, uint32_t *dist)
+{
+    int lo = 0, hi = 32, s, win;
+    uint32_t dl, dh;
+    int fl = 0, fh = 0;
+    while (lo < hi) {                       /* first step at or past `hz` (past it in the direction of travel) */
+        int mid = (lo + hi) >> 1, f;
+        t[field] = (uint8_t)mid;
+        f = audio_voice_freq(t, vowel);
+        if (dir > 0 ? f >= hz : f <= hz) hi = mid; else lo = mid + 1;
+    }
+    /* candidates: the step before the crossing (still short of hz) and the crossing step itself */
+    win = lo;
+    dl = dh = 0xFFFFFFFFu;
+    if (lo > 0) { t[field] = (uint8_t)(lo - 1); fl = audio_voice_freq(t, vowel); dl = hz_diff(fl, hz); }
+    if (lo < 32) { t[field] = (uint8_t)lo; fh = audio_voice_freq(t, vowel); dh = hz_diff(fh, hz); }
+    if (lo > 0 && dl <= dh) {               /* the step before wins (a tie goes to the lower step) */
+        win = lo - 1;
+        for (s = win; s > 0; s--) {         /* walk down a flat stretch to its first step */
+            t[field] = (uint8_t)(s - 1);
+            if (audio_voice_freq(t, vowel) != fl) break;
+            win = s - 1;
+        }
+        *dist = dl;
+    } else {
+        *dist = dh;
+    }
+    t[field] = 0;
+    return win;
+}
+
+/* 36 * pitch / 31 for the 32 slider steps (no divide); other values keep the plain formula */
+static int tune_nat(int pitch)
+{
+    static const uint8_t nat[32] = { 0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 15, 16, 17,
+                                     18, 19, 20, 22, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 36 };
+    return (unsigned)pitch < 32u ? nat[pitch] : pitch * 36 / 31;
+}
+
 /* Tune a copy of voice `v` so its blip for `vowel` sounds note `midi` in
  * the octave nearest the voice's own pitch. */
 /* MS-PF6: audio_voice_freq reads only a voice's pitch and accent, and the search below overwrites both, so the
@@ -686,8 +728,8 @@ static uint32_t tune_hits, tune_miss;      /* read by song_tune_cache_stats (tes
 static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out)
 {
     uint8_t t[VOICE_COUNT];
-    int nat = 45 + v[VOICE_PITCH] * 36 / 31, target = midi, p, a = 0, bp = 0, ba = 0, hz, i;
-    uint32_t best = 0xFFFFFFFFu, d;
+    int nat = 45 + tune_nat(v[VOICE_PITCH]), target = midi, p, a = 0, bp = 0, ba = 0, hz, i;
+    uint32_t best, d;
     while (target < nat - 6) target += 12;
     while (target > nat + 6) target -= 12;
     target = DOOMO_CLAMP(target, 45, 81);
@@ -707,21 +749,22 @@ static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8
     memcpy(t, v, VOICE_COUNT);
     t[VOICE_INTONATION] = 0;
     t[VOICE_ACCENT] = 0;
-    for (p = 0; p < 32; p++) {
-        t[VOICE_PITCH] = (uint8_t)p;
-        d = hz_diff(audio_voice_freq(t, vowel), hz);
-        if (d < best) { best = d; bp = p; }
-    }
-    /* the accent bends the vowel: fine tuning between two pitch steps */
+    /* MS-PF7: the same two searches as before (the first pitch step with the smallest distance, then the first
+     * accent step of the first pitch step that reaches the smallest distance), found by bisection instead of
+     * trying every step. audio_voice_freq never falls as PITCH rises, and for one vowel it moves one way
+     * only as ACCENT rises, so the best step sits next to where the curve crosses `hz`. ~30 calls, not ~130. */
+    bp = tune_scan(t, VOICE_PITCH, vowel, hz, 1, &best);
     best = 0xFFFFFFFFu;
     for (p = DOOMO_MAX(bp - 1, 0), a = bp; p <= DOOMO_MIN(bp + 1, 31); p++) {
-        int k;
+        int k, dir;
         t[VOICE_PITCH] = (uint8_t)p;
-        for (k = 0; k < 32; k++) {
-            t[VOICE_ACCENT] = (uint8_t)k;
-            d = hz_diff(audio_voice_freq(t, vowel), hz);
-            if (d < best) { best = d; a = p; ba = k; }
-        }
+        t[VOICE_ACCENT] = 0;
+        dir = audio_voice_freq(t, vowel);
+        t[VOICE_ACCENT] = 31;
+        dir = audio_voice_freq(t, vowel) >= dir ? 1 : -1;
+        t[VOICE_ACCENT] = 0;
+        k = tune_scan(t, VOICE_ACCENT, vowel, hz, dir, &d);
+        if (d < best) { best = d; a = p; ba = k; }
     }
     {
         TuneEnt *e = &tune_cache[tune_next];
