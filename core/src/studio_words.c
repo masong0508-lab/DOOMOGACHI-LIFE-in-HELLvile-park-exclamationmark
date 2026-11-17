@@ -291,14 +291,16 @@ void tab_lyrics_draw(StRect r)
     int sel_n = 0;
     int nlines = st_line_count(s), first = nlines > 8 ? DOOMO_MIN((int)studio.ltop, nlines - 8) : 0;
     for (i = first; i < first + 8 && i < nlines; i++) {
-        int y = top + (i - first) * rowh, sel = i == studio.lsel, on = -1, sy, sung;
+        int y = top + (i - first) * rowh, sel = i == studio.lsel, on = -1, sy, sung, pat;
         int pos = studio_line_pos(s, i);
         const char *lw = st_line_text(s, i);
         uint8_t sts[SONG_LYRIC_LEN];
         sy = song_syllables(lw, sts, SONG_LYRIC_LEN);   /* once a line a frame (it was 2-3 lookups) */
-        sung = pos >= 0 && studio_line_pat(s, i) >= 0;
+        /* the pattern once a row (studio_line_pat scans the order again each call; same value) */
+        pat = pos < 0 ? -1 : (s == &studio.song && st_adv_on()) ? st_adv_line_pattern(i) : (s->order[pos] & 3);
+        sung = pos >= 0 && pat >= 0;
         if (sung) {
-            int pt = studio_line_pat(s, i);
+            int pt = pat;
             if (onc[pt] < 0) onc[pt] = song_lead_onsets(s, pt);
             on = onc[pt];
         }
@@ -311,8 +313,8 @@ void tab_lyrics_draw(StRect r)
         else { buf[0] = (char)('0' + (i + 1) / 10); buf[1] = (char)('0' + (i + 1) % 10); buf[2] = 0; }
         ui_text(i < 9 ? r.x + 13 : r.x + 8, y + (rowh - 9) / 2, buf, st->text_dim);
         if (pos >= 0) {
-            char pc[2] = { (char)('A' + (studio_line_pat(s, i) & 3)), 0 };
-            ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(studio_line_pat(s, i), 1));
+            char pc[2] = { (char)('A' + (pat & 3)), 0 };
+            ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(pat, 1));
             ui_text(r.x + 23, y + (rowh - 9) / 2, pc, PAL_WHITE);
         }
         if (lw[0]) {
