@@ -22,6 +22,8 @@ import re, sys, statistics as st
 
 ONSETS = {161: "line 1 starts (13 singers)", 292: "line 2 starts (12 singers)", 30: "curtain up, song starts"}
 
+SUNG_FLOOR_MS = 20.0  # PERFORM's sung phase measures 36 to 47 ms; the other tabs 20 to 31 ms
+
 def load(path):
     d = {}
     for line in open(path):
@@ -65,6 +67,13 @@ def main():
     for t in near:
         nxt = t + 1
         print("over the 50.2 ms line: tick %d (%.1f ms)%s" % (t, d[t], "  [next tick not drawn]" if nxt in missing else ""))
+    # The window must be the real show. A median under SUNG_FLOOR_MS means the script's A press missed PERFORM
+    # (it once landed on the CHOIR tab and the gate read 6.4 ms, 0 slow frames: it was passing without looking).
+    if med < SUNG_FLOOR_MS:
+        print("NOT THE SHOW: median %.1f ms is under the %.0f ms floor; check the shot sung_start.png and the tab steps in "
+              "studio_sung.txt" % (med, SUNG_FLOOR_MS))
+        if gate:
+            sys.exit(1)
     if gate and near:
         sys.exit(1)
 

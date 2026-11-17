@@ -658,7 +658,7 @@ profile-sung: harness
 	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/studio_sung.txt \
-	    --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(SUNG_LOG) 2>&1 || rc=1; \
+	    --shots $(SHOTS)/sung --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(SUNG_LOG) 2>&1 || rc=1; \
 	$(PYTHON) $(ROOT)/tools/worklog_median.py $(SUNG_LOG) || rc=1; \
 	$(PYTHON) $(ROOT)/tools/worklog_spikes.py $(SUNG_LOG) 14 $(SUNG_GATE) || rc=1; \
 	sed -e '/^fps sung_all/d' -e '/^wait 330/d' -e 's/^fps end/profile $(SUNG_PROFILE_N)/' \

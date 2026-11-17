@@ -34,6 +34,11 @@ down SELECT
 press R
 release
 wait 20
+wait 130
+down SELECT
+press R
+release
+wait 20
 press DOWN
 wait 10
 wait 130
@@ -46,6 +51,7 @@ press R
 wait 20
 press A
 wait 40
+shot sung_start
 fps sung_all
 wait 330
 fps end
