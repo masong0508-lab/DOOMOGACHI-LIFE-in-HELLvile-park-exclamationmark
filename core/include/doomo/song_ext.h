@@ -49,12 +49,12 @@ enum { SX_FADE_NONE, SX_FADE_IN, SX_FADE_OUT, SX_FADE_COUNT };
 #ifndef SONGX_TRACKS_MAX
 #define SONGX_TRACKS_MAX 4
 #endif
-/* encoded pages the book can keep: 0 = none (a console with no resident bytes to spare, plan section 4) */
+/* encoded pages the book can keep: 0 = none (GBA keeps 2, PS1 none: no resident bytes to spare, plan section 4) */
 #ifndef SONGX_BOOK_PAGES
 #if defined(DOOMO_PLATFORM_GBA)
 #define SONGX_BOOK_PAGES 2             /* GBA: two Advanced pages (book slots 0 and 1), 3,072 B of .bss; plan section 4 */
 #elif defined(DOOMO_PLATFORM_PS1)
-#define SONGX_BOOK_PAGES SONG_BOOK_SIZE   /* PS1: every book slot, like the host and the Dreamcast: 6 x 1,536 B = 9,216 B resident (+4.5 KB for the studio's working SongExt); docs/STUDIO.md "ST-ADV: PS1 pages" */
+#define SONGX_BOOK_PAGES 0             /* PS1: none. Full ST-ADV there cost about 53 KB of the RAM margin (CI ledger 2026-11-16: 32,768 B left, gate 73,728): docs/STUDIO.md "ST-ADV: PS1 pages" */
 #else
 #define SONGX_BOOK_PAGES SONG_BOOK_SIZE
 #endif

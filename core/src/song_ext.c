@@ -687,9 +687,6 @@ int songx_decode(const DoomoSong *s, SongExt *x, const uint8_t *src, uint32_t le
 
 /* ---- the book's encoded pages ------------------------------------------------------------------------------------ */
 #define PAGES (SONGX_BOOK_PAGES > 0 ? SONGX_BOOK_PAGES : 1)
-#if defined(DOOMO_PLATFORM_PS1)
-DOOMO_STATIC_ASSERT((long)PAGES * SONGX_PAGE_BYTES <= 10240, ps1_book_pages_stay_under_10_kb_resident);   /* the PS1 RAM ledger: 9,216 B */
-#endif
 static uint8_t book_data[PAGES][SONGX_PAGE_BYTES];
 static uint16_t book_len[PAGES];
 
