@@ -1,7 +1,7 @@
 # PERFORM at 30 fps: the options being worked on (GBA)
 
 Written 2026-11-07 (nov07k). Follows `docs/STUDIO_PERFORM_FIXES.md` (parts 1-3) and `docs/MUSIC_STUDIO_ROADMAP.md` (MS-P4).
-**Option A (the ARM `vid_blit`) is built (nov07m, section 7); B is built in a smaller form (nov07n, section 8); C is not.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
+**Status 2026-11-17: the sung phase is under 33.3 ms on CI #861 (section 13).** **Option A (the ARM `vid_blit`) is built (nov07m, section 7); B is built in a smaller form (nov07n, section 8); C is not.** Every number is from the GBA harness (`gba/harness/scripts/studio_sung.txt`, 330 ticks after the first sung line).
 
 ## 1. Where we are and what 30 fps means
 
@@ -163,3 +163,15 @@ Not exact: the frames differ from nov07n on purpose. `STUDIO_CROWD` 12 -> **11**
 **Fix (exact, checked by `studio_stage_sprites_equal_the_bitmap` on all four layouts at 240x160 and 320x240).** The choir's floating notes and mouths are sprites too (`plat_stage_mini`, an 8x8 picture per kind: open / shut mouth, one note per section; tiles at OBJ tile 912 + 2 x kind, after the 25 chibi slots), called in painter's order, so a later singer's sprite lies over an earlier singer's note exactly as in the bitmap. The plan treats every note and chibi as an item and walks from the last to the first. The crowd cover box is the crowd's real top (sh - 31, was the whole floor) and the follow spot's beam is a trapezoid, not a 61 px column. Sprites per tick: semicircle 0 -> 16.5 of 25, risers 12.9, pyramid 15.3.
 
 **Measured (GBA harness, `studio_sung.txt`):** median 40.2 -> **36.7 ms**, worst 45.8 -> 43.8, drawn ticks 233 -> 265 of 330. **Still over 33.3.** Left: `bodyspr_image` per singer (1.8 ms, needs the look-change epoch of option B), the 8 singers the conductor, spot and later bitmap neighbours keep in the bitmap (~2 ms), crowd (1.8, shaded, cannot be a sprite). Not measured: PS1, a real GBA.
+
+## 13. The gate was not measuring the show; now it is (CI #861)
+
+**The bug.** `studio_sung.txt` made three SELECT + R hops after NOTES (PLAY, ORDER, LYRICS) and then a plain R, which lands on CHOIR, not PERFORM. The A press hit a tab and the curtain never rose, so CI #860 read median 6.4 ms, 0 slow frames, and the gate passed without looking.
+
+**The fix (commit cd434bc).** One more SELECT + R step; the `press DOWN` moved to the LYRICS tab as in `studio_profile.txt`; `shot sung_start` before `fps sung_all`; `profile-sung` passes `--shots $(SHOTS)/sung`. `tools/worklog_spikes.py --gate` fails when the median is under 20 ms (`NOT THE SHOW`).
+
+**The real numbers (CI #861, GBA harness, 330 ticks, ticks 1545..1874).** Median **25.3 ms**, steady 25.6, worst **30.7** (line 1 onset), 0 ticks over 50.2, 0 over 33.4, 0 of 330 undrawn. Hottest: `draw_show` 9.2%, `vid_blit` 8.3%, `plat_checker_m4` 6.2%. `stg:` `emit 255` of 256, 3,381 sprite entries. Studio profile PERFORM windows 20.5 and 21.3 ms at 30.0 logic ticks/s. The 36.7 ms in section 12 was the last measurement before the ARM blit, the sprites and MS-PF7 settled, and CI had not re-run this window with a working script.
+
+**Gate for the whole job (section 6) against it:** median < 33.3 ms: met (25.3). Worst tick < 50.2 ms: met (30.7). Intro spikes 0: met. Logic >= 29.5 ticks/s: the sung window's rate was never printed (the CI grep dropped the `fps sung_all` line); the studio profile's PERFORM windows read 30.0. Every tick is under 33.3 ms, so the logic runs at the 30 Hz tick with no catch-up lost; the rate is now printed and gated (`SUNG_LOGIC_MIN` 29.5) so it is checked, not assumed.
+
+**Left (optional, no longer needed for 30):** the `bodyspr_image` look-change epoch (1.8 ms), the 8 bitmap singers (~2 ms), the crowd (1.8 ms). Not measured: PS1, a real GBA.

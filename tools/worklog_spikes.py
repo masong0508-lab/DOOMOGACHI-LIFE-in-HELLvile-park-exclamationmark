@@ -22,6 +22,7 @@ import re, sys, statistics as st
 
 ONSETS = {161: "line 1 starts (13 singers)", 292: "line 2 starts (12 singers)", 30: "curtain up, song starts"}
 
+SUNG_LOGIC_MIN = 29.5  # docs/STUDIO_30FPS_PLAN.md section 6: logic ticks/s of the sung window
 SUNG_FLOOR_MS = 20.0  # PERFORM's sung phase measures 36 to 47 ms; the other tabs 20 to 31 ms
 
 def load(path):
@@ -34,6 +35,14 @@ def load(path):
         sys.exit(path + ": no 'harness: work' lines (run the harness with --worklog)")
     last = max(d)
     return {t: v for t, v in d.items() if t > last - 330}
+
+def logic_rate(path):
+    """Logic ticks/s of the `fps sung_all` window (the harness prints it; the work log has no rate), or None."""
+    for line in open(path):
+        m = re.match(r"harness: fps sung_all: ([\d.]+) logic ticks/s", line)
+        if m:
+            return float(m.group(1))
+    return None
 
 def hint(show_t, over):
     h = []
@@ -74,7 +83,14 @@ def main():
               "studio_sung.txt" % (med, SUNG_FLOOR_MS))
         if gate:
             sys.exit(1)
-    if gate and near:
+    lps = logic_rate(args[0])
+    if lps is None:
+        print("ticks logic per second: not found (no 'harness: fps sung_all' line in the log)")
+        bad_logic = True
+    else:
+        print("ticks logic per second: %.1f (gate %.1f)" % (lps, SUNG_LOGIC_MIN))
+        bad_logic = lps < SUNG_LOGIC_MIN
+    if gate and (near or bad_logic):
         sys.exit(1)
 
 main()
