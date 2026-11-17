@@ -310,6 +310,40 @@ static void ly_strip(int gx, int ky, int sx, const uint32_t st[2])
     }
 }
 
+/* LYRICS-30 step 3: each of the 8 list rows paints two small rounded shapes under its text, the pattern chip and the
+ * "+n / -n" fit badge (a few rects each, ~50 plat_rect calls a frame in all). Baked like the strip (st_bake: same
+ * pixels, painted once, then one plat_image); the text goes on top afterwards, as before. The heart (it pulses on
+ * the selected row) stays as it was. a[0] colour, a[1] chip height. Keys: kinds 0x32 / 0x33 (0x10 0x11 0x31 0x40 are taken). */
+static void ly_chip_shape(int x, int y, const int *a)
+{
+    ui_round_rect(x, y, 10, a[1], 3, (uint8_t)a[0]);
+}
+
+static void ly_badge_shape(int x, int y, const int *a)
+{
+    ui_round_rect(x, y, 18, 9, 3, (uint8_t)a[0]);
+}
+
+static void ly_chip(int x, int y, int h, uint8_t col)
+{
+    int a[2];
+    a[0] = col; a[1] = h;
+#if ST_BAKE
+    if (st_bake(0x32u | (uint32_t)h << 8, col, x, y, ly_chip_shape, a, 256)) return;
+#endif
+    ly_chip_shape(x, y, a);
+}
+
+static void ly_badge(int x, int y, uint8_t col)
+{
+    int a[2];
+    a[0] = col; a[1] = 0;
+#if ST_BAKE
+    if (st_bake(0x33u, col, x, y, ly_badge_shape, a, 256)) return;
+#endif
+    ly_badge_shape(x, y, a);
+}
+
 void tab_lyrics_draw(StRect r)
 {
     const UiStyle *st = ui_style(WIN_CREAM);
@@ -347,7 +381,7 @@ void tab_lyrics_draw(StRect r)
         ui_text(i < 9 ? r.x + 13 : r.x + 8, y + (rowh - 9) / 2, buf, st->text_dim);
         if (pos >= 0) {
             char pc[2] = { (char)('A' + (pat & 3)), 0 };
-            ui_round_rect(r.x + 21, y, 10, rowh - 2, 3, st_pattern_color(pat, 1));
+            ly_chip(r.x + 21, y, rowh - 2, st_pattern_color(pat, 1));
             ui_text(r.x + 23, y + (rowh - 9) / 2, pc, PAL_WHITE);
         }
         if (lw[0]) {
@@ -364,8 +398,7 @@ void tab_lyrics_draw(StRect r)
                 ui_heart(bx + 6, by, 3 + (sel && ((studio.t >> 3) & 1)), PAL_PAINT(PAINT_ROSE, 1));
             } else {
                 doomo_snprintf(buf, sizeof(buf), "%c%d", sy > on ? '+' : '-', sy > on ? sy - on : on - sy);
-                ui_round_rect(bx - 2, by - 4, 18, 9, 3, sy > on ? PAL_PAINT(PAINT_CHERRY, 1)
-                                                                : PAL_PAINT(PAINT_SKY, 1));
+                ly_badge(bx - 2, by - 4, sy > on ? PAL_PAINT(PAINT_CHERRY, 1) : PAL_PAINT(PAINT_SKY, 1));
                 ui_text(bx, by - 4, buf, PAL_WHITE);
             }
         }
