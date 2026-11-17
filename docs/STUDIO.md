@@ -669,6 +669,19 @@ older than the tip: always read the margin from the latest CI ledger, not from t
 - **Now:** back to 0 pages and the classic ORDER tab; the callbacks entry stays (harmless with the stubs).
 - **Only way left:** ST-ADV in a group of its own (a scene edge from the studio, loaded when the ORDER tab opens) or about 37 KB cut from the studio group. Both need design first; do not retry the page count.
 
+## ST-ADV: PS1 pages, third try (2026-11-17: written, NOT measured; CI decides)
+Nothing is cut: ST-ADV (all of it) and 2 pages on the PS1 (`SONGX_BOOK_PAGES` 2, 3,072 B), like the GBA. The second try failed because the studio group (170,176 B with ST-ADV) became the biggest
+and set the overlay slot (172,032 B, margin 37,920 B). The fix is the planner's own mechanism for big groups: `ps1/tools/ovl_plan.py` `BORROW_GROUPS = ("home", "creator", "studio")` links the studio group
+over the 53,776 B of `.borrow` (world.c / view3d.c tables, the combat bot's search, the memory card's block buffer), the way the house and the creator already are. The studio then needs about
+116 KB of the slot, so story (129,912 B) sets it again.
+- **Why it is safe:** nothing of the studio draws a 3D view (`plat_view3d`: levels_select, combat), syncs the world, runs the combat bot or touches the card. Card I/O is `save_game()` from freeplay / story code, and `memcard.c`
+  calls `ovl_borrow_take()` first. A load of a borrowing group bumps the generation, so world / view3d rebuild their tables when a 3D scene next runs. The planner still checks every edge.
+- **Expected on CI (estimate, not a measurement):** margin about 77 KB (37,920 B + the slot back near 132 KB), above the 73,728 B gate by about 4 KB; the studio group read from the disc about 0.3 s per open
+  (170 KB at about 2 ms per KB, was 131 KB).
+- **Read from the CI ledger:** margin, overlay slot (should be near 133,120 B, not 172,032 B), the studio group row (`over .borrow`), `ovl_plan` "slot demand" line. If the margin is under the gate: resident `song_ext` is
+  14,544 B (11,280 B text) and is the next place to look; 1 page is 1,536 B.
+- **Revert if** the PS1 job fails: `SONGX_BOOK_PAGES` back to 0 and `BORROW_GROUPS` back to `("home", "creator")`.
+
 ## Unlockables (ids 240..255, `UL_CAT_MISC`)
 Granted from the studio stats: Tiny Pulse (save a song), Buzzy Saw (perform),
 Static (20 lyric lines), Toy Box drums (2 songs), Bone Rattle (Inspire me),

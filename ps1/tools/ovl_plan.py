@@ -127,7 +127,12 @@ BORROW = (("world", (".bss.g_world_wtop", ".bss.g_world_corner")),
 # CR7/CR9: the creator borrows the same .bss too (its part icons and catalog made it the biggest
 # group): nothing of it draws a 3D view, syncs the world or touches the card, and the scenes under
 # it rebuild what it overwrote (ovl_borrow_take) like after the house
-BORROW_GROUPS = ("home", "creator")
+# ST-ADV PS1 pages (third try): the studio borrows it too. With ST-ADV in, the studio group is 170,176 B and set the slot
+# (172,032 B; the second try failed on CI with 37,920 B left). Linked over the 53,776 B of .borrow it needs only
+# about 116 KB of the slot, so the biggest non-borrowing group (story, 129,912 B) sets it again. Nothing of the studio
+# draws a 3D view (levels_select / combat do), syncs the world, runs the combat bot or touches the card (save_game is
+# called by freeplay / story code, and memcard.c calls ovl_borrow_take() first): the same reading as the creator's
+BORROW_GROUPS = ("home", "creator", "studio")
 # --- end H3 ---
 
 # --- H4 (for H3, SPEC C4): parts of a group. Code that only one mode of
