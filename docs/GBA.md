@@ -1607,6 +1607,9 @@ interval 9 -> 18 of 1,200. Memory: no new static data; `.bss` 254,844 B (CR5's v
 lobby 24.0, almanac list move 26.6); the Dreamcast speed run was not done (`dcrun` needs `dc/build/doomogachi.nm`).
 No before/after screenshots of the placeholder frames were saved (open).
 
+> 2026-11-17 update: the title's current numbers, the code-level causes and the plan to reach a steady
+> 30 fps are in [`TITLE_FPS.md`](TITLE_FPS.md).
+
 ### Where the title's time goes (`make -C gba profile-title`)
 
 `harness/scripts/title_profile.txt` plays the game ROM to the title, lets it settle, and for two windows
