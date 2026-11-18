@@ -414,6 +414,11 @@ if(DOOMO_HOST_CC)
 		        ${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm.c -lm
 		        -o ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
 		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test
+		# the tone pitch register and cycle choice (src/tonepick.h)
+		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
+		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/tonepick_test.c
+		        -o ${CMAKE_CURRENT_BINARY_DIR}/tonepick_test
+		COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tonepick_test
 		# RAM headroom 2026-11-12: the image cache's bordered tile rows (src/tilerow.h)
 		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
 		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/tilerow_test.c

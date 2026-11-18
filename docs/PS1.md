@@ -1096,6 +1096,14 @@ other rows as H4).
   cycle per waveform keep the pitch register in range from bass to
   ~10 kHz. Pitch = `freq_hz x cycle x 4096 / 44100`; the voice is only
   re-keyed when the waveform changes, so notes glide without clicks.
+* **Cycle choice** (`src/tonepick.h`, host-tested by `harness/tonepick_test.c`). A new note takes the long
+  cycle up to 1571 Hz and the short one above, as always. A note that is already sounding keeps its
+  cycle while the pitch register can reach it: it moves up to the short cycle only above 1571 Hz and
+  back to the long one only below 700 Hz. Before, every crossing of 1571 Hz keyed the voice on again,
+  which cuts the note (a click): a 1700 / 1400 Hz arpeggio re-keyed on all 99 changes, now on none.
+  The pitch sum is also safe from a 32 bit wrap (the short cycle wrapped above 37,449 Hz; the core
+  never sends more than 20,000). Not listened to on a console. Ceiling: the short cycle tops out at about 6300 Hz
+  (register 0x3fff), not the ~10 kHz written above.
 * **Samples** (`plat_sample`, voices 4-23). The core's 8-bit PCM
   (`audio_sfx_pcm`) is converted to ADPCM (fast encoder mode) the first
   time an effect plays, or in the background one effect per frame after

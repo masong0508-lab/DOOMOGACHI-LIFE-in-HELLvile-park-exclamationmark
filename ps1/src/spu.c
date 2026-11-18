@@ -26,6 +26,7 @@
 #include "adpcm.h"
 #include "waveform.h"
 #include "reverb.h"
+#include "tonepick.h"
 
 #define SPU_WAVE_BASE   0x1000
 #define SPU_SFX_BASE    0x2000
@@ -35,8 +36,8 @@
 #define SFX_VOICES      20
 
 /* waveform cycle lengths: long for low notes, short for high ones */
-#define CYC_LONG   112
-#define CYC_SHORT  28
+#define CYC_LONG   PS1_CYC_LONG
+#define CYC_SHORT  PS1_CYC_SHORT
 
 static uint32_t s_wave_addr[WAVE_COUNT][2];   /* [wave][0 long, 1 short] */
 static uint32_t s_silent_addr;
@@ -215,9 +216,8 @@ static int s_music_vol = 15, s_sfx_vol = 15;
 
 static uint16_t hz_to_pitch(uint32_t hz, int cyc)
 {
-    /* pitch 0x1000 = 44100 Hz sample rate; sample rate = hz * cycle */
-    uint32_t p = (hz * (uint32_t)cyc * 4096u + 22050u) / 44100u;
-    return (uint16_t)(p > 0x3fff ? 0x3fff : p);
+    /* pitch 0x1000 = 44100 Hz sample rate; sample rate = hz * cycle (tonepick.h) */
+    return ps1_tone_pitch(hz, (uint32_t)cyc);
 }
 
 /* ST-ADV Mix view pan (0 left, 1 middle, 2 right): the far side keeps a quarter of the level, so a panned lane stays heard
@@ -264,7 +264,9 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
         variant = 0;
         pitch = hz_to_pitch(freq_hz, 4);
     } else {
-        variant = (uint32_t)freq_hz * CYC_LONG > 176000u ? 1 : 0;
+        /* a note that is already sounding this waveform keeps its cycle while the pitch register
+         * reaches it: another cycle would mean a key-on, a click (tonepick.h) */
+        variant = ps1_tone_variant(freq_hz, t->on && t->wave == wave, t->variant);
         cyc = variant ? CYC_SHORT : CYC_LONG;
         pitch = hz_to_pitch(freq_hz, cyc);
     }
