@@ -67,6 +67,7 @@ SONG_EXT(hell_lullaby);
 SONG_EXT(double_act);
 SONG_EXT(heehee_jingle);
 SONG_EXT(number_ten);
+SONG_EXT(prayer_of_the_dead);
 #define SONG_ROW(n, title) { title, ASONG_LOOP, { doomo_mml_##n##_0, doomo_mml_##n##_1, \
     doomo_mml_##n##_2, doomo_mml_##n##_3 } }
 /* --- end S0 --- */
@@ -351,4 +352,5 @@ const AudioSong audio_songs[SONG_COUNT] = {
     SONG_ROW(heehee_jingle, "Hee. Hee."),
     SONG_ROW(number_ten, "Number Ten"),
     /* --- end S0 --- */
+    SONG_ROW(prayer_of_the_dead, "Prayer of the Dead"),
 };

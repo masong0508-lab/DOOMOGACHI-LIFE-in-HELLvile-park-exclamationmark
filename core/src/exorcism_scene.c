@@ -23,6 +23,8 @@
 #include "exorcism_int.h"
 #include "sim_int.h"
 #include "doomo/tips.h"
+#include "doomo/unlocks.h"
+#include "doomo/unlock_ids.h"       /* UL_STORY_SONG2 (the failure song's jukebox unlock) */
 
 enum { ST_INTRO, ST_TOOLS, ST_PRAYER, ST_WATER, ST_NAME, ST_VERDICT, ST_RESULT,
        ST_LOST, ST_FAREWELL, ST_NODEMON, ST_WAIT };
@@ -330,6 +332,15 @@ static void begin_prayer(void)
     audio_music(SONG_EXORCISM);
 }
 static void cb_prayer(void) { begin_prayer(); }
+
+/* A failed ritual plays "Prayer of the Dead" (mml_prayer_of_the_dead.c) on its result screen. In Story Mode hearing it puts
+ * it on the jukebox shelf: the same quiet unlock as story.c's story_unlock_quiet, done here so the scene calls nothing new. */
+static void prayer_heard(void)
+{
+    int id = UL_STORY_SONG2(SONG_PRAYER_OF_THE_DEAD);
+    if (doomo_town.mode == TOWN_STORY && id < DOOMO_UNLOCK_BITS && unlock_by_id(id) && !unlock_has(id))
+        doomo_town.unlocks[id >> 3] |= (uint8_t)(1u << (id & 7));
+}
 
 static void begin_water(void)
 {
@@ -714,6 +725,8 @@ static void exo_update(void)
                 audio_music(SONG_VICTORY);
             } else {
                 audio_sfx(SFX_SAD);
+                audio_music(SONG_PRAYER_OF_THE_DEAD);
+                if (!X.practice) prayer_heard();
                 X.shake = 8;
             }
         }

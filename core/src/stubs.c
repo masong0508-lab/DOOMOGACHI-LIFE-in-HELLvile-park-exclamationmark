@@ -1285,6 +1285,7 @@ WEAK const uint8_t *audio_voice_preset(int preset) { (void)preset; STUB("audio_v
 SONG_STUB(mingle); SONG_STUB(wall_lullaby); SONG_STUB(two_choirs);
 SONG_STUB(boat_floats); SONG_STUB(thirteen_bells); SONG_STUB(hell_lullaby);
 SONG_STUB(double_act); SONG_STUB(heehee_jingle); SONG_STUB(number_ten);
+SONG_STUB(prayer_of_the_dead);
 
 /* ---- story.h additions (S2 stry_save.c, S3 exorcism.c, S5 story_grumble.c) ---- */
 WEAK DoomoStry *story_stry(void)

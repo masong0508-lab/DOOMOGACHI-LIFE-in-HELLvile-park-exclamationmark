@@ -27,6 +27,8 @@ enum { SONG_NONE, SONG_TITLE, SONG_HAHALAND_DAY, SONG_HAHALAND_NIGHT,
        SONG_DOUBLE_ACT,     /* (S5)                                         */
        SONG_HEEHEE_JINGLE,  /* the "Hee. Hee." jingle (S2)                  */
        SONG_NUMBER_TEN,     /* (S5)                                         */
+       /* ---- after S0 (append only) ---- */
+       SONG_PRAYER_OF_THE_DEAD, /* the exorcist failure result screen (exorcism_scene.c) */
        SONG_COUNT };
 
 enum { SFX_NONE, SFX_CURSOR, SFX_SELECT, SFX_CANCEL, SFX_ERROR, SFX_BLIP,

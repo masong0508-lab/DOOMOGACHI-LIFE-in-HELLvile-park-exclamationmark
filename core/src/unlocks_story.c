@@ -57,6 +57,7 @@ const DoomoUnlock doomo_unlocks_story[] = {
     SONGU2(SONG_DOUBLE_ACT, "Double Act"),
     SONGU2(SONG_HEEHEE_JINGLE, "Hee. Hee."),
     SONGU2(SONG_NUMBER_TEN, "Number Ten"),
+    SONGU2(SONG_PRAYER_OF_THE_DEAD, "Prayer of the Dead"),
     /* --- end S2 --- */
 
     CUTU(CUT_ARRIVAL, "Arrival in HaHaland", "Start Story Mode"),

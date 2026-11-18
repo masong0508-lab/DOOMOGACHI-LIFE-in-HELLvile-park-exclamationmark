@@ -82,7 +82,8 @@
  *   711..725  (K0, LIFESIM_PLAN R7 + amendments) the 14 endings and the
  *             very secret 15th ("Nope."): UL_STORY_END(k) = 711 + k for
  *             ending k = 0..14 (E1 fills them)
- *   726..735  spare
+ *   726       the 10th story song (SONG_PRAYER_OF_THE_DEAD, heard at an exorcist failure): UL_STORY_SONG2() maps it here
+ *   727..735  spare
  * (Trophies are not unlock ids: SPEC R8.) */
 #define UL_STORY_CUT2_FIRST      677
 #define UL_STORY_CUT2_LAST       688
@@ -93,9 +94,11 @@
 #define UL_STORY_END_FIRST       711     /* K0: the 14 + 1 secret endings (E1) */
 #define UL_STORY_END_LAST        725
 #define UL_STORY_END(k)   (UL_STORY_END_FIRST + (k))                  /* k 0..14  */
-#define UL_STORY_SPARE_FIRST     726
+#define UL_STORY_SONG_PRAYER     726     /* SONG_PRAYER_OF_THE_DEAD: after the end block, so the 689..697 run keeps its shape */
+#define UL_STORY_SPARE_FIRST     727
 #define UL_STORY_CUT2(c)  (UL_STORY_CUT2_FIRST + ((c) - CUT_P0))      /* story.h  */
-#define UL_STORY_SONG2(s) (UL_STORY_SONG2_FIRST + ((s) - SONG_MINGLE)) /* audio.h  */
+#define UL_STORY_SONG2(s) ((s) == SONG_PRAYER_OF_THE_DEAD ? UL_STORY_SONG_PRAYER \
+                           : UL_STORY_SONG2_FIRST + ((s) - SONG_MINGLE))                /* audio.h  */
 /* --- end S0 --- */
 #define UL_IDS_FREEPLAY_FIRST    736
 #define UL_IDS_FREEPLAY_LAST     831

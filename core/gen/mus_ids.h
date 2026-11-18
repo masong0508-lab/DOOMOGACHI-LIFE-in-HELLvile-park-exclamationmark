@@ -33,6 +33,7 @@
 #define MC_CLASSIC_DOUBLE_ACT        225
 #define MC_CLASSIC_HEEHEE_JINGLE     226
 #define MC_CLASSIC_NUMBER_TEN        227
+#define MC_CLASSIC_PRAYER_OF_THE_DEAD 228
 #define MC_SFX_SCRATCH               232
 #define MC_SFX_BOING                 233
 #define MC_SFX_POP                   234
@@ -165,6 +166,6 @@
 #define INST_PLUCK                   84
 #define INST_DEEP_SUB                85
 #define MC_CLASSIC_FIRST 200
-#define MC_CLASSIC_COUNT 28
+#define MC_CLASSIC_COUNT 29
 
 #endif
