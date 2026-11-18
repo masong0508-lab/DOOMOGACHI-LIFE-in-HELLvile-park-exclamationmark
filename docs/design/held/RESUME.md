@@ -84,7 +84,8 @@ STUDIO-30 was in review / landing: saved in patches/wip/STUDIO/studio-30/ (STAGE
    more tracks, several minutes, lyrics and choir across the song; versioned format, old songs load).
 4. **ST-USE**: user songs in the Concert Hall and PERFORM; the studio look decluttered.
 5. **Concert to 30**: CONCERT-30 landed partial (band 23.2 fps); what is left with measured costs is in
-   `patches/wip/STUDIO/CONCERT-30-findings.md` (instruments as kept pictures ~3 ms, crowd rows as OBJ sprites
+   `patches/wip/STUDIO/CONCERT-30-findings.md` (2026-11-18 measurements: the four instruments are ~7.4 ms of the
+   band's tick, guitars > drums > keyboard, try `dream_ellipses` first; instruments as kept pictures, crowd rows as OBJ sprites
    ~7 ms (OBJ VRAM is full: free it first), the approved 15 Hz / flame trades last; Dreamland and Disco stages
    25-27.6; the choir's 35.4 ms peak).
 Run each with `tools/agents/wave-runner.js` (stream STUDIO; `"model": "sonnet"` keeps the cost down).
