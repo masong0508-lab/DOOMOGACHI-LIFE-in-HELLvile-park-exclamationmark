@@ -201,9 +201,9 @@ jobs:
             { grep 'under the floor' gba/build/speed_tour.log || echo '(no scene is under its floor)'; } | sed 's#^.*harness: ##'
             echo '```'
             echo
-            echo '### Title screen: fps, CPU work per tick, hottest functions'
+            echo '### Title screen: fps, CPU work per tick, hottest functions, slow ticks and what they spend extra time in'
             echo '```'
-            make -C gba profile-title 2>&1 | grep -E 'harness: (fps|profile of|  +[0-9])' || true
+            make -C gba profile-title 2>&1 | grep -E 'harness: (fps|profile of|  +[0-9]|slow frame|slow frames|slow\+)' || true
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -284,6 +284,7 @@ jobs:
           path: |
             gba/build/speed_tour.log
             gba/build/title_profile.log
+            gba/build/title_spikes.log
             gba/build/profile_all.log
             gba/build/invaded_profile.log
             gba/build/studio_profile.log

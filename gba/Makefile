@@ -462,15 +462,19 @@ test-speed: harness
 
 # --- profile-title: where the title screen's time goes (harness/scripts/title_profile.txt):
 # drawn fps + CPU work per tick and the hottest functions (harness `profile`, needs the ELF's
-# symbols), idle and with the menu open. Reports, never gates. Output: build/title_profile.log ---
+# symbols), idle and with the menu open. --worklog also lists the ticks over HARNESS_SLOW_MS (33.3 by
+# default) and the functions that cost extra in them (build/title_spikes.log). Reports, never gates.
+# Output: build/title_profile.log ---
 TITLE_PROFILE_LOG ?= $(BUILD)/title_profile.log
+TITLE_SPIKES_LOG ?= $(BUILD)/title_spikes.log
 profile-title: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/title
 	$(NM_SYMS)
 	@rc=0; \
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/title_profile.txt \
-	    --shots $(SHOTS)/title --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(TITLE_PROFILE_LOG) 2>&1 || rc=1; \
+	    --shots $(SHOTS)/title --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet > $(TITLE_PROFILE_LOG) 2>&1 || rc=1; \
+	grep -E 'harness: (slow frame|slow frames|slow\+)' $(TITLE_PROFILE_LOG) > $(TITLE_SPIKES_LOG) || true; \
 	cat $(TITLE_PROFILE_LOG); \
 	echo "profile-title: log $(TITLE_PROFILE_LOG)"; \
 	exit $$rc

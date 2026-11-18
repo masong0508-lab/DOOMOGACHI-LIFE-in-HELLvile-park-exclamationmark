@@ -1,9 +1,9 @@
-# Title screen fps, and the 2026-11-17 GBA CI breakage (notes + plan)
+# Title screen fps, and the 2026-11-18 GBA profiling results (notes + plan)
 
-Docs only: nothing in this file changes code. It records (1) why the GBA CI job failed on 2026-11-17 and
-what fixed it, (2) what the first green run (#869) measured, (3) what the breach MISS rows mean, and (4)
-the plan for taking the title screen to a steady 30 fps. Numbers are from CI's libmgba harness; anything
-marked **estimate** has not been measured.
+Docs only: nothing in this file changes code. It records the GBA CI repair, the latest speed-tour and
+title-profile measurements, what the breach MISS rows mean, and the next steps toward a steady 30 fps
+title screen. Numbers below are from the 2026-11-18 CI libmgba run; profiler percentages are shares of
+sampled cycles, not milliseconds.
 
 ## 1. The GBA build failure (run on `503b2ab`, "GBA audio: precomputed wave tables", #868)
 
@@ -54,56 +54,84 @@ frames of 16+ vblanks, i.e. stalls, not steady slowness).
   3D view cost as the combat scenes, so it will be fixed by the same work. Open: find what causes the
   16+ vblank frames (start with cloud_nine); cut the combat view's 12-15 ms.
 
-## 4. Title screen: where it stands
+## 4. Title screen: 2026-11-18 profiling update
 
 | window | drawn fps | work avg / max ms | note |
-|---|---:|---|---|
-| idle | 28.6 | 28.3 / 66.8 | speed tour; `profile-title` says 28.6 / 28.1 / 66.9 |
-| menu open (after START) | 26.2 | 33.3 / 81.8 | the only title window under 30: avg is over the 33.3 ms budget |
-| first settle | 27.5 | 24.8 / 219.6 | the load; leave it |
+|---|---:|---:|---|
+| speed-tour title | 28.7 | 27.6 / 72.2 | `vhash-seq` `35b5e9bb` |
+| title idle | 28.2 | 27.7 / 80.4 | `profile-title`; 130 ticks |
+| title menu open | 26.8 | 30.3 / 62.5 | `profile-title`; 130 ticks |
+| first settle | 27.5 | 23.9 / 217.1 | startup/load window; keep separate from steady-state goals |
 
-Profile, idle window (share of cycles): `vid_rect_narrow` 11.2%, `vid_blit` 10.8%, `vid_text_dil` 6.6% +
-`vid_glyph_dilate` 6.5% (outlined text, 13.1% together), `vid_rect_full` 6.2%, `title_draw` 2.7%,
-`vid_text` 2.4%, `res_get_look` 2.4%, `gba_udivmod` 2.1%; 19.5% is outside known symbols. Menu open adds
-`vid_text` 5.7% and `vid_rect` 4.7%.
+The speed tour reports no scene below its configured floor. The title nevertheless remains below 30
+drawn fps in the speed-tour and dedicated title windows. The menu-open window is the weakest of the
+two steady-state title windows. Its 30.3 ms average is below the nominal 33.3 ms frame budget, but its
+drawn rate is still only 26.8 fps; the maximum tick is 62.5 ms.
 
-History (`docs/GBA.md`, "Speed pass 2 / 3"): the title went 13-14 fps (55-57 ms) to 28.6 through the
-hills cache, one-pass outline text, the blit fast path, the logo letters as cached images, the figures as
-hardware OBJs and the SP2 figure prefetch. What is left is the redraw of everything else each tick.
+The idle title profile (12,000,000 sampled instructions) reports these largest known-symbol costs:
+`vid_rect_narrow` 11.3%, `vid_blit` 10.7%, `vid_text_dil` 6.3%, `vid_rect_full` 6.3%,
+`finish_marked` 3.1%, `sh_span` 2.6%, `vid_text` 2.4%, `res_get_look` 2.4%, and `title_draw` 2.4%.
+About 16.7% of sampled cycles are outside known symbols.
 
-### What the code does every tick (`core/src/fp_title.c`, `title_draw`)
+The menu-open profile reports `vid_blit` 10.4%, `vid_rect_narrow` 10.1%, `vid_text_dil` 6.5%,
+`vid_rect_full` 6.1%, `vid_text` 5.7%, `vid_rect` 4.6%, and `title_draw` 2.5%.
+This points to broad renderer work (rectangles, blits, and text), rather than a single dominant
+title-level function. These symbol percentages alone do not identify which title stage or event causes
+the long ticks.
 
-`draw_sky`, `draw_ground`, `draw_figures`, `draw_logo`, `draw_menu`, the footer, `fp_fx_draw`:
+History (`docs/GBA.md`, "Speed pass 2 / 3"): the title rose from 13-14 fps (55-57 ms) to about 28.6
+through the hills cache, one-pass outline text, the blit fast path, cached logo letters, hardware-OBJ
+figures, and SP2 figure prefetch. The current source adds further sky-coordinate caching and hill-run
+merging, but the latest title profile still shows renderer costs and unresolved long ticks.
 
-1. **Static outlined text redrawn each tick.** The footer ("(c) HaHaland", the platform name) goes through
-   `ui_text_outline` every frame; so do "in" and "vile PARK..." (when `logo_snap` does not serve them) and
-   the four HELL letters (every frame at the small scale). Outline text is the expensive path (the
-   dilate pass).
-2. **The background is about 160 small rects plus 3-4 ellipse groups per tick:** four sky bands and
-   checker lines, ~60 hill rects (heights already cached), 7 houses x 3 and 5 spires x 4 rects, the meadow,
-   16 flowers x 3 rects, then the sun / clouds. Only the clouds, sun bob, spire window blink and
-   sparkles move. This is the likely home of the `vid_rect_*` time. **estimate:** 4-7 ms of the 28.
-3. **The worst ticks (66.8 / 81.8 ms) are not explained by the report.** Candidates: the parade turn
-   (every 240 ticks: two `roster_find` and a new figure render), a figure's expression change (a 45-77 ms
-   render, sliced), the HELL glitch burst (`T.glitch_t`), the menu pill pop-in. Unmeasured.
+### What the code already does (`core/src/fp_title.c`, `title_draw`)
 
-### Plan (each step keeps pixels: the title's `vhash-seq` in the speed tour is `a67f87f6`)
+`draw_sky`, `draw_ground`, `draw_figures`, `draw_logo`, `draw_menu`, the footer, and `fp_fx_draw`
+contribute to the title frame. The current source already includes several optimizations:
 
-1. **Measure.** `make -C gba profile-title` gets the studio's tables: the slowest ticks with a hint for
-   each (tick, work ms, what was happening), and per-stage time (sky, ground, figures, logo, menu,
-   footer). Reports only, no gates. This names the 66.8 / 81.8 ms ticks.
-2. **Cache the static outlined text** with the existing `logo_snap` / `logo_extra` mechanism: the footer
-   and the "in" / "vile PARK..." line. Small, pixel-identical. **estimate:** a few ms of the 13%.
-3. **Cache the static background.** EWRAM is the limit (about 26 KB free against a 38.4 KB Mode 4 page,
-   `docs/GBA.md`), so a cached band or a merge of the static runs, not a full page. Biggest and riskiest
-   step; sized from step 1's numbers. The moving parts (clouds, sun, window blink, sparkles) stay live.
-4. **Smooth the spikes** that step 1 finds: spread the parade turn and the menu pill pop-in over ticks.
+1. **Static text caching is already present.** Footer labels are captured in the scene scratch
+   allocation, and the logo has the existing `logo_snap` / `logo_extra` path. Do not repeat the old
+   footer/logo caching proposal unless a fresh profile identifies a remaining uncached text path.
+2. **Sky and hill work are already optimized.** Sky-particle coordinates are cached, and adjacent
+   hill rectangles are merged into runs. Do not reapply the earlier sky-cache or hill-run patches.
+3. **Other drawing work remains.** Houses, spires, flowers, sky bands, checker lines, moving scenery,
+   and menu elements still issue renderer operations. The sampled costs for `vid_rect_*`, `vid_blit`,
+   and text routines make these reasonable areas to investigate, but they do not prove which specific
+   title stage is responsible.
+4. **The long ticks are not yet explained.** The dedicated profile reports maxima of 80.4 ms idle and
+   62.5 ms with the menu open. Parade turns, figure-expression changes, HELL glitch effects, and menu
+   animation are possible causes only; the summary output does not establish any of them.
 
-Done when: idle and menu-open drawn fps are 30.0 with no tick over 33.3 ms in the window, `vhash-seq`
-unchanged, and EWRAM / IWRAM not worse than the `make -C gba sizes` figures today.
+### Next steps
+
+1. **Read the slow-tick records before changing code.** `make -C gba profile-title` now runs the harness
+   with `--worklog`: after each profile window it lists the ticks over 33.3 ms (`slow frame tick N work
+   MS`, at most 40) and the functions that cost extra in them (`slow+ ... ms/frame`). The CI summary
+   prints these lines under "Title screen", and `title_spikes.log` in the `gba-speed-report` artifact
+   holds the same lines (`title_profile.log` has the full output). `HARNESS_SLOW_MS=45` narrows the
+   list to the worst ticks. Do not infer causes from the FPS table alone.
+2. **Compare idle with menu-open measurements.** Identify which recorded stage or operation grows
+   after START. If the detailed log does not provide stage timings, add narrowly scoped profiling
+   counters first rather than guessing.
+3. **Target measured renderer work.** Investigate the dominant `vid_rect_narrow`, `vid_rect_full`,
+   `vid_rect`, `vid_blit`, and text paths in the context of the title call sites. Prefer eliminating
+   redundant drawing or combining truly adjacent static operations. Preserve clipping, layering,
+   transparency, and exact pixels.
+4. **Explain the outlier ticks.** Use the slow-tick records to confirm or reject the parade-turn,
+   figure-expression, glitch-effect, and menu-animation hypotheses. Optimize only the event the trace
+   identifies.
+5. **Change one thing per patch and remeasure.** Run `make -C gba profile-title` and
+   `make -C gba test-speed` after each change. Keep the speed-tour title `vhash-seq`
+   (`35b5e9bb`) unchanged unless an intentional visual change is approved. Run
+   `make -C gba sizes` before adding memory-heavy caches.
+
+Done when: title idle and menu-open windows both draw at 30.0 fps, steady-state work stays within
+33.3 ms per tick, the approved title `vhash-seq` is unchanged, and EWRAM / IWRAM remain within the
+current size budget. Treat startup settle spikes separately from steady-state performance.
 
 ### How to re-measure
 
-    make -C gba profile-title      # build/title_profile.log (idle, then menu open)
-    make -C gba test-speed         # the tour; the title row and its vhash-seq
-    # in CI: the run's Summary tab, "GBA speed report"; logs are the gba-speed-report artifact
+    make -C gba profile-title      # build/title_profile.log: idle and menu-open windows
+    make -C gba test-speed         # speed tour; check the title row and vhash-seq
+    make -C gba sizes              # confirm EWRAM / IWRAM headroom
+    # CI: the run's Summary tab, or the gba-speed-report artifact: title_profile.log, title_spikes.log
