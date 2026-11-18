@@ -315,6 +315,52 @@ static void title_update(void)
     }
 }
 
+static const uint32_t title_night_hash[24] = {
+    0x00000000u, 0x8C8D506Du, 0xEA9E8AD5u, 0x0A2D7F9Bu,
+    0xA6BFC19Eu, 0x77E9D27Du, 0xE5DD742Au, 0xDFCBBF8Eu,
+    0x9A9454D6u, 0xB5FB33EDu, 0x60D58B48u, 0x78EEB1E3u,
+    0x48833724u, 0xDE61166Au, 0x541CCD35u, 0xC8A72346u,
+    0xE99C5AC6u, 0x71F04B5Fu, 0x6BF767DBu, 0x2B4F224Du,
+    0x46183BDDu, 0x2F3EF59Cu, 0x764A4EEFu, 0xE7865638u
+};
+static const uint32_t title_vape_hash[12] = {
+    0x948BA1E6u, 0x330F0CB2u, 0x6A28BC04u, 0xDE076BB5u,
+    0x66F28D71u, 0xF5346B77u, 0x2DDB1CF5u, 0x5E37E44Eu,
+    0x87DA934Bu, 0x5511A067u, 0x0976A546u, 0x630B2C40u
+};
+static const uint32_t title_candy_hash[30] = {
+    0x00000000u, 0x6D523710u, 0xAC34CDEDu, 0x2358FE96u,
+    0x4413B773u, 0x5CD7E704u, 0x059EB5ABu, 0x5556689Fu,
+    0x883871DFu, 0x6F758C27u, 0xF106EF37u, 0x896EA2FCu,
+    0x322BD582u, 0xEF540E71u, 0xAAACD13Eu, 0xF1CACF91u,
+    0xC9F2C537u, 0xCD8B19C3u, 0xC995DAFBu, 0x845A3398u,
+    0x850845B8u, 0x410A9C79u, 0x5806E44Bu, 0xE20D5306u,
+    0x00B285BEu, 0xB16245F0u, 0x2BBFE9F5u, 0xD270221Au,
+    0x21497750u, 0x1C38EAF0u
+};
+static const uint32_t title_ground_hash[16] = {
+    0x53F1E9DDu, 0x4E73BF85u, 0xA9EF39A4u, 0x4E7B3B50u,
+    0x08EC75DBu, 0x38385DEFu, 0xA7AD2C8Eu, 0x78459356u,
+    0x8278F4FFu, 0x60621F25u, 0xCFF0CAC2u, 0x3E267596u,
+    0xC904DFD6u, 0x0F23115Fu, 0xD6DBB769u, 0xC943BACBu
+};
+/* Flower coordinates are fixed for a given framebuffer size. Avoid sixteen
+ * modulo operations in the ground renderer on every title frame. */
+static struct { int16_t x, y; } title_ground_flower[16];
+static int title_ground_flower_sw, title_ground_flower_sh;
+static void title_ground_flower_init(int sw, int sh, int y0)
+{
+    int i, span = DOOMO_MAX(sh - y0 - 6, 1);
+    if (title_ground_flower_sw == sw && title_ground_flower_sh == sh) return;
+    for (i = 0; i < 16; i++) {
+        uint32_t h = title_ground_hash[i];
+        title_ground_flower[i].x = (int16_t)(h % (uint32_t)sw);
+        title_ground_flower[i].y = (int16_t)(y0 + 3 + (int)((h >> 10) % (uint32_t)span));
+    }
+    title_ground_flower_sw = sw;
+    title_ground_flower_sh = sh;
+}
+
 /* ====================================================================== */
 /* drawing: themed sky                                                      */
 static void draw_sky(void)
@@ -345,7 +391,7 @@ static void draw_sky(void)
         ui_fill_circle(cx, cy, 11, PAL_RAMP(RAMP_CANDY, 7));
         ui_fill_circle(cx + 5, cy - 3, 9, skies[th][0]);
         for (i = 0; i < 24; i++) {
-            uint32_t h = doomo_hash32((uint32_t)i * 7919u);
+            uint32_t h = title_night_hash[i];
             ui_sparkle((int)(h % (uint32_t)sw), (int)((h >> 9) % (uint32_t)(sh * 2 / 3)), (t / 3 + i * 3) & 15,
                        i & 1 ? PAL_WHITE : PAL_RAMP(RAMP_CANDY, 7));
         }
@@ -369,7 +415,7 @@ static void draw_sky(void)
             ui_fill_ellipse(cx + 6, cy - 3, 12, 5, PAL_RAMP(RAMP_VAPE, 5));
         }
         for (i = 0; i < 12; i++) {
-            uint32_t h = doomo_hash32((uint32_t)i * 131u + 7u);
+            uint32_t h = title_vape_hash[i];
             int x = (int)(h % (uint32_t)sw), y = sh - ((t * (1 + (int)(h >> 30)) + (int)(h >> 8)) % sh);
             plat_rect(x, y, 1, 2, PAL_RAMP(RAMP_LAVA, 6));
         }
@@ -391,7 +437,7 @@ static void draw_sky(void)
         static const uint8_t sc[5] = { PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_LEMON, 1),
                                        PAL_PAINT(PAINT_MINT, 1), PAL_PAINT(PAINT_LAVENDER, 1) };
         for (i = 0; i < 30; i++) {
-            uint32_t h = doomo_hash32((uint32_t)i * 2654435761u);
+            uint32_t h = title_candy_hash[i];
             int x = (int)(h % (uint32_t)sw) + ui_wave(t + i * 9, 80, 4), y = (int)((h >> 8) + (uint32_t)t) % sh;
             plat_rect(x, y, (i & 1) ? 1 : 3, (i & 1) ? 3 : 1, sc[i % 5]);
         }
@@ -453,9 +499,9 @@ static void draw_ground(void)
     plat_rect(0, y0 + (sh - y0) / 2, sw, sh - y0 - (sh - y0) / 2, g2);
     plat_checker(0, y0 + (sh - y0) / 2, sw, 1, g0);
     /* flowers / embers on the meadow */
+    title_ground_flower_init(sw, sh, y0);
     for (i = 0; i < 16; i++) {
-        uint32_t h = doomo_hash32((uint32_t)i * 4099u + 3u);
-        int x = (int)(h % (uint32_t)sw), y = y0 + 3 + (int)((h >> 10) % (uint32_t)DOOMO_MAX(sh - y0 - 6, 1));
+        int x = title_ground_flower[i].x, y = title_ground_flower[i].y;
         uint8_t c = hell ? PAL_RAMP(RAMP_LAVA, 5) : ((i & 1) ? PAL_PAINT(PAINT_BUBBLEGUM, 2) : PAL_WHITE);
         plat_rect(x - 1, y, 3, 1, c);
         plat_rect(x, y - 1, 1, 3, c);
@@ -489,7 +535,7 @@ static struct {
     uint8_t *pix;
     int sw, big, ok, used;
     uint8_t xok, xfail;
-    struct { DoomoImage img; int16_t bx, by; } x[3];
+    struct { DoomoImage img; int16_t bx, by; } x[5];
     struct { DoomoImage img; int16_t bx, by; } l[LOGO_N];
 } LG;
 
@@ -572,6 +618,20 @@ static int logo_snap(int k, void (*fn)(int, int), int x, int y)
 static void logo_extra(int k, int x, int y)
 {
     if (!plat_draw_skipped()) plat_image(x + LG.x[k].bx, y + LG.x[k].by, &LG.x[k].img, 1, 0, 0);
+}
+
+/* Footer labels are static outlined text. Capture them in the same scene
+ * scratch allocation as the logo so the expensive outline dilation is not
+ * repeated on every idle title frame. If scratch is full, logo_snap falls
+ * back cleanly to the original drawing path. */
+static const char *title_platform_name;
+static void pc_platform_footer(int x, int y)
+{
+    ui_text_outline(x, y, title_platform_name, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+}
+static void pc_copyright_footer(int x, int y)
+{
+    ui_text_outline(x, y, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
 }
 
 static void pc_pill(int lx, int ly)
@@ -917,21 +977,31 @@ static void draw_menu(void)
 
 static void title_draw(void)
 {
+    static int platform_width;
     int sw = fp_sw(), sh = fp_sh();
-    char buf[48];
     draw_sky();
     draw_ground();
     draw_figures();
     draw_logo();
     draw_menu();
-    doomo_snprintf(buf, sizeof(buf), "%s", plat_name());
+    /* plat_name is a platform constant. Cache its width instead of formatting
+     * a fresh copy and measuring it on every title frame. */
+    if (!title_platform_name) {
+        title_platform_name = plat_name();
+        platform_width = ui_text_width(title_platform_name);
+    }
     {
         /* between the two figures, not under them */
         int m = FIGURE_W + (fp_big() ? 18 : 2) + 3;
         /* C8: at 240x160 the menu's help line takes the footer's place */
         if (fp_big() || !T.started) {
-            ui_text_outline(sw - m - ui_text_width(buf), sh - 10, buf, PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
-            ui_text_outline(m, sh - 10, "(c) HaHaland", PAL_WHITE, PAL_RAMP(RAMP_STONE, 2));
+            int px = sw - m - platform_width;
+            /* The cache is optional: on a crowded scratch block, retain the
+             * exact old outline path rather than evicting another scene asset. */
+            if (logo_snap(3, pc_platform_footer, px, sh - 10)) logo_extra(3, px, sh - 10);
+            else pc_platform_footer(px, sh - 10);
+            if (logo_snap(4, pc_copyright_footer, m, sh - 10)) logo_extra(4, m, sh - 10);
+            else pc_copyright_footer(m, sh - 10);
         }
     }
     fp_fx_draw();
