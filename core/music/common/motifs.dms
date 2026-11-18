@@ -44,4 +44,4 @@ motif NANA        key=F:major  head=3        : o5 c8 f8 f8 a8 g4 f4
 motif PIP         key=G:major  head=3        : o5 d8 g8 b16 a16 g8 d4
 motif BLOOM       key=A:minor  head=3        : o5 a8. b16 >c8< b8 a4
 motif GOODBYE     key=E:minor  head=2        : o5 e2 d4 c4 | <b2 a2>
-motif HUGGLE      key=C:minor  head=3        : o5 l4 c <b- g> c <b- g | b- a- f b- a- f | a- g e- c2
+motif HUGGLE      key=C:minor  head=3        : o5 l4 c <b- g> c <b- g | b- a- f b- a- f | a- g e- c2 | >c <b- a- e-4
