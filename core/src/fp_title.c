@@ -344,6 +344,36 @@ static const uint32_t title_ground_hash[16] = {
     0x8278F4FFu, 0x60621F25u, 0xCFF0CAC2u, 0x3E267596u,
     0xC904DFD6u, 0x0F23115Fu, 0xD6DBB769u, 0xC943BACBu
 };
+/* The sky particles have fixed seeds too. Resolve their screen-dependent
+ * coordinates once per framebuffer size, rather than doing modulo/division
+ * for every particle on every title frame. Moving Y positions still use T.t. */
+static struct { int16_t x, y; } title_night_particle[24];
+static struct { int16_t x, offset; uint8_t speed; } title_vape_particle[12];
+static struct { int16_t x, y; } title_candy_particle[30];
+static int title_sky_cache_sw, title_sky_cache_sh;
+static void title_sky_cache_init(int sw, int sh)
+{
+    int i;
+    if (title_sky_cache_sw == sw && title_sky_cache_sh == sh) return;
+    for (i = 0; i < 24; i++) {
+        uint32_t h = title_night_hash[i];
+        title_night_particle[i].x = (int16_t)(h % (uint32_t)sw);
+        title_night_particle[i].y = (int16_t)((h >> 9) % (uint32_t)(sh * 2 / 3));
+    }
+    for (i = 0; i < 12; i++) {
+        uint32_t h = title_vape_hash[i];
+        title_vape_particle[i].x = (int16_t)(h % (uint32_t)sw);
+        title_vape_particle[i].offset = (int16_t)((h >> 8) % (uint32_t)sh);
+        title_vape_particle[i].speed = (uint8_t)(1 + (int)(h >> 30));
+    }
+    for (i = 0; i < 30; i++) {
+        uint32_t h = title_candy_hash[i];
+        title_candy_particle[i].x = (int16_t)(h % (uint32_t)sw);
+        title_candy_particle[i].y = (int16_t)((h >> 8) % (uint32_t)sh);
+    }
+    title_sky_cache_sw = sw;
+    title_sky_cache_sh = sh;
+}
 /* Flower coordinates are fixed for a given framebuffer size. Avoid sixteen
  * modulo operations in the ground renderer on every title frame. */
 static struct { int16_t x, y; } title_ground_flower[16];
@@ -374,6 +404,7 @@ static void draw_sky(void)
         { PAL_RAMP(RAMP_SKY, 5), PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_SKY, 7), PAL_RAMP(RAMP_MINT, 7) }
     };
     int sw = fp_sw(), sh = fp_sh(), th = theme(), i, t = T.t, bh = sh * 2 / 3 / 4;
+    title_sky_cache_init(sw, sh);
     for (i = 0; i < 4; i++) {
         plat_rect(0, i * bh, sw, bh + 1, skies[th][i]);
         if (i) plat_checker(0, i * bh, sw, 1, skies[th][i - 1]);
@@ -391,8 +422,7 @@ static void draw_sky(void)
         ui_fill_circle(cx, cy, 11, PAL_RAMP(RAMP_CANDY, 7));
         ui_fill_circle(cx + 5, cy - 3, 9, skies[th][0]);
         for (i = 0; i < 24; i++) {
-            uint32_t h = title_night_hash[i];
-            ui_sparkle((int)(h % (uint32_t)sw), (int)((h >> 9) % (uint32_t)(sh * 2 / 3)), (t / 3 + i * 3) & 15,
+            ui_sparkle(title_night_particle[i].x, title_night_particle[i].y, (t / 3 + i * 3) & 15,
                        i & 1 ? PAL_WHITE : PAL_RAMP(RAMP_CANDY, 7));
         }
         break; }
@@ -415,8 +445,8 @@ static void draw_sky(void)
             ui_fill_ellipse(cx + 6, cy - 3, 12, 5, PAL_RAMP(RAMP_VAPE, 5));
         }
         for (i = 0; i < 12; i++) {
-            uint32_t h = title_vape_hash[i];
-            int x = (int)(h % (uint32_t)sw), y = sh - ((t * (1 + (int)(h >> 30)) + (int)(h >> 8)) % sh);
+            int x = title_vape_particle[i].x;
+            int y = sh - ((t * title_vape_particle[i].speed + title_vape_particle[i].offset) % sh);
             plat_rect(x, y, 1, 2, PAL_RAMP(RAMP_LAVA, 6));
         }
         break;
@@ -437,8 +467,8 @@ static void draw_sky(void)
         static const uint8_t sc[5] = { PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_SKY, 1), PAL_PAINT(PAINT_LEMON, 1),
                                        PAL_PAINT(PAINT_MINT, 1), PAL_PAINT(PAINT_LAVENDER, 1) };
         for (i = 0; i < 30; i++) {
-            uint32_t h = title_candy_hash[i];
-            int x = (int)(h % (uint32_t)sw) + ui_wave(t + i * 9, 80, 4), y = (int)((h >> 8) + (uint32_t)t) % sh;
+            int x = title_candy_particle[i].x + ui_wave(t + i * 9, 80, 4);
+            int y = (title_candy_particle[i].y + t) % sh;
             plat_rect(x, y, (i & 1) ? 1 : 3, (i & 1) ? 3 : 1, sc[i % 5]);
         }
     }
@@ -463,20 +493,39 @@ static void draw_ground(void)
     uint8_t g0 = hell ? PAL_RAMP(RAMP_VAPE, 2) : PAL_RAMP(RAMP_GRASS, 6);
     uint8_t g1 = hell ? PAL_RAMP(RAMP_VAPE, 1) : PAL_RAMP(RAMP_GRASS, 5);
     uint8_t g2 = hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_RAMP(RAMP_GRASS, 4);
-    /* rolling hills: Hillvile houses on the left, Hellvile spires on the right
-     * (perf: the heights depend on the column only; ui_wave's divisions
-     * for 80 columns were 120 software divisions a frame on the GBA) */
+    /* rolling hills: Hillvile houses on the left, Hellvile spires on the right.
+     * Adjacent 4-pixel columns with equal heights are one identical wider
+     * rectangle; bake those runs once per screen width to cut raster calls. */
     {
-        static uint8_t hill_h[96];
-        static int hill_sw;
+        static struct { uint8_t x4, w4, h; } hill_run[96];
+        static int hill_sw, hill_nr;
         if (hill_sw != sw) {
-            for (i = 0; i < sw && i / 4 < (int)DOOMO_COUNTOF(hill_h); i += 4)
-                hill_h[i / 4] = (uint8_t)(10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2));
+            int cols = (sw + 3) / 4, col, nr = 0;
+            if (cols > (int)DOOMO_COUNTOF(hill_run)) cols = (int)DOOMO_COUNTOF(hill_run);
+            for (col = 0; col < cols; col++) {
+                int x = col * 4;
+                uint8_t h = (uint8_t)(10 + ui_wave(x * 6 + 30, 400, 6) + ui_wave(x * 13, 300, 2));
+                if (nr && hill_run[nr - 1].h == h &&
+                    hill_run[nr - 1].x4 + hill_run[nr - 1].w4 == col) {
+                    hill_run[nr - 1].w4++;
+                } else {
+                    hill_run[nr].x4 = (uint8_t)col;
+                    hill_run[nr].w4 = 1;
+                    hill_run[nr].h = h;
+                    nr++;
+                }
+            }
+            hill_nr = nr;
             hill_sw = sw;
         }
-        for (i = 0; i < sw; i += 4) {
-            int h = i / 4 < (int)DOOMO_COUNTOF(hill_h) ? hill_h[i / 4]
-                                                      : 10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2);
+        for (i = 0; i < hill_nr; i++) {
+            int h = hill_run[i].h;
+            plat_rect((int)hill_run[i].x4 * 4, y0 - h,
+                      (int)hill_run[i].w4 * 4, h + 2, g1);
+        }
+        /* Preserve the original fallback for unusually wide render targets. */
+        for (i = 96 * 4; i < sw; i += 4) {
+            int h = 10 + ui_wave(i * 6 + 30, 400, 6) + ui_wave(i * 13, 300, 2);
             plat_rect(i, y0 - h, 4, h + 2, g1);
         }
     }
