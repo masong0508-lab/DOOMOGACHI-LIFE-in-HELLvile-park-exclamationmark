@@ -26,6 +26,21 @@ typedef struct ToneState { uint16_t freq; uint8_t vol, wave; } ToneState;
 static ToneState tone[4];
 static int wave_bank;          /* bank currently selected for playback */
 static int wave_loaded = -1;   /* waveform id in the playing bank      */
+static int wave_amp = -1;      /* its amplitude (0..256) in the playing bank */
+
+/* Wave channel loudness: the hardware only has 100 / 75 / 50 / 25 % (4 steps), which made bass decays jump. A
+ * volume 1..15 is a hardware level (the smallest one that is loud enough) times a copy of the table scaled to the
+ * rest, around the middle of the 4-bit range so the DC level does not move (no pops). {SND3CNT bits, amp 0..256}. */
+static const struct { uint16_t hw; uint16_t amp; } wave_vol[16] = {
+    {0x0000, 0},   {0x6000, 68},  {0x6000, 136}, {0x6000, 204}, {0x4000, 136}, {0x4000, 170},
+    {0x4000, 204}, {0x4000, 238}, {0x8000, 182}, {0x8000, 205}, {0x8000, 228}, {0x8000, 250},
+    {0x2000, 205}, {0x2000, 222}, {0x2000, 239}, {0x2000, 256}
+};
+
+static uint8_t wave_scale(uint8_t s4, int amp)         /* one 4-bit sample, amp 0..256 */
+{
+    return (uint8_t)((15 * 256 + (2 * (int)s4 - 15) * amp + 256) >> 9);
+}
 
 static const uint8_t wave_tables[WAVE_COUNT][16] = {
     /* 32 4-bit samples, high nibble first */
@@ -43,25 +58,32 @@ static const uint8_t wave_tables[WAVE_COUNT][16] = {
       0x72, 0xC8, 0x1F, 0x95, 0x3A, 0xE6, 0x0B, 0x64 },   /* noise-ish */
 };
 
-static void wave_load(int w)
+static void wave_load(int w, int amp)
 {
     const uint8_t *src = wave_tables[w];
-    int i;
+    int i, j;
     /* write the bank that is NOT playing, then switch to it */
     REG_SND3SEL = (uint16_t)(0x80 | (wave_bank << 6));
-    for (i = 0; i < 4; i++)
-        REG_WAVE_RAM[i] = (uint32_t)src[i * 4] | ((uint32_t)src[i * 4 + 1] << 8) |
-                          ((uint32_t)src[i * 4 + 2] << 16) | ((uint32_t)src[i * 4 + 3] << 24);
+    for (i = 0; i < 4; i++) {
+        uint32_t word = 0;
+        for (j = 0; j < 4; j++) {
+            uint8_t b = src[i * 4 + j];
+            uint8_t sb = amp >= 256 ? b : (uint8_t)((wave_scale((uint8_t)(b >> 4), amp) << 4) | wave_scale((uint8_t)(b & 15), amp));
+            word |= (uint32_t)sb << (8 * j);
+        }
+        REG_WAVE_RAM[i] = word;
+    }
     wave_bank ^= 1;
     REG_SND3SEL = (uint16_t)(0x80 | (wave_bank << 6));
     wave_loaded = w;
+    wave_amp = amp;
 }
 
 static uint16_t sq_rate(uint16_t hz)
 {
     int32_t n;
     if (hz < 64) hz = 64;
-    n = 2048 - (int32_t)(131072u / hz);
+    n = 2048 - (int32_t)((131072u + (hz >> 1)) / hz);      /* nearest step, not the one below */
     return (uint16_t)(n < 0 ? 0 : (n > 2047 ? 2047 : n));
 }
 
@@ -69,7 +91,7 @@ static uint16_t wave_rate(uint16_t hz)
 {
     int32_t n;
     if (hz < 32) hz = 32;
-    n = 2048 - (int32_t)(65536u / hz);
+    n = 2048 - (int32_t)((65536u + (hz >> 1)) / hz);
     return (uint16_t)(n < 0 ? 0 : (n > 2047 ? 2047 : n));
 }
 
@@ -80,8 +102,7 @@ static uint16_t noise_freq(uint16_t hz, int periodic)
     if (hz < 2) hz = 2;
     target = 524288u / hz;                 /* = r * 2^(s+1) */
     while ((target >> (s + 1)) > 7 && s < 13) s++;
-    r = target >> (s + 1);
-    if (r == 0) r = 0;
+    r = (target + (1u << s)) >> (s + 1);                   /* rounded */
     if (r > 7) r = 7;
     return (uint16_t)(r | (s << 4) | (periodic ? 0x08 : 0));
 }
@@ -118,18 +139,18 @@ static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
         }
         break; }
     case 2: {
-        uint16_t lvl;
         if (vol == 0) { REG_SND3CNT = 0; break; }
-        if (wave != wave_loaded) wave_load(wave);
-        lvl = vol >= 13 ? 0x2000 : vol >= 9 ? 0x8000 : vol >= 5 ? 0x4000 : 0x6000;
-        REG_SND3CNT = lvl;
+        if (wave != wave_loaded || wave_vol[vol].amp != wave_amp) wave_load(wave, wave_vol[vol].amp);
+        REG_SND3CNT = wave_vol[vol].hw;
         if (restart) REG_SND3FREQ = (uint16_t)(wave_rate(freq_hz) | 0x8000);
         else REG_SND3FREQ = wave_rate(freq_hz);
         break; }
     default: {
         uint16_t nf = noise_freq(freq_hz ? freq_hz : 1000, wave != WAVE_NOISE);
-        REG_SND4CNT = (uint16_t)(vol << 12);
-        REG_SND4FREQ = (uint16_t)(nf | 0x8000);
+        /* a sweeping drum (the pitch moves, the level does not) keeps its noise running: re-triggering it every tick
+         * made a 30 Hz tick under every kick and tom */
+        if (restart) { REG_SND4CNT = (uint16_t)(vol << 12); REG_SND4FREQ = (uint16_t)(nf | 0x8000); }
+        else REG_SND4FREQ = (uint16_t)nf;
         break; }
     }
 }
@@ -191,10 +212,34 @@ uint32_t plat_irq_save(void)
 
 void plat_irq_restore(uint32_t saved) { REG_IME = (uint16_t)saved; }
 
+/* Buzzy Saw on the two pulse channels. The PSG has no saw there, so the lead used to be a plain 25 % pulse, the
+ * same sound as "Pulse". Instead the pulse width is swept 12.5 > 25 > 50 > 25 % at 120 Hz: the width register is
+ * written live (low byte only, the volume byte is left alone so nothing re-triggers), which makes the thick, moving
+ * buzz of a C64 / GB width-swept lead. Set GBA_SAW_PWM to 0 for the old flat 25 %. */
+#ifndef GBA_SAW_PWM
+#define GBA_SAW_PWM 1
+#endif
+#if GBA_SAW_PWM
+static uint8_t pwm_n;
+
+static void saw_pwm_tick(void)                          /* 240 Hz, from the music IRQ */
+{
+    static const uint8_t duty[4] = { 0, 1, 2, 1 };
+    uint8_t d;
+    if (++pwm_n & 1) return;
+    d = (uint8_t)(duty[(pwm_n >> 1) & 3] << 6);
+    if (tone[0].wave == WAVE_SAW && tone[0].vol) REG8(0x04000062) = d;
+    if (tone[1].wave == WAVE_SAW && tone[1].vol) REG8(0x04000068) = d;
+}
+#endif
+
 static void music_irq(void)
 {
     if (!music_ready) return;
     mus_drv_tick();
+#if GBA_SAW_PWM
+    saw_pwm_tick();
+#endif
     if (mus_drv_take_frame() || ++music_n >= 8) {
         music_n = 0;
         audio_seq_irq_flush();
@@ -247,7 +292,7 @@ void audio_hw_init(void)
     REG_SNDBIAS = 0x0200;
     for (i = 0; i < 4; i++) { tone[i].freq = 0xFFFF; tone[i].vol = 0xFF; }
     for (i = 0; i < 4; i++) plat_tone(i, 0, 0, WAVE_PULSE50);
-    wave_load(WAVE_TRIANGLE);
+    wave_load(WAVE_TRIANGLE, 256);
     mixer_init();
     music_n = 0;
     REG_TM1CNT = 0;

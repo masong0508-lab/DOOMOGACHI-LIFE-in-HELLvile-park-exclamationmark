@@ -3916,12 +3916,17 @@ per image, the native reference changed the same way) is the way there.
 ## 7. Audio
 
 * `plat_tone(ch, hz, vol, wave)` uses the PSG: channels 0/1 are the
-  square channels (duty 12.5 / 25 / 50 % from `WAVE_PULSE*`, `WAVE_SAW`
-  maps to 25 %), channel 2 the wave channel (32-step triangle / saw /
-  square tables, double-buffered wave RAM banks, volume steps
-  100/75/50/25 %), channel 3 noise (`WAVE_NOISE` = 15-bit LFSR, other
-  waves the 7-bit periodic mode). A channel is only restarted when its
-  volume or waveform changes, so sliding pitches do not click.
+  square channels (duty 12.5 / 25 / 50 % from `WAVE_PULSE*`; `WAVE_SAW`
+  sweeps the width 12.5 > 25 > 50 > 25 % at 120 Hz from the music IRQ,
+  low byte of the width register only, `GBA_SAW_PWM 0` = a flat 25 %),
+  channel 2 the wave channel (32-step triangle / saw / square tables,
+  double-buffered wave RAM banks; volume 1..15 = the smallest hardware
+  level of 100/75/50/25 % that is loud enough times a copy of the table
+  scaled around the middle of the 4-bit range, so 15 steps and no DC
+  jump), channel 3 noise (`WAVE_NOISE` = 15-bit LFSR, other waves the
+  7-bit periodic mode). Pitch registers use the nearest step. A channel
+  is only restarted when its volume or waveform changes, so sliding
+  pitches and sweeping drums do not click or tick.
 * `plat_sample(sfx, vol)`: the PCM from `audio_sfx_pcm()` is mixed by
   software into DirectSound A at 10512 Hz (timer 0 reload 65536 - 1596,
   176 samples per frame). 4 voices with 20.12 fixed-point resampling from the
