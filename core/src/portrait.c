@@ -632,8 +632,13 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
 /* ====================================================================== */
 /* cache                                                                     */
 #define PC_BLOCK   384
-#define PC_BLOCKS  48                   /* 18 KB (EWRAM on the GBA; the PS1
-                                           has no RAM to spare either) */
+#if defined(DOOMO_PLATFORM_GBA)
+/* 72 blocks = 27 KB: the title keeps six 10-block figures live (the two shown, their next expressions, the next
+ * pair); with 48 (four figures) the prefetched ones were evicted before use and re-rendered inside frames */
+#define PC_BLOCKS  72
+#else
+#define PC_BLOCKS  48                   /* 18 KB (the PS1 has no RAM to spare either) */
+#endif
 #define PC_FREE    0xFF
 /* Re-renders that only change the animation phase (blink, breathing, aura
  * frames, mouth flaps) run as a sliced job: SL_N slices (the set-up and the

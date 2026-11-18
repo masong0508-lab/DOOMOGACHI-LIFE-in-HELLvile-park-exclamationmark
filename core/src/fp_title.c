@@ -799,8 +799,13 @@ static int figure_expr(int t, int k)
 static void prefetch_figures(const int *pid)
 {
     static int npk = -1, nid[2];
-    int t = T.t, k, n = 0, i, j, dts = 239 - t % 240;
+    /* ticks to the first draw of the next pair: title_update advances T.parade_k at T.t % 240 == 239, before that
+     * tick is drawn, so on that very tick the pair shown is already the new one and the next turn is a whole
+     * cycle away (the old `239 - t % 240` said "1 tick" there and queued the pair after next, which then held
+     * the one job slot while the shown figures' own next expressions were due: a 45-77 ms render in a frame) */
+    int t = T.t, k, n = 0, i, j, dts = 238 - t % 240;
     struct { int dt, id, expr; } ev[4], tmp;
+    if (dts < 0) dts += 240;
     if (npk != T.parade_k) {
         npk = T.parade_k;
         nid[0] = roster_find(parade[(T.parade_k + 2) % (NPARADE & ~1) % NPARADE]);
@@ -810,7 +815,7 @@ static void prefetch_figures(const int *pid)
         ev[n].dt = 90 - (t + k * 45) % 90;
         ev[n].id = pid[k];
         ev[n].expr = figure_expr(t + ev[n].dt, k);
-        n++;
+        if (ev[n].dt <= dts) n++;           /* a change after the turn is never shown (the pair is gone by then) */
         ev[n].dt = dts + 1;
         ev[n].id = nid[k];
         ev[n].expr = figure_expr(t + dts + 1, k);
