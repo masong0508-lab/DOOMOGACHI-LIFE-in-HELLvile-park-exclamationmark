@@ -5,6 +5,7 @@
  *   D-pad      move (steps scroll)            L / R    pattern A..D
  *   A          place the last note (or pick up the note under the cursor)
  *   hold A +   UP / DOWN  one scale step (drums: next / previous drum)
+ *              B + UP / DOWN  one half step (the black keys, off the scale; Free notes: always)
  *              L / R      an octave down / up
  *   B          erase a note; on a rest after a note: a tie (hold)
  *   START      play / stop the pattern from the cursor
@@ -40,7 +41,7 @@ int tab_prompts(int tab, UiPrompt *p)
         break;
     case STAB_NOTES:
         if (studio.sub) return st_sub_prompts(p);
-        if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); break; }
+        if (studio.a_edit) { PR(BTN_UP | BTN_DOWN, 0, "Pitch"); PR(BTN_L | BTN_R, 1, "Octave"); PR(BTN_B, 2, "Half step"); break; }
         PR(BTN_A, 0, "Note");
         PR(BTN_START, 1, st_play_verb());
         PR(BTN_SELECT, 2, "Tools");                  /* ST-TOOLS: range tools + helpers live here */
@@ -789,8 +790,10 @@ void tab_notes_update(void)
             if (btn_repeat(BTN_UP)) nv = v % (SONG_DRUM_COUNT - 1) + 1;
             if (btn_repeat(BTN_DOWN)) nv = (v + SONG_DRUM_COUNT - 3) % (SONG_DRUM_COUNT - 1) + 1;
         } else {
-            if (btn_repeat(BTN_UP)) nv = song_scale_shift(s, v, 1);
-            if (btn_repeat(BTN_DOWN)) nv = song_scale_shift(s, v, -1);
+            /* hold B (or the Expert "Free notes" switch) for a half step: the black keys, notes off the scale */
+            int half = btn_down(BTN_B) || st_adv_free();
+            if (btn_repeat(BTN_UP)) nv = half ? v + 1 : song_scale_shift(s, v, 1);
+            if (btn_repeat(BTN_DOWN)) nv = half ? v - 1 : song_scale_shift(s, v, -1);
             if (btn_repeat(BTN_L)) nv = v - 12 >= SONG_NOTE_MIN ? v - 12 : v;
             if (btn_repeat(BTN_R)) nv = v + 12 <= SONG_NOTE_MAX ? v + 12 : v;
             nv = DOOMO_CLAMP(nv, SONG_NOTE_MIN, SONG_NOTE_MAX);

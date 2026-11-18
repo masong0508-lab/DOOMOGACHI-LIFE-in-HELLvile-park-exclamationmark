@@ -119,6 +119,7 @@ notes of the key/scale with mint dots.
 | D-pad | move |
 | A | place the last note (snapped to the scale), or pick up the note under the cursor; the cursor then steps down |
 | hold A + UP / DOWN | one scale step (chromatic scale: a semitone); drums: the next / previous drum |
+| hold A + B + UP / DOWN | one half step: the black keys and other notes off the scale (with Expert > Free notes on, UP / DOWN always moves a half step) |
 | hold A + L / R | an octave down / up |
 | B | erase; on a rest right after a note: a tie (hold) |
 | L / R | pattern A..D |
