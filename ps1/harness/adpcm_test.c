@@ -3,12 +3,15 @@
  *   cc -O2 -I ps1/src ps1/harness/adpcm_test.c ps1/src/adpcm.c -lm -o adpcm_test
  *   ./adpcm_test
  *
- * Encodes the chiptune waveforms the SPU driver builds at boot (pulse,
- * triangle, saw, noise) plus synthetic 8-bit sound effects, decodes them
- * with the reference SPU decoder and checks the signal-to-noise ratio.
+ * Builds the chiptune loops the SPU driver builds at boot (waveform.h: pulse, triangle, saw; the
+ * very same functions), checks their shape (no DC, exact duty, harmonic levels, fade-in) and plays
+ * the encoded loops the way the SPU does (the decoder history carried round the loop jump) to check
+ * that every pass decodes the same and close to the source. Plus synthetic sine and 8-bit sound
+ * effects through the encoder and the reference decoder (signal-to-noise).
  * Exit code 0 = pass.
  */
 #include <math.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,37 +52,152 @@ static int check_from(const char *name, const int16_t *pcm, int n, int fast, dou
     return db >= min_db;
 }
 
-static uint64_t cycle_roughness(const int16_t *pcm, int len)
+/* The SPU decoder (adpcm_decode's maths) with the history kept between blocks, so a loop can be
+ * played round: the state at the jump back is what the last block of the loop left. */
+static const int k_f0[5] = { 0, 60, 115, 98, 122 };
+static const int k_f1[5] = { 0, 0, -52, -55, -60 };
+typedef struct Spu { int old, older; } Spu;
+
+static void spu_block(const uint8_t *in, Spu *st, int16_t *pcm)
 {
-    uint64_t total = 0;
-    int i;
-    for (i = 0; i < len; i++) {
-        int d = pcm[(i + 1) % len] - pcm[i];
-        total += (uint64_t)(d * d);
+    int shift = in[0] & 15, filter = (in[0] >> 4) & 7, i;
+    if (filter > 4) filter = 0;
+    for (i = 0; i < 28; i++) {
+        int nib = (in[2 + i / 2] >> ((i & 1) * 4)) & 15;
+        int s = (int16_t)(nib << 12) >> shift;
+        s += (st->old * k_f0[filter] + st->older * k_f1[filter] + 32) >> 6;
+        if (s > 32767) s = 32767;
+        if (s < -32768) s = -32768;
+        pcm[i] = (int16_t)s;
+        st->older = st->old;
+        st->old = s;
     }
-    return total;
 }
 
-static int check_loop_cycles(const char *name, const int16_t *pcm, int len)
+/* Key on and play: the first cycle once (it is blocks [0, first)), then the loop (blocks
+ * [first, 2 first)) 'passes' times. first_out gets the first cycle, prev / last the last two
+ * passes of the loop. */
+static void spu_play(const uint8_t *enc, int first, int passes, int16_t *first_out,
+                     int16_t *prev, int16_t *last)
 {
-    int ok = memcmp(pcm, pcm + len, (size_t)len * sizeof(pcm[0])) == 0;
-    printf("%-22s second cycle matches  %s\n", name, ok ? "ok" : "FAIL");
+    Spu st = { 0, 0 };
+    int b, p;
+    for (b = 0; b < first; b++) spu_block(enc + b * 16, &st, first_out + b * 28);
+    for (p = 0; p < passes; p++)
+        for (b = 0; b < first; b++) {
+            int16_t *dst = p == passes - 1 ? last : prev;
+            spu_block(enc + (first + b) * 16, &st, dst + b * 28);
+        }
+}
+
+/* amplitude of harmonic k of one cycle */
+static double harmonic(const int16_t *c, int len, int k)
+{
+    double re = 0, im = 0;
+    int i;
+    for (i = 0; i < len; i++) {
+        re += c[i] * cos(2 * M_PI * k * i / len);
+        im += c[i] * sin(2 * M_PI * k * i / len);
+    }
+    return 2.0 * sqrt(re * re + im * im) / len;
+}
+
+/* kind: 0 saw, 1 pulse (duty_eighths), 2 triangle. min_db: loop signal-to-noise floor. */
+static int check_wave(const char *name, int kind, int duty_eighths, int len, double min_db)
+{
+    static int16_t pcm[PS1_WAVE_MAX_CYCLE * 2], ideal[PS1_WAVE_MAX_CYCLE];
+    static int16_t first_out[PS1_WAVE_MAX_CYCLE], prev[PS1_WAVE_MAX_CYCLE], last[PS1_WAVE_MAX_CYCLE];
+    static uint8_t enc[PS1_WAVE_MAX_CYCLE / 28 * 2 * 16];
+    int ok = 1, i, k, peak = 0, diff = 0, blocks, first = len / 28;
+    long sum = 0;
+    double dc, worst = 0, db;
+    double duty = duty_eighths / 8.0;
+
+    if (kind == 0) ps1_wave_saw(pcm, len);
+    else if (kind == 1) ps1_wave_pulse(pcm, len, duty_eighths);
+    else ps1_wave_triangle(pcm, len);
+    memcpy(ideal, pcm, (size_t)len * sizeof(pcm[0]));
+
+    for (i = 0; i < len; i++) {
+        sum += pcm[i];
+        if (abs(pcm[i]) > peak) peak = abs(pcm[i]);
+    }
+    dc = (double)sum / len;
+    ok &= fabs(dc) < 2.0 && peak < 30000;
+
+    if (kind != 2) {                         /* harmonic levels against the closed-form series */
+        for (k = 1; k < len / 2 && k <= 10; k++) {          /* the first ten: the rest are small, rounding shows */
+            double resp, t;
+            if (len == 112)
+                resp = (6 + 2 * cos(2 * M_PI * k / len)) / 8;
+            else
+                resp = k <= 3 ? 1.0 : 0.5 * (1 + cos(M_PI * (k - 3.5) / 10.5));
+            t = (kind == 0 ? PS1_WAVE_AMP * 2 / (M_PI * k)
+                           : PS1_WAVE_AMP * 4 / (M_PI * k) * fabs(sin(M_PI * k * duty))) * resp;
+            if (t < 150) continue;           /* the zero harmonics of a 50 % pulse, deep in the roll-off */
+            if (fabs(20 * log10(harmonic(ideal, len, k) / t)) > worst)
+                worst = fabs(20 * log10(harmonic(ideal, len, k) / t));
+        }
+        ok &= worst < 0.15;
+    }
+
+    blocks = ps1_wave_encode_loop(pcm, len, enc);
+    ok &= blocks == first * 2;
+    ok &= (enc[first * 16 + 1] & 4) != 0 && (enc[(blocks - 1) * 16 + 1] & 3) == 3;
+    spu_play(enc, first, 12, first_out, prev, last);
+    db = snr(ideal, last, len);
+    for (i = 0; i < len; i++)
+        if (abs(last[i] - prev[i]) > diff) diff = abs(last[i] - prev[i]);
+    ok &= db >= min_db && diff <= 8;
+    printf("%-18s %3d  DC %5.1f peak %5d  harmonics within %.2f dB  loop SNR %5.1f dB (min %4.1f)  pass diff %2d  %s\n",
+           name, len, dc, peak, worst, db, min_db, diff, ok ? "ok" : "FAIL");
     return ok;
 }
 
-
-static int check_smoothing(const char *name, int16_t *cycle, int len)
+/* the key-on fade: the first cycle starts at silence, the loop cycle is untouched */
+static int check_fade(void)
 {
-    uint64_t before = cycle_roughness(cycle, len);
-    ps1_wave_soften_cycle(cycle, len);
-    uint64_t after = cycle_roughness(cycle, len);
-    int ok = after < before;
-    printf("%-22s edge roughness %llu -> %llu  %s\n", name,
-           (unsigned long long)before, (unsigned long long)after,
+    static int16_t plain[PS1_WAVE_MAX_CYCLE], pcm[PS1_WAVE_MAX_CYCLE * 2];
+    static uint8_t enc[8 * 16];
+    int ok = 1, i;
+    ps1_wave_pulse(plain, 112, 1);                /* 12.5 %: sample 0 sits on the edge, far from zero */
+    memcpy(pcm, plain, sizeof plain);
+    ps1_wave_encode_loop(pcm, 112, enc);
+    ok &= pcm[0] == 0;
+    for (i = 28; i < 112; i++) ok &= pcm[i] == plain[i];
+    for (i = 0; i < 112; i++) ok &= pcm[112 + i] == plain[i];
+    for (i = 1; i < 28; i++) ok &= abs(pcm[i]) <= abs(plain[i]) + 1;
+    printf("%-18s first sample %d of %d, cycle 2 untouched  %s\n", "fade-in", pcm[0], plain[0],
            ok ? "ok" : "FAIL");
     return ok;
 }
 
+/* adpcm_encode_loop and ps1_wave_encode_loop refuse lengths they cannot hold, and a loop made
+ * from a plain sine plays back the same on every pass */
+static int check_encode_loop(void)
+{
+    static int16_t cyc[28 * 9], pcm[PS1_WAVE_MAX_CYCLE * 2], first[28], prev[28], last[28];
+    static uint8_t enc[16 * 9];
+    int ok = 1, i;
+    for (i = 0; i < 28 * 9; i++) cyc[i] = (int16_t)(9000 * sin(2 * M_PI * i / 28));
+    ok &= adpcm_encode_loop(cyc, 27, enc) == 0;
+    ok &= adpcm_encode_loop(cyc, 0, enc) == 0;
+    ok &= adpcm_encode_loop(cyc, 28 * 9, enc) == 0;
+    ok &= ps1_wave_encode_loop(pcm, 140, enc) == 0;
+    ok &= ps1_wave_encode_loop(pcm, 30, enc) == 0;
+    ok &= adpcm_encode_loop(cyc, 28, enc) == 1;
+    {   /* one block: play it round */
+        Spu st = { 0, 0 };
+        int p, d = 0;
+        for (p = 0; p < 14; p++) { memcpy(prev, last, sizeof prev); spu_block(enc, &st, last); }
+        for (i = 0; i < 28; i++) if (abs(last[i] - prev[i]) > d) d = abs(last[i] - prev[i]);
+        ok &= d <= 8 && snr(cyc, last, 28) > 40.0;
+        (void)first;
+    }
+    printf("%-18s refuses bad lengths, plays back the same each pass  %s\n", "encode_loop",
+           ok ? "ok" : "FAIL");
+    return ok;
+}
 
 static int check(const char *name, const int16_t *pcm, int n, int fast, double min_db)
 {
@@ -92,42 +210,20 @@ int main(void)
     int i, ok = 1, len;
     uint32_t rng = 1234567;
 
-    /* the SPU driver's waves: two 112-sample cycles, the loop plays the
-     * second one (see build_waves in spu.c) */
-    len = 112;
-    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 8 ? 12000 : -12000);
-    ok &= check_smoothing("pulse 12.5% edges", pcm, len);
-    for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 8 ? 12000 : -12000);
-    ps1_wave_soften_cycle(pcm, len);
-    ps1_wave_soften_cycle(pcm + len, len);
-    ok &= check_loop_cycles("pulse 12.5% loop", pcm, len);
-    ok &= check_from("pulse 12.5% (loop)", pcm, len * 2, 0, 20, len);
-    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 4 ? 12000 : -12000);
-    ok &= check_smoothing("pulse 25% edges", pcm, len);
-    for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 4 ? 12000 : -12000);
-    ps1_wave_soften_cycle(pcm, len);
-    ps1_wave_soften_cycle(pcm + len, len);
-    ok &= check_loop_cycles("pulse 25% loop", pcm, len);
-    ok &= check_from("pulse 25% (loop)", pcm, len * 2, 0, 20, len);
-    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 2 ? 12000 : -12000);
-    ok &= check_smoothing("pulse 50% edges", pcm, len);
-    for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 2 ? 12000 : -12000);
-    ps1_wave_soften_cycle(pcm, len);
-    ps1_wave_soften_cycle(pcm + len, len);
-    ok &= check_loop_cycles("pulse 50% loop", pcm, len);
-    ok &= check_from("pulse 50% (loop)", pcm, len * 2, 0, 20, len);
-    for (i = 0; i < len * 2; i++) {
-        int ph = ((i % len) * 4 * 14000) / len;
-        pcm[i] = (int16_t)(ph < 14000 ? ph : ph < 42000 ? 28000 - ph : ph - 56000);
-    }
-    ok &= check_from("triangle (loop)", pcm, len * 2, 0, 30, len);
-    for (i = 0; i < len; i++) pcm[i] = (int16_t)(-12000 + (i * 24000) / (len - 1));
-    ok &= check_smoothing("saw edges", pcm, len);
-    for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(-12000 + ((i % len) * 24000) / (len - 1));
-    ps1_wave_soften_cycle(pcm, len);
-    ps1_wave_soften_cycle(pcm + len, len);
-    ok &= check_loop_cycles("saw loop", pcm, len);
-    ok &= check_from("saw (loop)", pcm, len * 2, 0, 16, len);
+    /* the SPU driver's waves (waveform.h): [first cycle, fades in][loop cycle], played the way the
+     * SPU plays them */
+    ok &= check_wave("pulse 12.5%", 1, 1, 112, 20);
+    ok &= check_wave("pulse 12.5%", 1, 1, 28, 15);
+    ok &= check_wave("pulse 25%", 1, 2, 112, 20);
+    ok &= check_wave("pulse 25%", 1, 2, 28, 15);
+    ok &= check_wave("pulse 50%", 1, 4, 112, 20);
+    ok &= check_wave("pulse 50%", 1, 4, 28, 15);
+    ok &= check_wave("triangle", 2, 0, 112, 30);
+    ok &= check_wave("triangle", 2, 0, 28, 20);
+    ok &= check_wave("saw", 0, 0, 112, 20);
+    ok &= check_wave("saw", 0, 0, 28, 15);
+    ok &= check_fade();
+    ok &= check_encode_loop();
     /* smooth tones */
     len = 28 * 100;
     for (i = 0; i < len; i++) pcm[i] = (int16_t)(16000 * sin(i * 2 * M_PI * 440 / 22050.0));

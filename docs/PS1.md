@@ -1108,21 +1108,56 @@ other rows as H4).
   (`audio_sfx_pcm`) is converted to ADPCM (fast encoder mode) the first
   time an effect plays, or in the background one effect per frame after
   boot; a free voice (ENDX) or the oldest one is used.
-* **Tone loop shaping** (`src/waveform.h`, host-tested): pulse and saw loops
-  get a cyclic 1:6:1 three-sample edge softener at boot, applied separately to
-  each cycle so the loop marker has no new boundary discontinuity. Triangle
-  and noise are unchanged. It adds no per-frame CPU work, no voices, no GPU
-  work, and no waveform bytes / SPU RAM footprint; the same staging buffers
-  are used. Host tests verify the filter reduces adjacent-sample roughness and
-  that the softened wave loops remain ADPCM-encodable. Host ADPCM results
-  after shaping: pulse 12.5% 24.75 dB, pulse 25% / 50% 25.85 dB, saw
-  21.48 dB; roughness falls about 41% for pulse and saw. These are host
-  measurements, not a subjective listening or console-FPS test. The filter's
-  temporary stack buffer is 224 B; the persistent RAM, SPU loop lengths,
-  and rendering workload are unchanged. Boot-time CPU cost is not measured.
-* **Encoder quality** (`harness/adpcm_test.c`, host): pulse, triangle, saw,
-  sine, chirp and noise are SNR-tested after ADPCM conversion; pulse/saw tests
-  use the PS1's softened cycles.
+* **Tone loop synthesis** (`src/waveform.h` and `adpcm_encode_loop` in `src/adpcm.c`, host-tested, 2026-11-18).
+  This replaces the old "draw hard edges, then soften them with a 1:6:1 filter" step. Boot-time only: no
+  per-frame work, no new voices, the same staging buffers, the SPU RAM layout and size unchanged
+  (two cycles per loop, so the same block counts as before: 115 blocks, 1,840 B of waveforms in 0x1000-0x1fff).
+  * Pulse and saw cycles are band-limited: a sum of harmonics from one 112-point sine table, integer only.
+    The duty is exact (the 12.5 % pulse on the 28-sample cycle is 3.5 samples wide; the old edge was 3, which is
+    10.7 %), and nothing above the cycle's Nyquist folds back into the loop. Harmonic levels match the closed-form
+    series (first ten harmonics, `adpcm_test`). The 112-sample cycle keeps the old softener's response per harmonic,
+    so its tone colour is the one the game had. The 28-sample cycle (notes above about 700 Hz) rolls harmonics 4 to 13
+    off with a raised cosine (see the aliasing numbers below).
+  * No DC offset. The old 12.5 % pulse sat 9000 below zero (0.27 of full scale), the 25 % pulse 6000. That step is
+    inaudible while a note sounds but it is a click at key-on / key-off and it uses up ADPCM range. The audible
+    (moving) part is as big as before. Peaks: 12.5 % pulse 21,486 / 23,323 (long / short cycle), the rest 18,916 or
+    less, all inside 32,767.
+  * Key-on fade: the first 28 samples of the first cycle (the first ADPCM block, the one that plays once) rise with a
+    raised cosine from silence. That is 0.5 ms at 1.5 kHz up to about 4.5 ms at 55 Hz on the long cycle. A key-on used
+    to start with a full-scale step. The loop (the second cycle) never fades. To switch the fade off, make
+    `ps1_wave_fade_in` do nothing.
+  * The loop is encoded for the way the SPU really plays it. The SPU decoder keeps two samples of history across the
+    loop jump, so the loop block is decoded from the state the END of the loop leaves. The old encode assumed the state
+    after the first cycle; on the one-block 28-sample loops the two differ and the loop decoded at 3 to 16 dB
+    signal-to-noise (a straight decode of the same bytes showed 20+). `adpcm_encode_loop` encodes the loop cycle from
+    several starting states, plays each round the loop with the reference decoder and keeps the best; a one-block loop
+    tries every filter and shift. Host loop SNR, old -> new (long cycle / short cycle): 12.5 % pulse 24.7 -> 22.1 /
+    2.7 -> 18.1 dB, 25 % 25.8 -> 24.7 / 15.7 -> 19.9, 50 % 25.8 -> 25.9 / 6.5 -> 23.4, saw 21.5 -> 22.0 / 19.3 -> 19.8,
+    triangle 39.8 -> 45.2 / 14.7 -> 26.3. The long 12.5 % pulse loses 2.6 dB because its 3.5-times-sharper edges are
+    harder to code at 4 bits; it is no longer wrong, just a little noisier.
+  * Level. AC RMS of the decoded loops, old -> new: the 112-sample cycles stay within 0.3 dB. On the 28-sample cycles
+    the new loops are 0.1 to 1.2 dB quieter, and the 12.5 % pulse 3.2 dB quieter (10,784 -> 7,492): the old loop was
+    louder than designed because its decode error added energy (2.7 dB SNR); the new level is the one the old design
+    intended (about 7,400). If the high pulse notes now sit too low in the mix, raise that voice's volume in `plat_tone`
+    rather than the waveform.
+  * Aliasing, honestly: the SPU plays a loop faster than 44.1 kHz by skipping samples, so harmonics above 22 kHz fold
+    back as notes that are not in the tune. A 112-sample cycle does that from about 400 Hz up, a 28-sample one from
+    about 1.6 kHz up. The table is the same for every note, so synthesis cannot remove that, and mostly it did not
+    change. Host model of the playback (the decoded loops, cubic interpolation, not the SPU's Gaussian), energy that is
+    not on a harmonic of the note, old -> new: long cycle at 880 Hz within about 2 dB (12.5 % pulse -18.9 -> -19.9,
+    50 % -23.7 -> -25.3); at 440 Hz 50 % pulse -30.9 -> -38.3 dB, saw -32.4 -> -36.5 dB. Short cycle at 2093 Hz:
+    12.5 % pulse -20.8 -> -24.3, 25 % -21.8 -> -27.9, 50 % -24.3 -> -33.2, saw -22.3 -> -29.4, triangle
+    -32.5 -> -39.0 dB (that is the roll-off table); at 4186 Hz it is about the same (-14 to -19 dB). A real fix is a third,
+    shorter cycle for the high notes (SPU RAM has about 2 KB free in 0x1000-0x1fff; `tonepick.h` would choose it): not
+    done.
+  * Boot cost: 0.62 ms for the whole wave set on a host core (the old encode alone was 0.07 ms). On the 33 MHz R3000 the
+    cost is not measured (scale the host figure by roughly 50 to 150); the divisions are out of the inner loop. Stack
+    use: about 0.7 KB in `ps1_wave_series` (three 56-entry int tables) plus about 0.3 KB in `adpcm_encode_loop`.
+  * Not done: the noise loop (unchanged), not listened to on a console. These are host measurements only.
+* **Encoder quality** (`harness/adpcm_test.c`, host): the PS1's own pulse, triangle and saw loops (the functions in
+  `waveform.h`) are checked for DC, level, harmonics, fade-in and, played round the loop the way the SPU does it (decoder
+  history carried over the jump), for the same samples on every pass and a loop SNR floor; sine, chirp and noise are
+  SNR-tested after ADPCM conversion.
 * The engine-test build runs `audio_selftest()` at boot: SPU RAM read-back
   of the uploaded waveforms (DMA), a tone voice's envelope rising after
   key-on and falling after release, and a synthetic one-shot that plays and

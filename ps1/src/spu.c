@@ -135,25 +135,13 @@ static void spu_upload(uint32_t addr, const void *data, size_t bytes)
     }
 }
 
-/* ---- waveforms ------------------------------------------------------------ */
-static int16_t wave_sample(int wave, int i, int len, uint32_t *rng)
+/* ---- waveforms ------------------------------------------------------------
+ * The pulse, saw and triangle cycles come from waveform.h (band-limited, no DC offset, fade-in on
+ * the first cycle, loop encoded for the SPU's real decoder history). Only the noise is drawn here. */
+static int16_t noise_sample(uint32_t *rng)
 {
-    int duty;
-    switch (wave) {
-    case WAVE_PULSE12: duty = len / 8; return (int16_t)(i < duty ? 12000 : -12000);
-    case WAVE_PULSE25: duty = len / 4; return (int16_t)(i < duty ? 12000 : -12000);
-    case WAVE_PULSE50: duty = len / 2; return (int16_t)(i < duty ? 12000 : -12000);
-    case WAVE_TRIANGLE: {
-        int ph = (i * 4 * 14000) / len;  /* 0..56000 */
-        int v = ph < 14000 ? ph : ph < 42000 ? 28000 - ph : ph - 56000;
-        return (int16_t)v;
-    }
-    case WAVE_SAW:
-        return (int16_t)(-12000 + (i * 24000) / (len - 1));
-    default: /* noise */
-        *rng = *rng * 1103515245u + 12345u;
-        return (int16_t)(((*rng >> 16) & 1) ? 11000 : -11000);
-    }
+    *rng = *rng * 1103515245u + 12345u;
+    return (int16_t)(((*rng >> 16) & 1) ? 11000 : -11000);
 }
 
 #define NOISE_LEN (28 * 64)
@@ -182,24 +170,26 @@ static void build_waves(void)
             }
             if (w == WAVE_NOISE) {
                 for (i = 0; i < len; i++)
-                    pcm[i] = wave_sample(w, i, len, &rng);
+                    pcm[i] = noise_sample(&rng);
                 blocks = adpcm_encode(pcm, len, adpcm, 0);
                 adpcm[1] |= 0x04;                   /* loop start */
             } else {
-                /* two cycles; the loop restarts at the second one, whose
-                 * blocks were encoded with the real decoder history (the
-                 * first block of a sample must use filter 0) */
-                for (i = 0; i < len * 2; i++)
-                    pcm[i] = wave_sample(w, i % len, len, &rng);
-                /* Soften pulse/saw edges once at boot. Filtering each cycle
-                 * independently keeps the SPU loop boundary seamless. */
-                if (w == WAVE_PULSE12 || w == WAVE_PULSE25 ||
-                    w == WAVE_PULSE50 || w == WAVE_SAW) {
-                    ps1_wave_soften_cycle(pcm, len);
-                    ps1_wave_soften_cycle(pcm + len, len);
+                /* two cycles: the first fades in from silence and plays once, the loop restarts
+                 * at the second (waveform.h; its blocks are encoded for the decoder history the
+                 * loop jump really arrives with; the first block of a sample uses filter 0) */
+                switch (w) {
+                case WAVE_PULSE12: ps1_wave_pulse(pcm, len, 1); break;
+                case WAVE_PULSE25: ps1_wave_pulse(pcm, len, 2); break;
+                case WAVE_PULSE50: ps1_wave_pulse(pcm, len, 4); break;
+                case WAVE_TRIANGLE: ps1_wave_triangle(pcm, len); break;
+                default: ps1_wave_saw(pcm, len); break;
                 }
-                blocks = adpcm_encode(pcm, len * 2, adpcm, 0);
-                adpcm[(len / 28) * 16 + 1] |= 0x04; /* loop start: cycle 2 */
+                blocks = ps1_wave_encode_loop(pcm, len, adpcm);   /* sets loop start + end flags */
+                spu_upload(addr, adpcm, (size_t)blocks * 16);
+                s_wave_sum = sum_bytes(s_wave_sum, adpcm, (size_t)blocks * 16);
+                s_wave_addr[w][v] = addr;
+                addr += (uint32_t)blocks * 16;
+                continue;
             }
             adpcm[(blocks - 1) * 16 + 1] |= 0x03; /* loop end + repeat */
             spu_upload(addr, adpcm, (size_t)blocks * 16);
