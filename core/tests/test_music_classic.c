@@ -90,8 +90,8 @@ TEST(music_t1_lengths_and_names_come_from_the_bank)
     CHECK_STR(audio_song_name(SONG_HAHALAND_DAY), "HaHaland Day");
     CHECK_STR(audio_song_name(SONG_NONE), "Silence");
     CHECK_EQ(audio_song_length(SONG_NONE), 0);
-    /* TITLE: 8 bars of 4/4 at 140 bpm */
-    CHECK_EQ(audio_song_length(SONG_TITLE), (8u * 192u * 256u + 955u) / 956u);
+    /* TITLE: 24 bars of 4/4 at 140 bpm (the 8-bar loop, the huggle section, the bridge and the build) */
+    CHECK_EQ(audio_song_length(SONG_TITLE), (24u * 192u * 256u + 955u) / 956u);
 }
 
 TEST(music_t1_once_resumes_like_the_interpreter)

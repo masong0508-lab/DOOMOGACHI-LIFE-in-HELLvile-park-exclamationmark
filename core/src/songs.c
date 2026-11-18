@@ -76,15 +76,37 @@ const AudioSong audio_songs[SONG_COUNT] = {
     { "Silence", 0, { NULL, NULL, NULL, NULL } },
 
     /*SONG:TITLE*/
+    /* 24 bars (t140, C major). Bars 1-8 are the original loop, unchanged. Bars 9-16 bring in the HUGGLE hook (docs/show/
+     * INTRO_REDO.md): "g e g e a g e r | g e g e >c2<" = HUG-gle HUG-gle SNUG-gle / HUG-gle HUG-gle HUUG, a falling third
+     * answered by a held high note; it is the figure the show's chorus answer and bridge reuse. Bars 17-20 are the
+     * bridge (the hook alone on the music box, half-time, a soft pad under it), bars 21-24 build back (a rising
+     * staircase, a snare roll, a G-chord flourish into bar 1). */
     { "Boreagotchi Life!", ASONG_LOOP, {
       /*ch0*/ "t140 @0 o5 l8 v13"
               "e g >c< g a4 g e | f a >c< a g4. r | a >c d c< a4 g f | e d e g g4 r4 |"
-              "e g >c< g a4 >c< a | >d c< b a g4 e g | a g f e d4 e f | e2 c4 r4 |",
+              "e g >c< g a4 >c< a | >d c< b a g4 e g | a g f e d4 e f | e2 c4 r4 |"
+              /* B: the huggle hook, then its answer */
+              "g e g e a g e r | g e g e >c2< | f d f d g f d r | f d f d b2 |"
+              "e4 g4 >c4.< b8 | a4 g4 e4 c4 | f4 a4 >c4.< a8 | g4 b4 >d2< |"
+              /* C: bridge (music box), then the build back to bar 1 */
+              "@12 v10 g e g e a g e r | g e g e >c2< | g e g e a g e r | g e g e >d2< |"
+              "@0 v13 e e g g a a >c c< | f f a a >c c d d< | g g b b >d d e e< | g a b >d< b g d r |",
       /*ch1*/ "o4 v9 @4 [r8 c8]4 | @5 < [r8 a8]4 > | @4 [r8 f8]4 | [r8 g8]4 |"
-              "[r8 c8]4 | [r8 g8]2 @5 [r8 e8]2 | @4 [r8 f8]2 @5 [r8 d8]2 | @4 [r8 c8]2 c4 r4 |",
+              "[r8 c8]4 | [r8 g8]2 @5 [r8 e8]2 | @4 [r8 f8]2 @5 [r8 d8]2 | @4 [r8 c8]2 c4 r4 |"
+              "@16 [r8 c8]4 | [r8 f8]4 | @5 [r8 d8]4 | @4 [r8 g8]4 |"
+              "[r8 c8]4 | @5 < [r8 a8]4 > | @4 [r8 f8]4 | [r8 g8]4 |"
+              "@9 v8 a1 | f1 | c1 | g1 |"
+              "@4 v9 [r8 c8]4 | [r8 f8]4 | [r8 g8]4 | [r8 g8]4 |",
       /*ch2*/ "@2 o3 l8 v13 [c>c<]4 | < [a>a<]4 > | [f>f<]4 | [g>g<]4 |"
-              "[c>c<]4 | [g>g<]2 [e>e<]2 | [f>f<]2 [d>d<]2 | c4 g4 c4 r4 |",
-      /*ch3*/ "v11 [K8 H8 S8 H8 K8 K8 S8 H8]7 K8 H8 S8 H8 K4 C4 |" } },
+              "[c>c<]4 | [g>g<]2 [e>e<]2 | [f>f<]2 [d>d<]2 | c4 g4 c4 r4 |"
+              "[c>c<]4 | [f>f<]4 | [d>d<]4 | [g>g<]4 |"
+              "[c>c<]4 | < [a>a<]4 > | [f>f<]4 | [g>g<]4 |"
+              "< a1 > | < f1 > | c1 | < g1 > |"
+              "[c>c<]4 | [f>f<]4 | [g>g<]4 | [g>g<]4 |",
+      /*ch3*/ "v11 [K8 H8 S8 H8 K8 K8 S8 H8]7 K8 H8 S8 H8 K4 C4 |"
+              "[K8 H8 S8 H8 K8 K8 S8 H8]3 | K8 H8 S8 H8 S8 S8 T8 T8 | [K8 H8 S8 O8 K8 K8 S8 H8]3 | K4 S4 T8 T8 S8 C8 |"
+              "v8 [K4 H8 H8 S4 H8 H8]4 |"
+              "v11 [K8 H8 S8 H8 K8 K8 S8 H8]2 | S8 S8 S8 S8 S16 S16 S16 S16 T16 T16 T16 T16 | K8 H8 S8 H8 K8 K8 S8 C8 |" } },
     /*END*/
 
     /*SONG:HAHALAND_DAY*/

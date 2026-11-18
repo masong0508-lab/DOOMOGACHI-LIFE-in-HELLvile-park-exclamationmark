@@ -61,8 +61,8 @@ TEST(audio_sequencer_timing_loops_on_the_beat)
     audio_music(SONG_TITLE);
     CHECK_EQ(audio_music_current(), SONG_TITLE);
     len = audio_song_length(SONG_TITLE);
-    /* 8 bars of 4/4 at 140 bpm = 32 beats = 13.7 s = ~411 ticks */
-    CHECK(len >= 405 && len <= 417);
+    /* 24 bars of 4/4 at 140 bpm = 96 beats = 41.1 s = ~1234 ticks */
+    CHECK(len >= 1222 && len <= 1246);
     ticks(10);
     CHECK(audio_note_count() > 0);
     CHECK_EQ(audio_music_ticks(), 10);

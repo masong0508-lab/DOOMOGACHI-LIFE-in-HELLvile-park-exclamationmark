@@ -59,6 +59,10 @@ the beat, never from breaking the beat.
   vocal figure that answers each chorus line and becomes the bridge, over the big group hug. Every hug
   stays a plain hug a child may decline; nothing suggestive. If the owner means something else by
   "huggle", the hook changes, not the form.
+* **The hook as written (2026-11-18, in the game's title song, `docs/AUDIO.md`):** `g e g e a g e r | g e g e >c2<`
+  in C major, eighth notes: HUG-gle HUG-gle SNUG-gle (rest) / HUG-gle HUG-gle HUUUG. A falling minor third, two
+  statements and a held payoff. The show's chorus answer and bridge can use it as is (transposed to the song's key)
+  so the title screen and the opening share one tune.
 
 ### The cheek, kept on the beat
 

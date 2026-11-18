@@ -226,6 +226,22 @@ ids in the locks. No game cue is authored yet (MU4's waves); the test bank
 (`core/tests/music/`, its own `test.lock` ids) is compiled the same way
 into `core/tests/data/mus_testbank.h` (5.9 KB, native tests only).
 
+### The title song, 24 bars (2026-11-18)
+
+`SONG_TITLE` (`core/src/songs.c`) is no longer an 8-bar loop. 24 bars at 140 BPM, C major, about 41 s a pass
+(it was 13.7 s). Bars 1-8 are the original loop, unchanged. Bars 9-16 bring in the **huggle hook**: `g e g e a g e r |
+g e g e >c2<` (HUG-gle HUG-gle SNUG-gle / HUG-gle HUG-gle HUUG, a falling third answered by a held high note), then
+the same figure a step down over Dm | G (ending on the leading tone) and a four-bar stepwise answer; the harmony
+channel switches to the octave-arp instrument (`@16`, unused until now) for the bounce. Bars 17-20 are the bridge:
+the hook alone on the music box (`@12`), half-time drums, a soft pad (`@9`) and long bass notes, over Am | F | C | G.
+Bars 21-24 build back: a rising eighth-note staircase, a snare roll and tom run, a G-chord flourish and a crash
+into bar 1. The hook is the figure `docs/show/INTRO_REDO.md` reuses for the show's chorus answer and bridge (it can
+be transposed; the cell is a falling minor third).
+
+The bank (`core/gen/mus_data.c`) grew by regenerating it (`make -C core gen`); the length asserts in
+`test_audio.c` and `test_music_classic.c` now say 24 bars. `music_golden.h` was not re-recorded (T2 skips a song
+whose bank bytes changed, with a note, as it already does for several songs).
+
 ### Shared banks and the build-time composer (M1.5)
 
 `core/music/common/*.dms` (MU4d) compile into sections between the
