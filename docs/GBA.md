@@ -3930,7 +3930,10 @@ per image, the native reference changed the same way) is the way there.
   100 ms (divisor scaled in Q8, no divide, frequency written without the
   trigger bit); the wave channel's triangle starts as the saw and moves
   to the triangle over 133 ms (the idle bank is rewritten and swapped at
-  60 Hz) for a plucked bass attack. A channel
+  60 Hz) for a plucked bass attack. Every wave table (each waveform at
+  each volume, and the 8 pluck steps) is precomputed by
+  `gba/tools/wave_tables.py` into `audio.c` (3.2 KB of ROM), so loading
+  one is four word writes; `--check` fails when the block is stale. A channel
   is only restarted when its volume or waveform changes, so sliding
   pitches and sweeping drums do not click or tick.
 * `plat_sample(sfx, vol)`: the PCM from `audio_sfx_pcm()` is mixed by
