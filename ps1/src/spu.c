@@ -24,6 +24,7 @@
 #include <hwregs_c.h>
 #include "ps1.h"
 #include "adpcm.h"
+#include "waveform.h"
 
 #define SPU_WAVE_BASE   0x1000
 #define SPU_SFX_BASE    0x2000
@@ -188,6 +189,13 @@ static void build_waves(void)
                  * first block of a sample must use filter 0) */
                 for (i = 0; i < len * 2; i++)
                     pcm[i] = wave_sample(w, i % len, len, &rng);
+                /* Soften pulse/saw edges once at boot. Filtering each cycle
+                 * independently keeps the SPU loop boundary seamless. */
+                if (w == WAVE_PULSE12 || w == WAVE_PULSE25 ||
+                    w == WAVE_PULSE50 || w == WAVE_SAW) {
+                    ps1_wave_soften_cycle(pcm, len);
+                    ps1_wave_soften_cycle(pcm + len, len);
+                }
                 blocks = adpcm_encode(pcm, len * 2, adpcm, 0);
                 adpcm[(len / 28) * 16 + 1] |= 0x04; /* loop start: cycle 2 */
             }

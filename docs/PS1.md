@@ -1100,9 +1100,21 @@ other rows as H4).
   (`audio_sfx_pcm`) is converted to ADPCM (fast encoder mode) the first
   time an effect plays, or in the background one effect per frame after
   boot; a free voice (ENDX) or the oldest one is used.
-* **Encoder quality** (`harness/adpcm_test.c`, host): pulse waves 22-23 dB
-  SNR, triangle 44.7 dB, saw 17.8 dB, sine 40.7 dB, 8-bit chirp 24.9 dB,
-  noise 19.7 dB.
+* **Tone loop shaping** (`src/waveform.h`, host-tested): pulse and saw loops
+  get a cyclic 1:6:1 three-sample edge softener at boot, applied separately to
+  each cycle so the loop marker has no new boundary discontinuity. Triangle
+  and noise are unchanged. It adds no per-frame CPU work, no voices, no GPU
+  work, and no waveform bytes / SPU RAM footprint; the same staging buffers
+  are used. Host tests verify the filter reduces adjacent-sample roughness and
+  that the softened wave loops remain ADPCM-encodable. Host ADPCM results
+  after shaping: pulse 12.5% 24.75 dB, pulse 25% / 50% 25.85 dB, saw
+  21.48 dB; roughness falls about 41% for pulse and saw. These are host
+  measurements, not a subjective listening or console-FPS test. The filter's
+  temporary stack buffer is 224 B; the persistent RAM, SPU loop lengths,
+  and rendering workload are unchanged. Boot-time CPU cost is not measured.
+* **Encoder quality** (`harness/adpcm_test.c`, host): pulse, triangle, saw,
+  sine, chirp and noise are SNR-tested after ADPCM conversion; pulse/saw tests
+  use the PS1's softened cycles.
 * The engine-test build runs `audio_selftest()` at boot: SPU RAM read-back
   of the uploaded waveforms (DMA), a tone voice's envelope rising after
   key-on and falling after release, and a synthetic one-shot that plays and

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "adpcm.h"
+#include "waveform.h"
 
 #define MAXN (28 * 512)
 
@@ -48,6 +49,38 @@ static int check_from(const char *name, const int16_t *pcm, int n, int fast, dou
     return db >= min_db;
 }
 
+static uint64_t cycle_roughness(const int16_t *pcm, int len)
+{
+    uint64_t total = 0;
+    int i;
+    for (i = 0; i < len; i++) {
+        int d = pcm[(i + 1) % len] - pcm[i];
+        total += (uint64_t)(d * d);
+    }
+    return total;
+}
+
+static int check_loop_cycles(const char *name, const int16_t *pcm, int len)
+{
+    int ok = memcmp(pcm, pcm + len, (size_t)len * sizeof(pcm[0])) == 0;
+    printf("%-22s second cycle matches  %s\n", name, ok ? "ok" : "FAIL");
+    return ok;
+}
+
+
+static int check_smoothing(const char *name, int16_t *cycle, int len)
+{
+    uint64_t before = cycle_roughness(cycle, len);
+    ps1_wave_soften_cycle(cycle, len);
+    uint64_t after = cycle_roughness(cycle, len);
+    int ok = after < before;
+    printf("%-22s edge roughness %llu -> %llu  %s\n", name,
+           (unsigned long long)before, (unsigned long long)after,
+           ok ? "ok" : "FAIL");
+    return ok;
+}
+
+
 static int check(const char *name, const int16_t *pcm, int n, int fast, double min_db)
 {
     return check_from(name, pcm, n, fast, min_db, 0);
@@ -62,16 +95,38 @@ int main(void)
     /* the SPU driver's waves: two 112-sample cycles, the loop plays the
      * second one (see build_waves in spu.c) */
     len = 112;
+    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 8 ? 12000 : -12000);
+    ok &= check_smoothing("pulse 12.5% edges", pcm, len);
     for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 8 ? 12000 : -12000);
+    ps1_wave_soften_cycle(pcm, len);
+    ps1_wave_soften_cycle(pcm + len, len);
+    ok &= check_loop_cycles("pulse 12.5% loop", pcm, len);
     ok &= check_from("pulse 12.5% (loop)", pcm, len * 2, 0, 20, len);
+    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 4 ? 12000 : -12000);
+    ok &= check_smoothing("pulse 25% edges", pcm, len);
+    for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 4 ? 12000 : -12000);
+    ps1_wave_soften_cycle(pcm, len);
+    ps1_wave_soften_cycle(pcm + len, len);
+    ok &= check_loop_cycles("pulse 25% loop", pcm, len);
+    ok &= check_from("pulse 25% (loop)", pcm, len * 2, 0, 20, len);
+    for (i = 0; i < len; i++) pcm[i] = (int16_t)(i < len / 2 ? 12000 : -12000);
+    ok &= check_smoothing("pulse 50% edges", pcm, len);
     for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(i % len < len / 2 ? 12000 : -12000);
+    ps1_wave_soften_cycle(pcm, len);
+    ps1_wave_soften_cycle(pcm + len, len);
+    ok &= check_loop_cycles("pulse 50% loop", pcm, len);
     ok &= check_from("pulse 50% (loop)", pcm, len * 2, 0, 20, len);
     for (i = 0; i < len * 2; i++) {
         int ph = ((i % len) * 4 * 14000) / len;
         pcm[i] = (int16_t)(ph < 14000 ? ph : ph < 42000 ? 28000 - ph : ph - 56000);
     }
     ok &= check_from("triangle (loop)", pcm, len * 2, 0, 30, len);
+    for (i = 0; i < len; i++) pcm[i] = (int16_t)(-12000 + (i * 24000) / (len - 1));
+    ok &= check_smoothing("saw edges", pcm, len);
     for (i = 0; i < len * 2; i++) pcm[i] = (int16_t)(-12000 + ((i % len) * 24000) / (len - 1));
+    ps1_wave_soften_cycle(pcm, len);
+    ps1_wave_soften_cycle(pcm + len, len);
+    ok &= check_loop_cycles("saw loop", pcm, len);
     ok &= check_from("saw (loop)", pcm, len * 2, 0, 16, len);
     /* smooth tones */
     len = 28 * 100;
