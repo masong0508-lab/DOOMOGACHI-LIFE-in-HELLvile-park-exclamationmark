@@ -12,7 +12,17 @@ inputs:
 runs:
   using: composite
   steps:
+    # The encoder is pinned by commit and the runner image is fixed to Ubuntu 24.04.
+    # Cache the installed binary so normal PS1 builds do not apt-update and rebuild it.
+    - name: Restore psxavenc
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/psxavenc
+        key: psxavenc-v1-${{ inputs.commit }}-${{ runner.os }}-${{ runner.arch }}-ubuntu-24.04
+
     - name: Install meson and the ffmpeg development libraries
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
@@ -22,6 +32,7 @@ runs:
           libavformat-dev libavcodec-dev libavutil-dev libswresample-dev libswscale-dev
 
     - name: Fetch psxavenc
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/checkout@v4
       with:
         repository: WonderfulToolchain/psxavenc
@@ -30,6 +41,7 @@ runs:
         persist-credentials: false
 
     - name: Build and export psxavenc
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
@@ -38,3 +50,11 @@ runs:
         install -D .psxavenc-src/build/psxavenc "$HOME/psxavenc/bin/psxavenc"
         echo "$HOME/psxavenc/bin" >> "$GITHUB_PATH"
         "$HOME/psxavenc/bin/psxavenc" -V || true
+
+    - name: Verify cached or freshly built psxavenc
+      shell: bash
+      run: |
+        set -euo pipefail
+        test -x "$HOME/psxavenc/bin/psxavenc"
+        echo "$HOME/psxavenc/bin" >> "$GITHUB_PATH"
+        "$HOME/psxavenc/bin/psxavenc" -V

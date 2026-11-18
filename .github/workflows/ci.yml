@@ -317,11 +317,13 @@ jobs:
           cmake --version | head -n 1
 
       - name: PSn00bSDK (from source, cached)
+        timeout-minutes: 20
         uses: ./.github/actions/setup-psn00bsdk
         with:
           commit: ${{ env.PSN00BSDK_COMMIT }}
 
-      - name: psxavenc (boot FMV encoder, from source)
+      - name: psxavenc (boot FMV encoder, cached after first build)
+        timeout-minutes: 12
         uses: ./.github/actions/setup-psxavenc
         with:
           commit: ${{ env.PSXAVENC_COMMIT }}
