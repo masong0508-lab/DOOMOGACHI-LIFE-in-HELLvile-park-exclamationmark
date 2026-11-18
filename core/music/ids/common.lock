@@ -118,3 +118,4 @@ INST_BED_CLOCK    = 78  inst
 INST_BED_MACHINE  = 79  inst
 INST_BED_EMBERS   = 80  inst
 INST_BED_FIREWORKS = 81  inst
+MOTIF_HUGGLE      = 32  motif

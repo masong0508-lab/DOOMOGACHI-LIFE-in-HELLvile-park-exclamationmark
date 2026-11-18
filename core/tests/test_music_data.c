@@ -222,8 +222,8 @@ TEST(music_t4_the_shared_banks_are_in_bounds)
                 CHECK_MSG(in_bank(sec + o, len), "misc table %d record %d", kinds[k], i);
             }
         }
-        CHECK_EQ(b->n_motif, MOTIF_GOODBYE + 1);
-        for (i = 0; i <= MOTIF_GOODBYE; i++) {
+        CHECK_EQ(b->n_motif, MOTIF_HUGGLE + 1);
+        for (i = 0; i <= MOTIF_HUGGLE; i++) {
             unsigned o = rd16(B + misc[MUS_MISC_MOTIFS] + 2 * i);
             const MusMotif *m = (const MusMotif *)(const void *)(B + misc[MUS_MISC_MOTIFS] + o);
             CHECK_MSG(o && m->n_note >= 1 && m->head <= m->n_note, "motif %d", i);   /* BEEP_EGG is one note */

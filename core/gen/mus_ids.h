@@ -100,6 +100,7 @@
 #define MOTIF_PIP                    29
 #define MOTIF_BLOOM                  30
 #define MOTIF_GOODBYE                31
+#define MOTIF_HUGGLE                 32
 /* inst ids */
 #define INST_BOX_LEAD                24
 #define INST_CELESTA_ARP             25
