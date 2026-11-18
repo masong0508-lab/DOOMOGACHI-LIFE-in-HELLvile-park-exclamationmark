@@ -172,6 +172,33 @@ TEST(music_t4_the_test_bank_is_well_formed)
     mus_bank_use(NULL);
 }
 
+/* MS-S3: the studio set (docs/MUSIC_STUDIO_ROADMAP.md section E). Append-only ids 82..85, each row
+ * fitted for both consoles (psg_env 0 is the GBA soft envelope, an SPU ADSR pair for the PS1), none a
+ * kit or a noise bed, and one test-bank cue plays every one of them. */
+TEST(music_s3_the_studio_set_rows_are_fitted_and_each_one_plays_in_a_cue)
+{
+    static const int rows[4] = { INST_SOFT_BELL, INST_WARM_SQUARE, INST_PLUCK, INST_DEEP_SUB };
+    MusCueView cv;
+    int i, r, used[4] = { 0, 0, 0, 0 };
+    CHECK_EQ(INST_SOFT_BELL, INST_BED_FIREWORKS + 1);            /* appended, nothing renumbered */
+    CHECK_EQ(INST_DEEP_SUB, INST_SOFT_BELL + 3);
+    for (i = 0; i < 4; i++) {
+        const MusInst *in = mus_bank_inst(rows[i]);
+        CHECK_MSG(in->timbre < TIMBRE_COUNT && in->timbre_alt < TIMBRE_COUNT, "row %d timbre", rows[i]);
+        CHECK_MSG(!TIMBRE_IS_KIT(in->timbre) && in->timbre != TIMBRE_NOISE15 && in->timbre != TIMBRE_NOISE7,
+                  "row %d is a pitched voice", rows[i]);
+        CHECK_MSG(in->level >= 1 && in->gate >= 1 && in->gate <= 8, "row %d level / gate", rows[i]);
+        CHECK_MSG(in->spu_adsr1 != 0 || in->spu_adsr2 != 0, "row %d has a PS1 ADSR fit", rows[i]);
+    }
+    mus_bank_use(mus_testbank);
+    CHECK(mus_bank_cue(MCT_STUDIO, &cv));
+    for (r = 0; r < cv.cue->n_roles; r++)
+        for (i = 0; i < 4; i++)
+            if (cv.roles[r].inst == rows[i]) used[i] = 1;
+    for (i = 0; i < 4; i++) CHECK_MSG(used[i], "no test-bank role plays row %d", rows[i]);
+    mus_bank_use(NULL);
+}
+
 /* M1.5: the shared banks (MU4d, core/music/common) - every index and
  * record inside the bank, the 16 vinyl patterns + the crackle toggle, the
  * motif and instrument locks, sorted transitions, the turnaround table and
@@ -187,7 +214,7 @@ TEST(music_t4_the_shared_banks_are_in_bounds)
     int i, sfx = 0;
     CHECK(in_bank(b->misc_off, 4u * MUS_MISC_COUNT));
     misc = (const uint32_t *)(const void *)(B + b->misc_off);
-    CHECK_EQ(b->n_inst, INST_BED_FIREWORKS + 1);               /* 24 classic + the shared bank */
+    CHECK_EQ(b->n_inst, INST_DEEP_SUB + 1);                    /* 24 classic + the shared bank (MS-S3 rows last) */
     /* comps: u16 index from the section start, then 4 + 2 per event */
     CHECK(b->n_comp >= 16 && in_bank(b->comp_off, 2u * b->n_comp));
     for (i = 0; i < b->n_comp; i++) {

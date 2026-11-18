@@ -84,3 +84,8 @@ inst bed_clock     timbre=PULSE        duty=4  dec=60 sus=0 rel=60 lvl=9 gate=1
 inst bed_machine   timbre=NOISE7/NOISE15 dec=20 sus=2 rel=20 lvl=8 gate=4
 inst bed_embers    timbre=NOISE15      dec=40 sus=0 rel=40 lvl=7 gate=1
 inst bed_fireworks timbre=NOISE15      dec=6  sus=0 rel=6  lvl=12 gate=8 sweep=-8
+# ---- MS-S3: studio set (append-only ids 82..85; docs/MUSIC_STUDIO_ROADMAP.md section E) ----
+inst soft_bell     timbre=WT_BELL/TRI  atk=0  dec=8  sus=2  rel=8  lvl=11 gate=6                # a gentle celesta bell, no vibrato
+inst warm_square   timbre=PULSE        duty=16 atk=2 dec=2 sus=12 rel=10 lvl=12 gate=8 vib=3,16,18   # a rounded 50 % lead
+inst pluck         timbre=SAW/PULSE    duty=8  dec=22 sus=0 rel=10 lvl=13 gate=4                # short plucked string
+inst deep_sub      timbre=SINE/TRI     atk=1  dec=1  sus=14 rel=40 lvl=15 gate=8                # a longer, steadier sub than sub_bass

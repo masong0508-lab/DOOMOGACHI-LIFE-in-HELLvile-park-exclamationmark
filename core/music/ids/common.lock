@@ -119,3 +119,7 @@ INST_BED_MACHINE  = 79  inst
 INST_BED_EMBERS   = 80  inst
 INST_BED_FIREWORKS = 81  inst
 MOTIF_HUGGLE      = 32  motif
+INST_SOFT_BELL    = 82  inst
+INST_WARM_SQUARE  = 83  inst
+INST_PLUCK        = 84  inst
+INST_DEEP_SUB     = 85  inst

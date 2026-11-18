@@ -49,6 +49,19 @@ cue MCT_TWO "Test two" bpm=96 key=F:major meter=3 dial=S0
     BASS  o3 c2. | f2.
   trans -> MCT_HUB grid=BEAT type=VINYL:NEEDLE
 
+# MS-S3: one cue that plays each studio-set row (warm_square, pluck, soft_bell, deep_sub).
+cue MCT_STUDIO "Test studio set" bpm=100 key=C:major meter=4 dial=S0
+  role LEAD inst=warm_square on=I0 prio=3
+  role COUNTER inst=pluck on=I0 prio=2
+  role HARM inst=soft_bell on=I0 prio=2
+  role BASS inst=deep_sub on=I0 prio=2
+  node A anchor bars=2
+    chords | C . | G . |
+    LEAD  o5 l4 e g >c< g | d g b g
+    COUNTER o5 l8 c e g e c e g e | b d g d b d g d
+    HARM  o5 l2 e d | c e
+    BASS  o3 l2 c g | g d
+
 sting STGT_TADA "Ta-da" bpm=150 key=C:major meter=4 hit=1 duck=0.5 prio=2 gap=1 key_follow
   role LEAD inst=toy_lead prio=3
   role KIT kit=CLASSIC prio=1

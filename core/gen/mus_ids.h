@@ -160,6 +160,10 @@
 #define INST_BED_MACHINE             79
 #define INST_BED_EMBERS              80
 #define INST_BED_FIREWORKS           81
+#define INST_SOFT_BELL               82
+#define INST_WARM_SQUARE             83
+#define INST_PLUCK                   84
+#define INST_DEEP_SUB                85
 #define MC_CLASSIC_FIRST 200
 #define MC_CLASSIC_COUNT 28
 

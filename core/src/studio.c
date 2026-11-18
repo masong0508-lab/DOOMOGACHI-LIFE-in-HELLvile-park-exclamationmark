@@ -1163,6 +1163,7 @@ static void studio_enter(int arg)
     studio.sel_held = studio.sel_used = 0;
     studio.prev_music = (int16_t)audio_music_current();
     audio_music(SONG_NONE);
+    plat_reverb(PLAT_REVERB_ROOM);          /* PS1: the SPU room reverb on the tone voices (MS-S4) */
     if (arg <= STUDIO_ARG_DEMO(0) && arg > STUDIO_ARG_DEMO(STUDIO_TEMPLATES)) {
         /* runner / tests: premade citizens move in, a template is loaded */
         if (!town_count(-1)) town_new(TOWN_FREEPLAY, 1, TOWN_POP_PREMADE);
@@ -1225,6 +1226,7 @@ static void studio_leave(void)
     song_stop();
     stage_leave();
     studio.active = 0;
+    plat_reverb(PLAT_REVERB_OFF);
     audio_music(studio.prev_music);
 }
 

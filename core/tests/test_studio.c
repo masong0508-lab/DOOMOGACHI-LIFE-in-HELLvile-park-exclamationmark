@@ -1838,3 +1838,19 @@ TEST(studio_stage_sprites_wrong_planner_is_caught)
         CHECK_MSG(bad > 0, "fault %d went unnoticed", faults[f]);
     }
 }
+
+/* MS-S4: the studio asks the platform for the room reverb on enter and switches it off on leave
+ * (the PS1 SPU turns it on for the tone voices; every other platform keeps the weak no-op). */
+static int rv_calls, rv_last = -1, rv_on_seen;
+void plat_reverb(int mode) { rv_calls++; rv_last = mode; if (mode == PLAT_REVERB_ROOM) rv_on_seen++; }
+
+TEST(studio_asks_for_the_room_reverb_on_enter_and_off_on_leave)
+{
+    int before = rv_on_seen;
+    scene_set(&SCENE_STUDIO, -107);
+    CHECK_EQ(rv_on_seen, before + 1);
+    CHECK_EQ(rv_last, PLAT_REVERB_ROOM);
+    scene_set(&SCENE_TITLE, 0);
+    CHECK_EQ(rv_last, PLAT_REVERB_OFF);
+    CHECK(rv_calls >= 2);
+}

@@ -3,5 +3,6 @@
 #   NAME = id      kind (cue | sting)
 MCT_HUB        = 1   cue
 MCT_TWO        = 2   cue
+MCT_STUDIO     = 3   cue
 STGT_TADA      = 1   sting
 STGT_HIT       = 2   sting

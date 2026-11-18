@@ -16,7 +16,7 @@
  *   0x01000-0x01fff  silent block + waveforms
  *   0x02000-0x4ffff  sound effects (bump allocator; about 35 KB used)
  *   0x50000-0x7dfff  the part scripts (CR10, partstore.c: PARTS.BIN, 143,360 B today)
- *   0x7e000-0x7ffff  (reverb work area, unused)
+ *   0x7e000-0x7ffff  the reverb work area (reverb.h: Studio Small at 0x7e0c0; off until plat_reverb())
  */
 #include <string.h>
 #include <psxapi.h>
@@ -25,6 +25,7 @@
 #include "ps1.h"
 #include "adpcm.h"
 #include "waveform.h"
+#include "reverb.h"
 
 #define SPU_WAVE_BASE   0x1000
 #define SPU_SFX_BASE    0x2000
@@ -459,6 +460,44 @@ void audio_hw_hush(int on)
             if (s_tone_saved[v].freq && s_tone_saved[v].vol)
                 plat_tone(v, s_tone_saved[v].freq, s_tone_saved[v].vol, s_tone_saved[v].wave);
     }
+}
+
+/* ---- reverb (MS-S4) ------------------------------------------------------------
+ * The work area at the top of SPU RAM is zeroed and the preset written the first time a mode other
+ * than OFF is asked for. Only the four tone voices (0-3) send to the reverb; effects and babble
+ * stay dry. OFF clears the send and the master enable, so the default build sounds as before. */
+#define SPU_REG16(a) (*(volatile uint16_t *)(a))
+static int s_reverb_mode;
+typedef char reverb_modes_match[(int)REVERB_ROOM == (int)PLAT_REVERB_ROOM && (int)REVERB_HALL == (int)PLAT_REVERB_HALL ? 1 : -1];
+
+void plat_reverb(int mode)
+{
+    static int loaded;
+    int i;
+    if (!s_ready || mode < 0 || mode >= REVERB_COUNT || mode == s_reverb_mode)
+        return;
+    if (mode != REVERB_OFF && !loaded) {
+        static const uint32_t zero[64 / 4];
+        uint32_t a;
+        for (a = PS1_REVERB_AREA_START; a < PS1_REVERB_AREA_END; a += 64) {   /* 128 x 64 B */
+            SpuSetTransferStartAddr(a);
+            SpuWrite((uint32_t *)zero, 64);
+            SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
+        }
+        SPU_REG16(PS1_REVERB_MBASE_REG) = ps1_reverb_studio_small.mbase;
+        for (i = 0; i < PS1_REVERB_REGS; i++)
+            SPU_REG16(PS1_REVERB_REG_BASE + 2u * (uint32_t)i) = ps1_reverb_studio_small.reg[i];
+        loaded = 1;
+    }
+    SPU_REG16(PS1_REVERB_VOL_L_REG) = (uint16_t)ps1_reverb_level(mode);
+    SPU_REG16(PS1_REVERB_VOL_R_REG) = (uint16_t)ps1_reverb_level(mode);
+    SPU_REG16(PS1_REVERB_EON1_REG) = mode == REVERB_OFF ? 0 : ((1u << TONE_VOICES) - 1u);
+    SPU_REG16(PS1_REVERB_EON2_REG) = 0;
+    if (mode == REVERB_OFF)
+        SPU_REG16(PS1_REVERB_SPUCNT_REG) &= (uint16_t)~PS1_REVERB_SPUCNT_EN;
+    else
+        SPU_REG16(PS1_REVERB_SPUCNT_REG) |= PS1_REVERB_SPUCNT_EN;
+    s_reverb_mode = mode;
 }
 
 uint32_t audio_spu_used(void) { return s_sfx_top; }

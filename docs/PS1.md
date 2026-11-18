@@ -692,7 +692,7 @@ comes on with CR10 (done 2026-11-15, see "CR10" below: the part data is in SPU R
 0x01000-0x01fff  silent loop block + the chiptune waveforms (1.8 KB)
 0x02000-0x4ffff  sound effects (ADPCM; all converted at boot, about 35 KB used)
 0x50000-0x7dfff  PARTS.BIN (CR10): the part scripts and the packed part icons, 143,360 B of the 184,320 B (file on disc 145,408 B)
-0x7e000-0x7ffff  reverb work area (unused)
+0x7e000-0x7ffff  reverb work area (MS-S4: Studio Small at 0x7e0c0, only while the studio is open)
 ```
 
 ## 4. The 2D layer

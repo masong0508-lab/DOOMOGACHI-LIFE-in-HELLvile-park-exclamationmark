@@ -210,6 +210,10 @@ void plat_overworld(const DoomoOverworldView *v);
 enum { WAVE_PULSE12, WAVE_PULSE25, WAVE_PULSE50, WAVE_TRIANGLE, WAVE_SAW,
        WAVE_NOISE, WAVE_COUNT };
 void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave);
+/* Reverb on the tone voices (MS-S4). PS1 only: the SPU reverb; every other platform ignores it
+ * (weak default, core/src/plat_weak_ext.c). Scenes ask for a mode on enter and OFF on leave. */
+enum { PLAT_REVERB_OFF, PLAT_REVERB_ROOM, PLAT_REVERB_HALL };
+void plat_reverb(int mode);
 /* One-shot sample (sfx id from audio.h). The core supplies the PCM via
  * audio_sfx_pcm(); platforms may pre-convert it at boot. vol 0..15. */
 void plat_sample(int sfx_id, uint8_t vol);
