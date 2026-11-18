@@ -3924,7 +3924,13 @@ per image, the native reference changed the same way) is the way there.
   level of 100/75/50/25 % that is loud enough times a copy of the table
   scaled around the middle of the 4-bit range, so 15 steps and no DC
   jump), channel 3 noise (`WAVE_NOISE` = 15-bit LFSR, other waves the
-  7-bit periodic mode). Pitch registers use the nearest step. A channel
+  7-bit periodic mode). Pitch registers use the nearest step. Round 2
+  (240 Hz music IRQ, switches `GBA_VIBRATO` / `GBA_PLUCK`): the lead
+  (square 1) gets a 6 Hz, ~23 cent vibrato once a note has been held
+  100 ms (divisor scaled in Q8, no divide, frequency written without the
+  trigger bit); the wave channel's triangle starts as the saw and moves
+  to the triangle over 133 ms (the idle bank is rewritten and swapped at
+  60 Hz) for a plucked bass attack. A channel
   is only restarted when its volume or waveform changes, so sliding
   pitches and sweeping drums do not click or tick.
 * `plat_sample(sfx, vol)`: the PCM from `audio_sfx_pcm()` is mixed by

@@ -27,6 +27,22 @@ static ToneState tone[4];
 static int wave_bank;          /* bank currently selected for playback */
 static int wave_loaded = -1;   /* waveform id in the playing bank      */
 static int wave_amp = -1;      /* its amplitude (0..256) in the playing bank */
+static int wave_mixed = 16;    /* its pluck mix (16 = the plain table)       */
+
+/* Round 2 switches (each 0 = the sound of the first round). */
+#ifndef GBA_VIBRATO
+#define GBA_VIBRATO 1          /* a delayed vibrato on long lead notes (square 1)            */
+#endif
+#ifndef GBA_PLUCK
+#define GBA_PLUCK 1            /* the triangle on the wave channel starts bright, then mellows */
+#endif
+/* vibrato: ~23 cents deep at 6 Hz, starts 100 ms into a note and fades in over 130 ms */
+#define VIB_DELAY 24
+#define VIB_RAMP  32           /* irqs (240 Hz) to full depth; a power of two */
+#define VIB_STEP  1638         /* phase step per irq: 65536 * 6 / 240        */
+#define VIB_DEPTH 14           /* of 1024: 14 / 1024 = 1.4 % = 23 cents      */
+/* pluck: the table moves from the saw to the triangle in 8 steps of 4 irqs (133 ms) */
+#define PLUCK_STEP 2           /* of 16 per update, 60 Hz                    */
 
 /* Wave channel loudness: the hardware only has 100 / 75 / 50 / 25 % (4 steps), which made bass decays jump. A
  * volume 1..15 is a hardware level (the smallest one that is loud enough) times a copy of the table scaled to the
@@ -58,17 +74,27 @@ static const uint8_t wave_tables[WAVE_COUNT][16] = {
       0x72, 0xC8, 0x1F, 0x95, 0x3A, 0xE6, 0x0B, 0x64 },   /* noise-ish */
 };
 
-static void wave_load(int w, int amp)
+static uint8_t wave_nib(const uint8_t *t, int k) { return (uint8_t)((k & 1) ? t[k >> 1] & 15 : t[k >> 1] >> 4); }
+
+/* one table into the idle bank: the waveform, `mix` 0..16 of the way from the saw to it (16 = the table itself),
+ * scaled to `amp` */
+static void wave_load(int w, int amp, int mix)
 {
-    const uint8_t *src = wave_tables[w];
+    const uint8_t *src = wave_tables[w], *saw = wave_tables[WAVE_SAW];
     int i, j;
     /* write the bank that is NOT playing, then switch to it */
     REG_SND3SEL = (uint16_t)(0x80 | (wave_bank << 6));
     for (i = 0; i < 4; i++) {
         uint32_t word = 0;
         for (j = 0; j < 4; j++) {
-            uint8_t b = src[i * 4 + j];
-            uint8_t sb = amp >= 256 ? b : (uint8_t)((wave_scale((uint8_t)(b >> 4), amp) << 4) | wave_scale((uint8_t)(b & 15), amp));
+            uint8_t sb = 0;
+            int h;
+            for (h = 0; h < 2; h++) {
+                int k = (i * 4 + j) * 2 + h, v = wave_nib(src, k);
+                if (mix < 16) v = (wave_nib(saw, k) * (16 - mix) + v * mix + 8) >> 4;
+                if (amp < 256) v = wave_scale((uint8_t)v, amp);
+                sb = (uint8_t)(sb | (h == 0 ? v << 4 : v));
+            }
             word |= (uint32_t)sb << (8 * j);
         }
         REG_WAVE_RAM[i] = word;
@@ -77,7 +103,16 @@ static void wave_load(int w, int amp)
     REG_SND3SEL = (uint16_t)(0x80 | (wave_bank << 6));
     wave_loaded = w;
     wave_amp = amp;
+    wave_mixed = mix;
 }
+
+#if GBA_PLUCK
+static uint8_t pluck_m = 16;   /* how far the bass note's table has mellowed, 0 = just struck, 16 = done */
+static uint8_t pluck_n;
+#define PLUCK_MIX(w) ((w) == WAVE_TRIANGLE ? pluck_m : 16)
+#else
+#define PLUCK_MIX(w) 16
+#endif
 
 static uint16_t sq_rate(uint16_t hz)
 {
@@ -107,6 +142,17 @@ static uint16_t noise_freq(uint16_t hz, int periodic)
     return (uint16_t)(r | (s << 4) | (periodic ? 0x08 : 0));
 }
 
+#if GBA_VIBRATO
+static uint16_t vib_age;       /* irqs the lead's current note has been held (240 Hz)    */
+static uint16_t vib_ph;
+static uint32_t vib_d;         /* the note's divisor, Q8 (131072 / hz * 256)             */
+static uint16_t vib_cur;       /* the register value the vibrato wrote last              */
+static const int8_t vib_sin[32] = {
+    0, 20, 38, 56, 71, 83, 92, 98, 100, 98, 92, 83, 71, 56, 38, 20,
+    0, -20, -38, -56, -71, -83, -92, -98, -100, -98, -92, -83, -71, -56, -38, -20
+};
+#endif
+
 static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
 {
     ToneState *t;
@@ -118,6 +164,13 @@ static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
     t = &tone[channel];
     if (t->freq == freq_hz && t->vol == vol && t->wave == wave) return;
     restart = (t->vol != vol) || (t->wave != wave) || (t->vol == 0 && vol);
+#if GBA_VIBRATO
+    if (channel == 0 && (t->freq != freq_hz || t->vol == 0 || t->wave != wave)) vib_age = 0;   /* a new note */
+#endif
+#if GBA_PLUCK
+    if (channel == 2 && (t->vol == 0 || t->wave != wave || (t->freq > freq_hz ? t->freq - freq_hz : freq_hz - t->freq) * 32 > t->freq))
+        pluck_m = 0;                                       /* a new note: the saw-bright start again */
+#endif
     t->freq = freq_hz;
     t->vol = vol;
     t->wave = wave;
@@ -129,6 +182,12 @@ static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
                    wave == WAVE_SAW ? 1 : 2;
         uint16_t cnt = (uint16_t)((duty << 6) | (vol << 12));    /* env step 0 */
         uint16_t fr = sq_rate(freq_hz ? freq_hz : 440);
+#if GBA_VIBRATO
+        if (channel == 0) {
+            vib_d = (33554432u + (freq_hz ? freq_hz : 440) / 2) / (freq_hz ? freq_hz : 440);   /* 131072 / hz, Q8 */
+            if (vib_age >= VIB_DELAY) fr = vib_cur;         /* mid-vibrato: a volume step must not snap the pitch back */
+        }
+#endif
         if (channel == 0) {
             REG_SND1SWEEP = 0x0008;                              /* sweep off */
             if (restart) { REG_SND1CNT = cnt; REG_SND1FREQ = (uint16_t)(fr | 0x8000); }
@@ -140,7 +199,8 @@ static void tone_set(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
         break; }
     case 2: {
         if (vol == 0) { REG_SND3CNT = 0; break; }
-        if (wave != wave_loaded || wave_vol[vol].amp != wave_amp) wave_load(wave, wave_vol[vol].amp);
+        if (wave != wave_loaded || wave_vol[vol].amp != wave_amp || PLUCK_MIX(wave) != wave_mixed)
+            wave_load(wave, wave_vol[vol].amp, PLUCK_MIX(wave));
         REG_SND3CNT = wave_vol[vol].hw;
         if (restart) REG_SND3FREQ = (uint16_t)(wave_rate(freq_hz) | 0x8000);
         else REG_SND3FREQ = wave_rate(freq_hz);
@@ -233,10 +293,51 @@ static void saw_pwm_tick(void)                          /* 240 Hz, from the musi
 }
 #endif
 
+#if GBA_VIBRATO
+/* 240 Hz: the lead's pitch rides a sine once the note has been held VIB_DELAY irqs. No divide: the note's divisor
+ * (Q8) is scaled by (1 - v), which is the pitch up by v to a hair. Writing the frequency without the trigger bit
+ * moves a running square without restarting it. */
+static void vib_tick(void)
+{
+    const ToneState *t = &tone[0];
+    int k, v;
+    uint32_t d;
+    if (!t->vol || !t->freq || t->wave == WAVE_NOISE) { vib_age = 0; return; }
+    if (vib_age < 0xFFFF) vib_age++;
+    if (vib_age < VIB_DELAY) return;
+    k = vib_age - VIB_DELAY;
+    if (k > VIB_RAMP) k = VIB_RAMP;
+    vib_ph = (uint16_t)(vib_ph + VIB_STEP);
+    v = (vib_sin[vib_ph >> 11] * VIB_DEPTH * k) / (100 * VIB_RAMP);          /* of 1024 */
+    d = (vib_d * (uint32_t)(1024 - v)) >> 10;
+    d = (d + 128) >> 8;
+    if (d < 1) d = 1;
+    if (d > 2047) d = 2047;
+    vib_cur = (uint16_t)(2048 - d);
+    REG_SND1FREQ = vib_cur;
+}
+#endif
+
+#if GBA_PLUCK
+static void pluck_tick(void)                            /* 240 Hz: every 4th, 60 Hz */
+{
+    if ((++pluck_n & 3) || pluck_m >= 16) return;
+    if (tone[2].wave != WAVE_TRIANGLE || !tone[2].vol) { pluck_m = 16; return; }
+    pluck_m = (uint8_t)(pluck_m + PLUCK_STEP > 16 ? 16 : pluck_m + PLUCK_STEP);
+    wave_load(WAVE_TRIANGLE, wave_vol[tone[2].vol].amp, pluck_m);
+}
+#endif
+
 static void music_irq(void)
 {
     if (!music_ready) return;
     mus_drv_tick();
+#if GBA_VIBRATO
+    vib_tick();
+#endif
+#if GBA_PLUCK
+    pluck_tick();
+#endif
 #if GBA_SAW_PWM
     saw_pwm_tick();
 #endif
@@ -292,7 +393,7 @@ void audio_hw_init(void)
     REG_SNDBIAS = 0x0200;
     for (i = 0; i < 4; i++) { tone[i].freq = 0xFFFF; tone[i].vol = 0xFF; }
     for (i = 0; i < 4; i++) plat_tone(i, 0, 0, WAVE_PULSE50);
-    wave_load(WAVE_TRIANGLE, 256);
+    wave_load(WAVE_TRIANGLE, 256, 16);
     mixer_init();
     music_n = 0;
     REG_TM1CNT = 0;
