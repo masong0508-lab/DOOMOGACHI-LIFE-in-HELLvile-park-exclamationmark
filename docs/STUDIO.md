@@ -418,6 +418,7 @@ spookier verses) - and a small choir of the muse and their friends.
   Use `song_singer_section()`.
 
 ### Singing and the choir
+*(Tuning cost, 2026-11-18: the search is bisected (~30 `audio_voice_freq` calls) and its result is kept per (folded note, vowel) in `song_player.c`: a direct-indexed table for a e i o u y (444 B) and a 16-entry round-robin for other letters. A key is searched once, ever; `song_tune_cache_stats()` counts hits and misses for tests.)*
 Each lead onset sings the next syllable with `audio_voice_char()`. The voice
 is **tuned to the note**: the octave nearest the singer's own pitch, then the
 PITCH and ACCENT sliders are searched through `audio_voice_freq()` for the

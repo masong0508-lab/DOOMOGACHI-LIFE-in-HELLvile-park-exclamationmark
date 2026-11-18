@@ -719,29 +719,64 @@ static int tune_nat(int pitch)
  * (pitch, accent) pair it finds depends on the folded target note and the vowel alone. A 64-entry table keyed on
  * those two returns the pair the search found: bit-identical output, and no 3-6 ms spike on a syllable onset
  * (32 + up to 96 audio_voice_freq calls). Round-robin replacement; 64 x 5 bytes. */
-#define TUNE_CACHE 64
-typedef struct { uint8_t vowel, target, a, ba, ok; } TuneEnt;
-static TuneEnt tune_cache[TUNE_CACHE];
+/* 2026-11-18: the 64-entry round-robin recycled itself on a full choir (a simulated 25-voice choir missed 56 % of its
+ * syllables; one note folds to up to three octaves and the words use five or six vowels, ~185 distinct keys). Now the six
+ * vowels a e i o u y have a table indexed straight by (vowel, folded target 45..81): 6 x 37 x 2 B = 444 B, every key
+ * has its own slot, so after its first miss a key is never recomputed. Any other letter (a consonant-only syllable,
+ * rare) uses a 16-entry round-robin of the old kind (64 B). Total 508 B, was 320 B. A slot is empty while its first byte
+ * is 0 (a stored pitch step is kept with bit 7 set). */
+#define TUNE_VOW 6
+#define TUNE_TGT 37                        /* targets 45..81 */
+#define TUNE_RR 16
+typedef struct { uint8_t vowel, target, a, ba; } TuneEnt;
+static uint8_t tune_dm[TUNE_VOW * TUNE_TGT][2];
+static TuneEnt tune_cache[TUNE_RR];
 static uint8_t tune_next;
 static uint32_t tune_hits, tune_miss;      /* read by song_tune_cache_stats (tests) */
+
+static int tune_vowel_idx(char c)
+{
+    switch (c) {
+    case 'a': return 0;
+    case 'e': return 1;
+    case 'i': return 2;
+    case 'o': return 3;
+    case 'u': return 4;
+    case 'y': return 5;
+    default:  return -1;
+    }
+}
 
 static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out)
 {
     uint8_t t[VOICE_COUNT];
     int nat = 45 + tune_nat(v[VOICE_PITCH]), target = midi, p, a = 0, bp = 0, ba = 0, hz, i;
+    int vi = tune_vowel_idx(vowel);
     uint32_t best, d;
     while (target < nat - 6) target += 12;
     while (target > nat + 6) target -= 12;
     target = DOOMO_CLAMP(target, 45, 81);
-    for (i = 0; i < TUNE_CACHE; i++) {
-        const TuneEnt *e = &tune_cache[i];
-        if (e->ok && e->vowel == (uint8_t)vowel && e->target == (uint8_t)target) {
+    if (vi >= 0) {
+        const uint8_t *e = tune_dm[vi * TUNE_TGT + (target - 45)];
+        if (e[0]) {
             tune_hits++;
             memcpy(out, v, VOICE_COUNT);
-            out[VOICE_PITCH] = e->a;
-            out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(e->ba + spread, 0, 31);
+            out[VOICE_PITCH] = (uint8_t)(e[0] & 31);
+            out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(e[1] + spread, 0, 31);
             out[VOICE_INTONATION] = 0;
             return;
+        }
+    } else if (vowel) {
+        for (i = 0; i < TUNE_RR; i++) {
+            const TuneEnt *e = &tune_cache[i];
+            if (e->vowel == (uint8_t)vowel && e->target == (uint8_t)target) {
+                tune_hits++;
+                memcpy(out, v, VOICE_COUNT);
+                out[VOICE_PITCH] = e->a;
+                out[VOICE_ACCENT] = (uint8_t)DOOMO_CLAMP(e->ba + spread, 0, 31);
+                out[VOICE_INTONATION] = 0;
+                return;
+            }
         }
     }
     tune_miss++;
@@ -766,11 +801,14 @@ static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8
         k = tune_scan(t, VOICE_ACCENT, vowel, hz, dir, &d);
         if (d < best) { best = d; a = p; ba = k; }
     }
-    {
+    if (vi >= 0) {
+        uint8_t *e = tune_dm[vi * TUNE_TGT + (target - 45)];
+        e[0] = (uint8_t)(a | 0x80); e[1] = (uint8_t)ba;
+    } else if (vowel) {
         TuneEnt *e = &tune_cache[tune_next];
-        tune_next = (uint8_t)((tune_next + 1) % TUNE_CACHE);
+        tune_next = (uint8_t)((tune_next + 1) % TUNE_RR);
         e->vowel = (uint8_t)vowel; e->target = (uint8_t)target;
-        e->a = (uint8_t)a; e->ba = (uint8_t)ba; e->ok = 1;
+        e->a = (uint8_t)a; e->ba = (uint8_t)ba;
     }
     memcpy(out, v, VOICE_COUNT);
     out[VOICE_PITCH] = (uint8_t)a;
@@ -780,7 +818,7 @@ static void tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8
 
 /* test hooks: the same function, and the cache's counters / reset */
 void song_tune_voice(const uint8_t *v, int midi, char vowel, int spread, uint8_t *out) { tune_voice(v, midi, vowel, spread, out); }
-void song_tune_cache_reset(void) { memset(tune_cache, 0, sizeof(tune_cache)); tune_next = 0; tune_hits = tune_miss = 0; }
+void song_tune_cache_reset(void) { memset(tune_cache, 0, sizeof(tune_cache)); memset(tune_dm, 0, sizeof(tune_dm)); tune_next = 0; tune_hits = tune_miss = 0; }
 void song_tune_cache_stats(uint32_t *hits, uint32_t *miss) { *hits = tune_hits; *miss = tune_miss; }
 
 static char syllable_vowel(int syl)

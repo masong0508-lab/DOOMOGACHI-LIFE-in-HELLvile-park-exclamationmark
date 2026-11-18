@@ -140,6 +140,7 @@ The PERFORM fix list (karaoke bar, beat hearts, follow spot, note glyph, tuning 
 | ID | Size | What | Gate |
 |---|---|---|---|
 | **MS-P1** | M | **Syllable tuning cache.** Memoise the result of the voice search per (singer voice hash, MIDI note) in a small table (64 entries, ~512 B; or per song: <= 25 singers x the lead's ~12 distinct notes), or spread the search over two ticks. Output must be bit-identical to today's (a test compares cached and uncached blips for every template). | No slow frame on syllable onsets in the GBA slow-frame report; `test_studio.c` golden blips unchanged. |
+|  | | *Status (2026-11-18):* **done** as MS-PF6 (memo), MS-PF7 (bisection, ~30 calls not ~130) and the vowel table below. The old 64-entry round-robin recycled itself on a full choir (a simulated 25-voice choir missed 56 % of its syllables; ~185 distinct (vowel, note) keys); the six vowels now have a direct-indexed table (6 x 37 x 2 B), consonant-only syllables a 16-entry round-robin: 508 B total (was 320 B), bit-identical output. What is left is the first miss of each key (~2.5 ms, once per key). | `studio_voice_tuning_cache_holds_a_choirs_working_set`. |
 | **MS-P2** | M | **GBA studio under budget.** From MS-P0's profile. Likely suspects from the table: the tracker redraws ~540 rects a frame at 240x160 although only the cursor, playhead and changed cells move; the SONG card's four dancing meters and spinning record. Draw the static grid / keyboard / beat shading once as a shape image (the title did this: logo, pills, hearts, 54% idle after) and redraw only dirty cells. | studio / play <= 30 ms per drawn tick on GBA (today 34.1), 30 fps; pixel-identical screenshots (same check the speed passes used). |
 | **MS-P3** | S | **LYRICS text.** 213 text calls a frame vs 25-79 elsewhere: the alternating syllable colours are probably drawn per glyph. Batch per colour run (one `plat_text` per syllable), cache the syllable split per line while the line is unchanged. | text calls <= 60 on LYRICS; identical shots. |
 | **MS-P4** | M | **CHOIR chibis.** 37-39 images a frame for 25 tiles: render each singer's tile once into an image-cache entry and redraw only when the singer, section or selection changes (the dialogue scene's `pc_*` re-render cost, 15% on PS1, is the same problem). | images <= 12 on CHOIR and picker; CHOIR / picker at 30 fps on GBA. |
@@ -168,12 +169,29 @@ The PERFORM fix list (karaoke bar, beat hearts, follow spot, note glyph, tuning 
 | **MS-X6** | M | **Karaoke / beat battle** (stretch). Play along on PERFORM: press A on the syllables (or the beat) for stars; with the co-op heroes (MP1) as a 2-player duet. Uses `song_pos_*` and `song_beat_age()` only: no player changes. | Journey test; fits the scene budget. |
 | **MS-X7** | S | **Four more voices.** A kazoo (the U69 "Kazoo babble" hook) and a "citizen ooh" instrument from the babble voices, unlocked by stats like the existing ones. | New unlock ids stay in 240..255 or extend the range with a test. |
 
+### E. Sound (the studio's instrument set; added 2026-11-18)
+
+Where the sound comes from today: the studio's tone player drives `plat_tone` channels 0-3 only, while the music engine (`docs/AUDIO.md`, M1.5)
+has 58 instruments with PSG envelopes and SPU ADSR fits, six drum kits, beds and the PS1 SPU backend. The studio uses none of that. These packages close
+the gap, cheapest first. All keep the save format append-only and the GBA path playable (the GBA PSG has 4 channels; it will always sound plainer than PS1).
+
+| ID | Size | What | Gate |
+|---|---|---|---|
+| **MS-S1** | M | **Studio on the engine's instrument layer.** Map the six studio instrument slots (and the drum track) onto rows of the engine instrument table (`inst.dms`: leads, pads, basses, the six kits) and play them through the same driver the title song uses, instead of raw `plat_tone`. GBA keeps its PSG envelopes from the table; PS1 gets the SPU ADSR fits. Slot -> row map is a small const table, so saved songs keep their slot numbers. | Golden: `studio_compose` output is unchanged (it stores slots, not rows). Test: every slot maps to a valid row. PS1 and GBA studio tour stay at their MS-P0 numbers. |
+| **MS-S2** | S | **Per-track instrument picker with a preview.** Today a track has 6 slots. Let the track's sound field choose from a curated list of engine rows (about 16: bell, music box, square lead, pluck, warm pad, sub bass, ...) with a short preview note on cursor move, and per-track mute / solo (= MS-F2). Builds on the Mix view (pan / sound / swing per track). | Test: picker never writes a row outside the list; undo covers it; preview plays one `plat_tone` note and stops. |
+| **MS-S3** | S | **New instruments in `inst.dms`** (append-only ids, ~20 B a row): soft bell / celesta, warm square lead, pluck, sub bass, a clap / rim kit variant. Each needs both a `psg_env` (GBA) and `spu_adsr1/2` (PS1). | `mmlc` and `mpack` pass; `test_audio` / `test_music_data` row counts updated; one cue in the test bank uses each new row. |
+| **MS-S4** | S | **PS1 reverb.** The SPU reverb work area (`0x7e000-0x7ffff`) is reserved and unused. Turn it on: hall for PERFORM and the choir, room for the studio, off for the tracker's preview notes. PS1 only (the GBA has no reverb). This is the first half of MS-X1 and can ship alone. | PS1 harness run: SPU register trace shows the reverb enabled and the work area untouched elsewhere; stack reserve still >= 72 KB; no change on native / GBA. |
+
+Order inside E: **MS-S3** and **MS-S2** together (visible, no engine change), then **MS-S1** (the real jump), **MS-S4** any time on PS1.
+MS-X1's sampled instruments come after S1, because they need the slot -> row map.
+
 ## 4. Order
 
 1. **MS-P0** (everything else is gated by it) and **MS-P1** (a pure win, no visuals change).
 2. **MS-P2 .. MS-P5** in the order the profile says; stop when GBA is under budget and PERFORM holds 30.
 3. In parallel with 2, the small functionality packages: **MS-F1, F2, F3**, then F4, F5.
-4. Fun: **MS-X2** and **MS-X4** first (cheap, visible), then **MS-X1** (the big PS1 win, needs the PS1 harness), then X3, X5, X7; X6 and MS-F6 last.
+4. Sound: **MS-S3 + MS-S2**, then **MS-S1**; **MS-S4** (PS1 reverb) is independent. See section E.
+5. Fun: **MS-X2** and **MS-X4** first (cheap, visible), then **MS-X1** (the big PS1 win, needs the PS1 harness), then X3, X5, X7; X6 and MS-F6 last.
 
 ## 5. Risks and open questions
 

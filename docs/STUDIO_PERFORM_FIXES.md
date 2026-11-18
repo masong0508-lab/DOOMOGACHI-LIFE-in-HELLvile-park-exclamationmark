@@ -12,7 +12,7 @@ Written 2026-11-07 (nov07g). Companion to `docs/MUSIC_STUDIO_ROADMAP.md` ("Facts
 
 About -1.6 ms steady and -4.7 ms on the worst tick. **That is a step, not the goal:** the sung phase is still over the 3-vblank cliff; F1 (-2.4), F4 (-1.3, only if exact) and a cheaper wall or MS-P4 are still needed.
 Exactness: 34 PERFORM shots at 240x160 and at 320x240 are byte-identical old vs new (also with the GBA note path forced on in the native build: `-DDOOMO_STUDIO_RECT_NOTE`);
-`studio_voice_tuning_memo_is_bit_identical` compares the memo with a copy of the old search for every pitch / note / vowel / spread. F6 note: the search result depends only on (folded target note, vowel), so the memo is 64 x 5 bytes.
+`studio_voice_tuning_memo_is_bit_identical` compares the memo with a copy of the old search for every pitch / note / vowel / spread. F6 note: the search result depends only on (folded target note, vowel), so the memo was 64 x 5 bytes. (2026-11-18: now a direct-indexed (vowel, note) table for a e i o u y plus a 16-entry fallback, 508 B, because the 64-entry round-robin thrashed on a full choir; see `MUSIC_STUDIO_ROADMAP.md` MS-P1.)
 
 ## The problem in three lines
 

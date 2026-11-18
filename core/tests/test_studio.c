@@ -1568,6 +1568,33 @@ TEST(studio_voice_tuning_memo_is_bit_identical)
     CHECK(miss <= (uint32_t)n / 2);     /* and the second pass is all hits (the table holds the working set or recycles) */
 }
 
+/* 2026-11-18: a choir's working set (11 voices x 5 vowels x 12 notes = 185 distinct keys) is more than the old 64 entries and fits the
+ * table now: the second pass over it must not miss once. */
+TEST(studio_voice_tuning_cache_holds_a_choirs_working_set)
+{
+    static const char vowels[] = "aeiou";
+    uint32_t hits, m_a, m_b, m_c, pass;
+    int pitch, midi, vi;
+    song_tune_cache_reset();
+    song_tune_cache_stats(&hits, &m_a);
+    for (pass = 0; pass < 2; pass++) {
+        for (pitch = 0; pitch < 32; pitch += 3)
+            for (midi = 48; midi < 60; midi++)
+                for (vi = 0; vi < 5; vi++) {
+                    uint8_t v[VOICE_COUNT], got[VOICE_COUNT];
+                    int k;
+                    for (k = 0; k < VOICE_COUNT; k++) v[k] = (uint8_t)((pitch * (k + 1) + k * 7) & 31);
+                    v[VOICE_PITCH] = (uint8_t)pitch;
+                    song_tune_voice(v, midi, vowels[vi], 0, got);
+                }
+        if (pass == 0) song_tune_cache_stats(&hits, &m_b);
+    }
+    song_tune_cache_stats(&hits, &m_c);
+    CHECK(m_b - m_a > 128);             /* a working set no round-robin of 128 holds (185 keys) */
+    CHECK(m_b - m_a <= 5 * 37);          /* and every key has its own slot in the new table */
+    CHECK_EQ(m_c - m_b, 0);             /* second pass: every syllable is a hit */
+}
+
 /* MS-PF7: the tuning search by bisection returns what the plain 32 + 96 call loops return, for every voice pitch,
  * every letter and a few non-letters, every target note the search can reach. Cold every time (cache reset). */
 TEST(studio_voice_tuning_bisection_is_bit_identical)
