@@ -21,6 +21,8 @@
 uint16_t *gba_back = (uint16_t *)VRAM_PAGE1;
 /* the font, transposed: rows[ch][r] bit c = pixel (c, r) */
 EWRAM_BSS uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];
+/* Precomputed 7x11 outline masks: avoids dilating every glyph on every frame. */
+EWRAM_BSS uint16_t gba_glyph_dilated[FONT_LAST - FONT_FIRST + 1][11];
 
 void video_load_palette(void)
 {
@@ -43,7 +45,11 @@ static void build_font_rows(void)
 /* The outline of ui_text_outline for one glyph: the glyph at its eight
  * 1-pixel neighbours and at (+1, +2), as 11 rows of a 7-wide box whose
  * origin is (-1, -1) from the glyph's (bit c = column c). Computed per
- * glyph drawn (a few dozen ops) rather than kept as a 2 KB EWRAM table. */
+ * glyph drawn (a few dozen ops) rather than kept as a 2 KB EWRAM table.
+ * Superseded by gba_glyph_dilated (filled in video_init): the title screen
+ * redrew outlined text every frame. vid_glyph_dilate stays the one source of
+ * the mask. If L4 per-language glyph pages ever remap vid_glyph_rows, rebuild
+ * gba_glyph_dilated when the page changes. */
 void vid_glyph_dilate(const uint8_t *g, uint16_t out[11])
 {
     int r;
@@ -72,6 +78,11 @@ void video_init(void)
     REG_BG2PA = 0x100; REG_BG2PB = 0; REG_BG2PC = 0; REG_BG2PD = 0x100;
     REG_BG2X = 0; REG_BG2Y = 0;
     build_font_rows();
+    {
+        int ch;
+        for (ch = FONT_FIRST; ch <= FONT_LAST; ch++)
+            vid_glyph_dilate(vid_glyph_rows((unsigned)ch), gba_glyph_dilated[ch - FONT_FIRST]);
+    }
 }
 
 int plat_screen_w(void) { return SCREEN_W; }
@@ -243,9 +254,8 @@ void vid_text_dil(int x, int y, const char *s, uint32_t color)
         if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
         if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' &&
             cx > -FONT_ADVANCE - 1 && cx < SCREEN_W + 1 && cy > -10 && cy < SCREEN_H + 1) {
-            uint16_t g[11];
+            const uint16_t *g = gba_glyph_dilated[ch - FONT_FIRST];
             int bx = cx - 1, by = cy - 1, r;
-            vid_glyph_dilate(vid_glyph_rows(ch), g);
             if (bx >= 0 && bx + 7 <= SCREEN_W && by >= 0 && by + 11 <= SCREEN_H) {
                 glyph_dil(g, bx, by, c4);
             } else {
@@ -320,11 +330,10 @@ static void clip_text(int x, int y, const char *s, uint32_t color, int ol)
         unsigned ch = (unsigned char)*s;
         if (ch == '\n') { cx = x; cy += FONT_LINE; continue; }
         if (ch >= FONT_FIRST && ch <= FONT_LAST && ch != ' ' && cx + 8 > bx0 && cx - 1 < bx1 && cy + 11 > by0 && cy - 1 < by1) {
-            uint16_t g[11];
             const uint8_t *rows = vid_glyph_rows(ch);
+            const uint16_t *g = gba_glyph_dilated[ch - FONT_FIRST];
             int ox = cx, oy = cy, nr = 8, nc = 5, r, c;
             if (ol) {
-                vid_glyph_dilate(rows, g);
                 ox = cx - 1; oy = cy - 1; nr = 11; nc = 7;
             }
             for (r = 0; r < nr; r++) {

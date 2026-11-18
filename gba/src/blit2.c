@@ -396,20 +396,15 @@ BLIT2_ARM_S void vid_text_dil_ui(int x, int y, const char *s, uint32_t color)
     const uint32_t c4 = color * 0x01010101u;
     for (; *s; s++, x += FONT_ADVANCE) {
         unsigned ch = (unsigned char)*s;
-        const uint8_t *g;
+        const uint16_t *g;
         volatile uint32_t *w;
         int r, sh = (x - 1) & 3;
         if (ch < FONT_FIRST || ch > FONT_LAST || ch == ' ') continue;
-        g = vid_glyph_rows(ch);
+        g = gba_glyph_dilated[ch - FONT_FIRST];
         w = (volatile uint32_t *)(void *)((uint8_t *)gba_back + (y - 1) * SCREEN_W + ((x - 1) & ~3));
         for (r = 0; r < 11; r++, w += SCREEN_W / 4) {
-            uint32_t m = 0, k;
-            int gr;
-            for (gr = r - 2; gr <= r; gr++)          /* glyph rows r-1-1 .. r-1+1, columns -1, 0, +1 */
-                if ((unsigned)gr < 8) m |= (uint32_t)g[gr] | (uint32_t)g[gr] << 1 | (uint32_t)g[gr] << 2;
-            if ((unsigned)(r - 3) < 8) m |= (uint32_t)g[r - 3] << 2;   /* (+1, +2) */
+            uint32_t m = (uint32_t)g[r] << sh, k;
             if (!m) continue;
-            m <<= sh;
             k = gba_nibmask[m & 15];
             if (k) w[0] = (w[0] & ~k) | (c4 & k);
             k = gba_nibmask[(m >> 4) & 15];

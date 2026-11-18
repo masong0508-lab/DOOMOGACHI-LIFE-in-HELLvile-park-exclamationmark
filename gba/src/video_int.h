@@ -7,6 +7,7 @@
 #include "doomo/font.h"
 
 extern uint8_t gba_font_rows[FONT_LAST - FONT_FIRST + 1][8];   /* bit c = column c */
+extern uint16_t gba_glyph_dilated[FONT_LAST - FONT_FIRST + 1][11]; /* cached 7x11 outline masks */
 /* The glyph rows of character ch (FONT_FIRST..FONT_LAST, bit c = column
  * c): every text path (Mode 4 vid_text / vid_text_dil and the G5 canvas)
  * reads glyphs through this. Today it is the core font transposed at boot
