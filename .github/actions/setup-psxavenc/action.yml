@@ -49,7 +49,8 @@ runs:
         ninja -C .psxavenc-src/build
         install -D .psxavenc-src/build/psxavenc "$HOME/psxavenc/bin/psxavenc"
         echo "$HOME/psxavenc/bin" >> "$GITHUB_PATH"
-        "$HOME/psxavenc/bin/psxavenc" -V || true
+        # psxavenc -V prints its version but exits 1, so read the text instead of the status.
+        "$HOME/psxavenc/bin/psxavenc" -V 2>&1 || true
 
     - name: Verify cached or freshly built psxavenc
       shell: bash
@@ -57,4 +58,12 @@ runs:
         set -euo pipefail
         test -x "$HOME/psxavenc/bin/psxavenc"
         echo "$HOME/psxavenc/bin" >> "$GITHUB_PATH"
-        "$HOME/psxavenc/bin/psxavenc" -V
+        # psxavenc -V prints "psxavenc <version>" but exits 1 (that is how upstream behaves), so a
+        # plain call under set -e kills the job. Capture the text, ignore the status, and require
+        # the banner: a binary that cannot even start still fails here.
+        ver=$("$HOME/psxavenc/bin/psxavenc" -V 2>&1 || true)
+        echo "$ver"
+        case "$ver" in
+          psxavenc*) ;;
+          *) echo "::error::psxavenc did not print its version banner"; exit 1 ;;
+        esac
