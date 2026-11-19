@@ -1,21 +1,34 @@
 /* tonepick.h - pitch register and cycle choice for the PS1 tone voices (spu.c plat_tone).
  * Plain C, no PS1 headers, so ps1/harness/tonepick_test.c can check it on the host.
  *
- * Every tone waveform is uploaded twice: a long cycle (112 samples, for bass and mid notes,
- * fine pitch steps) and a short one (28 samples, for high notes). The SPU pitch register
- * tops out at 0x3fff (4 x 44100 Hz), so the long cycle reaches 1575 Hz and the short one about 6300 Hz.
- * Changing the cycle means keying the voice on again, and a key-on restarts the envelope and
- * the waveform: a sounding note gets a hard cut (a click). ps1_tone_variant() therefore keeps a
- * sounding note on its cycle whenever the pitch register can still reach it. */
+ * Every tone waveform is uploaded in five zones (2026-11-19; before there were two): a cycle of
+ * 112, 56, 28, 14 or 7 samples. The SPU plays a loop at hz x cycle samples a second; above 44.1 kHz
+ * it skips samples and the cycle's upper harmonics fold back as notes that are not in the tune. The
+ * shorter the cycle, the later that starts (112: 394 Hz, 56: 787 Hz, 28: 1.6 kHz, 14: 3.1 kHz,
+ * 7: 6.3 kHz), so every note is played from the longest cycle that still reaches it comfortably and
+ * the fold-back stays low across the whole range. The pitch register tops out at 0x3fff (4 x 44100
+ * Hz): zone limits 1571 / 3142 / 6284 / 12568 / 25136 Hz.
+ * Changing zone means keying the voice on again, and a key-on restarts the envelope and the
+ * waveform: a sounding note gets a hard cut (a click). ps1_tone_variant() therefore keeps a
+ * sounding note in its zone while the register can reach it and its steps are still fine (about a
+ * cent or better), with a gap between the zone edges going up and going down (hysteresis). */
 #ifndef PS1_TONEPICK_H
 #define PS1_TONEPICK_H
 #include <stdint.h>
 
-#define PS1_CYC_LONG      112
-#define PS1_CYC_SHORT     28
+#define PS1_ZONES         5
+#define PS1_CYC_LONG      112      /* zone 0 */
+#define PS1_CYC_SHORT     28       /* zone 2: the old short cycle */
 #define PS1_PITCH_MAX     0x3fffu
-#define PS1_LONG_LIMIT_HZ 1571u    /* above this the long cycle would run into PS1_PITCH_MAX */
-#define PS1_SHORT_STAY_HZ 700u     /* a sounding note on the short cycle goes back to the long one below this */
+#define PS1_LONG_LIMIT_HZ 1571u    /* zone 0's register end; zone z reaches this x 112 / cycle */
+
+static const uint8_t ps1_zone_cyc[PS1_ZONES] = { 112, 56, 28, 14, 7 };
+/* a NEW note in zone z+1 above this many Hz (the register reach of the old rule is kept: 1571 Hz splits 28 from 14) */
+static const uint16_t ps1_zone_up[PS1_ZONES - 1] = { 400, 790, 1571, 3150 };
+/* a SOUNDING note falls back to zone z-1 below this (register about 1820, a cent per step) */
+static const uint16_t ps1_zone_down[PS1_ZONES] = { 0, 350, 700, 1400, 2800 };
+/* the last Hz zone z reaches */
+static const uint16_t ps1_zone_reach[PS1_ZONES] = { 1571, 3142, 6284, 12568, 25136 };
 
 /* pitch register value for hz played from a cycle of cyc samples; 0x1000 = 44100 Hz.
  * Same result as (hz * cyc * 4096 + 22050) / 44100 clamped to PS1_PITCH_MAX, but the product
@@ -30,16 +43,23 @@ static uint16_t ps1_tone_pitch(uint32_t hz, uint32_t cyc)
     return (uint16_t)(p > PS1_PITCH_MAX ? PS1_PITCH_MAX : p);
 }
 
-/* 0 = long cycle, 1 = short cycle. sounding: the voice already plays this waveform (so choosing
- * another cycle would key it on again); current: the cycle it plays. A new note takes the cycle
- * the pitch needs, as before; a sounding note on the short cycle stays there down to
- * PS1_SHORT_STAY_HZ (pitch steps there are still about a cent), and one on the long cycle moves
- * up only when it must. */
+/* the zone a new note takes */
+static int ps1_tone_zone(uint32_t hz)
+{
+    int z = 0;
+    while (z < PS1_ZONES - 1 && hz > ps1_zone_up[z])
+        z++;
+    return z;
+}
+
+/* 0..PS1_ZONES-1. sounding: the voice already plays this waveform (so choosing another zone would
+ * key it on again); current: the zone it plays. A new note takes the zone its pitch needs; a
+ * sounding note stays while hz is inside [down, reach] of its zone. */
 static int ps1_tone_variant(uint32_t hz, int sounding, int current)
 {
-    int fresh = hz > PS1_LONG_LIMIT_HZ ? 1 : 0;
-    if (sounding && current)
-        return hz < PS1_SHORT_STAY_HZ ? 0 : 1;
-    return fresh;
+    if (sounding && current >= 0 && current < PS1_ZONES &&
+        hz >= ps1_zone_down[current] && hz <= ps1_zone_reach[current])
+        return current;
+    return ps1_tone_zone(hz);
 }
 #endif

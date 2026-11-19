@@ -35,11 +35,8 @@
 #define SFX_VOICE0      4
 #define SFX_VOICES      20
 
-/* waveform cycle lengths: long for low notes, short for high ones */
-#define CYC_LONG   PS1_CYC_LONG
-#define CYC_SHORT  PS1_CYC_SHORT
-
-static uint32_t s_wave_addr[WAVE_COUNT][2];   /* [wave][0 long, 1 short] */
+/* waveform cycle lengths: five zones, long for low notes, short for high ones (tonepick.h) */
+static uint32_t s_wave_addr[WAVE_COUNT][PS1_ZONES];   /* [wave][zone]; the noise has one loop, in every slot */
 static uint32_t s_silent_addr;
 static uint32_t s_wave_end, s_wave_sum;        /* for audio_selftest()  */
 
@@ -151,7 +148,7 @@ static void build_waves(void)
 {
     int16_t *pcm = s_pcm;
     uint8_t *adpcm = s_adpcm;
-    uint32_t addr = SPU_WAVE_BASE, rng = 0x1234567u;
+    uint32_t addr = SPU_WAVE_BASE, rng = 0x1234567u, rms28 = 0;
     int w, v, i;
     /* a silent looping block (idle voices point here) */
     memset(adpcm, 0, 16);
@@ -161,11 +158,11 @@ static void build_waves(void)
     s_silent_addr = addr;
     addr += 16;
     for (w = 0; w < WAVE_COUNT; w++) {
-        for (v = 0; v < 2; v++) {
-            int len = w == WAVE_NOISE ? NOISE_LEN : (v ? CYC_SHORT : CYC_LONG);
+        for (v = 0; v < PS1_ZONES; v++) {
+            int len = w == WAVE_NOISE ? NOISE_LEN : ps1_zone_cyc[v];
             int blocks;
             if (w == WAVE_NOISE && v) {
-                s_wave_addr[w][1] = s_wave_addr[w][0];
+                s_wave_addr[w][v] = s_wave_addr[w][0];
                 continue;
             }
             if (w == WAVE_NOISE) {
@@ -184,7 +181,12 @@ static void build_waves(void)
                 case WAVE_TRIANGLE: ps1_wave_triangle(pcm, len); break;
                 default: ps1_wave_saw(pcm, len); break;
                 }
-                blocks = ps1_wave_encode_loop(pcm, len, adpcm);   /* sets loop start + end flags */
+                /* the 14 and 7 sample cycles are scaled to the level of the 28 sample one (waveform.h) */
+                if (v == 2)
+                    rms28 = ps1_wave_ms(pcm, len);
+                else if (v > 2)
+                    ps1_wave_match(pcm, len, rms28);
+                blocks = ps1_wave_encode_cycle(pcm, len, adpcm);   /* sets loop start + end flags */
                 spu_upload(addr, adpcm, (size_t)blocks * 16);
                 s_wave_sum = sum_bytes(s_wave_sum, adpcm, (size_t)blocks * 16);
                 s_wave_addr[w][v] = addr;
@@ -257,7 +259,7 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
         /* a note that is already sounding this waveform keeps its cycle while the pitch register
          * reaches it: another cycle would mean a key-on, a click (tonepick.h) */
         variant = ps1_tone_variant(freq_hz, t->on && t->wave == wave, t->variant);
-        cyc = variant ? CYC_SHORT : CYC_LONG;
+        cyc = ps1_zone_cyc[variant];
         pitch = hz_to_pitch(freq_hz, cyc);
     }
     amp = (vol * s_music_vol * 0x2000) / (15 * 15);

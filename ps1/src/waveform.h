@@ -67,7 +67,7 @@ static int ps1_wave_sin(int idx)
     return ps1_wave_sin112(idx < 0 ? idx + 112 : idx);
 }
 
-/* One cycle of len samples (len = 112 or 28).
+/* One cycle of len samples (len = 112, 56, 28, 14 or 7; 112 / len is a whole number of table steps).
  * duty112 = 0: rising saw, -A .. +A. Else a pulse that is high for duty112/112 of the cycle,
  * high level +2A (1 - duty), low level -2A duty: peak-to-peak 2A, mean 0.
  * Series: saw = -(2/pi) sum sin(k t) / k; pulse = (2/pi) sum (sin(k t) - sin(k (t - d))) / k.
@@ -76,10 +76,10 @@ static int ps1_wave_sin(int idx)
 static void ps1_wave_series(int16_t *out, int len, int duty112)
 {
     int g[PS1_WAVE_MAX_CYCLE / 2], ph[PS1_WAVE_MAX_CYCLE / 2], back[PS1_WAVE_MAX_CYCLE / 2];
-    int half = len / 2, step = 112 / len, i, k;
+    int kmax = (len - 1) / 2, step = 112 / len, i, k;     /* kmax: the last harmonic below the cycle's Nyquist */
     /* g[k] = 2 / (pi k) x the response at harmonic k, Q12 (2/pi = 2608 / 4096) */
-    for (k = 1; k < half; k++) {
-        if (len == 112) {
+    for (k = 1; k <= kmax; k++) {
+        if (len != 28) {                                           /* 112, 56, 14, 7: the old softener's response */
             int c = ps1_wave_sin(k * step + 28);                   /* cos(2 pi k / len) */
             g[k] = (2608 * (196608 + 2 * c) + 131072 * k) / (262144 * k);
         } else {
@@ -90,7 +90,7 @@ static void ps1_wave_series(int16_t *out, int len, int duty112)
     }
     for (i = 0; i < len; i++) {
         int sum = 0;
-        for (k = 1; k < half; k++) {
+        for (k = 1; k <= kmax; k++) {
             int term;
             if (duty112)
                 term = g[k] * (ps1_wave_sin112(ph[k]) - ps1_wave_sin112(back[k]));
@@ -137,6 +137,43 @@ static void ps1_wave_fade_in(int16_t *pcm)
     }
 }
 
+/* Zones (2026-11-19): five cycle lengths per waveform, picked by pitch (tonepick.h). A cycle shorter
+ * than one ADPCM block (14, 7) is repeated to fill the 28 samples of a block, so every loop is one
+ * or more whole blocks. Returns the block count of the finished first cycle + loop (0 for a bad cyc).
+ * pcm holds one finished cycle at [0, cyc) and room for 56 samples (cyc < 28) or 2 * cyc. */
+static int ps1_wave_encode_cycle(int16_t *pcm, int cyc, uint8_t *adpcm);
+
+/* Level matching for the short zones. A 7 or 14 sample cycle holds only 3 or 6 harmonics, so with the
+ * same peak size it is up to 3.6 dB quieter than the 28 sample cycle of the same wave: a high note
+ * would sound softer than the note a semitone below it. ps1_wave_ms is the mean square of a cycle (in
+ * (sample / 16)^2, integer only), ps1_wave_match scales a cycle to a target mean square (gain at most
+ * x2, results clamped to +-30000). Boot-time only. */
+static uint32_t ps1_wave_ms(const int16_t *pcm, int len)
+{
+    uint32_t sum = 0;
+    int i;
+    for (i = 0; i < len; i++)
+        sum += ((uint32_t)((int)pcm[i] * pcm[i]) >> 8);
+    return sum / (uint32_t)len;
+}
+
+static void ps1_wave_match(int16_t *pcm, int len, uint32_t target_ms)
+{
+    uint32_t ms = ps1_wave_ms(pcm, len), r, g = 256, t;
+    int i;
+    if (!ms || !target_ms)
+        return;
+    r = (target_ms * 256u) / ms;                       /* ratio of mean squares, Q8 */
+    if (r > 4u * 256u) r = 4u * 256u;
+    r <<= 8;                                           /* g = sqrt(r) in Q8: g * g = r * 256 */
+    for (g = 0, t = 1u << 11; t; t >>= 1)
+        if ((g + t) * (g + t) <= r) g += t;
+    for (i = 0; i < len; i++) {
+        int v = ((int)pcm[i] * (int)g + 128) >> 8;
+        pcm[i] = (int16_t)(v > 30000 ? 30000 : v < -30000 ? -30000 : v);
+    }
+}
+
 /* Encode a tone loop. pcm holds one finished cycle at [0, len) and room for 2 * len samples; adpcm
  * has room for 2 * len / 28 blocks. len must be a multiple of 28. Layout in SPU RAM: [the first
  * cycle, faded in, encoded from silence][the loop cycle, encoded closed]. Loop start is the second
@@ -157,5 +194,16 @@ static int ps1_wave_encode_loop(int16_t *pcm, int len, uint8_t *adpcm)
     adpcm[first * 16 + 1] |= 0x04;                                 /* loop start: cycle 2 */
     adpcm[(first * 2 - 1) * 16 + 1] |= 0x03;                       /* loop end + repeat */
     return first * 2;
+}
+
+static int ps1_wave_encode_cycle(int16_t *pcm, int cyc, uint8_t *adpcm)
+{
+    int i;
+    if (cyc == 7 || cyc == 14) {
+        for (i = cyc; i < 28; i++)
+            pcm[i] = pcm[i - cyc];
+        cyc = 28;
+    }
+    return ps1_wave_encode_loop(pcm, cyc, adpcm);
 }
 #endif

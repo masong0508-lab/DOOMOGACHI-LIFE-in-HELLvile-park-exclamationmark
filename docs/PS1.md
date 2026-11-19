@@ -1154,6 +1154,27 @@ other rows as H4).
     cost is not measured (scale the host figure by roughly 50 to 150); the divisions are out of the inner loop. Stack
     use: about 0.7 KB in `ps1_wave_series` (three 56-entry int tables) plus about 0.3 KB in `adpcm_encode_loop`.
   * Not done: the noise loop (unchanged), not listened to on a console. These are host measurements only.
+* **Five zones per waveform** (`tonepick.h`, `waveform.h`, `spu.c`, 2026-11-19). Every pulse, saw and triangle is now
+  uploaded with cycles of 112, 56, 28, 14 and 7 samples (before: 112 and 28). The SPU plays a loop at hz x cycle
+  samples a second and skips samples above 44.1 kHz, which folds the upper harmonics back as wrong notes; each
+  shorter cycle starts that later (394 Hz, 787 Hz, 1.6 kHz, 3.1 kHz, 6.3 kHz), so a note uses the longest cycle that
+  reaches it. A new note takes the zone for its pitch (edges 400 / 790 / 1571 / 3150 Hz); a sounding note stays in its
+  zone while the register reaches it and its steps are about a cent (falls back below 350 / 700 / 1400 / 2800 Hz), so a
+  vibrato, slide or arpeggio keys on again only at a real zone change (host test: 0 re-keys on arpeggios across every
+  edge, 4 on a 6000 -> 100 Hz slide). The 7-sample zone reaches 25 kHz (the old short cycle ended at 6.3 kHz).
+  Cycles of 14 and 7 samples are repeated to fill one ADPCM block. Cost: +40 blocks = +640 B, waveforms are now 155
+  blocks, 2,480 B, ending at 0x19b0 (limit 0x2000); no per-frame work, no new voices, boot cost a few more cycle
+  syntheses. The 14 and 7 cycles are scaled at boot to the level of the 28 cycle of the same wave (a 7-sample pulse
+  was up to 3.6 dB quieter).
+  Host model of the playback (cubic interpolation, not the SPU's Gaussian), non-harmonic energy, old -> new:
+  500 Hz triangle -54.6 -> -40.3 is worse in dB but both are inaudible; 1200 Hz 12.5 % pulse -16.3 -> -20.3,
+  50 % pulse -20.6 -> -26.2; 4186 Hz 50 % pulse -18.3 -> -39.9, saw -15.1 -> -40.1; 6000 Hz 12.5 % pulse -6.3 -> -11.7,
+  50 % pulse -13.5 -> -22.1, saw -10.5 -> -24.0. Honest losses: 2093 Hz 50 % pulse -25.6 -> -22.1 and the 3 kHz
+  50 % pulse / saw about 1 to 4 dB worse (the 14-sample cycle keeps the old softener response, not a raised-cosine
+  roll-off), and the triangle is a little more folded at 880 to 1200 Hz (-49 -> -27, still quiet). Tone colour of the
+  112 cycle is unchanged below 400 Hz; notes from 400 Hz up now come from shorter cycles with fewer harmonics, so they
+  sound slightly duller than before. Not listened to on a console. Tests: `tonepick_test` (zone tables,
+  hysteresis, re-key counts), `adpcm_test` (all 25 loops, level match).
 * **Encoder quality** (`harness/adpcm_test.c`, host): the PS1's own pulse, triangle and saw loops (the functions in
   `waveform.h`) are checked for DC, level, harmonics, fade-in and, played round the loop the way the SPU does it (decoder
   history carried over the jump), for the same samples on every pass and a loop SNR floor; sine, chirp and noise are
