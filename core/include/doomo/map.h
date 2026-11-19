@@ -320,10 +320,10 @@ typedef struct DoomoMapExt {
     uint16_t             script_len;
 } DoomoMapExt;
 
-/* The registry of v2 maps (levels_mapx.c): NULL-terminated. Empty until
- * the first new level lands. */
+/* The registry of v2 maps (levels_mapx.c) can have gaps in smaller builds.
+ * Use map_ext_of() to look up a definition. */
 extern const DoomoMapExt *const doomo_map_exts[];
-/* The ext of a definition, NULL for a v1 map (all 12 maps of today). */
+/* The ext of a definition, or NULL for a v1 map. */
 const DoomoMapExt *map_ext_of(const DoomoMapDef *d);
 /* The first zone of `kind` (ZONE_NONE: any kind) that holds the cell, at
  * or after index `from`; its index, or -1. Walk all with from = i + 1. */

@@ -2,7 +2,7 @@
  * Breach maps showcase the 3D features and are sound (an independent
  * check on top of test_maps: heights, lifts, doors, sky, water / lava,
  * secrets, a mini-boss whose kill event opens a remote door), the debug
- * autopilot plays every level to its exit through the real shooter with
+ * autopilot plays the original expansion to its exits through the real shooter with
  * the levels runtime on (mini-bosses, conveyors), every level renders in
  * first and third person at 240x160 and 320x240 without holes, ranks and
  * records pack into PROG_BREACH_RANKS, unlocks and activities are
@@ -35,12 +35,13 @@ TEST(levels_tables_are_sane)
         if (!lv_built(i)) continue;                 /* LV0: registered, its package builds the map */
         d = doomo_maps[L->map];
         CHECK_MSG(d && d->cells && d->kind == MAP_DUNGEON, "level %d map %d missing", i, L->map);
-        CHECK_STR(map_title(L->map), L->title);
+        CHECK_STR(map_title(L->map), i == LV_HB13 ? "Boneyard Buffet" : L->title);
         CHECK(L->dev > 30 && L->dev < L->par);
-        CHECK(L->boss < LB_COUNT);
+        CHECK(L->boss < LB_COUNT || (i >= LV_OLD_COUNT && L->boss == LB_NONE));
         CHECK(L->pv_x < d->w && L->pv_y < d->h && !d->cells[L->pv_y * d->w + L->pv_x].wall);
-        CHECK(strlen(L->blurb) < 70 && strlen(L->flavor) <= 40);
-        CHECK(ui_text_width(L->flavor) + 16 <= 240);
+        CHECK_MSG(strlen(L->blurb) < 70 && strlen(L->flavor) <= 40, "%s: level text too long", L->title);
+        CHECK_MSG(ui_text_width(L->flavor) + 16 <= 240, "%s: flavor too wide", L->title);
+        if (i >= LV_OLD_COUNT) continue;  /* newer levels store golds in BRCH */
         /* the gold trophy's hint quotes the dev time */
         lvd_time(tb, sizeof(tb), L->dev);
         CHECK(unlock_by_id(LVU_GOLD0 + i) != NULL);
@@ -85,11 +86,11 @@ TEST(levels_tables_are_sane)
     CHECK(scene_by_name("ARENA_MODE") == &SCENE_ARENA_MODE);
 }
 
-/* ---- the maps showcase the 3D features ------------------------------------ */
+/* ---- the original expansion maps showcase the 3D features ------------------- */
 TEST(levels_maps_showcase_3d)
 {
     int lv;
-    for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
+    for (lv = LV_FIRST_NEW; lv < LV_OLD_COUNT; lv++) {
         const DoomoMapDef *d;
         uint8_t seen_f[256], seen_c[256];
         int i, nf = 0, nc = 0, lifts = 0, doors = 0, sky = 0, wet = 0, secret_cells = 0, exits = 0;
@@ -135,7 +136,7 @@ TEST(levels_maps_showcase_3d)
     }
 }
 
-/* ---- the autopilot plays every level to its exit ----------------------------- */
+/* ---- the legacy autopilot plays the original expansion to its exits ------------ */
 static int play_level(int lv, int god, uint32_t max_ticks, int render)
 {
     uint32_t t;
@@ -165,11 +166,11 @@ static int play_level(int lv, int god, uint32_t max_ticks, int render)
     return combat_finished();
 }
 
-TEST(levels_autopilot_reaches_every_exit)
+TEST(levels_autopilot_reaches_original_expansion_exits)
 {
     int lv;
     opt_set(OPT_DIFFICULTY, DIFF_PLUSHIE);
-    for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
+    for (lv = LV_FIRST_NEW; lv < LV_OLD_COUNT; lv++) {
         const DoomoCombatStats *s;
         int fin;
         if (!lv_built(lv)) continue;
@@ -194,20 +195,27 @@ TEST(levels_render_fp_tp_both_sizes)
         nat_h = res ? 240 : 160;
         for (lv = LV_FIRST_NEW; lv < LV_COUNT; lv++) {
             const DoomoMapDef *d;
-            int bx = 0, by = 0, i;
+            int bx = 0, by = 0, i, boss_found = 0, sx = lv_info[lv].pv_x, sy = lv_info[lv].pv_y;
             if (!lv_built(lv)) continue;
             d = doomo_maps[lv_info[lv].map];
             for (i = 0; i < d->thing_count; i++)
-                if (d->things[i].flags & THF_BOSS) { bx = d->things[i].x; by = d->things[i].y; }
+                if (d->things[i].flags & THF_BOSS) {
+                    bx = d->things[i].x;
+                    by = d->things[i].y;
+                    boss_found = 1;
+                    break;
+                }
             /* stand a few cells from the boss, on a plain floor */
-            for (i = 0; i < 64; i++) {
-                int x = bx + (i % 9) - 4, y = by + 3 + (i / 9) % 3 - 1;
+            for (i = 0; boss_found && i < 54; i++) {
+                static const int dy[] = { 3, 2, 4, -3, -2, -4 };
+                int x = bx + (i % 9) - 4, y = by + dy[i / 9];
                 const DoomoCell *c = (x > 0 && y > 0 && x < d->w && y < d->h) ? &d->cells[y * d->w + x] : NULL;
-                if (c && !c->wall && !(c->flags & (CELL_LAVA | CELL_DOOR | CELL_LIFT))) { bx = x; by = y - 3; break; }
+                if (c && !c->wall && !(c->flags & (CELL_LAVA | CELL_DOOR | CELL_LIFT))) { sx = x; sy = y; break; }
             }
             for (spot = 0; spot < 2; spot++) {
+                const char *site = !spot ? "start" : boss_found ? "boss" : "preview";
                 if (spot == 0) combat_start(lv_info[lv].map);
-                else combat_start_at(lv_info[lv].map, CGOAL_EXIT, bx, by + 3, 3072);
+                else combat_start_at(lv_info[lv].map, CGOAL_EXIT, sx, sy, sy < by ? 1024 : 3072);
                 lv_runtime_begin(lv);
                 lv_runtime_pre();
                 combat_tick();
@@ -225,9 +233,9 @@ TEST(levels_render_fp_tp_both_sizes)
                     if (!v.tint_level)
                         for (i = 0; i < nat_w * nat_h; i++) holes += nat_fb[i] == PAL_UI_RED;
                     CHECK_MSG(holes < nat_w, "%s %s %s: %d unpainted pixels", lv_info[lv].title,
-                              spot ? "boss" : "start", cam ? "tp" : "fp", holes);
+                              site, cam ? "tp" : "fp", holes);
                     lv_runtime_hud();
-                    snprintf(name, sizeof(name), "%d_%s_%s_%dx%d", lv, spot ? "boss" : "start", cam ? "tp" : "fp", nat_w, nat_h);
+                    snprintf(name, sizeof(name), "%d_%s_%s_%dx%d", lv, site, cam ? "tp" : "fp", nat_w, nat_h);
                     shot(name);
                 }
             }

@@ -29,8 +29,10 @@ const DoomoMapExt *map_ext_of(const DoomoMapDef *d)
 {
     int i;
     if (!d) return NULL;
-    for (i = 0; doomo_map_exts[i]; i++)
-        if (doomo_map_exts[i]->def == d) return doomo_map_exts[i];
+    for (i = 0; i < DOOMO_COUNTOF(doomo_map_exts) - 1; i++) {
+        const DoomoMapExt *x = doomo_map_exts[i];
+        if (x && x->def == d) return x;
+    }
     return NULL;
 }
 

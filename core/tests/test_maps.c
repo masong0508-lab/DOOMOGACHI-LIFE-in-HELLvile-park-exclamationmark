@@ -119,6 +119,11 @@ static void check_map(int id, const DoomoMapDef *d)
         return;
     }
     CHECK_MSG(starts == 1, "map %d has %d player starts", id, starts);
+    /* Extended maps use the stateful reachability test below. */
+    if (map_ext_of(d)) {
+        CHECK_MSG(d->kind != MAP_DUNGEON || exits > 0, "dungeon %d has no exit", id);
+        return;
+    }
     /* reachability: iterate BFS until no new keys */
     while (keys != prev) {
         prev = keys;
@@ -400,10 +405,29 @@ TEST(bfs_v1_maps_unchanged)
     for (id = 0; id < MAPID_COUNT; id++) {
         const DoomoMapDef *d = doomo_maps[id];
         if (!d || d->kind != MAP_DUNGEON) continue;
-        CHECK(map_ext_of(d) == NULL);
+        if (map_ext_of(d)) continue;
         CHECK_MSG(t2_run(d, NULL, NULL)->exit_reached == 1, "map %d: exit not reached", id);
         CHECK_MSG(t2_res.overflow == 0, "map %d: search overflow", id);
     }
+}
+
+TEST(bfs_registered_v2_exits)
+{
+    int id, count = 0;
+    for (id = 0; id < MAPID_COUNT; id++) {
+        const DoomoMapDef *d = doomo_maps[id];
+        const DoomoMapExt *x;
+        const MapBfsResult *r;
+        if (!d || d->kind != MAP_DUNGEON) continue;
+        x = map_ext_of(d);
+        if (!x) continue;
+        count++;
+        r = t2_run(d, x, NULL);
+        CHECK_MSG(!r->overflow, "map %d: search overflow", id);
+        CHECK_MSG(r->exit_reached, "map %d: exit not reached with map mechanics", id);
+        CHECK_MSG(!r->stuck, "map %d: reachable state cannot reach the exit", id);
+    }
+    CHECK(count > 0);
 }
 
 TEST(mapx_tables_read_back)

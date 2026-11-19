@@ -133,11 +133,11 @@ static int hidden(int x, int y, int w, int h)
  * 8,960 B here and 3,200 B of deco variants below). (SP3, P-I1, docs/ISLAND_SPEED.md I12) So on the PS1 they have no
  * BSS: they live in the scene scratch the platform lends the island (plat_scene_scratch: the overlay slot's unused
  * tail while the island group is loaded), bound by lr_bind() before every map draw; without it (a platform that
- * lends none) every list has cap 0, each record overflows and the phase is drawn live, as before I1..I3. The native
+ * lends none) every list has cap 0 and the phase is drawn live, as before I1..I3. The native
  * runner keeps them in BSS (it can be told to lend scratch: the PS1 path under test).
  * (CR5a) The GBA's EWRAM is full too (the creator's LOOK pool needs the room): there the lists are in the arena
  * region the hub does not use (gba/src/bigbuf.c plat_scene_scratch, GBA_BIG_ISL), 13,720 B of .bss less, and the
- * caps stay the old BSS caps, so the recorded rects and the frames are the same. */
+ * caps can be tuned within that region without adding permanent allocations. */
 #define LR_MAX 640
 #define LR_PATCH 320
 #define LR_ROAD 160
@@ -158,7 +158,7 @@ static LList L_road = { lr_road_r, LR_BSS(LR_ROAD), 0, 0, -1 };     /* (I2) road
  * ROM: these phases now move in steps of ANIM_Q ticks. */
 #define ANIM_Q 6
 /* Sized to the worst case (glints 18 x 2 rects, walkers 14 x 4, weather 40 x 1 or 16 x 2); on the PS1 in the scene
- * scratch like the lists above (without it: cap 0, every record overflows and the phase is drawn live, still on the
+ * scratch like the lists above (without it: cap 0, the phase is drawn live, still on the
  * 6-tick clock). */
 #define AL_GLINT 40
 #define AL_WALK  60
@@ -200,7 +200,7 @@ extern int gba_nodraw __attribute__((weak));       /* 0: drawing to Mode 4 (the 
 /* run body() live, or replay its recorded rects when its key is unchanged (same calls, same order) */
 static void lr_run(LList *L, int32_t key, void (*body)(void))
 {
-    if (g_off) { body(); return; }
+    if (g_off || !L->cap) { body(); return; }
     if (key == L->key && !L->over) {
         int i = 0;
         lr_hits++;
@@ -828,9 +828,6 @@ static int dv_ntab, dv_used;
 /* (CR5a) after the lists in the arena region: a pointer and a cap, set by lr_bind (0 without the region) */
 static LRect *dv_tmp;
 static int dv_tmp_cap;
-#else
-static LRect dv_tmp[DV_TMP];                /* a variant's rects shifted to one deco's spot (no byte more than before CR5a) */
-#define dv_tmp_cap DV_TMP
 #endif
 
 static unsigned deco_state(const Deco *d, unsigned flowers)
@@ -875,7 +872,10 @@ static void draw_decos(void)
 {
     unsigned fl = 0;
     int i, k, t = g_t;
-    if (g_off) { for (i = 0; i < DOOMO_COUNTOF(decos); i++) draw_deco(&decos[i]); return; }
+    if (g_off || !dv_cap) {
+        for (i = 0; i < DOOMO_COUNTOF(decos); i++) draw_deco(&decos[i]);
+        return;
+    }
     for (i = 0; i < 5; i++) fl = fl * 2 + (ui_wave(t + i * 10, 40, 1) > 0);
     for (i = 0; i < DOOMO_COUNTOF(decos); i++) {
         const Deco *d = &decos[i];
@@ -886,22 +886,24 @@ static void draw_decos(void)
         v = dv_get(d, deco_state(d, fl));
         if (v->bad) { draw_deco_xy(d, x, y); continue; }
         r = dv_pool + v->start;
-        for (k = 0; k < v->n; ) {
-            int m = DOOMO_MIN(v->n - k, dv_tmp_cap), j;
-            if (!g_occ && plat_rect_run && !gba_nodraw) {
+#if defined(DOOMO_PLATFORM_GBA)
+        if (!g_occ && plat_rect_run && !gba_nodraw && dv_tmp_cap > 0) {
+            for (k = 0; k < v->n; ) {
+                int m = DOOMO_MIN(v->n - k, dv_tmp_cap), j;
                 for (j = 0; j < m; j++) {
                     dv_tmp[j] = r[k + j];
                     dv_tmp[j].x = (int16_t)(dv_tmp[j].x + dx);
                     dv_tmp[j].y = (int16_t)(dv_tmp[j].y + dy);
                 }
                 plat_rect_run(dv_tmp, m);
-            } else {
-                for (j = 0; j < m; j++) {
-                    int rx = r[k + j].x + dx, ry = r[k + j].y + dy;
-                    if (!hidden(rx, ry, r[k + j].w, r[k + j].h)) plat_rect(rx, ry, r[k + j].w, r[k + j].h, r[k + j].c);
-                }
+                k += m;
             }
-            k += m;
+            continue;
+        }
+#endif
+        for (k = 0; k < v->n; k++) {
+            int rx = r[k].x + dx, ry = r[k].y + dy;
+            if (!hidden(rx, ry, r[k].w, r[k].h)) plat_rect(rx, ry, r[k].w, r[k].h, r[k].c);
         }
     }
 }
@@ -1614,10 +1616,10 @@ int fp_island_tint(void)
 /* in the scratch the lists are sized for 320x240 too (the PS1; measured on the Classic island at 320x240: land 761,
  * patches 174, roads 157 rects; at 240x160 480, 136, 125) */
 #if defined(DOOMO_PLATFORM_GBA)
-/* (CR5a) the GBA's lists are the old BSS lists, byte for byte the same caps */
+/* (CR5a) The GBA keeps its lists at the top of the shared arena. */
 #define LRS_LAND  LR_MAX
 #define LRS_PATCH LR_PATCH
-#define LRS_ROAD  LR_ROAD
+#define LRS_ROAD  224 /* 208 rectangles at 240x160 */
 #define LRS_GLINT AL_GLINT
 #define LRS_WALK  AL_WALK
 #define LRS_WX    AL_WX
@@ -1626,7 +1628,7 @@ int fp_island_tint(void)
 #else
 #define LRS_LAND  1024
 #define LRS_PATCH 384
-#define LRS_ROAD  256
+#define LRS_ROAD  288 /* 265 rectangles at 320x240 */
 #define LRS_GLINT 48
 #define LRS_WALK  64
 #define LRS_WX    64
