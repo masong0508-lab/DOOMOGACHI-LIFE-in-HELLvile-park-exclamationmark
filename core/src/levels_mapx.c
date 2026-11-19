@@ -10,7 +10,12 @@
 
 /* The v2 maps. A new level adds `&map_ext_<name>` (a weak reference, like
  * maps.c) above the NULL. */
+extern const DoomoMapExt map_ext_steam_room_panic __attribute__((weak));
+extern const DoomoMapExt map_ext_the_undercroft __attribute__((weak));
+
 const DoomoMapExt *const doomo_map_exts[] = {
+    &map_ext_steam_room_panic,
+    &map_ext_the_undercroft,
     NULL
 };
 

@@ -23,6 +23,8 @@ extern const DoomoMapDef map_def_plushie_factory WEAKREF;
 extern const DoomoMapDef map_def_graveyard_shift WEAKREF;
 extern const DoomoMapDef map_def_bone_cathedral WEAKREF;
 extern const DoomoMapDef map_def_hellvile_underbelly WEAKREF;
+extern const DoomoMapDef map_def_steam_room_panic WEAKREF;
+extern const DoomoMapDef map_def_the_undercroft WEAKREF;
 
 const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_hahaland,          /* MAPID_HAHALAND          (story)  */
@@ -36,5 +38,7 @@ const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_plushie_factory,       /* MAPID_PLUSHIE_FACTORY       (levels) */
     &map_def_graveyard_shift,       /* MAPID_GRAVEYARD_SHIFT       (levels) */
     &map_def_bone_cathedral,        /* MAPID_BONE_CATHEDRAL        (levels) */
-    &map_def_hellvile_underbelly    /* MAPID_HELLVILE_UNDERBELLY   (levels) */
+    &map_def_hellvile_underbelly,   /* MAPID_HELLVILE_UNDERBELLY   (levels) */
+    &map_def_steam_room_panic,      /* MAPID_STEAM_ROOM_PANIC      (levels) */
+    &map_def_the_undercroft         /* MAPID_THE_UNDERCROFT        (levels) */
 };

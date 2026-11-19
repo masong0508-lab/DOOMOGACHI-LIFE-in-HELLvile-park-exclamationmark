@@ -97,6 +97,8 @@ enum { MAPID_HAHALAND,          /* cutesy HaHaland + Hillvile side of park  */
        /* (levels expansion, additive) Hell Breach 3..7 */
        MAPID_SUGAR_RUSH_SEWERS, MAPID_PLUSHIE_FACTORY, MAPID_GRAVEYARD_SHIFT,
        MAPID_BONE_CATHEDRAL, MAPID_HELLVILE_UNDERBELLY,
+       /* (levels expansion, additive) Hell Breach 8-9 pilot maps */
+       MAPID_STEAM_ROOM_PANIC, MAPID_THE_UNDERCROFT,
        MAPID_COUNT };
 extern const DoomoMapDef *const doomo_maps[MAPID_COUNT];
 

@@ -20,6 +20,8 @@ core/data/maps/vape_cellar.txt  ->  core/gen/map_vape_cellar.c
 | `MAPID_CLOUD_NINE_SPIRE` | `cloud_nine_spire.txt` | action |
 | `MAPID_ARENA` | `arena.txt` | action |
 | `MAPID_PARK_UNITED` | `park_united.txt` | story |
+| `MAPID_STEAM_ROOM_PANIC` | `steam_room_panic.txt` | levels (Hell Breach 8) |
+| `MAPID_THE_UNDERCROFT` | `the_undercroft.txt` | levels (Hell Breach 9) |
 
 A missing map falls back to a small built-in pastel room, so nothing
 crashes while a module is still landing.
