@@ -391,6 +391,9 @@ static void title_ground_flower_init(int sw, int sh, int y0)
     title_ground_flower_sh = sh;
 }
 
+/* ====================================================================== */
+/* drawing: distant park depth                                              */
+#if !defined(DOOMO_PLATFORM_GBA)
 /* The same deterministic ridge profile is used by the ground renderer and
  * every skyline anchor. Returning the actual top edge (not the flat meadow
  * baseline) keeps buildings planted on the rolling terrain. */
@@ -401,9 +404,6 @@ static int title_hill_top(int x, int sh)
     return y0 - h;
 }
 
-/* ====================================================================== */
-/* drawing: distant park depth                                              */
-#if !defined(DOOMO_PLATFORM_GBA)
 /* A small haunted-fairground silhouette sits between the sky and the nearer
  * houses.  It is deliberately made from GPU lines / TILEs, not a bitmap:
  * the title already uses the scene's 12 KB scratch block for its cached
@@ -636,7 +636,11 @@ static void draw_ground(void)
     }
     for (i = 0; i < 7; i++) {
         int x = 6 + i * 18, hh = 10 + (i * 7) % 8;
+#if !defined(DOOMO_PLATFORM_GBA)
         int y = fp_big() ? title_hill_top(x + 5, sh) : y0 - 10 - (i % 3) * 2;
+#else
+        int y = y0 - 10 - (i % 3) * 2;
+#endif
         uint8_t wall = hell ? PAL_RAMP(RAMP_VAPE, 3) : PAL_PAINT(i & 1 ? PAINT_PEACH : PAINT_BUBBLEGUM, 2);
         plat_rect(x, y - hh, 10, hh, wall);
         plat_rect(x - 1, y - hh - 4, 12, 4, hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(i & 1 ? PAINT_ROSE : PAINT_SKY, 1));
@@ -644,7 +648,11 @@ static void draw_ground(void)
     }
     for (i = 0; i < 5; i++) {
         int x = sw - 14 - i * 20, hh = 16 + (i * 11) % 10;
+#if !defined(DOOMO_PLATFORM_GBA)
         int y = fp_big() ? title_hill_top(x + 4, sh) : y0 - 8 - (i & 1) * 3;
+#else
+        int y = y0 - 8 - (i & 1) * 3;
+#endif
         plat_rect(x, y - hh, 8, hh, PAL_RAMP(RAMP_VAPE, 1));
         plat_rect(x + 2, y - hh - 6, 4, 6, PAL_RAMP(RAMP_VAPE, 1));
         plat_rect(x + 3, y - hh - 9, 2, 3, PAL_RAMP(RAMP_VAPE, 1));
@@ -654,6 +662,7 @@ static void draw_ground(void)
     plat_checker(0, y0, sw, 1, g1);
     plat_rect(0, y0 + (sh - y0) / 2, sw, sh - y0 - (sh - y0) / 2, g2);
     plat_checker(0, y0 + (sh - y0) / 2, sw, 1, g0);
+#if !defined(DOOMO_PLATFORM_GBA)
     /* A restrained ridge seam makes the rolling ground plane legible at
      * native resolution and visually joins every building/support to it.
      * Ten coarse segments are enough; no per-pixel contour or buffer. */
@@ -661,6 +670,7 @@ static void draw_ground(void)
         int x0 = i * sw / 10, x1 = (i + 1) * sw / 10;
         plat_line(x0, title_hill_top(x0, sh), x1, title_hill_top(x1, sh), g2);
     }
+#endif
     /* flowers / embers on the meadow */
     title_ground_flower_init(sw, sh, y0);
     for (i = 0; i < 16; i++) {
