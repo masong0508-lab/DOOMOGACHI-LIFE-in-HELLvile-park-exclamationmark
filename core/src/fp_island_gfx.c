@@ -47,9 +47,11 @@ static void build_geometry(void)
 {
     int row, sw = fp_sw(), sh = fp_sh();
     M.x = 0;
-    M.y = 16;
+    /* PS1 hub pass: let the island use more of the 320x240 frame.
+     * Keep a slim top/bottom safety margin for the HUD and corner prompts. */
+    M.y = 10;
     M.w = sw;
-    M.h = sh - 16 - 14;
+    M.h = sh - 20;
     if (M.h > FP_GEO_ROWS - 2) M.h = FP_GEO_ROWS - 2;
     G->geo_w = (int16_t)sw;
     G->geo_h = (int16_t)sh;
@@ -425,21 +427,22 @@ static void draw_sea(void)
 static void draw_river_run(int row0, int row1)
 {
     int y = M.y + row0, h = row1 - row0, rc = river_c[row0];
-    int rl = rc - 5, wl = rc + 5, row;
-    /* bank + water (rl .. rc + 4) */
+    int rl = rc - 6, wl = rc + 6, row;
+    /* Broader river channel: the water and banks read clearly at PS1
+     * output resolution instead of collapsing into a thin blue seam. */
     R(rl, y, 1, h, SAND_D);
-    R(rl + 1, y, 9, h, PAL_RAMP(RAMP_SKY, 5));
-    /* the Wall seen from above: dark outline, lit west face, stony top
-     * with a checker texture */
-    R(wl, y, 6, h, PAL_RAMP(RAMP_STONE, 1));
-    R(wl + 1, y, 1, h, PAL_RAMP(RAMP_STONE, 6));
-    R(wl + 2, y, 3, h, PAL_RAMP(RAMP_STONE, 5));
-    CK(wl + 2 + (row0 & 1), y, 2, h, tc(PAL_RAMP(RAMP_STONE, 4)));
+    R(rl + 1, y, 11, h, PAL_RAMP(RAMP_SKY, 5));
+    R(rl + 2, y, 2, h, PAL_RAMP(RAMP_SKY, 6));
+    /* the Wall seen from above: a broader, stepped stone divider */
+    R(wl, y, 8, h, PAL_RAMP(RAMP_STONE, 1));
+    R(wl + 1, y, 2, h, PAL_RAMP(RAMP_STONE, 6));
+    R(wl + 3, y, 4, h, PAL_RAMP(RAMP_STONE, 5));
+    CK(wl + 3 + (row0 & 1), y, 3, h, tc(PAL_RAMP(RAMP_STONE, 4)));
     /* its shadow on the Hellvile ground (darker shade of each band) */
     for (row = row0; row < row1;) {
         int r1 = row + 1;
         while (r1 < row1 && hell_ground(r1) == hell_ground(row)) r1++;
-        R(wl + 6, M.y + row, 2, r1 - row, ui_darker(hell_ground(row)));
+        R(wl + 8, M.y + row, 3, r1 - row, ui_darker(hell_ground(row)));
         row = r1;
     }
 }
@@ -514,17 +517,17 @@ static void draw_land_body(void)
         int gx = -0x7FFF, hx = 0x7FFF;
         for (row = 0; row < M.h; row++) {
             if (coast_l[row] < 0) continue;
-            gx = DOOMO_MAX(gx, river_c[row] - 5);       /* >= every rl            */
-            hx = DOOMO_MIN(hx, river_c[row] + 13);      /* <= every wl + 8        */
+            gx = DOOMO_MAX(gx, river_c[row] - 6);       /* >= every rl            */
+            hx = DOOMO_MIN(hx, river_c[row] + 17);      /* <= every wl + 11       */
         }
         for (row = 0; row < M.h; row++) {
             int y = M.y + row, l = coast_l[row], r = coast_r[row], rc = river_c[row];
             if (l < 0) continue;
             /* only where the old spans [l + 3, rc - 5) / [rc + 13, r - 3)
              * were drawn; the extra part lies under the river + Wall */
-            if (rc - 5 - (l + 3) > 0) vm_span(1, l + 3, y, DOOMO_MIN(gx, rc + 13) - (l + 3), hill_grass(row));
+            if (rc - 6 - (l + 3) > 0) vm_span(1, l + 3, y, DOOMO_MIN(gx, rc + 13) - (l + 3), hill_grass(row));
             else vm_flush(1);
-            if (r - 3 - (rc + 13) > 0) vm_span(2, DOOMO_MAX(hx, rc - 5), y, r - 3 - DOOMO_MAX(hx, rc - 5), hell_ground(row));
+            if (r - 3 - (rc + 17) > 0) vm_span(2, DOOMO_MAX(hx, rc - 5), y, r - 3 - DOOMO_MAX(hx, rc - 5), hell_ground(row));
             else vm_flush(2);
         }
         vm_flush_all();
@@ -628,18 +631,23 @@ static const Seg roads[] = {
     /* Hillvile main street (east-west) and the avenues */
     { 24, 98, 112, 98 }, { 30, 160, 112, 160 }, { 40, 60, 104, 60 },
     { 56, 60, 56, 206 }, { 94, 60, 94, 200 }, { 24, 98, 24, 160 },
+    /* short links make each town block feel like a connected district */
+    { 24, 130, 56, 130 }, { 56, 82, 94, 82 }, { 56, 142, 94, 142 },
+    { 94, 98, 112, 98 }, { 94, 160, 112, 160 },
     /* to the park bridge */
-    { 104, 128, 152, 128 },
-    /* Hellvile lanes */
+    { 104, 128, 152, 128 }, { 112, 98, 128, 98 }, { 128, 98, 128, 128 },
+    /* Hellvile lanes: a main spine plus cross-streets to the arena */
     { 150, 76, 226, 76 }, { 150, 76, 150, 200 }, { 150, 124, 210, 124 },
-    { 150, 168, 196, 168 },
-    /* the wall road */
-    { 108, 40, 108, 128 }
+    { 150, 168, 196, 168 }, { 178, 76, 178, 168 }, { 196, 124, 196, 200 },
+    { 210, 76, 210, 124 },
+    /* the wall road and a clear approach to the bridge */
+    { 108, 40, 108, 128 }, { 108, 128, 150, 128 }
 };
 
 static void draw_roads_body(void)
 {
-    int i, rw = 3;
+    /* Five-pixel streets stay legible on a 320x240 PS1 framebuffer. */
+    int i, rw = 5;
     for (i = 0; i < DOOMO_COUNTOF(roads); i++) {
         const Seg *s = &roads[i];
         int x0 = fp_mx(s->x0), y0 = fp_my(s->y0), x1 = fp_mx(s->x1), y1 = fp_my(s->y1);
