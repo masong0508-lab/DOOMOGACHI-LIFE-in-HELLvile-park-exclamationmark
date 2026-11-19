@@ -61,6 +61,7 @@ runs:
         set -euo pipefail
         # The Ubuntu mirrors answer 503 now and then (a bare apt-get hung for 12 minutes and took the job
         # down): short per-request timeouts, retries, and a hard limit per attempt.
+        sudo sed -i '/security\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt || true   # the host that 503s
         opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::ForceIPv4=true"
         pkgs="libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7"
         for attempt in 1 2 3; do

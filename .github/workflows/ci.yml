@@ -54,6 +54,8 @@ jobs:
         run: |
           # Ubuntu's mirrors answer 503 now and then: retry each request, give up on a stalled one
           echo 'Acquire::Retries "5"; Acquire::http::Timeout "20"; Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/80-ci-retry >/dev/null
+          # security.ubuntu.com is the host that 503s: the same packages are on the other mirrors
+          sudo sed -i '/security\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt || true
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             gcc make python3 python3-numpy python3-pil \
@@ -313,6 +315,8 @@ jobs:
         run: |
           # Ubuntu's mirrors answer 503 now and then: retry each request, give up on a stalled one
           echo 'Acquire::Retries "5"; Acquire::http::Timeout "20"; Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/80-ci-retry >/dev/null
+          # security.ubuntu.com is the host that 503s: the same packages are on the other mirrors
+          sudo sed -i '/security\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt || true
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             gcc g++ make python3 cmake ninja-build \
@@ -452,6 +456,8 @@ jobs:
         run: |
           # Ubuntu's mirrors answer 503 now and then: retry each request, give up on a stalled one
           echo 'Acquire::Retries "5"; Acquire::http::Timeout "20"; Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/80-ci-retry >/dev/null
+          # security.ubuntu.com is the host that 503s: the same packages are on the other mirrors
+          sudo sed -i '/security\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt || true
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends gcc make python3 ffmpeg
           ffmpeg -hide_banner -version | head -n 1
