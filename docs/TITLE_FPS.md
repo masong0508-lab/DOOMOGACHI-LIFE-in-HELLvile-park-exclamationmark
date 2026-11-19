@@ -135,3 +135,20 @@ current size budget. Treat startup settle spikes separately from steady-state pe
     make -C gba test-speed         # speed tour; check the title row and vhash-seq
     make -C gba sizes              # confirm EWRAM / IWRAM headroom
     # CI: the run's Summary tab, or the gba-speed-report artifact: title_profile.log, title_spikes.log
+
+## 5. Menu-open spike (2026-11-19, CI run on f3fcfb1): cause and first change
+
+Slow ticks with the menu open: 4 of 55, worst 58.1 ms (58.1, 44.2, 45.4, 35.6 ms, one tick apart). The extra time is
+`capsule_plain`, `finish_marked`, `sh_span`, `scan_transitions`: a portrait / figure render, not menu drawing. The idle
+window has none.
+
+* **Reading.** The figures change expression 45 ticks apart and the cache has one job slot, so a render starts after the
+  one before it ends. With the menu open a frame takes ~25-29 ms and leaves ~4 ms of idle time; slices over that wait
+  for `PATIENCE` ticks (`gba/src/pslice.c`). A render asked 75 ticks ahead was not finished when the change came, the
+  stand-in's deadline (`PC_STANDIN_HOLD`, 4 ticks) forced the rest, and four ticks in a row ran 8-25 ms over.
+  This is from reading the code and the log; it was NOT measured (no ARM toolchain on the writing machine).
+* **Change.** `prefetch_figures` asks 88 ticks ahead instead of 75 (`PREFETCH_AHEAD`, `core/src/fp_title.c`). Pictures are
+  the same; only when they are drawn. No resident bytes.
+* **Check on CI.** "Title screen" in the run summary: `slow frames` in the menu-open window should be 0 of ~55. If
+  the same four ticks still show, the cause is the second figure's slot wait: next lever is `PATIENCE` for
+  title jobs, or one expression change at a time while the menu is open. `vhash-seq` must stay `8d097471`.

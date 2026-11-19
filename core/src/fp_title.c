@@ -796,6 +796,14 @@ static int figure_expr(int t, int k)
 /* SP2 (X1): render the pair's coming pictures ahead, in the idle time after frames: each figure's next
  * expression and, near the turn, the next pair, soonest first (one request is queued at a time; a cached one
  * is skipped). Without it each change is drawn behind a stand-in in the four ticks after it. */
+/* ticks before a change that its picture is asked for. The figures change 45 ticks apart and the cache has one job
+ * slot, so the second figure's render only starts when the first has finished. With the menu open a frame leaves
+ * ~4 ms of idle time (25 ms of work), only the small slices fit it, and a render asked for 75 ticks ahead was not
+ * done when the change came: the stand-in's deadline then forced its slices into 4 ticks in a row (58 / 44 / 45 / 36 ms,
+ * `capsule_plain`, `finish_marked`, `sh_span`, `scan_transitions`). A whole expression cycle is 90 ticks; 88 keeps
+ * the request clear of the change before it. Pixels do not change: only when the picture is drawn. */
+#define PREFETCH_AHEAD 88
+
 static void prefetch_figures(const int *pid)
 {
     static int npk = -1, nid[2];
@@ -826,7 +834,7 @@ static void prefetch_figures(const int *pid)
     portrait_hold(1);                       /* the title's figures hold one still pose */
     for (i = 0; i < n; i++) {
         const DoomoResident *p = ev[i].id >= 0 ? roster_premade(ev[i].id) : NULL;
-        if (ev[i].dt > 75) break;
+        if (ev[i].dt > PREFETCH_AHEAD) break;
         if (p && !figure_prefetch(RES_LOOK_VIEW(p), RES_ALIVE, ev[i].expr)) break;
     }
     portrait_hold(0);
