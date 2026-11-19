@@ -68,8 +68,9 @@ TEST(levels_registry_ids_pages_and_manifest)
         CHECK_MSG(lv_reg[i].reason < LVT_COUNT && lv_reg[i].page < LVP_COUNT, "level %d registry", i);
         per_page[lv_page_of(i)]++;
         CHECK_EQ(lv_listed(i), 1);                       /* the host lists them all */
-        /* built only when it has a map: the 7 old ones today */
-        CHECK_EQ(lv_built(i), i < LV_OLD_COUNT);
+        /* The original seven and the five shipped format-2 maps are built. */
+        CHECK_EQ(lv_built(i), i < LV_OLD_COUNT || i == LV_HB8 || i == LV_HB9 ||
+                 i == LV_HB11 || i == LV_HB12 || i == LV_HB13);
         CHECK_EQ(lv_built(i), lv_info[i].map != LV_NO_MAP);
         n += (lv_reg[i].flags & LVG_GBA) != 0;
     }

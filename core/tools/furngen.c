@@ -57,8 +57,11 @@ static int fg_errors;
 static char fg_lasterr[256];
 static void fg_err(const char *where, int line, const char *msg, const char *tok)
 {
-    snprintf(fg_lasterr, sizeof fg_lasterr, "%s:%d: %s%s%s", where, line, msg,
-             tok ? " " : "", tok ? tok : "");
+    int used = snprintf(fg_lasterr, sizeof fg_lasterr, "%s:%d: %s", where, line, msg);
+    if (tok && used >= 0 && (size_t)used + 1 < sizeof fg_lasterr) {
+        size_t available = sizeof fg_lasterr - (size_t)used - 2;
+        snprintf(fg_lasterr + used, available + 2, " %.*s", (int)available, tok);
+    }
     fprintf(stderr, "furngen: %s\n", fg_lasterr);
     fg_errors++;
 }
