@@ -136,7 +136,7 @@ static const uint8_t tflags2_boneyard_buffet[54] = {
 
 const DoomoMapExt map_ext_boneyard_buffet = {
     &map_def_boneyard_buffet,
-    MAPX_GBA, 0, 14, 0, 0,   /* flags, fog, view, gravity, note */
+    MAPX_GBA, 0, 12, 0, 0,   /* flags, fog, view, gravity, note */
     {3, 4, 6}, 0, 0,   /* detail, hero look, hero loadout */
     6, 0, 0, 0,   /* zones, paths, swap sets, texbank */
     zones_boneyard_buffet, 0, 0,

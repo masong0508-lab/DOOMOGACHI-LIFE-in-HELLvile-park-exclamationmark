@@ -21,6 +21,7 @@ detail light,props,far
 cell # wall=BONE_WALL
 cell S wall=WOOD_WALL ch=12
 cell F wall=CHURCH_WALL
+cell G wall=STAINED_GLASS
 cell R wall=WOOD_WALL
 cell v floor=COBBLE ceil=CHURCH_WALL fh=0 ch=10 light=8
 cell p like=v thing=PLAYER_START angle=90
@@ -68,8 +69,8 @@ grid
 ##u###############################
 ##u#hhhhhhhhhhhhhhhhhhhhhhhhh#####
 ##u#hhhhhhhhhhhhhhhhhhhhhhhhh#####
-##hhhhhhhhhhhhhFFFhhhhhhhhhhhQeeX#
-####hhhhhhhhhhhFFFhhhhhhhhhhh#####
+##hhhhhhhhhhhhhGFGhhhhhhhhhhhQeeX#
+####hhhhhhhhhhhGFGhhhhhhhhhhh#####
 ####hhhhhhhhhhhhhhhhhhhhhhhhh#####
 ####hhhhhhhhhhhhhhhhhhhhhhhhh#####
 ##################################

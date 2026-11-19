@@ -20,6 +20,7 @@ detail light,fx,far
 
 cell # wall=PIPE_STEEL
 cell P wall=PIPE_STEEL ch=36
+cell R wall=RUST_METAL ch=36
 cell v floor=TILE_FLOOR ceil=PIPE_STEEL fh=40 ch=52 light=6 
 cell p floor=TILE_FLOOR ceil=PIPE_STEEL fh=40 ch=52 light=6 thing=PLAYER_START angle=90
 cell L floor=METAL_FLOOR ceil=PIPE_STEEL fh=40 ch=52 light=8 flags=lift tag=24
@@ -34,13 +35,13 @@ cell x floor=METAL_FLOOR ceil=PIPE_STEEL fh=16 ch=28 light=3
 cell c floor=METAL_FLOOR ceil=PIPE_STEEL fh=16 ch=28 light=3 
 cell q floor=SLIME ceil=PIPE_STEEL fh=13 ch=25 light=3 flags=water
 cell y floor=COBBLE ceil=PIPE_STEEL fh=16 ch=28 light=5 flags=secret
-cell V floor=METAL_FLOOR ceil=PIPE_STEEL fh=16 ch=21 light=3 
-cell A floor=METAL_FLOOR ceil=PIPE_STEEL fh=13 ch=25 light=3 
-cell B floor=METAL_FLOOR ceil=PIPE_STEEL fh=10 ch=22 light=3 
-cell C floor=METAL_FLOOR ceil=PIPE_STEEL fh=7 ch=19 light=3 
-cell D floor=METAL_FLOOR ceil=PIPE_STEEL fh=4 ch=16 light=3 
-cell E floor=METAL_FLOOR ceil=PIPE_STEEL fh=2 ch=14 light=3 
-cell F floor=METAL_FLOOR ceil=PIPE_STEEL fh=0 ch=12 light=3 
+cell V floor=GRATE ceil=PIPE_STEEL fh=16 ch=21 light=3
+cell A floor=GRATE ceil=PIPE_STEEL fh=13 ch=25 light=3
+cell B floor=GRATE ceil=PIPE_STEEL fh=10 ch=22 light=3
+cell C floor=GRATE ceil=PIPE_STEEL fh=7 ch=19 light=3
+cell D floor=GRATE ceil=PIPE_STEEL fh=4 ch=16 light=3
+cell E floor=GRATE ceil=PIPE_STEEL fh=2 ch=14 light=3
+cell F floor=GRATE ceil=PIPE_STEEL fh=0 ch=12 light=3
 cell k floor=SLIME ceil=PIPE_STEEL fh=0 ch=12 light=3 flags=water
 cell n floor=COBBLE ceil=PIPE_STEEL fh=0 ch=12 light=5 flags=secret
 cell Q floor=METAL_FLOOR ceil=DOOR_HELL fh=0 ch=12 light=4 flags=door tag=20
@@ -55,9 +56,9 @@ grid
 ##L###########################
 #jjjjjjjjjjjjjjjjjjjjjjjjjjjj#
 #jjjjjjjjjjjjjjjjjjjjjjjooooo#
-#jjjjjPjjjPjjjjjjjPjjjPsooooo#
-#jjjjjPjjjPjjjjjjjPjjjPjooooo#
-#jjjjjPjjjPjjjjjjjPjjjPjjjjjj#
+#jjjjjPjjjRjjjjjjjPjjjRsooooo#
+#jjjjjPjjjRjjjjjjjPjjjRjooooo#
+#jjjjjPjjjRjjjjjjjPjjjRjjjjjj#
 #jjjjjjjjjjjjjjjjjjjjjjjjjjjj#
 #jjjjjjjjjjjjjjjjjjjjjjjjjjjj#
 ##############j###############
