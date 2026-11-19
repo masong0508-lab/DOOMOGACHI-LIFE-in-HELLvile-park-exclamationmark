@@ -962,11 +962,19 @@ static void tab_pill(int x, int y, int w, const UiStyle *st)
     tab_pill_rects(x, y, a);
 }
 
+/* One compact accent identity per Music Studio page.  Stored as palette IDs so
+ * the native and console renderers resolve the same colours through PAL_PAINT. */
+static const uint8_t tab_rail_paint[STAB_COUNT] = {
+    PAINT_LAVENDER, PAINT_MINT, PAINT_SKY, PAINT_TANGERINE,
+    PAINT_GRAPE, PAINT_PEACH, PAINT_CHERRY, PAINT_HONEY
+};
+
 /* the tab strip: icons, the current tab spelled out, play status */
 static void draw_tabs(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
     int i, x = 4, y = 3, wide = 1, b = ui_wave((int)studio.t, 20, 1) > 0, total = 0;
+    int active_x = 4, active_w = 0;
     for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(st_tab_label(i)) + 22;
     if (total > plat_screen_w() - 40) wide = 0;     /* names only on the current tab */
     for (i = 0; i < STAB_COUNT; i++) {
@@ -974,6 +982,8 @@ static void draw_tabs(void)
         const char *nm = st_tab_label(i);
         w = (sel || wide) ? ui_text_width(nm) + 20 : 17;
         if (sel) {
+            active_x = x;
+            active_w = w;
             tab_pill_sel(x, y - 1 - b, w, st);
             tab_icon(i, x + 8, y + 5 - b, PAL_WHITE);
             ui_text_shadow(x + 15, y + 2 - b, nm, PAL_WHITE, ui_darker(st->accent));
@@ -993,6 +1003,12 @@ static void draw_tabs(void)
         }
         x += w + 2;
     }
+    /* Keep the header's baseline quiet; the short coloured segment identifies
+     * the active page at both 240x160 and 320x240 without another label. */
+    plat_rect(4, 18, plat_screen_w() - 8, 1, st->fill_hi);
+    if (active_w > 0)
+        plat_rect(active_x, 18, active_w, 2,
+                  PAL_PAINT(tab_rail_paint[studio.tab % STAB_COUNT], 1));
     /* right side: playing indicator / tempo heart */
     {
         int sw = plat_screen_w(), age = song_beat_age();

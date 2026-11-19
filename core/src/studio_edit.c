@@ -406,14 +406,21 @@ void tab_song_draw(StRect r)
     /* the song card */
     if (cw >= 70) {
         int y = r.y, t = (int)studio.t, playing = song_playing();
-        int rr = wide ? 30 : 22, rcx = cx + cw / 2, rcy = y + rr + 22;
+        int rr = wide ? 30 : 22, rcx = cx + cw / 2, rcy = y + rr + 26;
         uint32_t len = song_length_ticks(SS) / DOOMO_TICK_HZ;
         st_panel(cx, y, cw, r.h, WIN_MINT);
         ui_text_center(rcx, y + 5, SS->title, ui_style_text(WIN_MINT));
+        {
+            const char *state = playing ? "PLAYING" : "READY";
+            int sw = ui_text_width(state) + 10;
+            uint8_t fill = playing ? PAL_PAINT(PAINT_ROSE, 1) : PAL_PAINT(PAINT_MINT, 1);
+            ui_round_rect(rcx - sw / 2, y + 14, sw, 9, 4, fill);
+            ui_text_center(rcx, y + 15, state, PAL_WHITE);
+        }
         draw_record(rcx, rcy, rr, t, playing);
         /* the tone arm */
-        plat_line(cx + cw - 8, y + 18, rcx + rr / 2, rcy - rr / 3, PAL_GRAY_D);
-        ui_fill_circle(cx + cw - 8, y + 18, 2, PAL_GRAY);
+        plat_line(cx + cw - 8, y + 22, rcx + rr / 2, rcy - rr / 3, PAL_GRAY_D);
+        ui_fill_circle(cx + cw - 8, y + 22, 2, PAL_GRAY);
         y = rcy + rr + 4;
         ui_text_center(rcx, y, doomo_music_names[SS->genre % MUSIC_COUNT], st->text);
         doomo_snprintf(val, sizeof(val), "%s %s", doomo_song_key_names[SS->key % 12],
@@ -969,7 +976,10 @@ void tab_notes_draw(StRect r)
         int head = playing_here && ps == stp;
         uint8_t rowbg = (stp & 3) == 0 ? st->fill_lo : st->fill;
         plat_rect(gx, y, colw * 4, 9, head ? PAL_PAINT(PAINT_LEMON, 2) : rowbg);
-        if ((stp & 15) == 0) plat_rect(gx, y, colw * 4, 1, st->outline);
+        /* Quarter-note boundaries are visible between the shaded rows; bar
+         * starts stay stronger so the two-bar pattern reads at a glance. */
+        if ((stp & 3) == 0)
+            plat_rect(gx, y, colw * 4, 1, (stp & 15) == 0 ? st->outline : st->fill_hi);
         ui_text(r.x + 5, y + 1, step_num[stp & 31], (stp & 3) == 0 ? st->text : st->text_dim);   /* "%2d" of stp + 1 */
         if (rfrom >= 0 && stp >= rfrom && stp < rto) plat_rect(gx - 3, y, 2, 9, PAL_PAINT(PAINT_MINT, 1));
         for (t = 0; t < 4; t++) {
@@ -978,6 +988,8 @@ void tab_notes_draw(StRect r)
             if (cur) {
                 ui_round_rect(x + 1, y, colw - 2, 9, 2, studio.a_edit ? PAL_PAINT(PAINT_ROSE, 1)
                                                                       : st_track_color(t, 1));
+                plat_rect(x + 2, y, colw - 4, 1, PAL_WHITE);
+                plat_rect(x + 2, y + 8, colw - 4, 1, st_track_color(t, 0));
             }
             if (t == 3) {
                 if (v > 0 && v < SONG_DRUM_COUNT) {
@@ -1199,6 +1211,12 @@ void tab_order_draw(StRect r)
             if (i < n) {
                 int p = s->order[i] & 3, lift = (i == po) ? 2 : 0;
                 ui_round_rect(x, ty - lift, bw - 1, bh, 2, st_pattern_color(p, i == studio.osel ? 0 : 1));
+                if (i == studio.osel && bw > 4) {
+                    plat_rect(x, ty - lift, bw - 1, 1, PAL_WHITE);
+                    plat_rect(x, ty + bh - 1 - lift, bw - 1, 1, PAL_WHITE);
+                }
+                if (i > 0 && (s->order[i] & 3) != (s->order[i - 1] & 3))
+                    plat_rect(x, ty - lift, 1, bh, PAL_WHITE);
                 if (bh > 12) {
                     char pl[2] = { (char)('A' + p), 0 };
                     ui_text(x + bw / 2 - 3, ty + 2 - lift, pl, PAL_WHITE);
@@ -1210,7 +1228,7 @@ void tab_order_draw(StRect r)
         }
         if (po >= 0) {
             int px = x0 + po * bw + (song_pos_step() * (bw - 1)) / SONG_STEPS;
-            plat_rect(px, ty - 3, 1, bh + 5, PAL_PAINT(PAINT_ROSE, 0));
+            plat_rect(px, ty - 3, st_wide() ? 2 : 1, bh + 5, PAL_PAINT(PAINT_ROSE, 0));
         }
         doomo_snprintf(buf, sizeof(buf), "%d passes  %u:%02u  %s", n, (unsigned)(len / 60),
                        (unsigned)(len % 60), (s->flags & SONGF_LOOP) ? "(loops)" : "");

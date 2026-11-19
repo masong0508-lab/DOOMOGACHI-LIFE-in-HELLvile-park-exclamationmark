@@ -13,7 +13,7 @@ kind dungeon
 sky NIGHT_STARS
 music HELL_BREACH
 ambient 9
-view 14
+view 12
 gba yes
 detail props,fx,far
 

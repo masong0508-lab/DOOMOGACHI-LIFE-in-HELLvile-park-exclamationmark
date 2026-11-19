@@ -376,6 +376,8 @@ void tab_lyrics_draw(StRect r)
             ui_round_rect(r.x + 3, y - 1, r.w - 6, rowh, 3, st->fill_hi);
             ui_cursor(r.x + 3, y + (rowh - 8) / 2);
         }
+        if (pl == i)
+            plat_rect(r.x + 5, y, 2, rowh - 1, PAL_PAINT(PAINT_LEMON, 1));
         if (i < 9) { buf[0] = (char)('1' + i); buf[1] = 0; }       /* lines 1..9: no snprintf */
         else { buf[0] = (char)('0' + (i + 1) / 10); buf[1] = (char)('0' + (i + 1) % 10); buf[2] = 0; }
         ui_text(i < 9 ? r.x + 13 : r.x + 8, y + (rowh - 9) / 2, buf, st->text_dim);
@@ -709,7 +711,9 @@ void tab_choir_draw(StRect r)
             int sec = song_singer_section(s, i), bop = ((singing >> i) & 1) ? ((studio.t >> 2) & 1) : 0;
             char sl[2] = { section_letter[sec], 0 };
             ui_round_rect(x, y, tw, th, 4, PAL_PAINT(section_paint[sec], sel ? 1 : 2));
-            if (sel) ui_frame(x - 1, y - 1, tw + 2, th + 2, PAL_PAINT(PAINT_ROSE, 0));
+            if (sel) ui_frame(x - 1, y - 1, tw + 2, th + 2,
+                              (singing >> i) & 1 ? PAL_PAINT(section_paint[sec], 0)
+                                                : PAL_PAINT(PAINT_ROSE, 0));
             st_chibi_ui(id, x + (tw - BODYSPR_W) / 2, y + th - BODYSPR_H - 1 - bop, 0,
                      sel ? (int)(studio.t / 8) & 3 : 0, 0, 0);
             badge_draw(x + tw - 8, y + 1, PAL_PAINT(section_paint[sec], 0));

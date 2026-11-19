@@ -458,6 +458,16 @@ static void karaoke(int cx, int y, int w)
             }
         }
         if (rn) { run[rn] = 0; plat_text(rx, y + 7 - rb, run, rc); }
+        /* The active syllable also gets a short underline. This gives the
+         * karaoke cue a stable position when the glyph itself is bouncing. */
+        if (song_playing() && syl >= 0 && syl < n) {
+            int a = st[syl], z = syl + 1 < n ? st[syl + 1] : len;
+            int ux = x + a * 6, uw = DOOMO_MAX(2, (z - a) * 6 - 1);
+            int left = cx - w / 2, right = cx + w / 2;
+            if (ux < left) { uw -= left - ux; ux = left; }
+            if (ux + uw > right) uw = right - ux;
+            if (uw > 0) plat_rect(ux, y + 19, uw, 1, PAL_PAINT(PAINT_BUBBLEGUM, 2));
+        }
     }
     /* who has the line */
     studio_part_label(SS, line, buf, sizeof(buf));

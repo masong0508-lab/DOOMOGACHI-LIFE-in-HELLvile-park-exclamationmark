@@ -1616,6 +1616,10 @@ static void arrange_draw(StRect r)
             w = DOOMO_MAX(1, xb - xa - 1);
             if (w >= 4) ui_round_rect(xa, ty - lift, w, bh, 2, col);
             else plat_rect(xa, ty - lift, w, bh, col);
+            /* A section change gets a bright seam; the thinner inner lines
+             * below still distinguish the passes within each section. */
+            if (i > 0 && (X->arrange[i - 1] % SX_SECTIONS) != sec_id)
+                plat_rect(xa, ty - lift, 1, bh, PAL_WHITE);
             /* Fine separators show pass boundaries inside a multi-pass part. */
             {
                 int within = 0;

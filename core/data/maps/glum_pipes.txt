@@ -12,7 +12,7 @@ kind dungeon
 sky NIGHT_STARS
 music NONE
 ambient 4
-view 18
+view 14
 dark yes
 note 1398
 gba no

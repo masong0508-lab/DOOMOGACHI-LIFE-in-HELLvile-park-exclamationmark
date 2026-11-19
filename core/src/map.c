@@ -18,7 +18,7 @@
 
 DoomoMap doomo_map;
 
-#define MOVER_MAX     48
+#define MOVER_MAX     24  /* Current map set peaks at 12; keep 2x headroom, save 24 slots. */
 #define DOOR_SPEED    5      /* world units per tick */
 #define LIFT_SPEED    4
 #define DOOR_WAIT     120    /* auto-close doors (tag 3..15) */

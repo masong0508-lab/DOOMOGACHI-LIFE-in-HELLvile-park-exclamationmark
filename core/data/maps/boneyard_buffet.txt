@@ -12,7 +12,7 @@ kind dungeon
 sky NIGHT_STARS
 music HELLVILE
 ambient 9
-view 14
+view 12
 gba yes
 detail props,fx,light
 

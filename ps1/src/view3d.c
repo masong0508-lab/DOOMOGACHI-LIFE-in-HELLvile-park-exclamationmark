@@ -494,8 +494,13 @@ void plat_view3d(const DoomoView3D *v)
         /* clip plane distance in world units, + a margin for pitch, x1.5
          * for the corners of the near rectangle (seen at an angle) */
         eye_clear_walls(&ex, &ey, (((R3_CLIP_Q(hp) + 10) * 3 / 2) << 12) / R3_SCALE_Q12 + 3);
+        /* A level may request a shorter view to keep its busiest rooms within budget.
+         * Zero preserves the renderer's adaptive default. */
+        int draw_dist = s_view_dist;
+        if (v->view_dist >= VIEW_DIST_MIN && v->view_dist < draw_dist)
+            draw_dist = v->view_dist;
         r3_camera(ex, ey, ez, v->angle, pitch_a, v->vx, v->vy, v->vw, v->vh,
-                  hp, s_view_dist * CELL, fogn, 0);
+                  hp, draw_dist * CELL, fogn, 0);
     }
     if (!r3_begin()) {
         g_r3_sub = 0;                 /* SP8 */

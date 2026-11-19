@@ -927,6 +927,9 @@ void plat_view3d(const DoomoView3D *v)
     poly0 = dc3d_batch(dc3d_cur_slot())->np;
     s_any_sky = 0;
     s_cast_dist = bare ? 0 : view_budget();
+    /* Match the GBA/PS1 per-map view budget; zero keeps the platform default. */
+    if (!bare && v->view_dist >= DC_V3D_DIST_MIN && v->view_dist < s_cast_dist)
+        s_cast_dist = v->view_dist;
     if (bare) {
         dc3d_stats.bare_n++;
         s_nvis = 0;                                  /* the backdrop alone: no walls, no sprites */

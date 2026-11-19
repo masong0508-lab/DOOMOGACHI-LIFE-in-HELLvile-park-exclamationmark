@@ -850,6 +850,19 @@ step numbers (a table instead of `%2d`); the inactive tab pills of the narrow st
 (A first version switched the help line back to the prompt bar on a timer: that cost one 37 ms frame in an idle tab, so
 it now switches on the first button press.) PS1 (PCSX-Redux): every editor tab and every new screen 30.13 fps before and after, resident share 0 B, studio overlay load +27 ms (docs/PS1.md "Studio ST-EASY"). Dreamcast (Flycast, lander, after the review fix): `make -C dc` builds; `speed2.sh studio` all nine windows 30.0 ticks/s, worst work 12.6 ms; `boot.txt` passes. The made song playing on the SONG tab is the one window under 30 fps on the GBA (28.8 fps, 32.7 / 39.0 ms): it is the plan's known SONG-playing cost (STUDIO_PLAN section on speed), owner SPEED S3 / ST-ADV, not fixed here.
 
+### Shared screen polish (2026-11-19)
+
+The current presentation pass lives in the shared `core/src/studio*.c` renderer and therefore carries across the GBA,
+PS1 and Dreamcast ports. It adds a page-colour rail to the tab strip; a READY / PLAYING state on the SONG record;
+stronger quarter-beat and selected-cell cues on the classic NOTES grid; clearer selected blocks and pattern seams in
+ORDER; a stable live-line marker in LYRICS; singing-aware selection in CHOIR; and an active-syllable underline on the
+PERFORM karaoke bar. The Advanced arrangement view gets the same section-change seam through `studio_adv.c`.
+
+The additions use the existing palette and rectangle drawing primitives only. They add no image assets, heap
+allocations, framebuffers, scene-scratch claims, or per-frame data structures; all screen geometry remains within the
+existing 240x160 and wide-layout paths. The Advanced arrangement cue is in the shared code path and follows each
+port's existing `SONGX_BOOK_PAGES` configuration.
+
 ## INTEGRATION NOTE for the Concert Hall (concert*.c)
 
 1. **Represent generated songs as `DoomoSong`.** Build the song in the shared
