@@ -1,8 +1,8 @@
-/* spu.c - SPU audio: 4 chiptune tone channels + one-shot samples.
+/* spu.c - SPU audio: 4 hybrid instrument tone channels + one-shot samples.
  *
- * At boot, single-cycle waveforms (pulse 12.5/25/50 %, triangle, saw) and
- * a noise loop are synthesised and encoded to SPU ADPCM by our own encoder
- * (adpcm_encode below), then uploaded to SPU RAM as looping samples.
+ * At boot, instrument_bank.h builds five fixed-point melodic patches (glass bell,
+ * electric piano, organ, round bass and dark string pad) plus a noise loop. The
+ * cycles are encoded to SPU ADPCM by our encoder and uploaded as looping samples.
  * plat_tone() maps a channel to SPU voice 0..3: pitch from freq_hz, volume
  * from vol, waveform = sample start address (re-keyed when it changes).
  *
@@ -23,8 +23,10 @@
 #include <psxspu.h>
 #include <hwregs_c.h>
 #include "ps1.h"
+#include "doomo/plat_ext.h"
 #include "adpcm.h"
 #include "waveform.h"
+#include "instrument_bank.h"
 #include "reverb.h"
 #include "tonepick.h"
 
@@ -174,13 +176,12 @@ static void build_waves(void)
                 /* two cycles: the first fades in from silence and plays once, the loop restarts
                  * at the second (waveform.h; its blocks are encoded for the decoder history the
                  * loop jump really arrives with; the first block of a sample uses filter 0) */
-                switch (w) {
-                case WAVE_PULSE12: ps1_wave_pulse(pcm, len, 1); break;
-                case WAVE_PULSE25: ps1_wave_pulse(pcm, len, 2); break;
-                case WAVE_PULSE50: ps1_wave_pulse(pcm, len, 4); break;
-                case WAVE_TRIANGLE: ps1_wave_triangle(pcm, len); break;
-                default: ps1_wave_saw(pcm, len); break;
-                }
+                /* PS1-only hybrid patch bank. The stable WAVE_* IDs select a bell,
+                 * electric tine, organ, round bass / flute or dark string pad. The
+                 * noise kit remains the original noise loop. Bank sizes stay within
+                 * the existing 0x1000-0x1fff SPU waveform allocation. */
+                if (!ps1_instrument_cycle((uint8_t)w, pcm, len))
+                    ps1_wave_triangle(pcm, len); /* defensive fallback for an unknown ID */
                 /* the 14 and 7 sample cycles are scaled to the level of the 28 sample one (waveform.h) */
                 if (v == 2)
                     rms28 = ps1_wave_ms(pcm, len);
@@ -221,6 +222,15 @@ static void tone_write_vol(int channel, int amp)
     int p = s_tone_pan[channel];
     SPU_CH_VOL_L(channel) = (uint16_t)(p == 2 ? amp / 4 : amp);
     SPU_CH_VOL_R(channel) = (uint16_t)(p == 0 ? amp / 4 : amp);
+}
+
+const char *plat_tone_name(uint8_t wave)
+{
+    if (wave < WAVE_NOISE)
+        return ps1_patches[wave].name;
+    if (wave == WAVE_NOISE)
+        return "Noise Percussion";
+    return NULL;
 }
 
 void plat_tone_pan(int channel, int pan)
@@ -267,8 +277,8 @@ void plat_tone(int channel, uint16_t freq_hz, uint8_t vol, uint8_t wave)
     SPU_CH_FREQ(channel) = pitch;
     if (!t->on || t->wave != wave || t->variant != variant) {
         SPU_CH_ADDR(channel) = getSPUAddr(s_wave_addr[wave][variant]);
-        SPU_CH_ADSR1(channel) = 0x000f;       /* instant attack, max sustain */
-        SPU_CH_ADSR2(channel) = 0x0008;       /* short linear release        */
+        SPU_CH_ADSR1(channel) = ps1_instrument_adsr1(wave);
+        SPU_CH_ADSR2(channel) = ps1_instrument_adsr2(wave);
         SpuSetKey(1, 1u << channel);
         t->on = 1;
     }

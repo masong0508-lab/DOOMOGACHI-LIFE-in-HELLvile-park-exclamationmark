@@ -14,6 +14,7 @@
  * channel and lights up the mini keyboard.
  */
 #include "studio_int.h"
+#include "doomo/plat_ext.h"
 
 #define KEY(tab, row) ((tab) * 256 + (row))
 
@@ -311,10 +312,14 @@ static void song_row_value(int row, char *buf, int cap)
     case SR_SCALE: doomo_snprintf(buf, cap, "%s", doomo_song_scale_names[s->scale % SONG_SCALE_COUNT]); break;
     case SR_SWING: doomo_snprintf(buf, cap, s->swing ? "%d" : "Straight", s->swing); break;
     case SR_LOOP: doomo_snprintf(buf, cap, "%s", (s->flags & SONGF_LOOP) ? "Loop" : "Once"); break;
-    case SR_WAVE0: case SR_WAVE1: case SR_WAVE2:
+    case SR_WAVE0: case SR_WAVE1: case SR_WAVE2: {
+        const char *name;
         t = (row - SR_WAVE0) / 2;
-        doomo_snprintf(buf, cap, "%s", doomo_song_wave_names[s->wave[t] % SONG_WAVES]);
+        name = plat_tone_name(s->wave[t] % SONG_WAVES);
+        if (!name) name = doomo_song_wave_names[s->wave[t] % SONG_WAVES];
+        doomo_snprintf(buf, cap, "%s", name);
         break;
+    }
     case SR_KIT: doomo_snprintf(buf, cap, "%s", doomo_song_kit_names[s->wave[3] % SONG_KIT_COUNT]); break;
     default:
         t = (row - SR_VOL0) / 2;

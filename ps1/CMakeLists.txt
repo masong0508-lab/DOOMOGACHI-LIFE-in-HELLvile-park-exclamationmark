@@ -409,7 +409,7 @@ set(_run   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/run.py
            --emu ${DOOMO_EMU} --bios ${DOOMO_BIOS} --timeout 400)
 if(DOOMO_HOST_CC)
 	set(_adpcm
-		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src
+		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src -I${CORE_DIR}/include
 		        ${CMAKE_CURRENT_SOURCE_DIR}/harness/adpcm_test.c
 		        ${CMAKE_CURRENT_SOURCE_DIR}/src/adpcm.c -lm
 		        -o ${CMAKE_CURRENT_BINARY_DIR}/adpcm_test

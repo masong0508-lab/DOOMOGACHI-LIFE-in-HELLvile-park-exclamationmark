@@ -1087,15 +1087,27 @@ other rows as H4).
 
 ## 8. Audio
 
-* **Tones** (`plat_tone`, channels 0-3 -> SPU voices 0-3). At boot,
-  single-cycle pulse 12.5/25/50 %, triangle, saw and a noise loop are
-  synthesised and encoded to SPU ADPCM by our encoder (`src/adpcm.c`), as
-  two cycles per wave with the loop starting at the second one (the first
-  ADPCM block must use filter 0; the loop then replays blocks encoded with
-  the real predictor history). A long (112-sample) and a short (28-sample)
-  cycle per waveform keep the pitch register in range from bass to
-  ~10 kHz. Pitch = `freq_hz x cycle x 4096 / 44100`; the voice is only
-  re-keyed when the waveform changes, so notes glide without clicks.
+* **Tones / hybrid patch bank** (`plat_tone`, channels 0-3 -> SPU voices 0-3;
+  `src/instrument_bank.h`). The PS1 build uses the six stable core wave IDs as
+  instrument selectors without changing the shared song/save format: pulse12 =
+  glass/celesta bell, pulse25 = tine electric piano, pulse50 = warm organ,
+  triangle = round bass / mellow flute, saw = dark string pad, noise = the
+  existing noise percussion voice. The Music Studio shows these PS1-specific
+  names instead of the shared waveform labels. Each patch also selects a PS1
+  SPU ADSR envelope: bell and tine decay, organ and bass sustain, and the pad
+  swells and releases slowly. The hardware handles these envelopes, with no
+  per-frame CPU work. The five melodic patches are additive, integer-harmonic
+  spectra made at boot (no floating point); partials above each cycle's
+  Nyquist are omitted. Integer
+  harmonics make every cycle close exactly, avoiding a click at the loop point.
+  Each patch is encoded to SPU ADPCM by our encoder (`src/adpcm.c`) as a faded
+  first cycle plus a loop cycle encoded for the SPU's real predictor history.
+  Five cycles per patch (112, 56, 28, 14 and 7 samples) cover the full pitch
+  range using the same zone picker as before. The 155-block waveform area remains
+  2,480 B at `0x1000-0x19b0`, inside the existing `0x1000-0x1fff` allocation;
+  no extra SPU RAM or music voices are used. Pitch = `freq_hz x cycle x 4096 /
+  44100`; the voice is only re-keyed when the patch or pitch zone changes, so
+  ordinary note slides stay click-free.
 * **Cycle choice** (`src/tonepick.h`, host-tested by `harness/tonepick_test.c`). A new note takes the long
   cycle up to 1571 Hz and the short one above, as always. A note that is already sounding keeps its
   cycle while the pitch register can reach it: it moves up to the short cycle only above 1571 Hz and
@@ -1108,77 +1120,22 @@ other rows as H4).
   (`audio_sfx_pcm`) is converted to ADPCM (fast encoder mode) the first
   time an effect plays, or in the background one effect per frame after
   boot; a free voice (ENDX) or the oldest one is used.
-* **Tone loop synthesis** (`src/waveform.h` and `adpcm_encode_loop` in `src/adpcm.c`, host-tested, 2026-11-18).
-  This replaces the old "draw hard edges, then soften them with a 1:6:1 filter" step. Boot-time only: no
-  per-frame work, no new voices, the same staging buffers, the SPU RAM layout and size unchanged
-  (two cycles per loop, so the same block counts as before: 115 blocks, 1,840 B of waveforms in 0x1000-0x1fff).
-  * Pulse and saw cycles are band-limited: a sum of harmonics from one 112-point sine table, integer only.
-    The duty is exact (the 12.5 % pulse on the 28-sample cycle is 3.5 samples wide; the old edge was 3, which is
-    10.7 %), and nothing above the cycle's Nyquist folds back into the loop. Harmonic levels match the closed-form
-    series (first ten harmonics, `adpcm_test`). The 112-sample cycle keeps the old softener's response per harmonic,
-    so its tone colour is the one the game had. The 28-sample cycle (notes above about 700 Hz) rolls harmonics 4 to 13
-    off with a raised cosine (see the aliasing numbers below).
-  * No DC offset. The old 12.5 % pulse sat 9000 below zero (0.27 of full scale), the 25 % pulse 6000. That step is
-    inaudible while a note sounds but it is a click at key-on / key-off and it uses up ADPCM range. The audible
-    (moving) part is as big as before. Peaks: 12.5 % pulse 21,486 / 23,323 (long / short cycle), the rest 18,916 or
-    less, all inside 32,767.
-  * Key-on fade: the first 28 samples of the first cycle (the first ADPCM block, the one that plays once) rise with a
-    raised cosine from silence. That is 0.5 ms at 1.5 kHz up to about 4.5 ms at 55 Hz on the long cycle. A key-on used
-    to start with a full-scale step. The loop (the second cycle) never fades. To switch the fade off, make
-    `ps1_wave_fade_in` do nothing.
-  * The loop is encoded for the way the SPU really plays it. The SPU decoder keeps two samples of history across the
-    loop jump, so the loop block is decoded from the state the END of the loop leaves. The old encode assumed the state
-    after the first cycle; on the one-block 28-sample loops the two differ and the loop decoded at 3 to 16 dB
-    signal-to-noise (a straight decode of the same bytes showed 20+). `adpcm_encode_loop` encodes the loop cycle from
-    several starting states, plays each round the loop with the reference decoder and keeps the best; a one-block loop
-    tries every filter and shift. Host loop SNR, old -> new (long cycle / short cycle): 12.5 % pulse 24.7 -> 22.1 /
-    2.7 -> 18.1 dB, 25 % 25.8 -> 24.7 / 15.7 -> 19.9, 50 % 25.8 -> 25.9 / 6.5 -> 23.4, saw 21.5 -> 22.0 / 19.3 -> 19.8,
-    triangle 39.8 -> 45.2 / 14.7 -> 26.3. The long 12.5 % pulse loses 2.6 dB because its 3.5-times-sharper edges are
-    harder to code at 4 bits; it is no longer wrong, just a little noisier.
-  * Level. AC RMS of the decoded loops, old -> new: the 112-sample cycles stay within 0.3 dB. On the 28-sample cycles
-    the new loops are 0.1 to 1.2 dB quieter, and the 12.5 % pulse 3.2 dB quieter (10,784 -> 7,492): the old loop was
-    louder than designed because its decode error added energy (2.7 dB SNR); the new level is the one the old design
-    intended (about 7,400). If the high pulse notes now sit too low in the mix, raise that voice's volume in `plat_tone`
-    rather than the waveform.
-  * Aliasing, honestly: the SPU plays a loop faster than 44.1 kHz by skipping samples, so harmonics above 22 kHz fold
-    back as notes that are not in the tune. A 112-sample cycle does that from about 400 Hz up, a 28-sample one from
-    about 1.6 kHz up. The table is the same for every note, so synthesis cannot remove that, and mostly it did not
-    change. Host model of the playback (the decoded loops, cubic interpolation, not the SPU's Gaussian), energy that is
-    not on a harmonic of the note, old -> new: long cycle at 880 Hz within about 2 dB (12.5 % pulse -18.9 -> -19.9,
-    50 % -23.7 -> -25.3); at 440 Hz 50 % pulse -30.9 -> -38.3 dB, saw -32.4 -> -36.5 dB. Short cycle at 2093 Hz:
-    12.5 % pulse -20.8 -> -24.3, 25 % -21.8 -> -27.9, 50 % -24.3 -> -33.2, saw -22.3 -> -29.4, triangle
-    -32.5 -> -39.0 dB (that is the roll-off table); at 4186 Hz it is about the same (-14 to -19 dB). A real fix is a third,
-    shorter cycle for the high notes (SPU RAM has about 2 KB free in 0x1000-0x1fff; `tonepick.h` would choose it): not
-    done.
-  * Boot cost: 0.62 ms for the whole wave set on a host core (the old encode alone was 0.07 ms). On the 33 MHz R3000 the
-    cost is not measured (scale the host figure by roughly 50 to 150); the divisions are out of the inner loop. Stack
-    use: about 0.7 KB in `ps1_wave_series` (three 56-entry int tables) plus about 0.3 KB in `adpcm_encode_loop`.
-  * Not done: the noise loop (unchanged), not listened to on a console. These are host measurements only.
-* **Five zones per waveform** (`tonepick.h`, `waveform.h`, `spu.c`, 2026-11-19). Every pulse, saw and triangle is now
-  uploaded with cycles of 112, 56, 28, 14 and 7 samples (before: 112 and 28). The SPU plays a loop at hz x cycle
-  samples a second and skips samples above 44.1 kHz, which folds the upper harmonics back as wrong notes; each
-  shorter cycle starts that later (394 Hz, 787 Hz, 1.6 kHz, 3.1 kHz, 6.3 kHz), so a note uses the longest cycle that
-  reaches it. A new note takes the zone for its pitch (edges 400 / 790 / 1571 / 3150 Hz); a sounding note stays in its
-  zone while the register reaches it and its steps are about a cent (falls back below 350 / 700 / 1400 / 2800 Hz), so a
-  vibrato, slide or arpeggio keys on again only at a real zone change (host test: 0 re-keys on arpeggios across every
-  edge, 4 on a 6000 -> 100 Hz slide). The 7-sample zone reaches 25 kHz (the old short cycle ended at 6.3 kHz).
-  Cycles of 14 and 7 samples are repeated to fill one ADPCM block. Cost: +40 blocks = +640 B, waveforms are now 155
-  blocks, 2,480 B, ending at 0x19b0 (limit 0x2000); no per-frame work, no new voices, boot cost a few more cycle
-  syntheses. The 14 and 7 cycles are scaled at boot to the level of the 28 cycle of the same wave (a 7-sample pulse
-  was up to 3.6 dB quieter).
-  Host model of the playback (cubic interpolation, not the SPU's Gaussian), non-harmonic energy, old -> new:
-  500 Hz triangle -54.6 -> -40.3 is worse in dB but both are inaudible; 1200 Hz 12.5 % pulse -16.3 -> -20.3,
-  50 % pulse -20.6 -> -26.2; 4186 Hz 50 % pulse -18.3 -> -39.9, saw -15.1 -> -40.1; 6000 Hz 12.5 % pulse -6.3 -> -11.7,
-  50 % pulse -13.5 -> -22.1, saw -10.5 -> -24.0. Honest losses: 2093 Hz 50 % pulse -25.6 -> -22.1 and the 3 kHz
-  50 % pulse / saw about 1 to 4 dB worse (the 14-sample cycle keeps the old softener response, not a raised-cosine
-  roll-off), and the triangle is a little more folded at 880 to 1200 Hz (-49 -> -27, still quiet). Tone colour of the
-  112 cycle is unchanged below 400 Hz; notes from 400 Hz up now come from shorter cycles with fewer harmonics, so they
-  sound slightly duller than before. Not listened to on a console. Tests: `tonepick_test` (zone tables,
-  hysteresis, re-key counts), `adpcm_test` (all 25 loops, level match).
-* **Encoder quality** (`harness/adpcm_test.c`, host): the PS1's own pulse, triangle and saw loops (the functions in
-  `waveform.h`) are checked for DC, level, harmonics, fade-in and, played round the loop the way the SPU does it (decoder
-  history carried over the jump), for the same samples on every pass and a loop SNR floor; sine, chirp and noise are
-  SNR-tested after ADPCM conversion.
+* **Loop preparation and pitch zones** (`src/waveform.h`, `src/tonepick.h`).
+  Each patch has five cycle lengths (112, 56, 28, 14, 7 samples). A shorter
+  cycle pushes the SPU's 44.1 kHz sample-rate ceiling higher before skipped
+  samples fold upper partials back into the note; the hysteretic zone picker
+  keeps a sounding note in its current cycle while the pitch register can reach
+  it, preventing clicks on glides. The 14- and 7-sample cycles are repeated to
+  fill a 28-sample ADPCM block and level-matched to the patch's 28-sample zone.
+  The first cycle fades in from silence; the second is encoded with the SPU's
+  actual two-sample decoder history carried across the loop jump. All generation
+  and encoding happen once at boot, with no per-frame synthesis or new staging
+  buffers. The original pulse / triangle / saw waveform vectors remain in the
+  host test suite as encoder regression references.
+* **Encoder quality** (`harness/adpcm_test.c`, host): the legacy pulse, triangle and saw loops
+  (`waveform.h`) and all five hybrid patches in every pitch zone (`instrument_bank.h`) are checked
+  for DC, peak level, loop markers, repeated-pass stability and loop SNR using the SPU decoder
+  history across the loop jump. Sine, chirp and noise are also SNR-tested after ADPCM conversion.
 * The engine-test build runs `audio_selftest()` at boot: SPU RAM read-back
   of the uploaded waveforms (DMA), a tone voice's envelope rising after
   key-on and falling after release, and a synthetic one-shot that plays and

@@ -1,6 +1,6 @@
 /* adpcm_test.c - host test of the PS1 SPU ADPCM encoder (ps1/src/adpcm.c).
  *
- *   cc -O2 -I ps1/src ps1/harness/adpcm_test.c ps1/src/adpcm.c -lm -o adpcm_test
+ *   cc -O2 -I ps1/src -I core/include ps1/harness/adpcm_test.c ps1/src/adpcm.c -lm -o adpcm_test
  *   ./adpcm_test
  *
  * Builds the chiptune loops the SPU driver builds at boot (waveform.h: pulse, triangle, saw; the
@@ -17,6 +17,7 @@
 #include <string.h>
 #include "adpcm.h"
 #include "waveform.h"
+#include "instrument_bank.h"
 
 #define MAXN (28 * 512)
 
@@ -226,6 +227,55 @@ static int check_encode_loop(void)
     return ok;
 }
 
+
+/* The PS1 hybrid instrument patches use the same SPU loop path as the legacy waves.
+ * Test every patch in every pitch zone, including the repeated 14/7-sample cycles. */
+static int check_instrument(uint8_t wave)
+{
+    static const int zones[] = { 112, 56, 28, 14, 7 };
+    static int16_t pcm[PS1_WAVE_MAX_CYCLE * 2], ideal[PS1_WAVE_MAX_CYCLE];
+    static int16_t first_out[PS1_WAVE_MAX_CYCLE], prev[PS1_WAVE_MAX_CYCLE], last[PS1_WAVE_MAX_CYCLE];
+    static uint8_t enc[PS1_WAVE_MAX_CYCLE / 28 * 2 * 16];
+    uint32_t ref_ms = 0;
+    int ok = 1, z;
+    if ((ps1_patches[wave].adsr2 & 0x1fc0u) != PS1_ADSR_SUSTAIN_HOLD ||
+        ps1_instrument_adsr1(wave) != ps1_patches[wave].adsr1 ||
+        ps1_instrument_adsr2(wave) != ps1_patches[wave].adsr2)
+        return 0;
+    for (z = 0; z < 5; z++) {
+        int cyc = zones[z], samples = cyc < 28 ? 28 : cyc;
+        int first = cyc < 28 ? 1 : cyc / 28;
+        int blocks, i, peak = 0, diff = 0;
+        double dc = 0.0, db;
+        long sum = 0;
+        if (!ps1_instrument_cycle(wave, pcm, cyc)) return 0;
+        if (cyc == 28) ref_ms = ps1_wave_ms(pcm, cyc);
+        if (cyc < 28) ps1_wave_match(pcm, cyc, ref_ms);
+        memcpy(ideal, pcm, (size_t)cyc * sizeof(pcm[0]));
+        if (cyc < 28)
+            for (i = cyc; i < 28; i++) ideal[i] = ideal[i - cyc];
+        for (i = 0; i < cyc; i++) {
+            sum += pcm[i];
+            if (abs(pcm[i]) > peak) peak = abs(pcm[i]);
+        }
+        dc = (double)sum / cyc;
+        blocks = ps1_wave_encode_cycle(pcm, cyc, enc);
+        if (blocks != first * 2 || (enc[first * 16 + 1] & 4) == 0 ||
+            (enc[(blocks - 1) * 16 + 1] & 3) != 3) ok = 0;
+        spu_play(enc, first, 12, first_out, prev, last);
+        db = snr(ideal, last, samples);
+        for (i = 0; i < samples; i++) {
+            if (abs(last[i] - prev[i]) > diff) diff = abs(last[i] - prev[i]);
+        }
+        if (fabs(dc) > 2.0 || peak > 22000 || db < (cyc >= 28 ? 14.0 : 8.0) || diff > 20)
+            ok = 0;
+        printf("  %-20s zone %3d  DC %5.1f peak %5d  loop SNR %5.1f dB  pass diff %2d  %s\n",
+               ps1_patches[wave].name, cyc, dc, peak, db, diff,
+               (fabs(dc) <= 2.0 && peak <= 22000 && db >= (cyc >= 28 ? 14.0 : 8.0) && diff <= 20 && blocks == first * 2) ? "ok" : "FAIL");
+    }
+    return ok;
+}
+
 static int check(const char *name, const int16_t *pcm, int n, int fast, double min_db)
 {
     return check_from(name, pcm, n, fast, min_db, 0);
@@ -267,6 +317,9 @@ int main(void)
     ok &= check_fade();
     ok &= check_level_match();
     ok &= check_encode_loop();
+    /* PS1 hybrid instrument bank: these are the timbres uploaded by spu.c. */
+    for (i = 0; i < WAVE_NOISE; i++)
+        ok &= check_instrument((uint8_t)i);
     /* smooth tones */
     len = 28 * 100;
     for (i = 0; i < len; i++) pcm[i] = (int16_t)(16000 * sin(i * 2 * M_PI * 440 / 22050.0));

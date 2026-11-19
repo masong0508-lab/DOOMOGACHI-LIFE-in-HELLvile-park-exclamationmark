@@ -392,4 +392,8 @@ int plat_view_hold(int op, uint32_t key);
  * hears the port's own place. Weak default: nothing (a port without stereo, or one that has not done it yet, plays centre). */
 void plat_tone_pan(int channel, int pan);
 
+/* Optional platform-specific instrument labels for the Music Studio. Return
+ * NULL to keep the shared, cross-platform waveform names. */
+const char *plat_tone_name(uint8_t wave);
+
 #endif

@@ -118,4 +118,5 @@ WEAK int plat_keep_rows(int op, int rows)
 #endif
 
 WEAK void plat_tone_pan(int channel, int pan) { (void)channel; (void)pan; }
+WEAK const char *plat_tone_name(uint8_t wave) { (void)wave; return NULL; }
 WEAK void plat_reverb(int mode) { (void)mode; }

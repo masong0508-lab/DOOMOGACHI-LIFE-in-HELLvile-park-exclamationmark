@@ -80,7 +80,7 @@ reports the frame rate. See docs/PS1.md section 10.
 | `src/view3d.c`, `src/world.c` | `plat_view3d()`: the map as 3D polygons |
 | `src/overworld.c` | `plat_overworld()`: 3D town terrain |
 | `src/model.c`, `src/prims.c` | third-person 3D citizen from the resident's look (combat only: no house draws a 3D model; `model.c` is in the combat overlay group) |
-| `src/spu.c`, `src/adpcm.c` | SPU tones and samples, our ADPCM encoder |
+| `src/spu.c`, `src/instrument_bank.h`, `src/adpcm.c` | hybrid SPU instrument bank, samples and ADPCM encoder |
 | `src/memcard.c` | memory card saves (BIOS file API, icon, Shift-JIS title) |
 | `src/pad.c`, `src/timer.c` | controller input, CPU timing |
 | `src/hcmd.c` | test-harness mailbox and lockstep |
