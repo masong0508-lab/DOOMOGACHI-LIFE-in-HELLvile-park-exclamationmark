@@ -106,13 +106,16 @@ static void ps1_wave_series(int16_t *out, int len, int duty112)
     }
 }
 
-/* duty_eighths 1, 2, 4 = 12.5 %, 25 %, 50 % (a multiple of 112/8 = 14 table steps) */
-static void ps1_wave_pulse(int16_t *out, int len, int duty_eighths)
+/* duty_eighths 1, 2, 4 = 12.5 %, 25 %, 50 % (a multiple of 112/8 = 14 table steps)
+ * The pulse and saw cycles are no longer uploaded by spu.c (instrument_bank.h builds the
+ * tones); they stay as the encoder's regression references in harness/adpcm_test.c, so the
+ * PS1 build (-Werror=unused-function) is told they may be unused. */
+__attribute__((unused)) static void ps1_wave_pulse(int16_t *out, int len, int duty_eighths)
 {
     ps1_wave_series(out, len, duty_eighths * 14);
 }
 
-static void ps1_wave_saw(int16_t *out, int len)
+__attribute__((unused)) static void ps1_wave_saw(int16_t *out, int len)
 {
     ps1_wave_series(out, len, 0);
 }
