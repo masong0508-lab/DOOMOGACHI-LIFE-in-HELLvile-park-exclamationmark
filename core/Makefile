@@ -131,10 +131,10 @@ test: story-check talk-check parts-check mapc-check levelcheck leveltext unit sc
 # mapreach    the reachability search of core/tools/map_bfs.h (the code test_maps runs) as a tool
 # levelcheck  tools/levelcheck.py on every map of core/data/maps (v1 maps: the old rules only)
 # mapc-check  tools/tests/test_mapc.py (a test per v2 statement and per refusal) and test_levelcheck.py
-$(BUILD)/mapreach: $(CORE)/tools/mapreach.c $(CORE)/tools/map_bfs.h $(CORE)/src/levels_mapx.c $(wildcard $(CORE_INC)/doomo/*.h)
+$(BUILD)/mapreach: $(CORE)/tools/mapreach.c $(CORE)/tools/map_bfs.h $(CORE)/src/levels_mapx.c $(CORE)/gen/map_steam_room_panic.c $(CORE)/gen/map_the_undercroft.c $(CORE)/gen/map_glum_pipes.c $(CORE)/gen/map_boneyard_buffet.c $(CORE)/gen/map_the_wall.c $(wildcard $(CORE_INC)/doomo/*.h)
 	@mkdir -p $(dir $@)
 	$(CC) -std=c99 -Wall -Wextra -Werror -O2 -g -D_POSIX_C_SOURCE=200809L $(LDFLAGS_SAN) \
-	    -I$(CORE_INC) -I$(CORE)/tools -o $@ $(CORE)/tools/mapreach.c $(CORE)/src/levels_mapx.c
+	    -I$(CORE_INC) -I$(CORE)/tools -o $@ $(CORE)/tools/mapreach.c $(CORE)/src/levels_mapx.c $(CORE)/gen/map_steam_room_panic.c $(CORE)/gen/map_the_undercroft.c $(CORE)/gen/map_glum_pipes.c $(CORE)/gen/map_boneyard_buffet.c $(CORE)/gen/map_the_wall.c
 leveltext:
 	@$(PYTHON) $(ROOT)/tools/leveltext.py
 levelcheck: $(BUILD)/mapreach

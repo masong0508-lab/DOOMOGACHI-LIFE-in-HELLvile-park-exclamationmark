@@ -1,0 +1,150 @@
+# The Wall - Hell Breach 12 (owner: LEVELS-3; plan section 3, HB12). A DARK LEVEL: content note, ambient 3.
+# The Wall is hollow: the labourers' bunks and chalk. 64 x 20, a long run west from the gatehouse with three
+# stacked galleries (0, 12, 24; lifts) to the tally room and the Foreman's yard under the sky. THE TWO FACES:
+# one swap set `faceb` (event 30, a lever: every `l`/`m` pad on a trigger cell flips it). State A (start):
+# the lift-2 access (52,8) is bricked, the barricade (46,2..6) is open, the tally door (36,2..6) is bricked.
+# State B: the opposite. So the way west is: lift 1, flip (B), lift 2, flip (A) past the barricade, flip (B)
+# at the pump gallery, the tally room, the yard. `face_a` / `face_b` zones mark which actors are real on which
+# face. PS1 and Dreamcast only (`gba no`). Lever pads are trigger cells for now (LV17: A at a lever posts tag 30).
+# The thing indices of the usables are in the `on use` lines (index 0 is the start).
+format 2
+map the_wall
+title "The Wall"
+kind dungeon
+sky NIGHT_STARS
+music NONE
+ambient 3
+view 20
+dark yes
+note 1498
+gba no
+detail light,far,fx
+
+cell # wall=BONE_WALL
+cell K wall=COBBLE ch=8
+cell P wall=PIPE_STEEL
+cell W wall=PASTEL_BRICK
+cell T wall=PASTEL_BRICK
+cell d wall=BONE_WALL
+cell 1 floor=COBBLE ceil=BONE_WALL fh=0 ch=12 light=3 
+cell p floor=COBBLE ceil=BONE_WALL fh=0 ch=12 light=3 thing=PLAYER_START angle=180
+cell n floor=WOOD_FLOOR ceil=BONE_WALL fh=0 ch=12 light=5 flags=secret
+cell L floor=METAL_FLOOR ceil=BONE_WALL fh=0 ch=36 light=5 flags=lift tag=12
+cell 2 floor=COBBLE ceil=BONE_WALL fh=12 ch=24 light=3 
+cell l floor=METAL_FLOOR ceil=BONE_WALL fh=12 ch=24 light=7 flags=trigger tag=30
+cell M floor=METAL_FLOOR ceil=BONE_WALL fh=12 ch=48 light=5 flags=lift tag=24
+cell z floor=WOOD_FLOOR ceil=BONE_WALL fh=12 ch=24 light=6 flags=secret
+cell 3 floor=COBBLE ceil=BONE_WALL fh=24 ch=36 light=3 
+cell r floor=COBBLE ceil=BONE_WALL fh=24 ch=36 light=4 
+cell y floor=COBBLE ceil=sky fh=24 ch=24 light=6 
+cell v floor=COBBLE ceil=sky fh=28 ch=28 light=8 flags=secret
+cell Q floor=METAL_FLOOR ceil=DOOR_HELL fh=24 ch=36 light=3 flags=door tag=20
+cell X floor=COBBLE ceil=BONE_WALL fh=24 ch=36 light=15 flags=exit
+cell m floor=METAL_FLOOR ceil=BONE_WALL fh=24 ch=36 light=7 flags=trigger tag=30
+
+grid
+################################################################
+################################################################
+###vvyyyyyyyyyyyyyydrrrrrrrrrrrrrrrrT33333333333333333333333333#
+###yyyyyyyyyyyyyyyydrrKrrKrrKrrKrrrrT3P333P33333333333333333333#
+#XQyyyyyyyyyyyyyyyy3rrrrrrrrrrrrrrrrT333m333333333m333333333333#
+###yyyyyyyyyyyyyyyydrrKrrKrrKrrKrrrrT3P333P33333333333333333333#
+###yyyyyyyyyyyyyyyydrrrrrrrrrrrrrrrrT33333333333333333333333333#
+####################################################M###########
+######################################22222222222222W2222222222#
+######################################22K222K222K222K222K222K2z#
+######################################222222222222222222l222222#
+######################################22K222K222K222K222K222K22#
+######################################2222222222222222222222222#
+####################################################L###########
+######################################1111111111111111111111nnn#
+######################################1111K111K111K111K111K1111#
+######################################11111111111111111111111p1#
+######################################1111K111K111K111K111K1111#
+######################################1111111111111111111111111#
+################################################################
+end
+
+# two faces (rooms that are real on one face only)
+zone 38 8 62 12 face_b
+zone 35 2 62 6 face_a
+zone 3 2 18 6 face_b
+zone 20 2 34 6 face_a
+# the start is a safe room
+zone 58 14 62 18 safe tag=5
+
+swap faceb event=30 toggle
+.
+.
+....................................3.........K
+....................................3.........K
+....................................3.........K
+....................................3.........K
+....................................3.........K
+.
+....................................................2
+end
+
+swap rebuild
+.
+.
+............K
+............K
+............K
+............K
+............K
+end
+
+# things: x y TYPE [angle=deg] [arg=n] [tflags=...] [tflags2=...]
+thing 60 15 SCRAP tflags2=collect arg=1
+thing 44 18 SCRAP tflags2=collect arg=2
+thing 58 11 SCRAP tflags2=collect arg=3
+thing 40 12 SCRAP tflags2=collect arg=4
+thing 62 3 SCRAP tflags2=collect arg=5
+thing 48 4 SCRAP tflags2=collect arg=6
+thing 39 4 SCRAP tflags2=collect arg=7
+thing 29 3 SCRAP tflags2=collect arg=8
+thing 26 2 SCRAP tflags2=collect arg=9
+thing 4 3 SCRAP tflags2=collect arg=10
+thing 60 17 PROP_SIGN angle=180
+thing 40 17 PROP_SIGN angle=0
+thing 54 4 PROP_SIGN angle=0
+thing 56 12 PROP_LAMP
+thing 30 4 PROP_LAMP
+thing 50 16 IMPLING angle=180
+thing 44 16 IMPLING angle=0
+thing 56 18 VAPE_WRAITH angle=180 tflags=ambush
+thing 60 12 HEALTH_SMALL
+thing 40 18 AMMO_BULLETS
+thing 46 10 IMPLING angle=180
+thing 58 12 BRUTE angle=180 tflags=not_easy
+thing 42 12 GARGOYLE angle=0 tflags=ambush
+thing 60 8 HEALTH_BIG
+thing 39 8 AMMO_SHELLS
+thing 55 3 IMPLING angle=180
+thing 44 5 VAPE_WRAITH angle=0
+thing 38 4 GARGOYLE angle=0 tflags=ambush
+thing 61 6 HEALTH_SMALL
+thing 48 6 AMMO_BULLETS
+thing 33 4 BRUTE angle=180 tflags=not_easy
+thing 26 4 IMPLING angle=180
+thing 23 3 VAPE_WRAITH angle=0
+thing 34 6 HEALTH_BIG
+thing 21 5 ARMOR
+thing 29 6 AMMO_SHELLS
+thing 10 4 GARGOYLE angle=270 tflags=boss,kill_event arg=20
+thing 15 3 IMPLING angle=270 tflags=kill_event arg=20
+thing 15 5 IMPLING angle=270 tflags=kill_event arg=20
+thing 17 4 HEALTH_BIG
+thing 5 5 AMMO_ROCKETS
+thing 8 2 ARMOR
+
+# ---- level script (text ids 1400..1499: core/data/levels/the_wall.txt) ----
+on start do caption 1400 ; set 0 0
+on enter 5 do bark 1404
+on tag 30 repeat do add 0 1 ; bark 1410
+on var 0 13 do bark 1411
+on phase 1 do swap rebuild ; bark 1432
+on phase 2 do unswap rebuild
+on kill 20 do caption 1430
+on timer 3600 do bark 1440

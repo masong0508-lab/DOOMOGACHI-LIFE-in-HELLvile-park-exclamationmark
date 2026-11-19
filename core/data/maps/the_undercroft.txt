@@ -11,8 +11,8 @@ title "The Undercroft"
 kind dungeon
 sky NIGHT_STARS
 music NONE
-ambient 2
-view 12
+ambient 5
+view 14
 dark yes
 note 1198
 gba yes
@@ -22,21 +22,21 @@ cell # wall=BONE_WALL
 cell S wall=WOOD_WALL ch=12
 cell F wall=CHURCH_WALL
 cell R wall=WOOD_WALL
-cell v floor=COBBLE ceil=CHURCH_WALL fh=0 ch=10 light=3
-cell p like=v thing=PLAYER_START angle=0
-cell t floor=COBBLE ceil=CHURCH_WALL fh=0 ch=12 light=2
-cell f floor=COBBLE ceil=CHURCH_WALL fh=-8 ch=4 light=2
-cell n floor=COBBLE ceil=CHURCH_WALL fh=-8 ch=4 light=3 flags=secret
-cell c floor=WOOD_FLOOR ceil=CHURCH_WALL fh=-8 ch=4 light=3 flags=secret
+cell v floor=COBBLE ceil=CHURCH_WALL fh=0 ch=10 light=8
+cell p like=v thing=PLAYER_START angle=90
+cell t floor=COBBLE ceil=CHURCH_WALL fh=0 ch=12 light=5
+cell f floor=COBBLE ceil=CHURCH_WALL fh=-8 ch=4 light=5
+cell n floor=COBBLE ceil=CHURCH_WALL fh=-8 ch=4 light=8 flags=secret
+cell c floor=WOOD_FLOOR ceil=CHURCH_WALL fh=-8 ch=4 light=8 flags=secret
 cell s floor=COBBLE ceil=WOOD_WALL fh=-8 ch=4 flags=door
-cell q floor=COBBLE ceil=CHURCH_WALL fh=0 ch=4 light=2
-cell w floor=WATER ceil=CHURCH_WALL fh=-14 ch=0 light=2 flags=water
-cell j floor=COBBLE ceil=CHURCH_WALL fh=-12 ch=0 light=2
-cell u floor=COBBLE ceil=CHURCH_WALL fh=-12 ch=0 light=2
-cell h floor=COBBLE ceil=CHURCH_WALL fh=-24 ch=-14 light=2
+cell q floor=COBBLE ceil=CHURCH_WALL fh=0 ch=4 light=5
+cell w floor=WATER ceil=CHURCH_WALL fh=-14 ch=0 light=5 flags=water
+cell j floor=COBBLE ceil=CHURCH_WALL fh=-12 ch=0 light=5
+cell u floor=COBBLE ceil=CHURCH_WALL fh=-12 ch=0 light=5
+cell h floor=COBBLE ceil=CHURCH_WALL fh=-24 ch=-14 light=5
 cell Q floor=COBBLE ceil=DOOR_HELL fh=-24 ch=-14 flags=door tag=20
-cell e floor=COBBLE ceil=CHURCH_WALL fh=-22 ch=-12 light=6
-cell X floor=COBBLE ceil=CHURCH_WALL fh=-22 ch=-12 light=9 flags=exit
+cell e floor=COBBLE ceil=CHURCH_WALL fh=-22 ch=-12 light=8
+cell X floor=COBBLE ceil=CHURCH_WALL fh=-22 ch=-12 light=10 flags=exit
 
 grid
 ##################################

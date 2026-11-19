@@ -22,7 +22,7 @@ cell B wall=PASTEL_BRICK
 cell W wall=WOOD_WALL ch=8
 cell P wall=PIPE_STEEL
 cell . floor=TILE_FLOOR ceil=STEAM_TILE fh=0 ch=12 light=11
-cell p like=. thing=PLAYER_START angle=270
+cell p like=. thing=PLAYER_START angle=0
 cell l floor=WOOD_FLOOR ceil=STEAM_TILE fh=0 ch=10 light=10
 cell D floor=TILE_FLOOR ceil=DOOR_CUTE fh=0 ch=10 flags=door
 cell s floor=WOOD_FLOOR ceil=WOOD_WALL fh=0 ch=10 flags=door

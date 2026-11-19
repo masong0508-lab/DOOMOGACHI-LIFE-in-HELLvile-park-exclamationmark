@@ -42,7 +42,7 @@ static const DoomoCell cells_steam_room_panic[1360] = {
 
 /* {x, y, type, angle, arg, flags} */
 static const DoomoThing things_steam_room_panic[59] = {
-    {3, 31, 1, 192, 0, 0},
+    {3, 31, 1, 0, 0, 0},
     {2, 31, 33, 64, 0, 0},
     {22, 15, 30, 0, 1, 0},
     {36, 21, 30, 0, 2, 0},

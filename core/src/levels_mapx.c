@@ -12,10 +12,16 @@
  * maps.c) above the NULL. */
 extern const DoomoMapExt map_ext_steam_room_panic __attribute__((weak));
 extern const DoomoMapExt map_ext_the_undercroft __attribute__((weak));
+extern const DoomoMapExt map_ext_glum_pipes __attribute__((weak));
+extern const DoomoMapExt map_ext_boneyard_buffet __attribute__((weak));
+extern const DoomoMapExt map_ext_the_wall __attribute__((weak));
 
 const DoomoMapExt *const doomo_map_exts[] = {
     &map_ext_steam_room_panic,
     &map_ext_the_undercroft,
+    &map_ext_glum_pipes,
+    &map_ext_boneyard_buffet,
+    &map_ext_the_wall,
     NULL
 };
 
