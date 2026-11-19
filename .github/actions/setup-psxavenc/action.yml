@@ -52,6 +52,17 @@ runs:
         # psxavenc -V prints its version but exits 1, so read the text instead of the status.
         "$HOME/psxavenc/bin/psxavenc" -V 2>&1 || true
 
+    # A cache hit skips the -dev install above, but the cached binary is dynamically linked to the
+    # distro's ffmpeg runtime libraries (libavformat.so.60 ...), which a fresh runner lacks.
+    - name: Install the ffmpeg runtime libraries psxavenc links against
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -q
+        sudo apt-get install -y -q --no-install-recommends \
+          libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
+
     - name: Verify cached or freshly built psxavenc
       shell: bash
       run: |
