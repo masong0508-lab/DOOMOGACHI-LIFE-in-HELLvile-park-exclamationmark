@@ -59,9 +59,18 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        sudo apt-get update -q
-        sudo apt-get install -y -q --no-install-recommends \
-          libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7
+        # The Ubuntu mirrors answer 503 now and then (a bare apt-get hung for 12 minutes and took the job
+        # down): short per-request timeouts, retries, and a hard limit per attempt.
+        opts="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o Acquire::ForceIPv4=true"
+        pkgs="libavformat60 libavcodec60 libavutil58 libswresample4 libswscale7"
+        for attempt in 1 2 3; do
+          # the runner image's package index is usually fresh enough: update only after a failed install
+          if timeout 150 sudo apt-get install -y -q --no-install-recommends $opts $pkgs; then exit 0; fi
+          echo "attempt $attempt failed; refreshing the package index"
+          timeout 90 sudo apt-get update -q $opts || true
+        done
+        echo "::error::could not install the ffmpeg runtime libraries (apt mirrors down?)"
+        exit 1
 
     - name: Verify cached or freshly built psxavenc
       shell: bash
