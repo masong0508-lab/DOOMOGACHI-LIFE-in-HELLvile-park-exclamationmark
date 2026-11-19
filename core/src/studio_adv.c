@@ -1571,19 +1571,59 @@ static void arrange_draw(StRect r)
     ui_scroll_arrows(r.x + r.w - 10, r.y + 3, r.y + 5 + vis * rh - 6, studio.otop > 0, studio.otop + vis < n);
     /* the timeline: one block per entry, as wide as its passes; the playhead walks it */
     {
-        int bh = st_wide() ? 16 : 10, ty = r.y + r.h - 20 - bh, tw = r.w - 16, x0 = r.x + 8, cum = 0;
+        int bh = st_wide() ? 16 : 10, ty = r.y + r.h - 20 - bh, tw = r.w - 16, x0 = r.x + 8;
+        int total_steps = 0, cum = 0, play_steps = 0, j, sec, pass;
+        /* A pass can be 1, 2, 3 or 4 bars. Weight each arrangement block by
+         * its real step count, not by its number of passes, so the overview
+         * and playhead agree with what the player actually hears. */
         for (i = 0; i < n; i++) {
-            int sec = X->arrange[i] % SX_SECTIONS, np = X->sect[sec].npat;
-            int xa = x0 + cum * tw / total, xb = x0 + (cum + np) * tw / total, w = DOOMO_MAX(1, xb - xa - 1);
-            int lift = (i == pe) ? 2 : 0;
-            uint8_t col = st_pattern_color(X->sect[sec].name, i == studio.osel ? 0 : 1);
+            const SxSection *c = &X->sect[X->arrange[i] % SX_SECTIONS];
+            for (j = 0; j < c->npat; j++) total_steps += songx_pass_steps(X, c->pat[j] % SX_PATTERNS);
+        }
+        if (total_steps < 1) total_steps = SONG_STEPS;
+        for (i = 0; i < n; i++) {
+            int sec_id = X->arrange[i] % SX_SECTIONS;
+            const SxSection *c = &X->sect[sec_id];
+            int entry_steps = 0, xa, xb, w, lift = (i == pe) ? 2 : 0;
+            uint8_t col = st_pattern_color(c->name, i == studio.osel ? 0 : 1);
+            for (j = 0; j < c->npat; j++) entry_steps += songx_pass_steps(X, c->pat[j] % SX_PATTERNS);
+            xa = x0 + cum * tw / total_steps;
+            xb = x0 + (cum + entry_steps) * tw / total_steps;
+            w = DOOMO_MAX(1, xb - xa - 1);
             if (w >= 4) ui_round_rect(xa, ty - lift, w, bh, 2, col);
             else plat_rect(xa, ty - lift, w, bh, col);
-            cum += np;
+            /* Fine separators show pass boundaries inside a multi-pass part. */
+            {
+                int within = 0;
+                for (j = 0; j < c->npat; j++) {
+                    within += songx_pass_steps(X, c->pat[j] % SX_PATTERNS);
+                    if (j + 1 < c->npat) {
+                        int tx = x0 + (cum + within) * tw / total_steps;
+                        plat_rect(tx, ty - lift + 2, 1, DOOMO_MAX(1, bh - 4), st->text_dim);
+                    }
+                }
+            }
+            /* A clear outline keeps the selected part distinct from the
+             * currently playing part (which is raised and gets the playhead). */
+            if (i == studio.osel && w >= 3) {
+                plat_rect(xa, ty - lift, w, 1, PAL_WHITE);
+                plat_rect(xa, ty - lift + bh - 1, w, 1, PAL_WHITE);
+                plat_rect(xa, ty - lift, 1, bh, PAL_WHITE);
+                plat_rect(xa + w - 1, ty - lift, 1, bh, PAL_WHITE);
+            }
+            cum += entry_steps;
         }
         if (po >= 0) {
-            int px = x0 + ((po * SONG_STEPS + song_pos_step()) * tw) / (total * SONG_STEPS);
-            plat_rect(px, ty - 3, 1, bh + 5, PAL_PAINT(PAINT_ROSE, 0));
+            int pat = songx_at(X, po, &sec, &pass);
+            for (j = 0; j < po; j++) {
+                int prior = songx_at(X, j, &sec, &pass);
+                if (prior >= 0) play_steps += songx_pass_steps(X, prior % SX_PATTERNS);
+            }
+            if (pat >= 0) play_steps += DOOMO_CLAMP(song_pos_step(), 0, songx_pass_steps(X, pat % SX_PATTERNS) - 1);
+            {
+                int px = x0 + play_steps * tw / total_steps;
+                plat_rect(px, ty - 3, 1, bh + 5, PAL_PAINT(PAINT_ROSE, 0));
+            }
         }
         doomo_snprintf(buf, sizeof(buf), "%d parts  %d passes  %u:%02u  %s", n, total, (unsigned)(len / 60), (unsigned)(len % 60),
                        (SS->flags & SONGF_LOOP) ? "(loops)" : "");
