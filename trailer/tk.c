@@ -508,7 +508,15 @@ void tk_sfx(double t, int sfx, float v) {
     case SFX_SCRATCH: add(t, 0.12, 3000, 400, TKV_NOISE, v * .7f); add(t + .12, .18, 400, 3000, TKV_NOISE, v * .7f); break;
     case SFX_HEARTBEAT: tk_kick(t, v); tk_kick(t + .18, v * .7f); break;
     case SFX_BEEP:    tk_note(t, 0.07, 88, TKV_SQ50, v * .35f); tk_note(t + .1, .07, 88, TKV_SQ50, v * .35f); break;
-    case SFX_CHOIR:   tk_note(t, 1.2, 64, TKV_TRI, v * .3f); tk_note(t, 1.2, 68, TKV_TRI, v * .3f); tk_note(t, 1.2, 71, TKV_TRI, v * .3f); tk_note(t, 1.2, 76, TKV_SINE, v * .25f); break;
+    case SFX_CHOIR:
+        /* Openly voiced bass, tenor, alto and soprano; staggered entrances
+         * and distinct vowel spectra soften the old buzzy, tightly packed pad. */
+        tk_note(t,       1.55, 52, TKV_CHORAL_OO, v * .19f);
+        tk_note(t + .025, 1.52, 59, TKV_CHORAL_AH, v * .18f);
+        tk_note(t + .045, 1.50, 64, TKV_CHORAL_AH, v * .17f);
+        tk_note(t + .065, 1.48, 67, TKV_CHORAL_EE, v * .105f);
+        tk_note(t + .085, 1.45, 71, TKV_CHORAL_EE, v * .075f);
+        break;
     case SFX_FANFARE: { int m[] = { 72, 76, 79, 84 }; for (int i = 0; i < 4; i++) tk_note(t + i * .1, i == 3 ? .5 : .1, m[i], TKV_SQ25, v * .5f); break; }
     case SFX_WHOOSH:  add(t, 0.4, 300, 3000, TKV_NOISE, v * .4f); break;
     case SFX_ROAR:    tk_slide(t, 0.9, 40, 30, TKV_SAW, v * .7f); tk_slide(t, .9, 47, 35, TKV_SQ12, v * .5f); add(t, .9, 400, 150, TKV_NOISE, v * .5f); break;
@@ -530,6 +538,9 @@ static float osc(int wave, double ph, uint32_t *lfsr) {
     case TKV_TRI:  return (float)(p < .5 ? 4 * p - 1 : 3 - 4 * p);
     case TKV_SAW:  return (float)(2 * p - 1);
     case TKV_SINE: return (float)sin(p * 6.283185307);
+    case TKV_CHORAL_AH: { double a = p * 6.283185307; return (float)(0.58*sin(a)+0.30*sin(2*a)+0.22*sin(3*a)+0.10*sin(4*a)+0.035*sin(5*a)); }
+    case TKV_CHORAL_OO: { double a = p * 6.283185307; return (float)(0.78*sin(a)+0.13*sin(2*a)+0.07*sin(3*a)+0.025*sin(4*a)); }
+    case TKV_CHORAL_EE: { double a = p * 6.283185307; return (float)(0.48*sin(a)+0.20*sin(2*a)+0.34*sin(3*a)+0.13*sin(4*a)+0.06*sin(5*a)); }
     default: { uint32_t x = *lfsr; x ^= x << 13; x ^= x >> 17; x ^= x << 5; *lfsr = x; return (x & 0xFFFF) / 32768.0f - 1.0f; }
     }
 }
@@ -548,6 +559,12 @@ int tk_audio_render(double total, const char *path) {
             float env;
             float a = (float)i / (0.004f * SR), r = (float)(len - i) / (0.03f * SR);
             env = a < 1 ? a : 1; if (r < env) env = r;
+            if (no->wave >= TKV_CHORAL_AH && no->wave <= TKV_CHORAL_EE) {
+                float ca = (float)i / (0.105f * SR), cr = (float)(len - i) / (0.19f * SR);
+                if (ca < 1.0f) env *= 0.5f - 0.5f * cosf(3.14159265f * ca);
+                if (cr < 1.0f) env *= 0.5f - 0.5f * cosf(3.14159265f * cr);
+                f *= 1.0f + 0.0022f * sinf((float)(u * no->dur * 5.1 * 6.2831853) + (float)k * 0.73f);
+            }
             float s;
             if (no->wave == KICK) { f = 150.0f * powf(40.0f / 150.0f, (float)u); s = sinf((float)(ph * 6.2831853)); env *= expf(-6.0f * (float)u); }
             else if (no->wave == SNARE) { s = 0.6f * osc(TKV_NOISE, ph, &lfsr) + 0.4f * osc(TKV_TRI, ph, &lfsr); env *= expf(-9.0f * (float)u); }

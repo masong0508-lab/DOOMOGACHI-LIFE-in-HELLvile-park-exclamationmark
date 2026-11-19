@@ -144,7 +144,8 @@ int   tk_lerpi(int a, int b, float t);
 float tk_tri_wave(float t);        /* 0..1..0 */
 
 /* ---- audio (22050 Hz mono, mixed into trailer.wav) ------------------------ */
-enum { TKV_SQ12, TKV_SQ25, TKV_SQ50, TKV_TRI, TKV_SAW, TKV_NOISE, TKV_SINE };
+enum { TKV_SQ12, TKV_SQ25, TKV_SQ50, TKV_TRI, TKV_SAW, TKV_NOISE, TKV_SINE,
+       TKV_CHORAL_AH, TKV_CHORAL_OO, TKV_CHORAL_EE };
 /* Absolute time in seconds. midi 60 = middle C. vol 0..1. */
 void tk_note(double t, double dur, int midi, int wave, float vol);
 /* Slide from midi_a to midi_b over dur. */

@@ -666,7 +666,7 @@ static int g_classic(int pat, int trk) { return pat < SONG_PATTERNS && trk < SON
 static int g_rowh(int drum) { return drum ? (st_wide() ? 10 : 9) : (st_wide() ? 8 : 6); }
 static int g_vis(int drum)
 {
-    int v = (st_content().h - 17 - 26 - G_VELH) / g_rowh(drum);       /* a pitch track keeps a strip under the roll for the velocity bar */
+    int v = (st_content().h - 27 - 26 - G_VELH) / g_rowh(drum);       /* a pitch track keeps a strip under the roll for the velocity bar */
     return drum ? 8 : DOOMO_CLAMP(v, 4, 24);
 }
 
@@ -1326,7 +1326,7 @@ static void grid_draw(StRect r)
     if (g_box) { box_draw(r); return; }
     const UiStyle *st = ui_style(WIN_CREAM);
     int t = g_trk, drum = g_drum(t), rh = g_rowh(drum), rows = g_vis(drum), cur = g_note[t];
-    int lw = 28, cw = DOOMO_MAX(3, (r.w - lw - 8) / SONG_STEPS), x0 = r.x + lw, w = cw * SONG_STEPS, y0 = r.y + 17;
+    int lw = 28, cw = DOOMO_MAX(3, (r.w - lw - 8) / SONG_STEPS), x0 = r.x + lw, w = cw * SONG_STEPS, y0 = r.y + 27;
     int i, s, po = song_playing() ? song_pos_order() : -1, ysum, notes = g_count(g_pat, t);
     uint8_t dark = ui_darker(st->fill), beat_c = ui_darker(dark), col = st_pattern_color(t, 0), hi = st_pattern_color(t, 2);
     char buf[48];
@@ -1350,7 +1350,22 @@ static void grid_draw(StRect r)
         }
     }
     ysum = rows * rh;
-    for (s = 0; s <= SONG_STEPS; s += 4) plat_rect(x0 + s * cw, y0, 1, ysum, s % 16 == 0 ? st->text_dim : beat_c);
+    /* Tracker ruler: bar numbers, beat numbers and subdivision ticks make
+     * the 32-step / two-bar clock readable without stealing piano-roll space. */
+    for (s = 0; s < SONG_STEPS; s += 4) {
+        int beat = (s % 16) / 4 + 1, bx = x0 + s * cw;
+        char beatbuf[4];
+        if (s % 16 == 0) {
+            doomo_snprintf(beatbuf, sizeof(beatbuf), "B%d", s / 16 + 1);
+            ui_text(bx + 1, y0 - 19, beatbuf, st->accent);
+        }
+        doomo_snprintf(beatbuf, sizeof(beatbuf), "%d", beat);
+        ui_text(bx + 1, y0 - 9, beatbuf, st->text_dim);
+        plat_rect(bx, y0 - 3, 1, 3, s % 16 == 0 ? st->accent : beat_c);
+    }
+    for (s = 0; s <= SONG_STEPS; s += 4)
+        plat_rect(x0 + s * cw, y0, s % 16 == 0 ? 2 : 1, ysum,
+                  s % 16 == 0 ? st->text_dim : beat_c);
     for (s = 0; s < SONG_STEPS; s++) {
         int v = g_cell(g_pat, t, s), row, len = 1, x = x0 + s * cw + 1;
         if (drum ? (v < 1 || v >= SONG_DRUM_COUNT) : v < 2) continue;
@@ -1362,12 +1377,21 @@ static void grid_draw(StRect r)
         if (row < 0) plat_rect(x, y0, DOOMO_MAX(1, len * cw - 1), 1, col);                  /* above the window */
         else if (row >= rows) plat_rect(x, y0 + ysum - 1, DOOMO_MAX(1, len * cw - 1), 1, col);
         else {
-            plat_rect(x, y0 + row * rh + 1, len * cw - 1, rh - 2, col);
-            plat_rect(x, y0 + row * rh + 1, len * cw - 1, 1, hi);
+            {
+                int ny = y0 + row * rh + 1, nw = DOOMO_MAX(1, len * cw - 1);
+                int vel = drum ? SX_VEL_NORMAL : songx_vel(X, g_pat, t, s);
+                uint8_t body = vel == SX_VEL_SOFT ? st->text_dim : vel >= SX_VEL_LOUD ? hi : col;
+                plat_rect(x, ny, nw, rh - 2, body);
+                plat_rect(x, ny, nw, 1, hi);
+                /* A tiny bright attack cap gives each note a readable onset;
+                 * longer notes retain a dark body so ties are easy to follow. */
+                plat_rect(x, ny + 1, DOOMO_MIN(nw, DOOMO_MAX(1, cw - 2)), 1, PAL_WHITE);
+                if (len > 1 && rh > 4) plat_rect(x + 1, ny + rh - 3, nw - 2, 1, dark);
+            }
         }
     }
     if (g_plen() < SONG_STEPS) plat_rect(x0 + g_plen() * cw, y0, (SONG_STEPS - g_plen()) * cw, ysum, beat_c);     /* a one-bar pattern: the rest is not played */
-    if (po >= 0 && song_pos_pattern() == g_pat) plat_rect(x0 + song_pos_step() * cw, y0, 1, ysum, PAL_PAINT(PAINT_ROSE, 0));
+    if (po >= 0 && song_pos_pattern() == g_pat) { int px = x0 + song_pos_step() * cw; plat_rect(px, y0, 2, ysum, PAL_PAINT(PAINT_ROSE, 0)); plat_rect(px, y0 - 4, 3, 3, PAL_PAINT(PAINT_ROSE, 0)); }
     {
         int cx = x0 + g_stp * cw, cy = y0 + (drum ? cur - 1 : g_top - cur) * rh;
         plat_rect(cx, y0 - 3, cw + 1, 2, st->accent);                                        /* the step marker */
