@@ -122,3 +122,9 @@ which is why crowd rows as OBJ sprites needs that space freed first.
 4. Find the spikes (the 51-58 ms ticks) with `--worklog`; the average will be near 33 ms after step 2-3, the max is
    what the drawn fps shows.
 5. Crowd rows as OBJ sprites (about 7 ms) only if 2-4 do not get there, because it needs the OBJ VRAM budget redone.
+
+## CI check on f3fcfb1 (2026-11-19, documentation only)
+Concert solo in the CI speed tour: 29.7 fps, work avg 29.2 / max 43.7 ms; closed curtain 29.2 fps (worst tick 76.2 ms).
+The band is not in the speed tour, so the band numbers above are still the latest. The whole CI table, the Music
+Studio tabs, the Hell Breach table and a PS1 margin drop to 76,640 B are in
+`../SPEED/CI-f3fcfb1-speed-report-2026-11-19.md`.
