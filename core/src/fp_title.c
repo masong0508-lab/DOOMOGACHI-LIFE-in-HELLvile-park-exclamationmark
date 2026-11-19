@@ -391,6 +391,111 @@ static void title_ground_flower_init(int sw, int sh, int y0)
     title_ground_flower_sh = sh;
 }
 
+/* The same deterministic ridge profile is used by the ground renderer and
+ * every skyline anchor. Returning the actual top edge (not the flat meadow
+ * baseline) keeps buildings planted on the rolling terrain. */
+static int title_hill_top(int x, int sh)
+{
+    int y0 = sh * 2 / 3;
+    int h = 10 + ui_wave(x * 6 + 30, 400, 6) + ui_wave(x * 13, 300, 2);
+    return y0 - h;
+}
+
+/* ====================================================================== */
+/* drawing: distant park depth                                              */
+#if !defined(DOOMO_PLATFORM_GBA)
+/* A small haunted-fairground silhouette sits between the sky and the nearer
+ * houses.  It is deliberately made from GPU lines / TILEs, not a bitmap:
+ * the title already uses the scene's 12 KB scratch block for its cached
+ * logo, and the PS1 image cache / VRAM are shared with every other scene.
+ * This adds no persistent state, staging buffer, texture upload or BSS.
+ * Towers, a compact Ferris wheel, five two-rail spans and the gate are capped
+ * at 50 direct GPU primitives at 320x240. */
+static void draw_park_depth(void)
+{
+    int sw = fp_sw(), sh = fp_sh();
+    int th = theme(), cx = sw / 2, i;
+    int left = cx - 82, right = cx + 82;
+    int left_base = title_hill_top(left, sh);
+    int right_base = title_hill_top(right, sh);
+    int center_base = title_hill_top(cx, sh);
+    int hell = th == THEME_SUNSET || th == THEME_VAPE;
+    uint8_t wall = hell ? PAL_RAMP(RAMP_STONE, 0) : PAL_PAINT(PAINT_GRAPE, 0);
+    uint8_t trim = hell ? PAL_RAMP(RAMP_LAVA, 5) : PAL_PAINT(PAINT_BUBBLEGUM, 2);
+    uint8_t rail = hell ? PAL_RAMP(RAMP_BLOOD, 3) : PAL_PAINT(PAINT_GRAPE, 0);
+    uint8_t rail_hi = hell ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_ROSE, 2);
+    uint8_t window = hell ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_CANDY, 7);
+
+    /* The narrow clock-house and the taller funfair tower peek over the
+     * foreground rooftops.  Lit windows give the horizon a little life. */
+    plat_rect(left - 6, left_base - 34, 12, 34, wall);
+    plat_rect(left - 9, left_base - 38, 18, 4, wall);
+    plat_rect(left - 4, left_base - 45, 8, 7, wall);
+    plat_rect(left - 2, left_base - 49, 4, 4, trim);
+    if ((T.t / 18) % 3 != 0) plat_rect(left - 2, left_base - 29, 4, 4, window);
+    if ((T.t / 18 + 1) % 3 != 0) plat_rect(left - 2, left_base - 17, 4, 4, window);
+
+    plat_rect(right - 8, right_base - 40, 16, 40, wall);
+    plat_rect(right - 12, right_base - 43, 24, 3, wall);
+    plat_rect(right - 5, right_base - 49, 10, 6, wall);
+    plat_rect(right - 2, right_base - 53, 4, 4, trim);
+    if ((T.t / 18 + 2) % 3 != 0) plat_rect(right - 4, right_base - 35, 3, 4, window);
+    if ((T.t / 18) % 3 != 0) plat_rect(right + 1, right_base - 25, 3, 4, window);
+
+    /* A gently rolling, distant coaster track: two thin rails, with only
+     * two visible trestles.  Integer wave samples keep it deterministic and
+     * avoid trigonometry, per-frame allocation, or a particle update loop. */
+    for (i = 0; i < 5; i++) {
+        int x0 = 10 + i * (sw - 20) / 5;
+        int x1 = 10 + (i + 1) * (sw - 20) / 5;
+        int rise0 = i == 0 ? 18 : i == 1 ? 31 : i == 2 ? 43 : i == 3 ? 27 : i == 4 ? 17 : 34;
+        int next = i + 1;
+        int rise1 = next == 1 ? 31 : next == 2 ? 43 : next == 3 ? 27 : next == 4 ? 17 : 34;
+        int y0 = title_hill_top(x0, sh) - rise0 - ui_wave(T.t / 8 + i * 21, 180, 1);
+        int y1 = title_hill_top(x1, sh) - rise1 - ui_wave(T.t / 8 + next * 21, 180, 1);
+        plat_line(x0, y0, x1, y1, rail);
+        plat_line(x0, y0 - 2, x1, y1 - 2, rail_hi);
+        if (i == 1 || i == 3) plat_line(x0, y0 + 1, x0, title_hill_top(x0, sh), wall);
+    }
+
+    /* A compact Ferris wheel gives the skyline a clear park landmark.  The
+     * octagonal rim and four spokes are direct lines; there is no geometry
+     * table, texture, or per-frame wheel simulation to keep in memory. */
+    {
+        int wx = cx - 51, wy = title_hill_top(cx - 51, sh) - 32, wr = 20;
+        plat_line(wx,      wy - wr, wx + 14, wy - 14, rail_hi);
+        plat_line(wx + 14, wy - 14, wx + wr, wy,      rail_hi);
+        plat_line(wx + wr, wy,      wx + 14, wy + 14, rail_hi);
+        plat_line(wx + 14, wy + 14, wx,      wy + wr, rail_hi);
+        plat_line(wx,      wy + wr, wx - 14, wy + 14, rail_hi);
+        plat_line(wx - 14, wy + 14, wx - wr, wy,      rail_hi);
+        plat_line(wx - wr, wy,      wx - 14, wy - 14, rail_hi);
+        plat_line(wx - 14, wy - 14, wx,      wy - wr, rail_hi);
+        plat_line(wx, wy, wx,      wy - wr, wall);
+        plat_line(wx, wy, wx + wr, wy,      wall);
+        plat_line(wx, wy, wx,      wy + wr, wall);
+        plat_line(wx, wy, wx - wr, wy,      wall);
+        plat_line(wx - 13, wy + 13, wx - 18, title_hill_top(wx - 18, sh), wall);
+        plat_line(wx + 13, wy + 13, wx + 18, title_hill_top(wx + 18, sh), wall);
+        plat_rect(wx - 2, wy - wr - 3, 4, 5, window);
+        plat_rect(wx + wr - 1, wy - 2, 4, 5, window);
+        plat_rect(wx - 2, wy + wr - 1, 4, 5, window);
+        plat_rect(wx - wr - 3, wy - 2, 4, 5, window);
+        plat_rect(wx - 2, wy - 2, 5, 5, trim);
+    }
+
+    /* The entrance arch is the focal point of the little diorama.  Its
+     * stepped roof keeps the silhouette crisp at native PS1 resolution. */
+    plat_rect(cx - 29, center_base - 27, 6, 27, wall);
+    plat_rect(cx + 23, center_base - 27, 6, 27, wall);
+    plat_rect(cx - 35, center_base - 33, 70, 5, wall);
+    plat_rect(cx - 27, center_base - 39, 54, 5, trim);
+    plat_rect(cx - 18, center_base - 43, 36, 4, wall);
+    plat_rect(cx - 12, center_base - 41, 24, 2, window);
+    plat_rect(cx - 3, center_base - 49, 6, 6, rail_hi);
+}
+#endif
+
 /* ====================================================================== */
 /* drawing: themed sky                                                      */
 static void draw_sky(void)
@@ -530,14 +635,16 @@ static void draw_ground(void)
         }
     }
     for (i = 0; i < 7; i++) {
-        int x = 6 + i * 18, hh = 10 + (i * 7) % 8, y = y0 - 10 - (i % 3) * 2;
+        int x = 6 + i * 18, hh = 10 + (i * 7) % 8;
+        int y = fp_big() ? title_hill_top(x + 5, sh) : y0 - 10 - (i % 3) * 2;
         uint8_t wall = hell ? PAL_RAMP(RAMP_VAPE, 3) : PAL_PAINT(i & 1 ? PAINT_PEACH : PAINT_BUBBLEGUM, 2);
         plat_rect(x, y - hh, 10, hh, wall);
         plat_rect(x - 1, y - hh - 4, 12, 4, hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(i & 1 ? PAINT_ROSE : PAINT_SKY, 1));
         plat_rect(x + 3, y - hh + 3, 3, 3, hell || th == THEME_NIGHT ? PAL_RAMP(RAMP_CANDY, 6) : PAL_RAMP(RAMP_SKY, 6));
     }
     for (i = 0; i < 5; i++) {
-        int x = sw - 14 - i * 20, hh = 16 + (i * 11) % 10, y = y0 - 8 - (i & 1) * 3;
+        int x = sw - 14 - i * 20, hh = 16 + (i * 11) % 10;
+        int y = fp_big() ? title_hill_top(x + 4, sh) : y0 - 8 - (i & 1) * 3;
         plat_rect(x, y - hh, 8, hh, PAL_RAMP(RAMP_VAPE, 1));
         plat_rect(x + 2, y - hh - 6, 4, 6, PAL_RAMP(RAMP_VAPE, 1));
         plat_rect(x + 3, y - hh - 9, 2, 3, PAL_RAMP(RAMP_VAPE, 1));
@@ -547,6 +654,13 @@ static void draw_ground(void)
     plat_checker(0, y0, sw, 1, g1);
     plat_rect(0, y0 + (sh - y0) / 2, sw, sh - y0 - (sh - y0) / 2, g2);
     plat_checker(0, y0 + (sh - y0) / 2, sw, 1, g0);
+    /* A restrained ridge seam makes the rolling ground plane legible at
+     * native resolution and visually joins every building/support to it.
+     * Ten coarse segments are enough; no per-pixel contour or buffer. */
+    for (i = 0; i < 10; i++) {
+        int x0 = i * sw / 10, x1 = (i + 1) * sw / 10;
+        plat_line(x0, title_hill_top(x0, sh), x1, title_hill_top(x1, sh), g2);
+    }
     /* flowers / embers on the meadow */
     title_ground_flower_init(sw, sh, y0);
     for (i = 0; i < 16; i++) {
@@ -1042,6 +1156,9 @@ static void title_draw(void)
     static int platform_width;
     int sw = fp_sw(), sh = fp_sh();
     draw_sky();
+#if !defined(DOOMO_PLATFORM_GBA)
+    if (fp_big()) draw_park_depth();
+#endif
     draw_ground();
     draw_figures();
     draw_logo();
