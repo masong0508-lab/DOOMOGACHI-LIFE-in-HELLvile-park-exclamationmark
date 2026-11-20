@@ -490,6 +490,17 @@ void r3d_columns(void)
     for (c = 0; c < n; c++) column(c);
 }
 
+/* The 64-bit initial texture coordinate is calculated only once per
+ * billboard and is deliberately kept in ROM, not the tightly budgeted
+ * IWRAM 3D overlay. Hot column stepping stays in the overlay. */
+static uint32_t sprite_u16_start(int32_t x0, uint32_t step16, int c0)
+    ROM_COLD ROM_CALL;
+static uint32_t sprite_u16_start(int32_t x0, uint32_t step16, int c0)
+{
+    int32_t cx12 = (c0 * 2 + 1) << 12;
+    return (uint32_t)(int32_t)(((int64_t)(cx12 - x0) * step16) >> 12);
+}
+
 /* ------------------------------------------------------------------------ */
 /* sprites                                                                    */
 
@@ -585,8 +596,7 @@ void r3d_draw_sprite(const R3DSprite *s)
          * Do the expensive signed 64-bit multiply only once per sprite,
          * not once for each on-screen column. UInt32 addition matches the
          * old int32 truncation even when the value wraps. No pixel change. */
-        uint32_t u16 = (uint32_t)(int32_t)
-            (((int64_t)(((c0 * 2 + 1) << 12) - x0) * s->step16) >> 12);
+        uint32_t u16 = sprite_u16_start(x0, s->step16, c0);
         const uint32_t du16 = dv << 1;
         for (c = c0; c < f->ncol; c++, u16 += du16) {
             int32_t cx12 = (c * 2 + 1) << 12;
