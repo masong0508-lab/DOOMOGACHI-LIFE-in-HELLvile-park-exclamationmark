@@ -317,7 +317,7 @@ static void box(int x, int y, int w, int h, uint8_t dark, uint8_t base, uint8_t 
  * lit front gable, with a continuous heavy eave and a few shingle courses.
  * The dark back plane and bright left slope create readable 3D depth even
  * at 240x160. Both passes are STATIC and captured by the existing building
- * sprite cache: no added images, buffers, RAM or per-frame primitive calls. */
+ * draw cache: no added images, buffers, RAM or dynamically animated geometry. */
 static void roof(int cx, int y, int w, int h, uint8_t dark, uint8_t base, uint8_t light)
 {
     int i;
@@ -349,7 +349,7 @@ static void roof(int cx, int y, int w, int h, uint8_t dark, uint8_t base, uint8_
 }
 
 /* Deep flat roof for apartment towers: offset upper slab and heavy fascia.
- * All detail is made of tiny rectangles and baked once into the scene scratch. */
+ * All detail is made of tiny rectangles captured by the existing cache. */
 static void roof_terrace(int x, int y, int w, uint8_t dark, uint8_t base, uint8_t light)
 {
     R(x + 3, y - 6, w + 1, 4, dark);       /* recessed rear deck */
@@ -1104,6 +1104,8 @@ static void b_shop(int x, int y, int black)
     }
     if (!ST) return;                         /* the shop has no animated parts */
     box(bx, by, w, h, PAL_RAMP(RAMP_PEACH, 5), PAL_UI_CREAM, PAL_WHITE);
+    roof(x, by - 5, w + 4, 6, PAL_PAINT(PAINT_ROSE, 0),
+         PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 2));
     awning(bx - 1, by + 1, w + 2, PAL_PAINT(PAINT_ROSE, 1), PAL_WHITE);
     win(bx + 3, by + 7, 6, 4, night_lit(301), PAL_RAMP(RAMP_PEACH, 4));
     R(x + 3, y - 7, 5, 7, PAL_RAMP(RAMP_WOOD, 3));
