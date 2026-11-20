@@ -129,6 +129,15 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int64_t ddx = adx ? (((int64_t)CELLU << 32) / adx) : ((int64_t)1 << 40);  /* fix16 dist per cell */
     int64_t ddy = ady ? (((int64_t)CELLU << 32) / ady) : ((int64_t)1 << 40);
     int64_t sx, sy, d = 0, dhit = maxd;
+    /* Many Hell Breach sight rays travel across dozens of equal-height
+     * tiles. A 64-bit division for every one of those tiles is especially
+     * costly on ARM7TDMI (the GBA has no hardware divide). The crossing
+     * depth depends only on the plane height and this ray, so reuse it
+     * while the floor/ceiling stays at the same height. No heap, tables,
+     * new persistent memory, or change in ray-hit results on any port. */
+    int last_floor = 0, last_ceil = 0;
+    int floor_valid = 0, ceil_valid = 0;
+    int64_t floor_cross = 0, ceil_cross = 0;
     int64_t cellx0 = (int64_t)cx * CELLU << 16, celly0 = (int64_t)cy * CELLU << 16;
     if (dx < 0) sx = adx ? ((int64_t)(x0 - cellx0) << 16) / adx : ((int64_t)1 << 40);
     else sx = adx ? (((cellx0 + ((int64_t)CELLU << 16)) - x0) << 16) / adx : ((int64_t)1 << 40);
@@ -142,13 +151,21 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
         int64_t zf = (int64_t)fl * 65536, zc = (int64_t)ce * 65536;
         /* floor / ceiling planes inside this cell */
         if (slope < 0) {
-            int64_t dfl = ((zf - z0) * 65536) / slope;        /* both negative -> positive */
+            if (!floor_valid || fl != last_floor) {
+                floor_cross = ((zf - z0) * 65536) / slope; /* identical signed division */
+                last_floor = fl;
+                floor_valid = 1;
+            }
             if (z0 + ((slope * d) >> 16) <= zf) { dhit = d; break; }
-            if (dfl >= d && dfl < dnext) { dhit = dfl; break; }
+            if (floor_cross >= d && floor_cross < dnext) { dhit = floor_cross; break; }
         } else if (slope > 0 && ce < SKY_CEIL) {
-            int64_t dce = ((zc - z0) * 65536) / slope;
+            if (!ceil_valid || ce != last_ceil) {
+                ceil_cross = ((zc - z0) * 65536) / slope;
+                last_ceil = ce;
+                ceil_valid = 1;
+            }
             if (z0 + ((slope * d) >> 16) >= zc) { dhit = d; break; }
-            if (dce >= d && dce < dnext) { dhit = dce; break; }
+            if (ceil_cross >= d && ceil_cross < dnext) { dhit = ceil_cross; break; }
         } else {
             int64_t zz = z0;
             if (zz < zf || (ce < SKY_CEIL && zz > zc)) { dhit = d; break; }
