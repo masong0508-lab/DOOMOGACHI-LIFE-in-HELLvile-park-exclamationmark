@@ -199,6 +199,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
       - uses: actions/download-artifact@v4
         with:
           pattern: release-*
@@ -208,6 +212,9 @@ jobs:
       - name: Checksums and release notes
         run: |
           cd dist
+          printf 'repository=%s\ntag=%s\ncommit=%s\nrun_id=%s\n' \
+            "$GITHUB_REPOSITORY" "$TAG" "$(git -C .. rev-parse HEAD)" "$GITHUB_RUN_ID" \
+            > BUILD_SOURCE.txt
           sha256sum -- * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           cat > "$RUNNER_TEMP/notes.md" <<EOF

@@ -465,6 +465,16 @@ jobs:
           cmake --preset ps1-enginetest
           cmake --build --preset ps1-enginetest
 
+      - name: Record PlayStation ROM provenance and checksums
+        run: |
+          set -euo pipefail
+          for d in ps1/build ps1/build-enginetest; do
+            printf 'repository=%s\nbranch=%s\ncommit=%s\nrun_id=%s\n' \
+              "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$GITHUB_SHA" "$GITHUB_RUN_ID" \
+              > "$d/BUILD_SOURCE.txt"
+            (cd "$d" && sha256sum -- doomogachi.exe doomogachi.bin doomogachi.cue > SHA256SUMS.txt)
+          done
+
       - name: Upload the game disc
         uses: actions/upload-artifact@v4
         with:
@@ -473,6 +483,8 @@ jobs:
             ps1/build/doomogachi.exe
             ps1/build/doomogachi.bin
             ps1/build/doomogachi.cue
+            ps1/build/BUILD_SOURCE.txt
+            ps1/build/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Upload the engine-test disc
@@ -483,6 +495,8 @@ jobs:
             ps1/build-enginetest/doomogachi.exe
             ps1/build-enginetest/doomogachi.bin
             ps1/build-enginetest/doomogachi.cue
+            ps1/build-enginetest/BUILD_SOURCE.txt
+            ps1/build-enginetest/SHA256SUMS.txt
           if-no-files-found: error
 
   # --------------------------------------------------------------------------
