@@ -35,9 +35,9 @@ R3DStats r3d_stats;
 uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
-/* (G7) the frame's 3D view: 0 none, 1 full resolution, 2 half (main.c's
- * pacing: a full-resolution view is shown at most 20 times a second, a
- * half one 30); (SP8, from G9) gba_view3d_pace is the pace video_flip
+/* (G7) the frame's 3D view: 0 none, 1 full resolution, 2 half,
+ * 3 emergency quarter detail. The HUD always remains full-size.
+ * (SP8, from G9) gba_view3d_pace is the pace video_flip
  * holds (vblanks a 3D frame, low 3 bits) and its count of frames that beat
  * it (the rest). Two bytes where G7's int was: no EWRAM. */
 uint8_t gba_view3d_frame, gba_view3d_pace;
@@ -48,19 +48,20 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  * of the NEXT 3D view from how many vblanks the last ones took; nothing in
  * the game ever sees it.
  *   Smooth    half resolution always (G7's "Faster").
- *   Balanced  targets 30 fps (2 vblanks): a full-resolution frame taking
- *             longer switches to half resolution, keeping the HUD sharp.
- *             From half resolution it comes back only when the
- *             last frame plus what full resolution costs over half (r3d
- *             cycles measured at both) fits again, at most once per
- *             gov_wait frames (16, doubled after every failed try, <= 240).
- *   Max       the same with a limit of 4 vblanks (15 fps): full resolution
- *             unless it falls below that.
- * State: 12 bytes of .bss (EWRAM). */
-static uint8_t  gov_half;          /* the governor wants half resolution            */
-static uint8_t  gov_wait;          /* frames before the next try at full resolution */
-static uint8_t  gov_backoff = 16;  /* the wait after a try that did not fit         */
-static uint32_t gov_r3d[2];        /* r3d cycles of the last full / half view       */
+ *   Balanced  targets 30 fps (2 vblanks): full -> half -> quarter if
+ *             a lower-detail frame still misses the target. The 4x view
+ *             is a safety net for heavy rooms; a quarter frame is rebuilt
+ *             at 60x40 then doubled twice using the existing in-place
+ *             upscaler. No new framebuffers or texture allocations.
+ *             Upgrade quality only after a cooldown and a CPU-budget
+ *             estimate that accounts for the more detailed renderer.
+ *   Max       full/half resolution with its original 15 fps budget.
+ *   Smooth    half resolution always (preserves the existing 2x artwork).
+ * State: +4 bytes EWRAM for the quarter-view timing estimate. */
+static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter */
+static uint8_t  gov_wait;          /* frames before the next quality retry */
+static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
+static uint32_t gov_r3d[3];        /* CPU cycles per quality tier */
 
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
@@ -73,8 +74,8 @@ static int view_half(void)
 }
 #endif
 
-/* main.c video_flip: a frame with a 3D view (frame 1 full, 2 half) is about
- * to be shown `took` vblanks after the previous one; work = its CPU cycles */
+/* main.c video_flip: frame=1 full, 2 half, 3 quarter; `took` is the
+ * vblank gap. This function changes only the NEXT render's detail. */
 void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
 {
     int m = opt_get(OPT_3D_FAST);
@@ -95,13 +96,33 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         }
         return;
     }
+    /* On GBA, a half-resolution frame may still require 3-7 vblanks in
+     * large dungeon rooms. Do not keep paying for work that cannot fit a
+     * 30 fps frame: quarter detail needs only 30 rays and 40 pixel rows.
+     * Keep Max's previous quality contract and Smooth's existing 2x mode. */
+    if (frame == 2 && m == OPT3D_BALANCED && took > 2u) {
+        gov_half = 2;
+        gov_wait = 32;
+        return;
+    }
     if (gov_wait) { gov_wait--; return; }
+    if (frame == 3) {
+        /* When a cheap frame leaves room for the measured half-detail
+         * cost, try an upgrade. Back off if it immediately runs late. */
+        uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] : gov_r3d[2] * 2u;
+        uint32_t est = work + (half_cost > gov_r3d[2] ? half_cost - gov_r3d[2] : 0);
+        if (est + VBL_CYC / 4u <= 2u * VBL_CYC) {
+            gov_half = 1;
+            gov_wait = 16;
+        } else gov_wait = 16;
+        return;
+    }
     {
-        /* full resolution costs what r3d costs over half (3x half before
-         * any full-resolution view was measured) */
+        /* Full resolution costs what the last full view measured (or an
+         * estimate from half when the full view has not been seen). */
         uint32_t full = gov_r3d[0] ? gov_r3d[0] : gov_r3d[1] * 3u;
         uint32_t est = work + (full > gov_r3d[1] ? full - gov_r3d[1] : 0);
-        if (est + VBL_CYC / 4u <= limit * VBL_CYC) gov_half = 0;     /* try it */
+        if (est + VBL_CYC / 4u <= limit * VBL_CYC) gov_half = 0;
         else gov_wait = 8;
     }
 }
@@ -526,7 +547,7 @@ void r3d_tint_pass(const uint8_t *tm, int level)
 void plat_view3d(const DoomoView3D *v)
 {
     uint32_t t0, t1, t2, t3;
-    int vx, vy, vw, vh, half = 0;
+    int vx, vy, vw, vh, detail = 0;
     int a;
     const DoomoMap *m;
     if (gba_nodraw == 1 || !v || !v->map) return;
@@ -554,14 +575,19 @@ void plat_view3d(const DoomoView3D *v)
     view_hold_drop();                         /* (S2-2) VRAM the copy lives in is the raycaster's again */
     r3d_last_x = (int16_t)vx; r3d_last_y = (int16_t)vy; r3d_last_w = (int16_t)vw; r3d_last_h = (int16_t)vh;
     r3d_last_frame = gba_frames;
-    /* (G7) the view at half resolution into the top left quarter of its
-     * rect, then doubled in place (r3d_up2); (SP8) when Options "Combat
-     * detail" or its governor asks for it (view_half) */
+    /* 2x: 120x80, 4x: 60x40 for a full-screen view. Both use the same
+     * Mode 4 page; the UI is rendered afterwards at its original size.
+     * 4x is legal only with whole 4-pixel blocks and enough view area. */
 #if !defined(ENGINE_TEST)
-    half = view_half() && !(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32;
+    if (!(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32) {
+        detail = view_half() ? 1 : 0;
+        if (detail && gov_half == 2 && opt_get(OPT_3D_FAST) == OPT3D_BALANCED &&
+            !(vx & 7) && !(vw & 7) && !(vh & 3) && vw >= 64 && vh >= 64)
+            detail = 2;
+    }
 #endif
-    if (half) { vw >>= 1; vh >>= 1; }
-    gba_view3d_frame = half ? 2 : 1;
+    if (detail) { vw >>= detail; vh >>= detail; }
+    gba_view3d_frame = (uint8_t)(detail + 1);
     {
         int fov = opt_get(OPT_FOV);
         if (vw != cache_vw || vh != cache_vh || fov != cache_fov) setup_viewport(vw, vh, fov);
@@ -632,10 +658,13 @@ void plat_view3d(const DoomoView3D *v)
     draw_sprites(v);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
         r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
-    if (half) r3d_up2(r3f.dst, vw >> 1, vh);
+    if (detail) {
+        r3d_up2(r3f.dst, vw >> 1, vh);
+        if (detail == 2) r3d_up2(r3f.dst, vw, vh << 1);
+    }
     t3 = gba_cycles();
 
-    gov_r3d[half] = t3 - t0;                        /* SP8: the governor's estimate */
+    gov_r3d[detail] = t3 - t0;                        /* SP8: the governor's estimate */
     r3d_stats.cycles_cols = t1 - t0;
     r3d_stats.cycles_planes = t2 - t1;
     r3d_stats.cycles_sprites = t3 - t2;
