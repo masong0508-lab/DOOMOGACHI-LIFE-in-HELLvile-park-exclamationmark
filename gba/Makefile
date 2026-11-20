@@ -777,6 +777,6 @@ GBA3D_CENSUS_LOG ?= $(BUILD)/gba3d_census.log
 test-3d-census: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
 	@mkdir -p $(SHOTS)/3d_census
-	@$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/3d_census.txt \\
+	@$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/3d_census.txt \
 	    --shots $(SHOTS)/3d_census --quiet > $(GBA3D_CENSUS_LOG) 2>&1 || { tail -n 65 $(GBA3D_CENSUS_LOG); exit 1; }
 	@$(PYTHON) $(ROOT)/tools/gba3d_census.py $(GBA3D_CENSUS_LOG) --csv $(BUILD)/gba3d_census.csv

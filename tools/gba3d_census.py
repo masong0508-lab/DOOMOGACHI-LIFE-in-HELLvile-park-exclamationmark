@@ -14,7 +14,7 @@ from pathlib import Path
 from breach_scripts import LEVELS
 
 PATTERN = re.compile(
-    r"^harness: fps census (\\w+) (first|third): "
+    r"^harness: fps census (\w+) (first|third): "
     r"([0-9.]+) logic ticks/s, ([0-9.]+) drawn frames/s, "
     r"work avg ([0-9.]+) ms max ([0-9.]+) ms"
 )
