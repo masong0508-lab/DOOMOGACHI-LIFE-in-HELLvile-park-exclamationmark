@@ -1,0 +1,61 @@
+# One-time cleanup of branches already integrated into main.
+# This intentionally does not modify the repository default branch or any
+# branch which has new commits beyond main.
+name: Prune merged performance branches
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    if: github.repository == 'masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark' && (github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Prune fully merged branch references')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete only branches that are fully merged into main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          default="$(gh api "repos/${GH_REPO}" --jq .default_branch)"
+          printf 'Default branch: %s; keep main and the default.\n' "$default"
+          branches=(
+            'bench/gba-breach-player-four-level-20261119'
+            'codex/fix-island-replay-ram-fps'
+            'perf/breach-bfs-packed-queue-20261119'
+            'perf/breach-bfs-static-tile-fastpath-20261119'
+            'perf/breach-billboard-cull-first-20261119'
+            'perf/breach-priority-bfs-fast-cells-20261119'
+            'perf/breach-ray-plane-cache-20261119'
+            'perf/breach-single-priority-bfs-20261119'
+            'perf/gba-breach-eightfold-render-experiment-20261119'
+            'perf/gba-direct-fourfold-upscale-20261119'
+            'perf/gba-emergency-detail-4fps-20261119'
+            'perf/gba-four-breach-hotspot-profile-20261119'
+            'perf/gba-four-breach-ray-cap-20261119'
+            'perf/hub-scaling-fps-20261119'
+            'claude/nice-allen-gr6czm'
+          )
+          for branch in "${branches[@]}"; do
+            if [[ "$branch" == 'main' || "$branch" == "$default" ]]; then
+              echo "KEEP: $branch (main/default)"
+              continue
+            fi
+            if ! gh api "repos/${GH_REPO}/branches/${branch}" --silent 2>/dev/null; then
+              echo "GONE: $branch"
+              continue
+            fi
+            result="$(gh api "repos/${GH_REPO}/compare/main...${branch}" --jq '[.status, (.ahead_by | tostring)] | join(" ")')"
+            if [[ "$result" != 'behind 0' && "$result" != 'identical 0' ]]; then
+              echo "KEEP: $branch (not fully merged: $result)"
+              continue
+            fi
+            gh api -X DELETE "repos/${GH_REPO}/git/refs/heads/${branch}" --silent
+            echo "DELETED: $branch"
+          done
+          echo "Branch cleanup finished. Default branch can be changed to main in repository Settings."
