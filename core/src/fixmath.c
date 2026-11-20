@@ -23,8 +23,38 @@ static int atan_oct(uint32_t num, uint32_t den)
 {
     int lo = 0, hi = 512;
     if (den == 0) return 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* ARM7 THUMB has a cheap 32-bit MUL, but its 64-bit products are
+     * library calls. Shift BOTH arguments down until <=65535 (the
+     * quarter-wave sine factors never exceed 65536), then most
+     * binary-search decisions use exact conservative 32-bit bounds.
+     * A 64-bit comparison remains for near-ties, preserving EVERY angle. */
+    uint32_t nn = num, dd = den;
+    uint32_t high = num > den ? num : den;
+    int truncated = 0;
+    while (high > 65535u) {
+        high >>= 1;
+        nn >>= 1;
+        dd >>= 1;
+        truncated = 1;
+    }
+#endif
     while (lo < hi) {
         int mid = (lo + hi + 1) >> 1;
+#if defined(DOOMO_PLATFORM_GBA)
+        uint32_t sinv = (uint32_t)doomo_sin_q[mid];
+        uint32_t cosv = (uint32_t)doomo_sin_q[1024 - mid];
+        uint32_t sn = sinv * dd, cs = cosv * nn;
+        /* The discarded remainder of either argument is <2^shift.
+         * sn < cs by at least sinv proves the original sn<=cs;
+         * sn > cs by more than cosv proves the opposite. With no
+         * discarded bits the 32-bit comparison is EXACT. */
+        if (!truncated || (sn < cs && cs - sn >= sinv) ||
+            (sn > cs && sn - cs > cosv)) {
+            if (sn <= cs) lo = mid; else hi = mid - 1;
+            continue;
+        }
+#endif
         int64_t s = (int64_t)doomo_sin_q[mid] * den;
         int64_t c = (int64_t)doomo_sin_q[1024 - mid] * num;
         if (s <= c) lo = mid; else hi = mid - 1;
@@ -95,13 +125,32 @@ static uint32_t isqrt64(uint64_t v)
     return q;
 }
 
+/* ARM7 THUMB: build the exact 64-bit signed-square value from three
+ * 32-bit multiplications instead of a software 64-bit multiply. The
+ * 16-bit halves are unsigned, so even INT32_MIN is handled exactly.
+ * No lookup table, extra RAM, heap or change to other ports. */
+#if defined(DOOMO_PLATFORM_GBA)
+static uint64_t fx_sq_gba(int32_t v)
+{
+    uint32_t a = v < 0 ? 0u - (uint32_t)v : (uint32_t)v;
+    uint32_t hi = a >> 16, lo = a & 65535u;
+    return ((uint64_t)(hi * hi) << 32) +
+           ((uint64_t)(hi * lo) << 17) + (uint64_t)(lo * lo);
+}
+#endif
+
 /* fx_dist(dx, dy) < r / > r without the root (exact: floor(sqrt(s)) < r <=> s < r*r; > r <=> s >= (r+1)^2) */
 int fx_dist_lt(fix16 dx, fix16 dy, fix16 r)
 {
     uint64_t s;
     if (r <= 0) return 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    s = fx_sq_gba(dx) + fx_sq_gba(dy);
+    return s < fx_sq_gba(r);
+#else
     s = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
     return s < (uint64_t)(int64_t)r * (uint64_t)(int64_t)r;
+#endif
 }
 
 int fx_dist_gt(fix16 dx, fix16 dy, fix16 r)
@@ -109,14 +158,18 @@ int fx_dist_gt(fix16 dx, fix16 dy, fix16 r)
     uint64_t s, t;
     if (r < 0) return 1;
     if (r >= 0x7FFFFFFF) return 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    s = fx_sq_gba(dx) + fx_sq_gba(dy);
+    t = fx_sq_gba(r + 1);
+#else
     s = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
     t = (uint64_t)(int64_t)(r + 1) * (uint64_t)(int64_t)(r + 1);
+#endif
     return s >= t;
 }
 
 fix16 fx_dist(fix16 dx, fix16 dy)
 {
-    int64_t x = dx, y = dy;
     uint64_t s;
     uint32_t r;
     /* (perf) both under 46341: the sum fits 32 bits, so the 32-bit root
@@ -127,7 +180,11 @@ fix16 fx_dist(fix16 dx, fix16 dy)
         uint32_t ux = (uint32_t)(dx < 0 ? -dx : dx), uy = (uint32_t)(dy < 0 ? -dy : dy);
         return (fix16)fx_isqrt(ux * ux + uy * uy);
     }
-    s = (uint64_t)(x * x) + (uint64_t)(y * y);
+#if defined(DOOMO_PLATFORM_GBA)
+    s = fx_sq_gba(dx) + fx_sq_gba(dy);
+#else
+    s = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
+#endif
     r = isqrt64(s);
     if (r > 0x7FFFFFFFu) r = 0x7FFFFFFFu;
     return (fix16)r;
