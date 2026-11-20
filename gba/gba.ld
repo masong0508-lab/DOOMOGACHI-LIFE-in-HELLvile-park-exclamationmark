@@ -139,11 +139,17 @@ SECTIONS
         }
     } > iwram
     /* The 2D billboard tables borrow 1,712 bytes AFTER the 2D code.
-     * Before this reservation, shrinking the unrelated 3D renderer made
-     * the common overlay slot smaller and broke the ROM link, even though
-     * all groups individually fitted. Reserve this scratch in IWRAM,
-     * not in the 3D ROM copy: shorter rendering code must stay a win. */
-    . = MAX(., __iwram_ovl_start + SIZEOF(.ovl_2d) + 1712);
+     * Shrinking unrelated 3D code must not shrink that live scratch.
+     * Reserve actual NOLOAD address space so .iwram_bss cannot overlap
+     * it; the overlay ROM copies retain their exact (unpadded) lengths.
+     * The section, not an out-of-section assignment to '.', is vital:
+     * GNU ld otherwise moves the next IWRAM output section backwards. */
+    __iwram_ovl_groups_end = .;
+    .iwram_ovl_scratch (NOLOAD) : {
+        . += MAX(0, __iwram_ovl_start + SIZEOF(.ovl_2d) + 1712 -
+                     __iwram_ovl_groups_end);
+        . = ALIGN(4);
+    } > iwram
     __iwram_ovl_end = .;
     /* OVERLAY stores the groups one after the other in ROM (an empty
      * group has no LOADADDR of its own, so the addresses are summed) */
