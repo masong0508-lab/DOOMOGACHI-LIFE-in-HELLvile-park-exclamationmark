@@ -58,10 +58,10 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  *   Max       full/half resolution with its original 15 fps budget.
  *   Smooth    half resolution always (preserves the existing 2x artwork).
  * State: +4 bytes EWRAM for the quarter-view timing estimate. */
-static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter */
+static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter, 3 eighth */
 static uint8_t  gov_wait;          /* frames before the next quality retry */
 static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
-static uint32_t gov_r3d[3];        /* CPU cycles per quality tier */
+static uint32_t gov_r3d[4];        /* CPU cycles per quality tier; +4 B EWRAM */
 
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
@@ -74,7 +74,7 @@ static int view_half(void)
 }
 #endif
 
-/* main.c video_flip: frame=1 full, 2 half, 3 quarter; `took` is the
+/* main.c video_flip: frame=1 full, 2 half, 3 quarter, 4 eighth; `took` is the
  * vblank gap. This function changes only the NEXT render's detail. */
 void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
 {
@@ -105,7 +105,24 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         gov_wait = 32;
         return;
     }
+    if (frame == 3 && m == OPT3D_BALANCED && took > 2u) {
+        /* A quarter-detail view was still too expensive. Let only
+         * Balanced fall back to the existing page at 1/8 detail. This is
+         * intentionally an experimental very-low-detail last resort. */
+        gov_half = 3;
+        gov_wait = 48;
+        return;
+    }
     if (gov_wait) { gov_wait--; return; }
+    if (frame == 4) {
+        uint32_t quarter = gov_r3d[2] ? gov_r3d[2] : gov_r3d[3] * 2u;
+        uint32_t est = work + (quarter > gov_r3d[3] ? quarter - gov_r3d[3] : 0);
+        if (est + VBL_CYC / 4u <= 2u * VBL_CYC) {
+            gov_half = 2;
+            gov_wait = 20;
+        } else gov_wait = 32;
+        return;
+    }
     if (frame == 3) {
         /* When a cheap frame leaves room for the measured half-detail
          * cost, try an upgrade. Back off if it immediately runs late. */
@@ -575,15 +592,19 @@ void plat_view3d(const DoomoView3D *v)
     view_hold_drop();                         /* (S2-2) VRAM the copy lives in is the raycaster's again */
     r3d_last_x = (int16_t)vx; r3d_last_y = (int16_t)vy; r3d_last_w = (int16_t)vw; r3d_last_h = (int16_t)vh;
     r3d_last_frame = gba_frames;
-    /* 2x: 120x80, 4x: 60x40 for a full-screen view. Both use the same
-     * Mode 4 page; the UI is rendered afterwards at its original size.
-     * 4x is legal only with whole 4-pixel blocks and enough view area. */
+    /* 2x, 4x, or experimental 8x inner view (30x20 for 240x160).
+     * All tiers reuse the same Mode 4 page and the full-resolution HUD.
+     * No extra VRAM, texture atlas, or heap storage. */
 #if !defined(ENGINE_TEST)
     if (!(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32) {
         detail = view_half() ? 1 : 0;
-        if (detail && gov_half == 2 && opt_get(OPT_3D_FAST) == OPT3D_BALANCED &&
-            !(vx & 7) && !(vw & 7) && !(vh & 3) && vw >= 64 && vh >= 64)
+        if (detail && gov_half >= 2 && opt_get(OPT_3D_FAST) == OPT3D_BALANCED &&
+            !(vx & 7) && !(vw & 7) && !(vh & 3) && vw >= 64 && vh >= 64) {
             detail = 2;
+            if (gov_half >= 3 && !(vx & 15) && !(vw & 15) &&
+                !(vh & 7) && vw >= 128 && vh >= 96)
+                detail = 3;
+        }
     }
 #endif
     if (detail) { vw >>= detail; vh >>= detail; }
@@ -660,7 +681,8 @@ void plat_view3d(const DoomoView3D *v)
         r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
     if (detail) {
         r3d_up2(r3f.dst, vw >> 1, vh);
-        if (detail == 2) r3d_up2(r3f.dst, vw, vh << 1);
+        if (detail >= 2) r3d_up2(r3f.dst, vw, vh << 1);
+        if (detail == 3) r3d_up2(r3f.dst, vw << 1, vh << 2);
     }
     t3 = gba_cycles();
 
