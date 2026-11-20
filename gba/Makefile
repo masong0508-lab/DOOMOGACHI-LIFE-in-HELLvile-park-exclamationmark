@@ -779,5 +779,5 @@ test-3d-census: harness
 	@mkdir -p $(SHOTS)/3d_census
 	$(NM_SYMS)
 	@$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/3d_census.txt \
-	    --nm $(BUILD)/doomogachi.nm --shots $(SHOTS)/3d_census --quiet > $(GBA3D_CENSUS_LOG) 2>&1 || { tail -n 65 $(GBA3D_CENSUS_LOG); exit 1; }
-	@$(PYTHON) $(ROOT)/tools/gba3d_census.py $(GBA3D_CENSUS_LOG) --csv $(BUILD)/gba3d_census.csv
+	    --nm $(BUILD)/doomogachi.nm --shots $(SHOTS)/3d_census --worklog --quiet > $(GBA3D_CENSUS_LOG) 2>&1 || { tail -n 65 $(GBA3D_CENSUS_LOG); exit 1; }
+	@$(PYTHON) $(ROOT)/tools/gba3d_census.py $(GBA3D_CENSUS_LOG) --csv $(BUILD)/gba3d_census.csv --require-worklog
