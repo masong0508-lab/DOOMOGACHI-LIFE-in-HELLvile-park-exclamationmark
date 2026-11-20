@@ -536,26 +536,38 @@ void r3d_draw_sprite(const R3DSprite *s)
         int cs = (cx12 - hw12 - 0x1000 + 0x1FFF) >> 13, ce = (cx12 + hw12 - 0x1000) >> 13;
         if (cs < 0) cs = 0;
         if (ce >= f->ncol) ce = f->ncol - 1;
-        if (hw12 > 0)
-        for (c = cs; c <= ce; c++) {
-            int top, bot, y, ya, yb, hc;
-            int32_t dx = ((c * 2 + 1) << 12) - cx12;
-            int32_t q;
-            if (dx < 0) dx = -dx;
-            if (dx >= hw12) continue;
-            /* half height of the ellipse at this x: hh * sqrt(1 - (dx/hw)^2) */
-            q = (int32_t)(((int64_t)dx << 8) / hw12);          /* 0..255 */
-            q = 256 - ((q * q) >> 8);
-            hc = (hh * (q > 192 ? 4 : q > 112 ? 3 : q > 48 ? 2 : 1) + 2) >> 2;
-            if (hc < 1) hc = 1;
-            clip_at(c, d8, &top, &bot);
-            ya = sy - hc; yb = sy + hc;
-            if (ya < top) ya = top;
-            if (yb > bot) yb = bot;
-            for (y = ya; y < yb; y++) {
-                uint16_t *p = f->dst + y * LINE + c;
-                uint32_t v = dk[*p & 0xFF];
-                *p = (uint16_t)(v | (v << 8));
+        if (hw12 > 0) {
+            /* The old ellipse used r=floor(256*abs(dx)/hw12), then
+             * q=256-floor(r*r/256), and chose four bands by q>192,
+             * q>112, q>48. Those three boundaries are EXACTLY
+             * r<128, r<192, r<231. Precompute the corresponding
+             * pixel-distance ceilings once per billboard instead of
+             * a 64-bit signed division for every shadow column.
+             * Split 231*hw12 into high/low bytes to avoid overflow
+             * even for extremely large, near-camera billboards. */
+            uint32_t hw = (uint32_t)hw12;
+            int32_t edge4 = (int32_t)((hw >> 1) + (hw & 1u));
+            int32_t edge3 = (int32_t)(hw - (hw >> 2));
+            int32_t edge2 = (int32_t)((hw >> 8) * 231u +
+                                      (((hw & 255u) * 231u + 255u) >> 8));
+            for (c = cs; c <= ce; c++) {
+                int top, bot, y, ya, yb, hc;
+                int32_t dx = ((c * 2 + 1) << 12) - cx12;
+                if (dx < 0) dx = -dx;
+                if (dx >= hw12) continue;
+                /* Identical integer-rounded half-height and palette. */
+                hc = (hh * (dx < edge4 ? 4 : dx < edge3 ? 3 :
+                            dx < edge2 ? 2 : 1) + 2) >> 2;
+                if (hc < 1) hc = 1;
+                clip_at(c, d8, &top, &bot);
+                ya = sy - hc; yb = sy + hc;
+                if (ya < top) ya = top;
+                if (yb > bot) yb = bot;
+                for (y = ya; y < yb; y++) {
+                    uint16_t *p = f->dst + y * LINE + c;
+                    uint32_t v = dk[*p & 0xFF];
+                    *p = (uint16_t)(v | (v << 8));
+                }
             }
         }
     }
