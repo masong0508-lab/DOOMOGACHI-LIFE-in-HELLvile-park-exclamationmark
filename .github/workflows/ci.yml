@@ -175,6 +175,28 @@ jobs:
           make -C gba test-breach2 | tee breach2.md
           cat breach2.md >> "$GITHUB_STEP_SUMMARY"
 
+      # Manual-play performance is separate from the demo/autopilot BFS.
+      # Four seeded 130-tick player-controlled traversals, same as the
+      # 22-FPS target; print both the drawn FPS and logic-tick throughput.
+      - name: Real-player FPS in four heavy Breach maps (GBA)
+        run: |
+          set -euo pipefail
+          mkdir -p gba/build/shots/player4
+          arm-none-eabi-nm -n gba/build/doomogachi.elf > gba/build/doomogachi.nm
+          gba/build/harness gba/build/doomogachi.gba \
+            --script gba/harness/scripts/breach_player_four.txt \
+            --nm gba/build/doomogachi.nm \
+            --shots gba/build/shots/player4 --worklog --no-fps-gates --quiet \
+            | tee gba/build/breach_player_four.log
+          {
+            echo '### Player-controlled Breach FPS (no autopilot)'
+            echo
+            grep 'harness: fps player ' gba/build/breach_player_four.log || true
+            echo
+            echo '### Per-level CPU hotspots'
+            python3 gba/tools/profile_report.py gba/build/breach_player_four.log 12 || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Collect ROMs
         run: |
           mkdir -p dist
@@ -308,6 +330,7 @@ jobs:
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
+            gba/build/breach_player_four.log
             gba/build/sung.log
             gba/build/sung_spikes.log
             gba/build/play_idle.log
