@@ -51,6 +51,7 @@ wait 130
 fps census cloud_nine first
 expect-logic 29 census cloud_nine first
 shot census_cloud_nine_first
+profile 9000000
 release UP
 seed 1
 scene TITLE
@@ -83,6 +84,7 @@ wait 130
 fps census sewers first
 expect-logic 29 census sewers first
 shot census_sewers_first
+profile 9000000
 release UP
 seed 1
 scene TITLE
@@ -147,6 +149,7 @@ wait 130
 fps census graveyard first
 expect-logic 29 census graveyard first
 shot census_graveyard_first
+profile 9000000
 release UP
 seed 1
 scene TITLE
@@ -179,6 +182,7 @@ wait 130
 fps census cathedral first
 expect-logic 29 census cathedral first
 shot census_cathedral_first
+profile 9000000
 release UP
 seed 1
 scene TITLE
@@ -196,6 +200,7 @@ wait 130
 fps census cathedral third
 expect-logic 29 census cathedral third
 shot census_cathedral_third
+profile 9000000
 release UP
 seed 1
 scene TITLE

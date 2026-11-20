@@ -203,6 +203,9 @@ jobs:
             echo '### Whole-game GBA 3D performance census (Balanced, real player)'
             echo
             cat gba/build/gba3d_census_summary.md
+            echo
+            echo '### CPU hotspots (five slowest representative player windows)'
+            python3 gba/tools/profile_report.py gba/build/gba3d_census.log 10 | grep -E '^\\| census (cathedral|graveyard|sewers|cloud_nine)' || true
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect ROMs

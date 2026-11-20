@@ -171,7 +171,17 @@ def gba_player_census_script():
             s += ["fps start", "down UP", "wait 130",
                   "fps census %s %s" % (slug, camera),
                   "expect-logic 29 census %s %s" % (slug, camera),
-                  "shot census_%s_%s" % (slug, camera), "release UP"]
+                  "shot census_%s_%s" % (slug, camera)]
+            # Profile AFTER the FPS interval and screenshot: no profiler
+            # sampling overhead contaminates the player-controlled window.
+            # Focus on the slowest measured cases to keep CI time bounded.
+            if (slug, camera) in {
+                ("cathedral", "first"), ("cathedral", "third"),
+                ("graveyard", "first"), ("sewers", "first"),
+                ("cloud_nine", "first"),
+            }:
+                s.append("profile 9000000")
+            s.append("release UP")
     # Start a REAL Arena wave rather than opening the bare MAPID_ARENA
     # through SCENE_COMBAT: the latter never calls arena.c's wave spawner.
     for camera in ("first", "third"):
@@ -190,7 +200,7 @@ def gba_player_census_script():
 # core/native/runner_main.c): a generated line outside them is a bug in this file, caught here
 OPS = {
     "core": {"scene", "push", "expect-scene", "wait", "shot", "press", "hold", "down", "up", "release"},
-    "gba": {"wait", "expect-log", "sync", "seed", "scene", "push", "opt", "fps", "expect-fps", "shot", "vhash-seq", "expect-scene", "press", "down", "release", "expect-logic"},
+    "gba": {"wait", "expect-log", "sync", "seed", "scene", "push", "opt", "fps", "expect-fps", "shot", "vhash-seq", "expect-scene", "press", "down", "release", "expect-logic", "profile"},
     "ps1": {"wait", "seed", "scene", "push", "opt", "fps", "fpsend", "shot"},
     "dc": {"wait", "seed", "scene", "push", "opt", "log", "mark-ticks", "gaps-reset", "frames", "expect-ticks",
            "expect-gap", "shot"},   # (S2-10: speed2.py's dc windows measure the gaps between pictures)
