@@ -631,14 +631,19 @@ static void demon_walk(int idx, int want_angle)
                 near[nnear++] = (uint8_t)j;
             }
         }
+        /* At cardinal angles one component is exactly zero. If the
+         * diagonal attempt failed, its identical axis attempt cannot
+         * succeed: rejected moves have no side effects. Still execute the
+         * distinct zero-displacement attempt where it was present, since
+         * it may apply a valid floor step. This is behavior-preserving. */
         if (k && use_near)
             moved = demon_try_move_filtered(idx, dx, dy, near, nnear) ||
-                    demon_try_move_filtered(idx, dx, 0, near, nnear) ||
-                    demon_try_move_filtered(idx, 0, dy, near, nnear);
+                    (dy && demon_try_move_filtered(idx, dx, 0, near, nnear)) ||
+                    (dx && demon_try_move_filtered(idx, 0, dy, near, nnear));
         else
             moved = demon_try_move(idx, dx, dy) ||
-                    demon_try_move(idx, dx, 0) ||
-                    demon_try_move(idx, 0, dy);
+                    (dy && demon_try_move(idx, dx, 0)) ||
+                    (dx && demon_try_move(idx, 0, dy));
         if (moved) {
             if (k > 0) {
                 ai_dir[idx] = (int16_t)ang;
