@@ -768,8 +768,8 @@ test-breach-player: harness
 	@grep '^harness: fps player ' $(BUILD)/breach_player_four.log
 # --- end LV10 ---
 
-# --- Whole-game GBA 3D performance census. Every built Breach level in
-# tools/breach_scripts.py, both first/third person, plus free-play arena.
+# --- Whole-game GBA 3D performance census. Legacy levels plus mapped
+# GBA-only pilot levels, both cameras and standalone free-play arena.
 # This reports >=22 / >=30 FPS targets but deliberately does not hard-gate
 # frames until all baseline cases meet them; >=29 logic ticks/s is gated.
 GBA3D_CENSUS_LOG ?= $(BUILD)/gba3d_census.log

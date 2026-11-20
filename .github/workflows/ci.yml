@@ -191,9 +191,9 @@ jobs:
             python3 gba/tools/profile_report.py gba/build/breach_player_four.log 12 || true
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # 3D goal covers the complete playable Breach registry, both cameras
+      # 3D goal covers all mapped GBA Breach levels (including pilots), both cameras
       # and the standalone arena. Unlike the four historically comparable
-      # stress windows, this census grows automatically as levels are built.
+      # stress windows, this census comes from the legacy and mapped-pilot lists.
       # FPS is report-only until it reaches the 22 interim / ~30 final floor.
       - name: Census every built GBA 3D level (player-controlled)
         run: |
