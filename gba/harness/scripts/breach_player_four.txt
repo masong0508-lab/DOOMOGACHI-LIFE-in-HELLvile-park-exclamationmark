@@ -1,0 +1,51 @@
+# Player-controlled four-level benchmark. No LVF_DEMO autopilot: these
+# numbers represent real in-game rendering and actor updates, not the
+# debug pathfinder. Use the same seed, quality and 130-tick run per level.
+wait 40
+expect-log doomo: init
+sync on 61
+opt 63 0
+seed 1
+scene TITLE
+wait 2
+push BREACH 1
+wait 40
+press A
+wait 12
+fps start
+hold UP 130
+expect-fps 0 player cloud_nine forward
+shot player_cloud_nine
+seed 1
+scene TITLE
+wait 2
+push BREACH 3
+wait 40
+press A
+wait 12
+fps start
+hold UP 130
+expect-fps 0 player factory forward
+shot player_factory
+seed 1
+scene TITLE
+wait 2
+push BREACH 4
+wait 40
+press A
+wait 12
+fps start
+hold UP 130
+expect-fps 0 player graveyard forward
+shot player_graveyard
+seed 1
+scene TITLE
+wait 2
+push BREACH 6
+wait 40
+press A
+wait 12
+fps start
+hold UP 130
+expect-fps 0 player underbelly forward
+shot player_underbelly
