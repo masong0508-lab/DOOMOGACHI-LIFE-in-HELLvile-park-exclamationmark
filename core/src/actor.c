@@ -521,6 +521,20 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
     /* Check nearby blocking bodies before scanning tile heights. A crowded
      * doorway rejects most candidate steps here, saving 1-4 collision
      * cell and mover queries per rejected step without changing outcomes. */
+    /* The living player is a single cheap collision candidate. Test it
+     * before scanning every actor: a rush of demons against the player
+     * rejects many moves without the O(actor_end) body walk. The two
+     * checks only return 0 and have no side effects, so their order is
+     * immaterial to the result, including airborne/corpse cases. */
+    /* the player */
+    {
+        fix16 ddx = doomo_player.x - nx, ddy = doomo_player.y - ny;
+        fix16 rr = INT2FIX(PLAYER_RADIUS + a->radius - 2);
+        int pz = FIX2INT(doomo_player.z);
+        if (doomo_player.hp > 0 && ddx < rr && ddx > -rr && ddy < rr && ddy > -rr &&
+            fx_dist_lt(ddx, ddy, rr) && !(pz >= z + a->height || pz + DOOMO_PLAYER_HEIGHT <= z))
+            return 0;
+    }
     /* other solid bodies */
     for (i = 0; i < actor_end; i++) {
         const DoomoActor *o = &doomo_actors[i];
@@ -541,15 +555,6 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
             if (change > -2 * (int64_t)rr &&
                 fx_dist(o->x - a->x, o->y - a->y) >= fx_dist(ddx, ddy)) return 0;
         }
-    }
-    /* the player */
-    {
-        fix16 ddx = doomo_player.x - nx, ddy = doomo_player.y - ny;
-        fix16 rr = INT2FIX(PLAYER_RADIUS + a->radius - 2);
-        int pz = FIX2INT(doomo_player.z);
-        if (doomo_player.hp > 0 && ddx < rr && ddx > -rr && ddy < rr && ddy > -rr &&
-            fx_dist_lt(ddx, ddy, rr) && !(pz >= z + a->height || pz + DOOMO_PLAYER_HEIGHT <= z))
-            return 0;
     }
     if (flying) {
         if (!cw_fits(nx, ny, a->radius, z, a->height, 255, &fl, &ce)) return 0;
