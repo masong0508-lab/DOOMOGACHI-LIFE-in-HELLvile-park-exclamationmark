@@ -21,6 +21,7 @@
 #include "canvas_int.h"
 #include "doomo/game.h"
 #include "doomo/input.h"
+#include "doomo/town.h"
 
 volatile uint32_t gba_vblanks;
 uint32_t gba_frames;
@@ -248,9 +249,11 @@ void video_flip(void)
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     {
-        /* (G7) a full-resolution 3D view is shown at most 20 times a
-         * second (three vblanks), so it holds steady; a half-resolution
-         * one at most 30 (two).
+        /* Balanced and Smooth can present a full- or half-resolution
+         * 3D frame every two vblanks (~30 FPS) *when it actually fits*.
+         * Max keeps the conservative three-vblank full-detail baseline
+         * (~20 FPS). A full-detail frame must not be artificially held
+         * to 20 FPS in Balanced when CPU measurements say it fits 30. */
          * (SP8, from G9) and the pace holds: a 3D frame that needs more
          * vblanks than the pace (counting the wait for the next vblank)
          * moves it there (at most 4: 15 fps, or 3 at quarter detail), and it comes back one step
@@ -260,7 +263,8 @@ void video_flip(void)
          * (r3d.c, Options "Combat detail") sees every 3D frame here. */
         extern uint8_t gba_view3d_frame, gba_view3d_pace;
         void r3d_gov_flip(int frame, uint32_t took, uint32_t work);
-        uint32_t need = gba_view3d_frame == 1 ? 3u : 2u;
+        uint32_t need = (gba_view3d_frame == 1 &&
+                         opt_get(OPT_3D_FAST) == OPT3D_MAX) ? 3u : 2u;
         if (gba_view3d_frame) {
             uint32_t base = need, pace = gba_view3d_pace & 7u, fit = gba_view3d_pace >> 3;
             uint32_t max_pace = gba_view3d_frame == 3 ? 3u : 4u;
