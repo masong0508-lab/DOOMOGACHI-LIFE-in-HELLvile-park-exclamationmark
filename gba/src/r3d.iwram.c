@@ -504,19 +504,25 @@ void r3d_columns(void)
 /* ------------------------------------------------------------------------ */
 /* sprites                                                                    */
 
-/* the window of column c at depth d8: the last checkpoint with d8 <= d8,
- * else the whole view. A checkpoint is read as one word (d8 | top << 16 |
- * bot << 24, little-endian R3DClip; EWRAM). */
+/* The ray records clip checkpoints in increasing depth order. A sprite
+ * needs the LAST checkpoint no farther than its depth, or the full view.
+ * Billboards are drawn far to near, so most distant sprite columns can
+ * find their checkpoint near the END of the list. Walking backwards avoids
+ * repeatedly scanning the nearer checkpoints; no RAM, sampling or clipping
+ * rules change (including equal-depth checkpoints). */
 static void clip_at(int c, uint32_t d8, int *top, int *bot)
 {
     const R3DClip *k = r3d_clips[c];
-    int n = r3d_nclips[c], i;
+    int i = r3d_nclips[c];
     *top = 0;
     *bot = r3f.vh;
-    for (i = 0; i < n; i++) {
-        if (k[i].d8 > d8) break;
-        *top = k[i].top;
-        *bot = k[i].bot;
+    while (i) {
+        const R3DClip *cp = &k[--i];
+        if (cp->d8 <= d8) {
+            *top = cp->top;
+            *bot = cp->bot;
+            break;
+        }
     }
 }
 
