@@ -175,6 +175,27 @@ jobs:
           make -C gba test-breach2 | tee breach2.md
           cat breach2.md >> "$GITHUB_STEP_SUMMARY"
 
+      # Heavy-room profiler: the four Breach maps where the live GBA build
+      # misses 22 drawn FPS. Run a separate fresh ROM session for each start
+      # window (the profiler adds ticks, so profiling a normal tour inline
+      # would shift the middle/late windows and invalidate comparisons).
+      - name: Profile four slow Breach rooms (GBA, function hotspots)
+        run: |
+          set -euo pipefail
+          mkdir -p gba/build
+          arm-none-eabi-nm -n gba/build/doomogachi.elf > gba/build/doomogachi.nm
+          for slug in cloud_nine factory graveyard underbelly; do
+            awk '/^expect-fps / { print; print "profile 9000000"; exit } { print }' \
+              "gba/harness/scripts/breach_${slug}.txt" > "gba/build/breach_hot_${slug}.txt"
+            gba/build/harness gba/build/doomogachi.gba \
+              --script "gba/build/breach_hot_${slug}.txt" \
+              --nm gba/build/doomogachi.nm --no-fps-gates --quiet \
+              > "gba/build/breach_hot_${slug}.log" 2>&1
+            echo "### Breach ${slug}, start-room hotspots" >> "$GITHUB_STEP_SUMMARY"
+            python3 gba/tools/profile_report.py "gba/build/breach_hot_${slug}.log" 12 \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
       - name: Collect ROMs
         run: |
           mkdir -p dist
@@ -308,6 +329,7 @@ jobs:
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
+            gba/build/breach_hot_*.log
             gba/build/sung.log
             gba/build/sung_spikes.log
             gba/build/play_idle.log
