@@ -544,7 +544,7 @@ void r3d_draw_sprite(const R3DSprite *s)
             if (dx < 0) dx = -dx;
             if (dx >= hw12) continue;
             /* half height of the ellipse at this x: hh * sqrt(1 - (dx/hw)^2) */
-            q = (int32_t)(((int64_t)dx << 8) / hw12);          /* 0..255 */
+            q = (int32_t)r3d_shadow_ratio8((uint32_t)dx, (uint32_t)hw12); /* 0..255 */
             q = 256 - ((q * q) >> 8);
             hc = (hh * (q > 192 ? 4 : q > 112 ? 3 : q > 48 ? 2 : 1) + 2) >> 2;
             if (hc < 1) hc = 1;
