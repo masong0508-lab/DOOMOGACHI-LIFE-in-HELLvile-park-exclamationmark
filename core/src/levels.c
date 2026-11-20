@@ -783,6 +783,16 @@ static const DoomoActivity lv_activities[] = {
       ICON_PENTAGRAM, 4, ACT_ALWAYS, &SCENE_LEVEL_SELECT, LVM_NORMAL | ((LV_UNDERBELLY + 1) << 4) },
     { "Graveyard Shift", "Night shift at the cemetery", ACTLOC_HELLVILE, BOTH | ACTF_NIGHT_ONLY,
       ICON_GHOST, 4, ACT_ALWAYS, &SCENE_LEVEL_SELECT, LVM_NORMAL | ((LV_GRAVEYARD + 1) << 4) },
+#if defined(DOOMO_PLATFORM_PS1)
+    /* The PS1 deliberately retains the original seven-ranked-level table
+     * for resident RAM. Bone Cathedral is already Hell Breach 6; provide
+     * free-play entrances to both authored maps without allocating a
+     * 31-level registry or changing any persistent level/save IDs. */
+    { "Bone Cathedral", "Explore the ruined bone cathedral", ACTLOC_ARENA, BOTH,
+      ICON_CROSS, 3, ACT_ALWAYS, &SCENE_COMBAT, MAPID_BONE_CATHEDRAL },
+    { "Bone Capital", "Explore the ivory streets and sky bridges", ACTLOC_ARENA, BOTH,
+      ICON_CROSS, 3, ACT_ALWAYS, &SCENE_COMBAT, MAPID_BONE_CAPITAL },
+#endif
     { NULL, NULL, 0, 0, 0, 0, 0, NULL, 0 }
 };
 const DoomoActivity *const doomo_activities_combat = lv_activities;
