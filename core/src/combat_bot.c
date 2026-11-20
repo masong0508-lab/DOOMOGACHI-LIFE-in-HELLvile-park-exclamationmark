@@ -97,123 +97,144 @@ static int passable(int cx, int cy, int nx, int ny, int allow_lava)
     return 1;
 }
 
-/* BFS from the player's cell; returns 1 and sets way_x/way_y to the first
- * step toward the nearest marked target. */
-static int bfs_to_targets(int allow_lava)
-{
-    int w = doomo_map.w, h = doomo_map.h;
-    int px = FIX2INT(doomo_player.x) / CELLU, py = FIX2INT(doomo_player.y) / CELLU;
-    int head = 0, tail = 0, start = py * w + px;
-    memset(BOT_DIR, 0, BOT_DIR_BYTES);
-    nib_set(start, 15);
-    /* A cell index needs division and modulo by the level's map width
-     * on every BFS dequeue. All maps are at most 64x64, so store x and y
-     * directly in the existing 16-bit ring slot (six bits each). This
-     * eliminates per-node 32-bit divisions on the ARM7TDMI and doesn't
-     * change the 4 KB work-area layout, traversal order, or waypoints. */
-    BOT_QUEUE[tail++] = (uint16_t)(px | (py << 6));
-    while (head != tail) {
-        int packed = BOT_QUEUE[head], cx = packed & 63, cy = packed >> 6;
-        int c = cy * w + cx, k;
-        int inherited = nib_get(c);
-        /* Fixed-size ring: a compare avoids 32-bit modulo on ARM7TDMI. */
-        if (++head == BOT_Q) head = 0;
-        if (c != start && (BOT_BITS[c >> 3] & (1 << (c & 7)))) {
-            int d = nib_get(c) - 1;
-            way_x = px + ddx[d];
-            way_y = py + ddy[d];
-            return 1;
-        }
-        for (k = 0; k < 4; k++) {
-            int nx = cx + ddx[k], ny = cy + ddy[k], ni;
-            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-            ni = ny * w + nx;
-            if (nib_get(ni)) continue;
-            if (!passable(cx, cy, nx, ny, allow_lava)) continue;
-            nib_set(ni, c == start ? k + 1 : inherited);
-            {   /* Preserve the original full-ring check and enqueue order. */
-                int next = tail + 1;
-                if (next == BOT_Q) next = 0;
-                if (next == head) continue;                   /* queue full */
-                BOT_QUEUE[tail] = (uint16_t)(nx | (ny << 6));
-                tail = next;
-            }
-        }
-    }
-    return 0;
-}
-
+/* One prioritized BFS for ALL goals. Previously plan() ran a BFS for
+ * health, exit, keys, demons, triggers and pickups separately (and retried
+ * each across lava). A far-away or unreachable high-priority target thus
+ * caused several complete map scans before choosing a waypoint.
+ *
+ * The 4 KB scratch area stays exactly the same:
+ *   BOT_DIR: 4-bit target priority per cell (0 none, 1 health .. 6 pickup)
+ *   BOT_BITS: visited flag per cell, reset for each BFS
+ *   BOT_QUEUE: packed x(6) y(6) first-step(2), one 16-bit entry each.
+ * One scan can find the shortest reachable path for each goal priority;
+ * a second pass across lava is only needed if it can improve the priority.
+ * This is *only* debug/demo autopilot routing, not enemy AI or the player's
+ * collision/physics. The priority order and safe-before-lava preference
+ * match the old planner. No heap, framebuffer, or extra static data. */
+static int target_priority;
+static int earliest_priority;
 static void mark1(int cx, int cy)
 {
-    int i;
+    int i, old;
     if (cx < 0 || cy < 0 || cx >= doomo_map.w || cy >= doomo_map.h) return;
     i = cy * doomo_map.w + cx;
-    BOT_BITS[i >> 3] |= (uint8_t)(1 << (i & 7));
+    old = nib_get(i);
+    if (!old || target_priority < old) nib_set(i, target_priority);
+    if (target_priority < earliest_priority) earliest_priority = target_priority;
 }
 
-/* mark a target cell; things over lava (or flying above it) are marked
- * by the safe cells around them instead */
+/* Pickups / demons over lava are targeted through safe adjacent tiles. */
 static void mark(int cx, int cy)
 {
     int k;
-    if (!(map_cell_safe(&doomo_map, cx, cy)->flags & CELL_LAVA)) { mark1(cx, cy); return; }
+    if (!(map_cell_safe(&doomo_map, cx, cy)->flags & CELL_LAVA)) {
+        mark1(cx, cy);
+        return;
+    }
     for (k = 0; k < 8; k++) {
-        static const int8_t ox[8] = { 1, -1, 0, 0, 1, 1, -1, -1 }, oy[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
+        static const int8_t ox[8] = { 1, -1, 0, 0, 1, 1, -1, -1 };
+        static const int8_t oy[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
         int nx = cx + ox[k], ny = cy + oy[k];
         const DoomoCell *c = map_cell_safe(&doomo_map, nx, ny);
         if (!c->wall && !(c->flags & CELL_LAVA)) mark1(nx, ny);
     }
 }
 
+/* Returns best reachable goal priority and its first move direction.
+ * BFS order is identical to the old four-neighbour traversal, so the
+ * chosen path for a given priority and lava rule remains shortest. */
+static int bfs_priority(int allow_lava, int *first_dir)
+{
+    int w = doomo_map.w, h = doomo_map.h;
+    int px = FIX2INT(doomo_player.x) / CELLU, py = FIX2INT(doomo_player.y) / CELLU;
+    int head = 0, tail = 0, start = py * w + px;
+    int best_priority = 7, best_dir = -1;
+    memset(BOT_BITS, 0, BOT_BITS_BYTES);
+    BOT_BITS[start >> 3] |= (uint8_t)(1u << (start & 7));
+    BOT_QUEUE[tail++] = (uint16_t)(px | (py << 6));
+    while (head != tail) {
+        int packed = BOT_QUEUE[head], cx = packed & 63, cy = (packed >> 6) & 63;
+        int dir = (packed >> 12) & 3, c = cy * w + cx, k;
+        int priority = nib_get(c);
+        if (++head == BOT_Q) head = 0;
+        if (c != start && priority && priority < best_priority) {
+            best_priority = priority;
+            best_dir = dir;
+            if (priority == earliest_priority) break; /* optimal priority found */
+        }
+        for (k = 0; k < 4; k++) {
+            int nx = cx + ddx[k], ny = cy + ddy[k], ni;
+            int next = tail + 1;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            ni = ny * w + nx;
+            if (BOT_BITS[ni >> 3] & (1u << (ni & 7))) continue;
+            if (!passable(cx, cy, nx, ny, allow_lava)) continue;
+            if (next == BOT_Q) next = 0;
+            if (next == head) continue;
+            BOT_BITS[ni >> 3] |= (uint8_t)(1u << (ni & 7));
+            BOT_QUEUE[tail] = (uint16_t)(nx | (ny << 6) | ((c == start ? k : dir) << 12));
+            tail = next;
+        }
+    }
+    *first_dir = best_dir;
+    return best_priority;
+}
+
 static int plan(void)
 {
-    int i, n, kind;
+    int i, count = doomo_map.w * doomo_map.h, safe_rank, lava_rank;
+    int safe_dir, lava_dir, px, py, result_dir;
 #if defined(DOOMO_PLATFORM_GBA)
-    gba_bot_claim();               /* the clip checkpoints are ours until the draw */
+    gba_bot_claim();   /* Same 4 KB borrowed scratch, zero persistent RAM. */
 #endif
-    for (kind = -1; kind < 5; kind++) {
-        memset(BOT_BITS, 0, BOT_BITS_BYTES);
-        n = 0;
-        if (kind == -1) {
-            /* hurt: go for health first */
-            if (doomo_player.hp >= 50) continue;
-            for (i = 0; i < ACTOR_MAX; i++) {
-                const DoomoActor *a = &doomo_actors[i];
-                if ((a->flags & AF_PICKUP) && (a->type == THING_HEALTH_SMALL || a->type == THING_HEALTH_BIG ||
-                                               a->type == THING_SOUL_ORB || a->type == THING_ARMOR)) {
-                    mark(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU); n++;
-                }
+    memset(BOT_DIR, 0, BOT_DIR_BYTES);
+    earliest_priority = 7;
+    for (i = 0; i < count; i++) {
+        const DoomoCell *c = &doomo_map.cells[i];
+        int x = i % doomo_map.w, y = i / doomo_map.w;
+        if ((c->flags & CELL_EXIT) && combat_s.goal == CGOAL_EXIT) {
+            target_priority = 2; mark(x, y);
+        }
+        if (c->flags & CELL_TRIGGER) {
+            target_priority = 5; mark(x, y);
+        }
+    }
+    for (i = 0; i < ACTOR_MAX; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        int x = FIX2INT(a->x) / CELLU, y = FIX2INT(a->y) / CELLU;
+        if (a->flags & AF_PICKUP) {
+            target_priority = 6; mark(x, y);
+            if (a->type == THING_KEY_RED || a->type == THING_KEY_BLUE) {
+                target_priority = 3; mark(x, y);
             }
-        } else if (kind == 0 && combat_s.goal == CGOAL_EXIT) {
-            for (i = 0; i < doomo_map.w * doomo_map.h; i++)
-                if (doomo_map.cells[i].flags & CELL_EXIT) { mark(i % doomo_map.w, i / doomo_map.w); n++; }
-        } else if (kind == 1) {
-            for (i = 0; i < ACTOR_MAX; i++) {
-                const DoomoActor *a = &doomo_actors[i];
-                if ((a->flags & AF_PICKUP) && (a->type == THING_KEY_RED || a->type == THING_KEY_BLUE)) {
-                    mark(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU); n++;
-                }
-            }
-        } else if (kind == 2) {
-            for (i = 0; i < ACTOR_MAX; i++) {
-                const DoomoActor *a = &doomo_actors[i];
-                if ((a->flags & AF_SHOOTABLE) && IS_DEMON(a->type) && a->hp > 0) {
-                    mark(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU); n++;
-                }
-            }
-        } else if (kind == 3) {
-            for (i = 0; i < doomo_map.w * doomo_map.h; i++)
-                if (doomo_map.cells[i].flags & CELL_TRIGGER) { mark(i % doomo_map.w, i / doomo_map.w); n++; }
-        } else if (kind == 4) {
-            for (i = 0; i < ACTOR_MAX; i++) {
-                const DoomoActor *a = &doomo_actors[i];
-                if ((a->flags & AF_PICKUP)) { mark(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU); n++; }
+            if (doomo_player.hp < 50 &&
+                (a->type == THING_HEALTH_SMALL || a->type == THING_HEALTH_BIG ||
+                 a->type == THING_SOUL_ORB || a->type == THING_ARMOR)) {
+                target_priority = 1; mark(x, y);
             }
         }
-        if (!n) continue;
-        if (bfs_to_targets(0) || bfs_to_targets(1)) return 1;
+        if ((a->flags & AF_SHOOTABLE) && IS_DEMON(a->type) && a->hp > 0) {
+            target_priority = 4; mark(x, y);
+        }
     }
-    return 0;
+    if (earliest_priority == 7) return 0;
+    safe_rank = bfs_priority(0, &safe_dir);
+    if (safe_rank > earliest_priority) {
+        lava_rank = bfs_priority(1, &lava_dir);
+        /* A higher-priority goal reachable through lava wins, as it did
+         * when the original planner retried each category across lava. */
+        if (lava_rank < safe_rank) {
+            safe_rank = lava_rank;
+            safe_dir = lava_dir;
+        }
+    }
+    if (safe_rank == 7 || safe_dir < 0) return 0;
+    result_dir = safe_dir;
+    px = FIX2INT(doomo_player.x) / CELLU;
+    py = FIX2INT(doomo_player.y) / CELLU;
+    way_x = px + ddx[result_dir];
+    way_y = py + ddy[result_dir];
+    return 1;
 }
 
 static int visible_demon(fix16 *dist_out)
