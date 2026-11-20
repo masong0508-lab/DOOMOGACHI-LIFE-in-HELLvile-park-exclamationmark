@@ -25,6 +25,7 @@
 #include "doomo/plat_ext.h"
 #include "doomo/library.h"
 #include "doomo/portrait.h"
+#include "doomo/street.h"    /* one immutable address for every 1000 house slots */
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -131,6 +132,7 @@ static struct {
     int sel;
     uint8_t menu_open;
     uint8_t atlas, atlas_side; /* real cell atlas; exactly same geometry as 3D map */
+    uint8_t atlas_homes, atlas_chunk, atlas_lot; /* 50 lots/page, stable permanent addresses */
     const Loc *mloc;
     int menu_t;
     int nent, esel, etop;
@@ -708,6 +710,7 @@ static void atlas_load(int side)
 {
     I.atlas = 1;
     I.atlas_side = (uint8_t)(side != 0);
+    I.atlas_homes = 0;
     I.menu_open = 0;
     I.hub_full = 0;
     map_load(side ? MAPID_HELLVILE : MAPID_HAHALAND);
@@ -999,6 +1002,41 @@ static int open_next_problem(void)
 static void atlas_update(void)
 {
     int side = I.atlas_side;
+    if (I.atlas_homes) {
+        /* Direct-access 1000-house directory: fifty lots per window, two
+         * sides of the boulevard, ten windows per district. No resident
+         * sprites loaded until A opens a particular existing apartment
+         * scene. Empty future lot addresses stay visible even on GBA. */
+        int old = I.atlas_lot, ch = I.atlas_chunk;
+        if (btn_pressed(BTN_START)) {
+            I.atlas = I.atlas_homes = 0; I.dirty = 1; I.hub_full = 0;
+            audio_sfx(SFX_CANCEL); return;
+        }
+        if (btn_pressed(BTN_SELECT | BTN_B)) {
+            I.atlas_homes = 0; audio_sfx(SFX_CANCEL); return;
+        }
+        if (btn_pressed(BTN_L)) ch = (ch + STREET_CHUNKS_MAX - 1) % STREET_CHUNKS_MAX;
+        if (btn_pressed(BTN_R)) ch = (ch + 1) % STREET_CHUNKS_MAX;
+        if (btn_repeat(BTN_LEFT)) I.atlas_lot = (uint8_t)((old + 49) % 50);
+        if (btn_repeat(BTN_RIGHT)) I.atlas_lot = (uint8_t)((old + 1) % 50);
+        if (btn_repeat(BTN_UP)) I.atlas_lot = (uint8_t)((I.atlas_lot + 40) % 50);
+        if (btn_repeat(BTN_DOWN)) I.atlas_lot = (uint8_t)((I.atlas_lot + 10) % 50);
+        if (ch != I.atlas_chunk || old != I.atlas_lot) {
+            I.atlas_chunk = (uint8_t)ch; audio_sfx(SFX_CURSOR);
+        }
+        if (btn_pressed(BTN_A)) {
+            int id = street_slot(side, I.atlas_chunk, I.atlas_lot);
+            if (id >= 0) {
+                audio_sfx(SFX_SELECT);
+                scene_push(&SCENE_APARTMENTS, id + 2);
+            }
+        }
+        return;
+    }
+    if (btn_pressed(BTN_SELECT)) {
+        I.atlas_homes = 1; I.atlas_chunk = 0; I.atlas_lot = 0;
+        audio_sfx(SFX_SELECT); return;
+    }
     if (btn_pressed(BTN_B | BTN_START)) {
         I.atlas = 0;
         I.dirty = 1;
@@ -1410,11 +1448,59 @@ static int atlas_tile_color(const DoomoCell *c, int side)
     return side ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_GRASS, 5);
 }
 
+/* Streamed-house design preview and an immediately useful 1000-address
+ * index. 10 chunks per side, 50 lots per chunk, rendered on demand as
+ * simple facade symbols; this NEVER spawns 1000 actors/house instances.
+ * GBA has 250 LIVE residents per side, but addresses 0..499 still exist
+ * and remain selectable (empty houses explain when capacity is full). */
+static void atlas_draw_homes(void)
+{
+    int side = I.atlas_side, ch = I.atlas_chunk, lot = I.atlas_lot;
+    int sw = fp_sw(), sh = fp_sh(), step = fp_big() ? 19 : 15;
+    int sx = (sw - (10 * step + 8)) / 2, sy = fp_big() ? 66 : 43;
+    int x, y, id = street_slot(side, ch, lot), count;
+    char buf[80];
+    ui_backdrop(WIN_CUTE, fp_t());
+    ui_title(sw / 2, 3, side ? "Hellvile Home Row" : "Hillvile Home Row", WIN_CUTE);
+    doomo_snprintf(buf, sizeof(buf), "Street %d/10  %d numbered lots", ch + 1,
+                   STREET_LOTS_PER_CHUNK);
+    ui_text_center(sw / 2, fp_big() ? 36 : 22, buf, PAL_WHITE);
+    /* Road strip down the center. Ten house slots per numbered block,
+     * five on either side, so block and room always agree with
+     * the existing apartment facade and creator address. */
+    plat_rect(sx + 5 * step - 2, sy - 3, 8, 5 * step + 6,
+              side ? PAL_RAMP(RAMP_STEEL, 5) : PAL_RAMP(RAMP_STONE, 5));
+    for (y = 0; y < 5; y++) for (x = 0; x < 10; x++) {
+        int n = y * 10 + (x < 5 ? x * 2 : (x - 5) * 2 + 1);
+        int addr = street_slot(side, ch, n);
+        int occupied = addr >= 0 && TOWN_RES(addr)->status != RES_EMPTY;
+        int selected = n == lot, px = sx + x * step + (x >= 5 ? 8 : 0);
+        int py = sy + y * step, size = fp_big() ? 14 : 10;
+        int col = occupied ? (side ? PAL_RAMP(RAMP_LAVA, 5) : PAL_RAMP(RAMP_MINT, 6)) :
+                             (side ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_STONE, 4));
+        plat_rect(px - (selected ? 1 : 0), py - (selected ? 1 : 0),
+                  size + (selected ? 2 : 0), size + (selected ? 2 : 0),
+                  selected ? PAL_UI_GOLD : PAL_BLACK);
+        plat_rect(px + 1, py + 1, size - 2, size - 2, col);
+        if (occupied) plat_rect(px + size / 2 - 1, py + size / 2, 2, 2, PAL_WHITE);
+    }
+    count = town_count_district(side, -1);
+    doomo_snprintf(buf, sizeof(buf), "House %d  Block %d Room %d  %s",
+                   id, street_block(id), street_room(id),
+                   TOWN_RES(id)->status == RES_EMPTY ? "Empty" : "Occupied");
+    ui_text_center(sw / 2, sh - (fp_big() ? 38 : 28), buf, PAL_WHITE);
+    doomo_snprintf(buf, sizeof(buf), "Residents %d/%d  (500 permanent addresses)", count,
+                   DOOMO_LIVE_PER_DISTRICT);
+    ui_text_center(sw / 2, sh - (fp_big() ? 26 : 18), buf, PAL_UI_GOLD);
+    ui_text_center(sw / 2, sh - 9, "D-pad House  L/R Street  A Open  B Map", PAL_WHITE);
+}
+
 static void atlas_draw(void)
 {
     int side = I.atlas_side, w, h, x0, y0, sc, x, y;
     const int wanted = side ? MAPID_HELLVILE : MAPID_HAHALAND;
     const DoomoMap *m;
+    if (I.atlas_homes) { atlas_draw_homes(); return; }
     if (map_current_id() != wanted) map_load(wanted);  /* only on return from other scenes */
     m = &doomo_map;
     w = m->w; h = m->h;
@@ -1439,7 +1525,7 @@ static void atlas_draw(void)
     plat_rect(x0 + x * sc - 2, y0 + y * sc - 2, sc + 4, sc + 4, PAL_BLACK);
     plat_rect(x0 + x * sc - 1, y0 + y * sc - 1, sc + 2, sc + 2, PAL_UI_GOLD);
     ui_text_center(fp_sw() / 2, fp_sh() - 13,
-                   "L/R District  A Walk  B Back", PAL_WHITE);
+                   "L/R District  A Walk  SEL Homes  B Back", PAL_WHITE);
 }
 
 static void island_draw(void)
