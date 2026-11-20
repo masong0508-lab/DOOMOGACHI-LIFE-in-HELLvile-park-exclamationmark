@@ -219,6 +219,16 @@ jobs:
           fi
           cat gba/build/gba3d_profiles.md | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Full-resolution 3D can be costly on a 16.78 MHz ARM7, but silently
+      # dropping every frame to 60x40 is not a visual success either.
+      # Compare the exact same scripted ticks across commits. This report is
+      # informational while the 22/30 FPS and clarity goals are being tuned.
+      - name: Quantify 3D pixel blockiness from actual mGBA screenshots
+        run: |
+          set -euo pipefail
+          python3 gba/tools/visual_clarity.py gba/build/shots/3d_census \
+            --out gba/build/visual_clarity.md | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Collect ROMs
         run: |
           mkdir -p dist
