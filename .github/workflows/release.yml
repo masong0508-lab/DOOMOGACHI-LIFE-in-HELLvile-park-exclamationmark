@@ -1,5 +1,5 @@
 # Release builds (owner: ci): push a tag like v0.1.0 and this workflow
-# builds and tests the GBA ROM and the PS1 discs, then attaches them to a
+# builds and tests the GBA ROM, PS1 discs and Dreamcast CDI, then attaches them to a
 # GitHub Release for that tag (created if it does not exist yet).
 #
 #   git tag v0.1.0 && git push origin v0.1.0
@@ -130,9 +130,70 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  dreamcast:
+    name: Dreamcast portable CDI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install Dreamcast disc and emulator dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc g++ make git python3 python3-numpy python3-pil ffmpeg zip \
+            libegl-dev libgl-dev libgles2-mesa-dev libasound2-dev libpng-dev zlib1g-dev
+
+      - name: Pinned Dreamcast KallistiOS toolchain
+        uses: ./.github/actions/setup-kos
+        with:
+          prefix: ~/dc
+          jobs: '4'
+
+      - name: Build and validate bootable Dreamcast image
+        run: |
+          set -euo pipefail
+          make -C dc all-disc -j"$(nproc)" INTRO_REQUIRED=1
+          make -C dc check-elf
+          make -C dc host-test
+          make -C dc v3d-test
+          make -C dc check-packdisc check-talkdisc
+          test -s dc/build/doomogachi.cdi
+          test -s dc/build/1ST_READ.BIN
+          test -s dc/build/IP.BIN
+
+      - name: Build Flycast and verify console gameplay
+        env:
+          EGL_PLATFORM: surfaceless
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          set -euo pipefail
+          make -C dc/harness flycast
+          make -C dc harness-test
+          make -C dc talk-test
+          make -C dc family-test
+          make -C dc family-test2
+
+      - name: Package Dreamcast console release
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp dc/build/doomogachi.cdi dist/doomogachi-dreamcast.cdi
+          cp dc/build/doomogachi.elf dist/doomogachi-dreamcast.elf
+          cp dc/README.md dist/README-Dreamcast.md
+          (cd dist && sha256sum -- doomogachi-dreamcast.cdi > dreamcast-SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dreamcast
+          path: dist/
+          if-no-files-found: error
+
   publish:
     name: Publish the GitHub Release
-    needs: [gba, ps1]
+    needs: [gba, ps1, dreamcast]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -157,10 +218,12 @@ jobs:
           | \`doomogachi.gba\` | Game Boy Advance ROM (128 KB flash save). Play in mGBA or on a flash cart. |
           | \`doomogachi-ps1.zip\` | PlayStation disc, NTSC (\`.bin/.cue\` + side-loadable \`.exe\`). |
           | \`doomogachi-ps1-pal.zip\` | PlayStation disc, PAL video. |
+          | \`doomogachi-dreamcast.cdi\` | Dreamcast self-booting console disc image for compatible emulators or supported homebrew loading methods. |
+          | \`doomogachi-dreamcast.elf\` | Dreamcast ELF for developer debugging. |
           | \`doomogachi-enginetest.gba\`, \`doomogachi-ps1-enginetest.zip\` | 3D engine showcase builds. |
           | \`SHA256SUMS.txt\` | checksums |
 
-          Emulators: mGBA (GBA), DuckStation or PCSX-Redux (PS1). The disc is unlicensed: on a real
+          Emulators: mGBA (GBA), DuckStation or PCSX-Redux (PS1), Flycast (Dreamcast). The disc is unlicensed: on a real
           PlayStation it needs a modchip, a softmod (Unirom, tonyhax International, FreePSXBoot) or an ODE.
           See docs/BUILDING.md in the repository for details.
           EOF
