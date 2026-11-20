@@ -725,11 +725,23 @@ void lv_runtime_view(DoomoView3D *v)
         v->tint = (uint8_t)tint;
         v->tint_level = (uint8_t)(opt_get(OPT_REDUCE_FLASH) ? lvl / 2 : lvl);
     }
-#if LV_HAS_NEW && !defined(DOOMO_PLATFORM_GBA)
-    /* (LV4) the level's own view distance (header key `view N`, a v2 map; the seven built levels have none: 0).
-     * Not on the GBA yet: no GBA level has a v2 map today, and these 64 bytes of ROM moved the code after them
-     * and cost the Vape Cellar's middle window 2.2 ms of 80 (alignment of the ROM fetches). r3d.c reads
-     * DoomoView3D.view_dist already; the first GBA level with a `view` key adds this line and measures. */
+#if defined(DOOMO_PLATFORM_GBA)
+    /* GBA-only fog horizon for four especially wide Hell Breach maps. An
+     * 18-cell view still keeps nearby exits, bridges and landmark walls
+     * visible, while the height raycaster can stop tracing more distant
+     * cells and cull farther billboards. Beyond the limit the existing
+     * floor/sky fade continues: no added assets, RAM or drawing passes.
+     * This only changes the render distance, never collision, AI, combat,
+     * map geometry, routes or progress. Compare each mGBA breach window
+     * before changing these map-specific budgets again. */
+    switch (lv_run.level) {
+    case LV_CLOUD_NINE: v->view_dist = 18; break;
+    case LV_FACTORY:    v->view_dist = 16; break;
+    case LV_GRAVEYARD:  v->view_dist = 18; break;
+    case LV_UNDERBELLY: v->view_dist = 16; break;
+    default: break;
+    }
+#elif LV_HAS_NEW
     v->view_dist = (uint8_t)lv_env_view(map_ext_of(doomo_map.def));
 #endif
 }
