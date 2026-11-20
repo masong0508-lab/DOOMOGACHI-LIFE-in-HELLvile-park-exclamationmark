@@ -1828,10 +1828,16 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
         uint32_t kn;
         if (!(a->flags & AF_USED)) continue;
         rx = a->x - ex; ry = a->y - ey;
+        /* Cheap axis-aligned reject first: huge Breach maps contain many
+         * actors well outside the camera's 30-cell view. Previously every
+         * used actor paid two FIXMUL projection calls even when far away.
+         * These two filters are independent, so their order cannot change
+         * the billboard set, exact distance key, tie order or final pixels.
+         * No state, scratch storage, or asset changes on any port. */
+        if (rx > (fix16)BB_CULL_R || rx < -(fix16)BB_CULL_R || ry > (fix16)BB_CULL_R || ry < -(fix16)BB_CULL_R)
+            continue;
         depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
         if (depth < -INT2FIX(48)) continue;
-        if (rx > (fix16)BB_CULL_R || rx < -(fix16)BB_CULL_R || ry > (fix16)BB_CULL_R || ry < -(fix16)BB_CULL_R)
-            continue;                     /* |rx| or |ry| > R: s >= (R+1)^2 */
         s = bb_sq(rx, ry);
         if (s >= BB_CULL_S) continue;
         kn = (uint32_t)(s >> BB_KEY_SHIFT);
