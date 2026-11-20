@@ -662,6 +662,16 @@ void plat_view3d(const DoomoView3D *v)
          * detail. Shorten the render horizon only in Balanced's fallback. */
         if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])
             vd = 16;
+        /* Bone Capital/Cathedral have dense walls, ceilings and tall
+         * interiors. Under adaptive detail, cap distant ray traversal
+         * before it forces the next frame into a lower quality tier.
+         * Preserve the authored full-distance scene in Max/full detail.
+         * No additional memory or per-column calculation is required. */
+        if (detail && (m->def == doomo_maps[MAPID_BONE_CAPITAL] ||
+                       m->def == doomo_maps[MAPID_BONE_CATHEDRAL])) {
+            const uint32_t cap = detail == 2 ? 12u : 20u;
+            if (vd > cap) vd = cap;
+        }
         r3f.maxd = vd << 16;
     }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
