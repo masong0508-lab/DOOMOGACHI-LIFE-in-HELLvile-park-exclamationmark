@@ -81,7 +81,7 @@ TEST(levels_registry_ids_pages_and_manifest)
     CHECK_EQ(lv_listed_count(), 31);
     CHECK_EQ(lv_page_of(-1), LVP_BREACH);
     CHECK(!lv_listed(-1) && !lv_listed(LV_COUNT) && !lv_built(99));
-    /* the manifest is the plan's seven; the GBA lists exactly those */
+    /* GBA manifest: original seven plus eight newer levels. */
     lv_list_req = LVG_GBA;
     CHECK_EQ(lv_listed_count(), 15);
     for (i = 0; i < LV_COUNT; i++) CHECK_MSG(lv_listed(i) == on_gba_list(i), "level %d on the GBA list", i);
@@ -451,7 +451,7 @@ TEST(levels_unlock_rules_on_the_gba_follow_the_chain)
     /* the chain stops at New Game+: without it nothing of the Arrears page opens */
     story_set_flag(SF_NGPLUS, 0);
     CHECK(!lv_rule_met(LV_N7) && !lv_rule_met(LV_N14) && !lv_rule_met(LV_N1));
-    CHECK_EQ(lv_listed_count(), 14);
+    CHECK_EQ(lv_listed_count(), 15);  /* eight newer levels including Bone Capital */
     lv_list_req = 0;
     CHECK(!lv_rule_met(LV_N14));                         /* the same chain on a console that has them all: Notice 13 first */
 }
