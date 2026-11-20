@@ -12,7 +12,7 @@
 #
 #   DOOMO_DL=dir    where the zips are (default ~/storage/downloads)
 #   DOOMO_WORK=dir  scratch unpack folder (default ~/vs, cleared every run)
-#   DOOMO_NOPULL=1  skip git pull      DOOMO_NOPUSH=1  commit but do not push
+#   DOOMO_NOPULL=1  skip syncing main   DOOMO_NOPUSH=1  commit but do not push
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DL=${DOOMO_DL:-$HOME/storage/downloads}
@@ -23,6 +23,10 @@ die() { say "dpatch: $*"; exit 1; }
 
 cd "$ROOT"
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$ROOT is not a git checkout"
+# The GitHub repository's old default was claude/nice-allen-gr6czm.
+# Never patch or push that branch by accident: main is authoritative.
+branch=$(git symbolic-ref -q --short HEAD || true)
+[ "$branch" = main ] || die "wrong branch '${branch:-detached HEAD}': use 'git fetch origin main && git switch main' after saving local work; patches must go to main"
 arg=${1:-}
 if [ -n "$arg" ]; then
   case $arg in */*) zip=$arg ;; *) zip=$DL/${arg%.zip}.zip ;; esac
@@ -37,7 +41,12 @@ if [ "${DOOMO_FORCE:-0}" != 1 ] && [ -n "$(git status --porcelain)" ]; then
   git status --short | head -10
   die "uncommitted changes above: commit or stash them first (DOOMO_FORCE=1 to go on)"
 fi
-[ "${DOOMO_NOPULL:-0}" = 1 ] || git pull --ff-only || die "git pull --ff-only failed: fix that first (nothing was changed)"
+if [ "${DOOMO_NOPULL:-0}" != 1 ]; then
+  git pull --ff-only origin main || die "origin/main could not fast-forward; save your local commits and resolve the divergence first"
+else
+  say "dpatch: WARNING: skipping origin/main update (DOOMO_NOPULL=1)"
+fi
+say "dpatch: main source commit $(git rev-parse HEAD)"
 
 rm -rf "$WORK"; mkdir -p "$WORK"
 unzip -qo "$zip" -d "$WORK" || die "cannot unzip $zip"
@@ -56,7 +65,7 @@ else
   say "dpatch: committed: $(git log --oneline -1)"
 fi
 if [ "${DOOMO_NOPUSH:-0}" != 1 ]; then
-  git push || die "push refused: run  git pull --rebase && git push  (the commit is safe locally)"
+  git push origin HEAD:refs/heads/main || die "push to origin/main refused: the commit is safe locally; fetch origin main and reconcile changes before retrying"
 fi
 printf '%s %s %s\n' "$(date +%F' '%T)" "$name" "$(git rev-parse --short HEAD)" >> "$LOG" 2>/dev/null || true
 say "dpatch: done. undo (if not pushed yet): git reset --hard HEAD~1"

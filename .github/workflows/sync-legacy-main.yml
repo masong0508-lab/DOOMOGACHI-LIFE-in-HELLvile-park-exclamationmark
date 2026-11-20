@@ -1,0 +1,41 @@
+# Maintain one build lineage until the repository default branch can be set to main.
+# A fast-forward ONLY: never overwrite new commits made directly on the legacy
+# branch; report divergence for human review instead of silently discarding it.
+name: Keep legacy branch aligned with main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sync-legacy-branch
+  cancel-in-progress: false
+jobs:
+  fast-forward-legacy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fast-forward legacy default branch, never force
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          branch='claude/nice-allen-gr6czm'
+          head="$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)"
+          if ! old="$(gh api "repos/$GH_REPO/git/ref/heads/$branch" --jq .object.sha 2>/dev/null)"; then
+            echo "Legacy branch no longer exists; nothing to synchronize."
+            exit 0
+          fi
+          if [ "$old" = "$head" ]; then
+            echo "Legacy and main already identical: $head"
+            exit 0
+          fi
+          status="$(gh api "repos/$GH_REPO/compare/$old...$head" --jq .status)"
+          if [ "$status" != ahead ]; then
+            echo "::error::Legacy branch has independent commits ($status). Do not overwrite; merge into main through a PR."
+            exit 1
+          fi
+          gh api --method PATCH "repos/$GH_REPO/git/refs/heads/$branch" \
+            -f sha="$head" -F force=false --silent
+          echo "Fast-forwarded $branch to main $head"

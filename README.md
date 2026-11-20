@@ -149,6 +149,33 @@ listed on the releases page.
 * `doomogachi-enginetest.gba`, `doomogachi-ps1-enginetest.zip`: the 3D engine tours
 * `SHA256SUMS.txt`
 
+**Canonical development branch: `main`.** The legacy
+`claude/nice-allen-gr6czm` branch is retained as a compatibility pointer.
+Always select a **successful main-branch CI run**, not merely the most recently
+listed run on any branch. Each GBA ROM artifact contains `BUILD_SOURCE.txt`
+(the exact full commit SHA) and `SHA256SUMS.txt`. Release downloads are built
+from version tags and may be older than `main`.
+
+**Termux patching (no wrong-branch pushes):**
+
+```sh
+cd ~/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark
+git status --short                 # save any local edits before switching
+git fetch origin main
+git switch main                    # auto-creates local main if only origin/main exists
+git pull --ff-only origin main
+git rev-parse HEAD                 # must match BUILD_SOURCE.txt of the ROM you want
+sh tools/dpatch.sh PATCH_NAME     # pulls and pushes origin/main explicitly
+```
+
+`tools/dpatch.sh` refuses to run outside `main`, never force-pushes, and
+stops on a divergent history. If a patch does not apply, preserve your local
+work and reconcile it rather than resetting the repository. A fresh clone
+should use `git clone -b main --single-branch <repository-url>`.
+GitHub's default-branch setting is separate from Git branches; the repository
+owner should set **Settings → General → Default branch → main** so ordinary
+clones also begin on the authoritative branch.
+
 **Bleeding edge, from every commit:** open
 [Actions → CI](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/workflows/ci.yml),
 click the newest green run, and scroll down to **Artifacts**. You need to
@@ -156,7 +183,7 @@ be signed in to GitHub to download them.
 
 | artifact | contents |
 |---|---|
-| `doomogachi-gba` | `doomogachi.gba`, `doomogachi-enginetest.gba` |
+| `doomogachi-gba` | `doomogachi.gba`, `doomogachi-enginetest.gba`, `BUILD_SOURCE.txt`, `SHA256SUMS.txt` |
 | `doomogachi-ps1` | `doomogachi.bin`, `doomogachi.cue`, `doomogachi.exe` |
 | `doomogachi-ps1-enginetest` | the engine-test disc |
 | `gba-harness-screenshots`, `core-native-screenshots` | what the automated tests saw |

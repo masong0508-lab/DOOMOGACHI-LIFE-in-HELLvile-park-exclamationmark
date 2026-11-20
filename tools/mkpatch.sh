@@ -41,7 +41,7 @@ Apply (Termux, from anywhere; the repo clone is ~/$R):
   sh ~/$R/tools/dpatch.sh $NAME
 
 If the repo does not have tools/dpatch.sh yet (first time), the long form:
-  cd ~/$R && git pull --ff-only && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/$NAME.zip -d ~/vs && sh ~/vs/$NAME/apply.sh && git add -A && { git diff --cached --quiet || git commit -F ~/vs/$NAME/commit.txt ; } && git push
+  cd ~/$R && git fetch origin main && git switch main && git pull --ff-only origin main && rm -rf ~/vs && mkdir ~/vs && unzip -qo ~/storage/downloads/$NAME.zip -d ~/vs && sh ~/vs/$NAME/apply.sh && git add -A && { git diff --cached --quiet || git commit -F ~/vs/$NAME/commit.txt ; } && git push origin HEAD:refs/heads/main
 
 Undo before pushing:   cd ~/$R && git reset --hard HEAD~1
 Test after applying:   DOOMO_TEST=1 sh ~/vs/$NAME/apply.sh     (make -C core test, needs gcc + python3)

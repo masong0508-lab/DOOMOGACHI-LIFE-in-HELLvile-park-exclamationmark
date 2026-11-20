@@ -96,6 +96,9 @@ jobs:
           done
           if [ -s dist/doomogachi.cdi ]; then
             cp dc/README.md dist/README-Dreamcast.md
+            printf 'repository=%s\nbranch=%s\ncommit=%s\nrun_id=%s\n' \
+              "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$GITHUB_SHA" "$GITHUB_RUN_ID" \
+              > dist/BUILD_SOURCE.txt
             (cd dist && sha256sum -- doomogachi.cdi > SHA256SUMS.txt)
           fi
           ls -lh dist
