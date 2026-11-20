@@ -133,6 +133,7 @@ static struct {
     uint8_t menu_open;
     uint8_t atlas, atlas_side; /* real cell atlas; exactly same geometry as 3D map */
     uint8_t atlas_homes, atlas_chunk, atlas_lot; /* 50 lots/page, stable permanent addresses */
+    uint8_t return_music; /* a 3D visit was pushed: resume hub song on pop */
     const Loc *mloc;
     int menu_t;
     int nent, esel, etop;
@@ -737,6 +738,8 @@ static void run_entry(const Entry *e)
     case E_APTS: scene_push(&SCENE_APARTMENTS, e->arg); break;
     case E_CITY_ATLAS: atlas_load(e->arg); break;
     case E_WALK_DISTRICT:
+        I.menu_open = 0;  /* return to the visible city map, not a stale menu */
+        I.return_music = 1;
         scene_push(&SCENE_STORY, e->arg ? STORY_ARG_VISIT_HELL_HOMES :
                                      STORY_ARG_VISIT_HILL_HOMES);
         break;
@@ -757,10 +760,14 @@ static void run_entry(const Entry *e)
     case E_ARENA: scene_push(&SCENE_ARENA, 0); break;
     case E_GRAVES: scene_push(&SCENE_GRAVEYARD, 0); break;
     case E_STROLL:
+        I.menu_open = 0; I.return_music = 1;
         scene_push(&SCENE_STORY, unlock_mode_ok(MODE_UNITED_PARK) ? STORY_ARG_VISIT_PARK : STORY_ARG_VISIT_HAHALAND);
         break;
     case E_PICNIC: picnic(); break;
-    case E_VISIT_HELL: scene_push(&SCENE_STORY, STORY_ARG_VISIT_HELLVILE); break;
+    case E_VISIT_HELL:
+        I.menu_open = 0; I.return_music = 1;
+        scene_push(&SCENE_STORY, STORY_ARG_VISIT_HELLVILE);
+        break;
     case E_PEEK_WALL: peek_wall(); break;
     case E_RENT: collect_rent(); break;
     case E_NAME_ISLAND:
@@ -1052,6 +1059,7 @@ static void atlas_update(void)
     }
     if (btn_pressed(BTN_A)) {
         audio_sfx(SFX_SELECT);
+        I.return_music = 1;
         scene_push(&SCENE_STORY, side ? STORY_ARG_VISIT_HELL_HOMES :
                                           STORY_ARG_VISIT_HILL_HOMES);
     }
@@ -1063,6 +1071,13 @@ static void island_update(void)
     isl_ready();
     I.live = 1;
     fp_live();
+    if (I.return_music) {
+        /* Story visit switches to outdoor music; returning by scene_pop
+         * retains the original hub instead of calling island_enter().
+         * Restore the right track once, not through per-frame polls. */
+        I.return_music = 0;
+        audio_music(I.song);
+    }
     if (I.atlas) { atlas_update(); return; }
     if (I.wait) { after_wait(); if (I.wait) return; }
     scan_crowds();
