@@ -29,14 +29,14 @@ static void shot(const char *name)
     nat_png_write(path, nat_fb, nat_w, nat_h, 1);
 }
 
-/* the seven new levels of the GBA (plan 7.1: HB8, HB9, HB13, HB15, N1, N7, N14) */
-static const int gba_new[7] = { LV_HB8, LV_HB9, LV_HB13, LV_HB15, LV_N1, LV_N7, LV_N14 };
+/* Eight newer GBA levels: HB14 Bone Capital joins the earlier seven. */
+static const int gba_new[8] = { LV_HB8, LV_HB9, LV_HB13, LV_HB14, LV_HB15, LV_N1, LV_N7, LV_N14 };
 
 static int on_gba_list(int lv)
 {
     int i;
     if (lv < LV_OLD_COUNT) return 1;
-    for (i = 0; i < 7; i++) if (gba_new[i] == lv) return 1;
+    for (i = 0; i < 8; i++) if (gba_new[i] == lv) return 1;
     return 0;
 }
 
@@ -68,25 +68,25 @@ TEST(levels_registry_ids_pages_and_manifest)
         CHECK_MSG(lv_reg[i].reason < LVT_COUNT && lv_reg[i].page < LVP_COUNT, "level %d registry", i);
         per_page[lv_page_of(i)]++;
         CHECK_EQ(lv_listed(i), 1);                       /* the host lists them all */
-        /* The original seven and the five shipped format-2 maps are built. */
+        /* The original seven plus newer built maps, including Bone Capital. */
         CHECK_EQ(lv_built(i), i < LV_OLD_COUNT || i == LV_HB8 || i == LV_HB9 ||
-                 i == LV_HB11 || i == LV_HB12 || i == LV_HB13);
+                 i == LV_HB11 || i == LV_HB12 || i == LV_HB13 || i == LV_HB14);
         CHECK_EQ(lv_built(i), lv_info[i].map != LV_NO_MAP);
         n += (lv_reg[i].flags & LVG_GBA) != 0;
     }
     CHECK_EQ(per_page[LVP_BREACH], 7);
     CHECK_EQ(per_page[LVP_HELL], 9);
     CHECK_EQ(per_page[LVP_ARREARS], 15);
-    CHECK_EQ(n, 14);                                     /* 7 + the GBA's seven */
+    CHECK_EQ(n, 15);                                     /* 7 + the GBA's eight */
     CHECK_EQ(lv_listed_count(), 31);
     CHECK_EQ(lv_page_of(-1), LVP_BREACH);
     CHECK(!lv_listed(-1) && !lv_listed(LV_COUNT) && !lv_built(99));
     /* the manifest is the plan's seven; the GBA lists exactly those */
     lv_list_req = LVG_GBA;
-    CHECK_EQ(lv_listed_count(), 14);
+    CHECK_EQ(lv_listed_count(), 15);
     for (i = 0; i < LV_COUNT; i++) CHECK_MSG(lv_listed(i) == on_gba_list(i), "level %d on the GBA list", i);
-    /* its records are numbered in id order, 0..6 */
-    for (i = 0; i < 7; i++) CHECK_EQ(lv_rec_slot(gba_new[i]), i);
+    /* its records are numbered in id order, 0..7 */
+    for (i = 0; i < 8; i++) CHECK_EQ(lv_rec_slot(gba_new[i]), i);
     CHECK_EQ(lv_rec_slot(LV_HB10), -1);
     CHECK_EQ(lv_rec_slot(LV_UNDERBELLY), -1);            /* the old seven have no record here */
     lv_list_req = 0;
@@ -289,15 +289,15 @@ TEST(levels_brch_on_the_gba_is_smaller_and_cross_loads)
     fill_records();
     na = e->write(all, sizeof(all));
     CHECK_EQ(na, (uint32_t)LV_BRCH_MAX);
-    /* the GBA's list: the same records of its seven only, 4 + 48 + 28 = 80 B */
+    /* the GBA now stores eight records, 4 + 48 + 32 = 84 B */
     lv_list_req = LVG_GBA;
     CHECK(e->read(all, na, LV_BRCH_VERSION));            /* a save from another platform loads: foreign records skipped */
     check_records(0);
     ng = e->write(gba, sizeof(gba));
-    CHECK_EQ(ng, 4u + LV_BRCH_ARC + 7u * 4u);
-    CHECK_EQ(ng, 80u);
-    /* the mask: bit = level - 7 of HB8, HB9, HB13, HB15, N1, N7, N14 */
-    CHECK_EQ(gba[1] | (gba[2] << 8) | (gba[3] << 16), (1 << 0) | (1 << 1) | (1 << 5) | (1 << 7) | (1 << 9) | (1 << 15) | (1 << 22));
+    CHECK_EQ(ng, 4u + LV_BRCH_ARC + 8u * 4u);
+    CHECK_EQ(ng, 84u);
+    /* the mask includes HB14 (level 13) at bit 6, alongside the earlier seven */
+    CHECK_EQ(gba[1] | (gba[2] << 8) | (gba[3] << 16), (1 << 0) | (1 << 1) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 9) | (1 << 15) | (1 << 22));
     lv_list_req = 0;
     /* ...and a GBA save loads on a platform that lists them all, each record on its level */
     CHECK(e->read(gba, ng, LV_BRCH_VERSION));
@@ -410,7 +410,9 @@ TEST(levels_unlock_rules)
         const LevelReg *r = &lv_reg[i];
         CHECK_MSG(lv_reason_text[r->reason] != NULL && (r->reason == LVT_NONE) == (r->rule == LVK_ALWAYS), "level %d", i);
         CHECK_MSG(r->rule != LVK_AFTER_LEVEL || r->arg < i, "level %d waits for a later one", i);
-        CHECK_MSG(r->rule != LVK_AFTER_LEVEL || lv_reg[r->arg].page == r->page, "level %d waits across pages", i);
+        /* Bone Capital intentionally unlocks from Cathedral on the preceding page. */
+        CHECK_MSG(r->rule != LVK_AFTER_LEVEL || lv_reg[r->arg].page == r->page ||
+                  (i == LV_HB14 && r->arg == LV_CATHEDRAL), "level %d waits across pages", i);
         CHECK_MSG(r->rule != LVK_BEAT || (r->arg >= BEAT_EP1_1 && r->arg <= BEAT_EP4_7), "level %d beat", i);
     }
     /* the Notices need New Game+ on top of their own rule; the main game's levels do not */

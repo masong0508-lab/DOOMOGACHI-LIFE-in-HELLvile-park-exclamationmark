@@ -6,7 +6,7 @@
  * golds as unlock ids (no migration); everything newer is here, because
  * the PROG counters and the 1024 unlock bits are all taken.
  *
- * The chunk, version 1 (LV_BRCH_MAX = 148 B; 80 B on the GBA):
+ * The chunk, version 1 (LV_BRCH_MAX = 148 B; 84 B on the GBA):
  *   0      version (1)
  *   1..3   a 24-bit mask, little endian: bit i = a record of level 7 + i
  *          follows (every build writes the levels of its own manifest)
@@ -29,7 +29,7 @@
  * does not list is skipped on load.
  *
  * The working copy is the arc and the records as they are stored: 144 B of
- * .bss (GBA: 76 B, its seven levels; the PS1: none, see LV_TABLE_N). Only the four chunk functions are
+ * .bss (GBA: 80 B, its eight levels; the PS1: none, see LV_TABLE_N). Only the four chunk functions are
  * called from outside the levels (by save.c through the registry).
  */
 #include "levels_int.h"

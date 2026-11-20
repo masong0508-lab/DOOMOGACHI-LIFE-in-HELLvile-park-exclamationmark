@@ -142,12 +142,12 @@ const char *lv_memorial_label(const char *name);
 #define lv_note_set_seen(l) ((void)0)
 #endif
 
-/* The platform manifest: the GBA lists the 7 old levels and its seven of
+/* The platform manifest: the GBA lists the 7 old levels and its eight of
  * the new ones (LVG_GBA), every other platform all 31 (the PS1: see
  * LV_TABLE_N). The host build can pretend to be the GBA for the tests:
  * lv_list_req = LVG_GBA (a level is listed when it has every flag asked). */
 #if defined(DOOMO_LEVELS_GBA_SET)
-#define LV_REC_N 7                    /* new levels with a record on this build */
+#define LV_REC_N 8                    /* Bone Capital: eighth GBA newer-level record */
 #define LV_LIST_REQ LVG_GBA
 #elif defined(DOOMO_PLATFORM_PS1)
 #define LV_REC_N 0

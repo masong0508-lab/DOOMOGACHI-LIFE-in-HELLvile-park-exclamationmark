@@ -3,7 +3,7 @@
  * 7.1, 8.5 and 9): the table of all 31 levels (the seven built ones, Hell
  * Breach 8-16 and the fifteen New Game+ "Arrears" Notices), the page each
  * one sits on in the level select, the platform manifest (the GBA has the
- * seven old levels and seven of the new ones), the unlock rule of each
+ * seven old levels and eight of the new ones), the unlock rule of each
  * level and the text of its locked reason.
  *
  * Tables and pure lookups only: nothing here reads the save or the story
