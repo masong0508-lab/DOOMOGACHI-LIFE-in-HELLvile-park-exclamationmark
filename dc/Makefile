@@ -143,7 +143,7 @@ DC_OBJS   := $(call dc_obj,$(DC_SRCS))
 CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 ALL_OBJS  := $(DC_OBJS) $(CORE_OBJS)
 
-.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test talk-speed host-test harness-test ui-compare vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
+.PHONY: all elf disc all-disc test check-elf check-packdisc check-talkdisc talk-test talk-speed host-test harness-test ui-compare bone-test vmu-test disc-test audio-test ow-test room-test v3d-test family-test family-test2 sizes clean
 .DEFAULT_GOAL := all
 
 all: elf
@@ -255,7 +255,18 @@ harness-test: $(ELF) $(CDI) $(ELF_RUN)
 	$(MAKE) --no-print-directory -f $(DC)/Makefile disc-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile audio-test || exit 1; \
 	$(MAKE) --no-print-directory -f $(DC)/Makefile ow-test || exit 1; \
-	$(MAKE) --no-print-directory -f $(DC)/Makefile room-test
+	$(MAKE) --no-print-directory -f $(DC)/Makefile room-test || exit 1; \
+	$(MAKE) --no-print-directory -f $(DC)/Makefile bone-test
+
+# Both authored Bone maps must be enterable and render on a *disc boot*,
+# not just exist as weak references in the shared map table. Screenshots of
+# first/third person go to build/shots/bone-levels for visual inspection.
+bone-test: $(CDI) $(BUILD)/doomogachi.nm
+	@if [ -z "$(FLYCAST)" ]; then echo "bone-test: Flycast is required" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory -C $(HARNESS) all
+	$(DCRUN) $(FLYCAST) $(CDI) --nm $(BUILD)/doomogachi.nm --fresh \
+	    --run-dir $(BUILD)/bone-run --script $(DC)/tests/bone_levels.txt \
+	    --shots $(SHOTS)/bone-levels --timeout 300
 
 $(ELF_RUN): $(ELF)
 	$(STRIP) --strip-debug -o $@ $(ELF)

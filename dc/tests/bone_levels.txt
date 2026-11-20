@@ -1,0 +1,33 @@
+# Dreamcast Bone Cathedral (Hell Breach 6) and Bone Capital (Hell Breach 14).
+# This boots the *self-booting CDI*, so it exercises the shipped map data,
+# scene transitions, renderer and controller rather than just host stubs.
+# Screenshots are retained by CI for first/third person visual review.
+scene TITLE
+wait 2
+push BREACH 5
+expect-scene BREACH
+wait 22
+shot bone_cathedral_intro
+press A
+wait 35
+expect-scene BREACH
+shot bone_cathedral_first
+press SELECT
+wait 12
+shot bone_cathedral_third
+scene TITLE
+wait 2
+push BREACH 13
+expect-scene BREACH
+wait 22
+shot bone_capital_intro
+press A
+wait 35
+expect-scene BREACH
+shot bone_capital_first
+press SELECT
+wait 12
+shot bone_capital_third
+press START
+wait 8
+shot bone_capital_pause
