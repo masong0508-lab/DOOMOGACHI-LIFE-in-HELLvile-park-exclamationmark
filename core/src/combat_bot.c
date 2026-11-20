@@ -106,9 +106,16 @@ static int bfs_to_targets(int allow_lava)
     int head = 0, tail = 0, start = py * w + px;
     memset(BOT_DIR, 0, BOT_DIR_BYTES);
     nib_set(start, 15);
-    BOT_QUEUE[tail++] = (uint16_t)start;
+    /* A cell index needs division and modulo by the level's map width
+     * on every BFS dequeue. All maps are at most 64x64, so store x and y
+     * directly in the existing 16-bit ring slot (six bits each). This
+     * eliminates per-node 32-bit divisions on the ARM7TDMI and doesn't
+     * change the 4 KB work-area layout, traversal order, or waypoints. */
+    BOT_QUEUE[tail++] = (uint16_t)(px | (py << 6));
     while (head != tail) {
-        int c = BOT_QUEUE[head], cx = c % w, cy = c / w, k;
+        int packed = BOT_QUEUE[head], cx = packed & 63, cy = packed >> 6;
+        int c = cy * w + cx, k;
+        int inherited = nib_get(c);
         /* Fixed-size ring: a compare avoids 32-bit modulo on ARM7TDMI. */
         if (++head == BOT_Q) head = 0;
         if (c != start && (BOT_BITS[c >> 3] & (1 << (c & 7)))) {
@@ -123,12 +130,12 @@ static int bfs_to_targets(int allow_lava)
             ni = ny * w + nx;
             if (nib_get(ni)) continue;
             if (!passable(cx, cy, nx, ny, allow_lava)) continue;
-            nib_set(ni, c == start ? k + 1 : nib_get(c));
+            nib_set(ni, c == start ? k + 1 : inherited);
             {   /* Preserve the original full-ring check and enqueue order. */
                 int next = tail + 1;
                 if (next == BOT_Q) next = 0;
                 if (next == head) continue;                   /* queue full */
-                BOT_QUEUE[tail] = (uint16_t)ni;
+                BOT_QUEUE[tail] = (uint16_t)(nx | (ny << 6));
                 tail = next;
             }
         }
