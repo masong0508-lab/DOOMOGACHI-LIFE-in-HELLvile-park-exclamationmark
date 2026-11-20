@@ -273,7 +273,10 @@ push BREACH 8
 wait 40
 expect-scene BREACH
 press A
+wait 14
+press A
 wait 12
+expect-text Find the exit!
 fps start
 down UP
 wait 130
@@ -289,6 +292,7 @@ wait 40
 expect-scene BREACH
 press A
 wait 12
+expect-text Find the exit!
 press SELECT
 wait 12
 fps start

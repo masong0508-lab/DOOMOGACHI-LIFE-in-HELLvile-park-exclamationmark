@@ -249,29 +249,18 @@ void video_flip(void)
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
     postfx_pre_flip();          /* S1: squash OBJ checks + OAM (postfx.h) */
     {
-        /* Balanced and Smooth can present a full- or half-resolution
-         * 3D frame every two vblanks (~30 FPS) *when it actually fits*.
-         * Max keeps the conservative three-vblank full-detail baseline
-         * (~20 FPS). A full-detail frame must not be artificially held
-         * to 20 FPS in Balanced when CPU measurements say it fits 30.
-         * (SP8, from G9) and the pace holds: a 3D frame that needs more
-         * vblanks than the pace (counting the wait for the next vblank)
-         * moves it there (at most 4: 15 fps, or 3 at quarter detail), and it comes back one step
-         * only after 8 frames in a row fit the faster pace. A view that
-         * hovers at a vblank boundary then shows at an even 20 (or 15)
-         * instead of a ragged 30/20 or 20/15 mix. The resolution governor
-         * (r3d.c, Options "Combat detail") sees every 3D frame here. */
-        extern uint8_t gba_view3d_frame, gba_view3d_pace;
-        void r3d_gov_flip(int frame, uint32_t took, uint32_t work);
+        /* Balanced and Smooth can present a frame every two vblanks
+         * (~30 FPS) when it fits. Max keeps three vblanks at full detail.
+         * Hold the slower cadence after a miss, up to the cap for this
+         * detail tier. A smaller cap lets an already reduced view show
+         * more ready frames while the governor tracks actual misses. */
         uint32_t need = (gba_view3d_frame == 1 &&
                          opt_get(OPT_3D_FAST) == OPT3D_MAX) ? 3u : 2u;
         if (gba_view3d_frame) {
             uint32_t base = need, pace = gba_view3d_pace & 7u, fit = gba_view3d_pace >> 3;
-            uint32_t max_pace = gba_view3d_frame == 3 ? 3u : 4u;
+            uint32_t max_pace = r3d_presentation_cap(gba_view3d_frame);
             uint32_t took = gba_vblanks - last_flip_vbl + (REG_VCOUNT < 160 ? 1u : 0u);
             r3d_gov_flip(gba_view3d_frame, took, gba_work_last);
-            /* Quarter detail is Balanced's last fallback. A slow frame
-             * there should not also hold subsequent ready frames to 15 Hz. */
             if (pace > max_pace) { pace = max_pace; fit = 0; }
             if (pace < base) { pace = base; fit = 0; }
             if (took > pace) {

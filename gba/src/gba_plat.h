@@ -156,6 +156,9 @@ uint32_t scene_scratch_gen(void);
 
 /* ---- 3D (r3d*.c) --------------------------------------------------------- */
 void r3d_init(void);
+extern uint8_t gba_view3d_frame, gba_view3d_pace;
+void r3d_gov_flip(int frame, uint32_t took, uint32_t work);
+uint32_t r3d_presentation_cap(int frame);
 typedef struct R3DStats {
     uint32_t cycles_total, cycles_cols, cycles_planes, cycles_sprites;
     uint16_t planes, spans, events_overflow, columns;

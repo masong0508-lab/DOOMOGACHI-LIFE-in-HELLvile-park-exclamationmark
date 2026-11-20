@@ -166,7 +166,14 @@ def gba_player_census_script():
     for level, slug, _title in LEVELS + GBA_3D_PILOTS:
         for camera in ("first", "third"):
             s += ["seed 1", "scene TITLE", "wait 2", "push BREACH %d" % level,
-                  "wait 40", "expect-scene BREACH", "press A", "wait 12"]
+                  "wait 40", "expect-scene BREACH"]
+            if slug == "the_undercroft" and camera == "first":
+                # The first A dismisses the content note. The actual
+                # intro still waits for its own confirmation.
+                s += ["press A", "wait 14"]
+            s += ["press A", "wait 12"]
+            if slug == "the_undercroft":
+                s.append("expect-text Find the exit!")
             if camera == "third":
                 s += ["press SELECT", "wait 12"]
             s += ["fps start", "down UP", "wait 130",
@@ -201,7 +208,7 @@ def gba_player_census_script():
 # core/native/runner_main.c): a generated line outside them is a bug in this file, caught here
 OPS = {
     "core": {"scene", "push", "expect-scene", "wait", "shot", "press", "hold", "down", "up", "release"},
-    "gba": {"wait", "expect-log", "sync", "seed", "scene", "push", "opt", "fps", "expect-fps", "shot", "vhash-seq", "expect-scene", "press", "down", "release", "expect-logic", "profile"},
+    "gba": {"wait", "expect-log", "sync", "seed", "scene", "push", "opt", "fps", "expect-fps", "shot", "vhash-seq", "expect-scene", "expect-text", "press", "down", "release", "expect-logic", "profile"},
     "ps1": {"wait", "seed", "scene", "push", "opt", "fps", "fpsend", "shot"},
     "dc": {"wait", "seed", "scene", "push", "opt", "log", "mark-ticks", "gaps-reset", "frames", "expect-ticks",
            "expect-gap", "shot"},   # (S2-10: speed2.py's dc windows measure the gaps between pictures)

@@ -497,7 +497,6 @@ void r3d_columns(void)
     FL.u0 = (uint32_t)f->ex << 10;
     FL.v0 = (uint32_t)f->ey << 10;
     FL.fade = r3d_fade;
-    FL.far = 1400u << 8;
     for (c = 0; c < n; c++) column(c);
 }
 

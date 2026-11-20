@@ -1,6 +1,8 @@
 # Player-controlled four-level benchmark. No LVF_DEMO autopilot: these
 # numbers represent real in-game rendering and actor updates, not the
 # debug pathfinder. Use the same seed, quality and 130-tick run per level.
+# These floors guard the measured baseline. The census reports the
+# separate 22 FPS and 30 FPS goals for both cameras on every map.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -16,7 +18,7 @@ wait 12
 fps start
 down UP
 wait 130
-expect-fps 16 player cloud_nine forward
+expect-fps 17.5 player cloud_nine forward
 expect-logic 29 cloud_nine
 # A synchronous HUD portrait used to leave a seven-vblank gap here.
 expect-gap 105
@@ -34,7 +36,7 @@ wait 12
 fps start
 down UP
 wait 130
-expect-fps 17 player factory forward
+expect-fps 18.5 player factory forward
 expect-logic 29 factory
 shot player_factory
 profile 9000000
@@ -50,7 +52,7 @@ wait 12
 fps start
 down UP
 wait 130
-expect-fps 16.5 player graveyard forward
+expect-fps 17.5 player graveyard forward
 expect-logic 29 graveyard
 shot player_graveyard
 profile 9000000
@@ -66,7 +68,7 @@ wait 12
 fps start
 down UP
 wait 130
-expect-fps 17 player underbelly forward
+expect-fps 18 player underbelly forward
 expect-logic 29 underbelly
 shot player_underbelly
 profile 9000000

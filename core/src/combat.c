@@ -1755,13 +1755,13 @@ void combat_tick(void)
 /* ---- third-person camera ----------------------------------------------------------------- */
 static void update_camera(void)
 {
-    fix16 hx, hy, hz, px = doomo_player.x, py = doomo_player.y;
+    fix16 px = doomo_player.x, py = doomo_player.y;
     fix16 headz = doomo_player.z + INT2FIX(DOOMO_MIN(FIX2INT(combat_px.view_h) + 6, 50));
     int ang = doomo_player.angle, side = doomo_player.shoulder ? -1 : 1;
     int dist = doomo_player.sprint ? 136 : 124;
     fix16 bx = -fx_cos(ang), by = -fx_sin(ang);           /* behind */
     fix16 rx = -fx_sin(ang) * side, ry = fx_cos(ang) * side;   /* right shoulder */
-    fix16 dx, dy, d, want_x, want_y, want_z, len;
+    fix16 dx, dy, d, want_x, want_y, want_z, len, dir_x, dir_y, slope;
     if (combat_px.zoom_t > 128) dist = 56;
     if (input_feel()) {
         /* living camera: it trails back while you run forward, drops in
@@ -1788,15 +1788,17 @@ static void update_camera(void)
     dx = want_x - px; dy = want_y - py;
     len = fx_dist(dx, dy);
     if (len < INT2FIX(1)) len = INT2FIX(1);
-    d = cw_trace(px, py, headz, FIXDIV(dx, len), FIXDIV(dy, len), FIXDIV(want_z - headz, len), len,
-                 &hx, &hy, &hz);
+    dir_x = FIXDIV(dx, len);
+    dir_y = FIXDIV(dy, len);
+    slope = FIXDIV(want_z - headz, len);
+    d = cw_trace(px, py, headz, dir_x, dir_y, slope, len, NULL, NULL, NULL);
     if (d < len) {
         /* wall collision: pull the camera in front of the wall */
         fix16 keep = d - INT2FIX(10);
         if (keep < INT2FIX(6)) keep = INT2FIX(6);
-        want_x = px + FIXMUL(FIXDIV(dx, len), keep);
-        want_y = py + FIXMUL(FIXDIV(dy, len), keep);
-        want_z = headz + FIXMUL(FIXDIV(want_z - headz, len), keep);
+        want_x = px + FIXMUL(dir_x, keep);
+        want_y = py + FIXMUL(dir_y, keep);
+        want_z = headz + FIXMUL(slope, keep);
     }
     if (!combat_px.cam_ok) {
         combat_px.cam_x = want_x; combat_px.cam_y = want_y; combat_px.cam_z = want_z;
@@ -1805,8 +1807,10 @@ static void update_camera(void)
         fix16 nx = combat_px.cam_x + (want_x - combat_px.cam_x) / 2;
         fix16 ny = combat_px.cam_y + (want_y - combat_px.cam_y) / 2;
         fix16 nz = combat_px.cam_z + (want_z - combat_px.cam_z) / 2;
-        /* never smooth through a wall */
-        if (d < len || !cw_los(px, py, FIX2INT(headz), nx, ny, FIX2INT(nz))) {
+        /* Check a different smoothed point before putting the camera
+         * there. If it is already at the target, the fallback is identical. */
+        if ((nx != want_x || ny != want_y || nz != want_z) &&
+            (d < len || !cw_los(px, py, FIX2INT(headz), nx, ny, FIX2INT(nz)))) {
             nx = want_x; ny = want_y; nz = want_z;
         }
         combat_px.cam_x = nx; combat_px.cam_y = ny; combat_px.cam_z = nz;
@@ -1840,13 +1844,14 @@ static int player_view_dir(fix16 camx, fix16 camy, int *flip)
  * The order is the one the old code made: an insertion sort by d = fx_dist() = floor(sqrt(s)), s = rx^2 + ry^2,
  * which moves an actor in front of an earlier one only when its d is strictly smaller (so actors with the same d
  * stay in index order). Here the cull is the exact test "d > 30 cells" <=> s >= (R+1)^2, and each kept actor
- * stores key = s >> BB_KEY_SHIFT (s < 2^54 after the cull, so the key fits 32 bits). An insertion compares keys:
+ * stores key = s >> BB_KEY_SHIFT (s < 2^54 after the cull, so the key fits 32 bits). A binary search compares keys:
  *   - key_old < key_new: s_old < s_new, so d_old <= d_new: stop (as before);
  *   - key_old >= key_new + BB_KEY_SURE: s_old - s_new > 2^28 > 2 sqrt(s_old) (sqrt(s_old) < 2^27), so
  *     sqrt(s_old) - sqrt(s_new) > 1 and d_old > d_new: move;
  *   - otherwise (distances within ~1/2^16 to 1/2^10 of a unit of each other, which is rare) the exact test:
  *     s_old from the actor, and d_old > d_new <=> s_old >= (d_new + 1)^2 with d_new = fx_dist() (one root,
  *     only for such near-ties).
+ * The predicate compares the floored distances, so the search remains valid even when tied keys differ.
  * tests/test_combat.c checks order, count and keys against the old fx_dist() sort on random and tied layouts. */
 #define BB_CULL_R    ((uint64_t)INT2FIX(30 * CELLU))
 #define BB_CULL_S    ((BB_CULL_R + 1u) * (BB_CULL_R + 1u))
@@ -1884,6 +1889,7 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
         fix16 rx, ry, depth;
         uint64_t s, near1 = 0;            /* (d_new + 1)^2, once it is needed */
         uint32_t kn;
+        int lo, hi;
         if (!(a->flags & AF_USED)) continue;
         rx = a->x - ex; ry = a->y - ey;
         /* Cheap axis-aligned reject first: huge Breach maps contain many
@@ -1899,20 +1905,28 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
         s = bb_sq(rx, ry);
         if (s >= BB_CULL_S) continue;
         kn = (uint32_t)(s >> BB_KEY_SHIFT);
-        for (k = cnt; k > 0; k--) {
-            uint32_t ko = key[k - 1];
-            if (ko < kn) break;
+        /* Find the first strictly farther actor, so equal distances
+         * retain slot order. Move the tail without redoing comparisons. */
+        lo = cnt && key[cnt - 1] < kn ? cnt : 0;
+        hi = cnt;
+        while (lo < hi) {
+            int mid = (lo + hi) >> 1;
+            uint32_t ko = key[mid];
+            if (ko < kn) { lo = mid + 1; continue; }
             if (ko - kn < BB_KEY_SURE) {
-                const DoomoActor *o = &doomo_actors[order[k - 1]];
+                const DoomoActor *o = &doomo_actors[order[mid]];
                 uint64_t so = bb_sq(o->x - ex, o->y - ey);
-                if (so <= s) break;
+                if (so <= s) { lo = mid + 1; continue; }
                 if (!near1) {
                     uint64_t d1 = (uint64_t)fx_dist(rx, ry) + 1u;
                     near1 = d1 * d1;
                 }
-                if (so < near1) break;    /* the same d: keep index order */
+                if (so < near1) { lo = mid + 1; continue; }
             }
-            key[k] = ko;
+            hi = mid;
+        }
+        for (k = cnt; k > lo; k--) {
+            key[k] = key[k - 1];
             order[k] = order[k - 1];
         }
         key[k] = kn;

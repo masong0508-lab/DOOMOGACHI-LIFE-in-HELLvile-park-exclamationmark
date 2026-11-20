@@ -128,6 +128,7 @@ typedef struct R3DFlat {
     uint32_t far;                  /* distance for average colour, 24.8   */
     uint32_t avg;                  /* texture's average texel             */
 } R3DFlat;
+extern R3DFlat FL;
 void r3d_flat_loop(R3DFlat *f);
 
 /* DDA state of r3d_column_asm() (layout fixed by r3d_loops.s) */

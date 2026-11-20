@@ -74,6 +74,18 @@ static int bone_readability_map(const DoomoMapDef *def)
            def == doomo_maps[MAPID_BONE_CATHEDRAL];
 }
 
+uint32_t r3d_presentation_cap(int frame)
+{
+    /* Quarter detail is already the governor's fastest tier. Show each
+     * ready frame after two vblanks, even in a run of late frames. */
+    if (frame == 3) return 2;
+    /* Let the readable Bone view recover to 20 FPS immediately. */
+    if (frame == 2 && r3f.map && bone_readability_map(r3f.map->def) &&
+        opt_get(OPT_3D_FAST) == OPT3D_BALANCED)
+        return 3;
+    return 4;
+}
+
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
 #if !defined(ENGINE_TEST)                 /* the engine test draws full resolution */
@@ -740,6 +752,11 @@ void plat_view3d(const DoomoView3D *v)
     r3f.frame = ++frame_no;
     r3f.cp_over = 0;
 
+    /* At a distance, small surface texels alias into a checkerboard on
+     * the Bone maps. Use the existing average-colour path earlier in
+     * Balanced's readable tier. The ray horizon and walls stay intact. */
+    FL.far = (detail == 1 && bone_readability_map(m->def) &&
+              opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 640u : 1400u) << 8;
     r3d_columns();
     t1 = gba_cycles();
     t2 = t1;

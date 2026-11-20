@@ -389,6 +389,32 @@ static void muzzle_flash(int mx, int my, const DoomoWeapon *w)
     }
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+static void draw_weapon_image(int x, int y, const DoomoImage *img)
+{
+    /* Skip whole transparent rows of the weapon's 96x64 work image.
+     * The two cached bounds cover the idle and firing images. */
+    static struct { uint32_t uid; uint8_t top, end; } crop[2];
+    static uint8_t next;
+    DoomoImage view;
+    int slot = crop[0].uid == img->uid ? 0 : crop[1].uid == img->uid ? 1 : -1;
+    if (slot < 0) {
+        int first = 0, last = img->w * img->h;
+        while (first < last && !img->pix[first]) first++;
+        while (last > first && !img->pix[last - 1]) last--;
+        slot = next;
+        next ^= 1;
+        crop[slot].uid = img->uid;
+        crop[slot].top = (uint8_t)(first / img->w);
+        crop[slot].end = (uint8_t)((last + img->w - 1) / img->w);
+    }
+    view = *img;
+    view.pix += crop[slot].top * img->w;
+    view.h = (uint16_t)(crop[slot].end - crop[slot].top);
+    plat_image(x, y + crop[slot].top, &view, 1, 0, 0);
+}
+#endif
+
 static void weapon_view(void)
 {
     const DoomoWeapon *w = combat_weapon();
@@ -439,7 +465,13 @@ static void weapon_view(void)
     /* the off-paw behind, the gun, the trigger paw in front */
     if (me && w->frame != WFRAME_FISTS)
         draw_paw(x + gx - 22, y + gy + 8, 7, RES_LOOK_VIEW(me));
-    if (img) plat_image(x, y, img, 1, 0, 0);
+    if (img) {
+#if defined(DOOMO_PLATFORM_GBA)
+        draw_weapon_image(x, y, img);
+#else
+        plat_image(x, y, img, 1, 0, 0);
+#endif
+    }
     if (me && w->frame != WFRAME_FISTS && w->frame != WFRAME_DUAL_PISTOLS)
         draw_paw(x + gx, y + gy + 2, 8, RES_LOOK_VIEW(me));
     if (combat_px.flash && combat_ws.behaviour != WB_MELEE)

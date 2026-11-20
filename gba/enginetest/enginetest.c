@@ -396,6 +396,7 @@ void enginetest_main(void)
     et_arena_test();
     et_blit_test();
     et_blit2_test();
+    et_upscale_test();
     if (save_test) et_save_test();
     load_own_map();
     px = (int32_t)tour[0].x8 << 19;

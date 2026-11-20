@@ -425,3 +425,37 @@ void et_blit2_test(void)
     gba_back = keep;
     if (!bad) gba_logf("ET blit2test ok (%d cases)", n);
 }
+
+/* Exercise the ROM scaler directly. Its reference is the former pair
+ * of IWRAM calls. Check both whole pages, including the pixels outside
+ * the viewport, and exercise both even and odd source row widths. */
+void et_upscale_test(void)
+{
+    void r3d_up2(uint16_t *, int, int) __attribute__((long_call));
+    void r3d_up4(uint16_t *, int, int);
+    static const uint8_t rect[][4] = { { 0, 0, 30, 40 }, { 4, 7, 25, 35 }, { 20, 13, 3, 3 } };
+    unsigned i;
+    iwram_ovl_use(OVL_3D);
+    for (i = 0; i < sizeof(rect) / sizeof(rect[0]); i++) {
+        int sx = rect[i][0], sy = rect[i][1], w = rect[i][2], h = rect[i][3];
+        int x, y, p;
+        uint16_t *ref = PAGE_A + sy * LINE + sx;
+        uint16_t *got = PAGE_B + sy * LINE + sx;
+        for (p = 0; p < LINE * 160; p++)
+            ((vu16_t *)PAGE_A)[p] = ((vu16_t *)PAGE_B)[p] = 0xA5A5;
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) {
+                uint16_t pair = (uint16_t)(((x * 13 + y * 71) & 255) * 257);
+                ((vu16_t *)ref)[y * LINE + x] = ((vu16_t *)got)[y * LINE + x] = pair;
+            }
+        r3d_up2(ref, w, h);
+        r3d_up2(ref, w * 2, h * 2);
+        r3d_up4(got, w, h);
+        for (p = 0; p < LINE * 160; p++)
+            if (((vu16_t *)PAGE_A)[p] != ((vu16_t *)PAGE_B)[p]) {
+                gba_logf("ET upscale FAIL case %u pixel %d", i, p);
+                return;
+            }
+    }
+    gba_log("ET upscale ok");
+}

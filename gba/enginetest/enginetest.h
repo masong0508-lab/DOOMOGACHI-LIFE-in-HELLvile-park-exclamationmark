@@ -17,5 +17,6 @@ void et_div_test(void);
 void et_arena_test(void);       /* CR5a: the island lists region at the top of the arena */
 void et_blit_test(void);
 void et_blit2_test(void);       /* SP6: the UI group's scale-2 loop */
+void et_upscale_test(void);
 
 #endif
