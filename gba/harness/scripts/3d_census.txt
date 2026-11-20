@@ -333,6 +333,39 @@ release UP
 seed 1
 scene TITLE
 wait 2
+push BREACH 13
+wait 40
+expect-scene BREACH
+press A
+wait 12
+fps start
+down UP
+wait 130
+fps census bone_capital first
+expect-logic 29 census bone_capital first
+shot census_bone_capital_first
+profile 9000000
+release UP
+seed 1
+scene TITLE
+wait 2
+push BREACH 13
+wait 40
+expect-scene BREACH
+press A
+wait 12
+press SELECT
+wait 12
+fps start
+down UP
+wait 130
+fps census bone_capital third
+expect-logic 29 census bone_capital third
+shot census_bone_capital_third
+release UP
+seed 1
+scene TITLE
+wait 2
 push ARENA 0
 wait 40
 expect-scene ARENA

@@ -50,6 +50,7 @@ GBA_3D_PILOTS = [
     (7, "steam_room_panic", "Steam Room Panic"),
     (8, "the_undercroft", "The Undercroft"),
     (12, "boneyard_buffet", "Boneyard Buffet & Bandstand"),
+    (13, "bone_capital", "Bone Capital"),
 ]
 
 
@@ -178,7 +179,7 @@ def gba_player_census_script():
             if (slug, camera) in {
                 ("cathedral", "first"), ("cathedral", "third"),
                 ("graveyard", "first"), ("sewers", "first"),
-                ("cloud_nine", "first"),
+                ("cloud_nine", "first"), ("bone_capital", "first"),
             }:
                 s.append("profile 9000000")
             s.append("release UP")
