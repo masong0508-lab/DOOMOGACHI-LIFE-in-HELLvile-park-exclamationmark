@@ -153,15 +153,21 @@ static int face_expr(void)
  * change; meanwhile the face keeps one still pose. */
 static const DoomoImage *face_crop(int top, int rows)
 {
-    static int8_t shown = -1;
-    static uint8_t hold;
     const DoomoImage *p;
     int ex = face_expr();
+#if defined(DOOMO_PLATFORM_GBA)
+    /* Even a cache miss with no stand-in must use the sliced path.
+     * A whole HUD portrait can otherwise stall a busy 3D frame. */
+    portrait_hold(3);
+#else
+    static int8_t shown = -1;
+    static uint8_t hold;
     if (ex != shown) {
         if (shown >= 0) hold = 8;
         shown = (int8_t)ex;
     }
     if (hold) { hold--; portrait_hold(1); }
+#endif
     p = portrait_image(doomo_player.resident_id, ex);
     portrait_hold(0);
     if (!p || !p->pix || p->h < top + rows) return p;

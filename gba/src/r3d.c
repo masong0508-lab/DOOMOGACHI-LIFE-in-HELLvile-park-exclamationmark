@@ -647,6 +647,10 @@ void plat_view3d(const DoomoView3D *v)
          * the horizon there); 0 or out of range = R3D_MAXDIST, the same frames as before */
         uint32_t vd = v->view_dist;
         if (vd < R3D_MINDIST || vd > R3D_MAXDIST) vd = R3D_MAXDIST;
+        /* Graveyard's long outdoor rays are still costly at quarter
+         * detail. Shorten the render horizon only in Balanced's fallback. */
+        if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])
+            vd = 16;
         r3f.maxd = vd << 16;
     }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)

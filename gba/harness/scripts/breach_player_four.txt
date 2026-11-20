@@ -18,6 +18,8 @@ down UP
 wait 130
 expect-fps 16 player cloud_nine forward
 expect-logic 29 cloud_nine
+# A synchronous HUD portrait used to leave a seven-vblank gap here.
+expect-gap 105
 shot player_cloud_nine
 profile 9000000
 release UP
@@ -48,7 +50,7 @@ wait 12
 fps start
 down UP
 wait 130
-expect-fps 15 player graveyard forward
+expect-fps 16.5 player graveyard forward
 expect-logic 29 graveyard
 shot player_graveyard
 profile 9000000

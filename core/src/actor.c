@@ -25,7 +25,8 @@ static uint8_t  ai_move[ACTOR_MAX];     /* ticks to keep the current move dir */
 static int16_t  ai_dir[ACTOR_MAX];      /* current move direction (angle)      */
 static uint8_t  ai_flash[ACTOR_MAX];    /* hit flash ticks                     */
 static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  */
-static int      corpse_count;
+static int16_t  corpse_count;
+static uint16_t actor_end;       /* one past the highest possibly used slot */
 
 #define GRAVITY_FX   ((fix16)75366)          /* 1.15 world units / tick^2 */
 
@@ -228,6 +229,7 @@ void actors_clear(void)
     memset(ai_flash, 0, sizeof(ai_flash));
     memset(ai_los, 0, sizeof(ai_los));
     corpse_count = 0;
+    actor_end = 0;
 }
 
 int actor_alloc(int effect)
@@ -240,6 +242,7 @@ int actor_alloc(int effect)
             doomo_actors[i].target = NO_TARGET;
             ai_move[i] = 0;
             ai_flash[i] = 0;
+            if (i == actor_end) actor_end++;
             return i;
         }
     /* full: recycle the oldest effect / gib (never for important actors
@@ -504,7 +507,7 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
      * doorway rejects most candidate steps here, saving 1-4 collision
      * cell and mover queries per rejected step without changing outcomes. */
     /* other solid bodies */
-    for (i = 0; i < ACTOR_MAX; i++) {
+    for (i = 0; i < actor_end; i++) {
         const DoomoActor *o = &doomo_actors[i];
         fix16 ddx, ddy, rr;
         if (i == idx || (o->flags & (AF_USED | AF_SOLID)) != (AF_USED | AF_SOLID)) continue;
@@ -512,9 +515,17 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
         rr = INT2FIX(o->radius + a->radius - 4);
         if (ddx > rr || ddx < -rr || ddy > rr || ddy < -rr) continue;
         if (FIX2INT(o->z) >= z + a->height || FIX2INT(o->z) + o->height <= z) continue;
-        /* moving away from an overlap is fine */
-        if (fx_dist_lt(ddx, ddy, rr) && fx_dist(o->x - a->x, o->y - a->y) >= fx_dist(ddx, ddy))
-            return 0;
+        if (fx_dist_lt(ddx, ddy, rr)) {
+            /* Moving away from an overlap is fine, except where both
+             * distances round down to the same fixed-point value.
+             * Compare squared distances first, avoiding two roots when
+             * moving toward the blocker or clearly away from it. */
+            int64_t change = (int64_t)dx * (2 * (int64_t)ddx + dx) +
+                             (int64_t)dy * (2 * (int64_t)ddy + dy);
+            if (change >= 0) return 0;
+            if (change > -2 * (int64_t)rr &&
+                fx_dist(o->x - a->x, o->y - a->y) >= fx_dist(ddx, ddy)) return 0;
+        }
     }
     /* the player */
     {
@@ -1510,7 +1521,10 @@ int actor_kill_group_alive(int arg)
 void actors_tick(void)
 {
     int i;
-    for (i = 0; i < ACTOR_MAX; i++) {
+    while (actor_end && !(doomo_actors[actor_end - 1].flags & AF_USED)) actor_end--;
+    /* Reload the bound after each update. A projectile or demon spawned
+     * into a later slot still gets its turn in this same tick. */
+    for (i = 0; i < actor_end; i++) {
         DoomoActor *a = &doomo_actors[i];
         if (!(a->flags & AF_USED)) continue;
         if (IS_DEMON(a->type)) demon_think(i);
