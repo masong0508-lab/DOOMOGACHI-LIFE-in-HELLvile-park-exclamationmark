@@ -354,3 +354,19 @@ TEST(city_visit_gba_select_b_synthetic_chord_recovers_hub)
     CHECK(scene_top() == &SCENE_ISLAND);
     CHECK_EQ(scene_depth(), 1);
 }
+
+
+/* On PS1, Triangle/Y is a real, separate key. Unlike GBA synthetic
+ * SELECT+B it must never send the player out of a 3D city visit. */
+TEST(city_visit_ps1_triangle_is_not_the_gba_back_chord)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 0xC17Au, TOWN_POP_EMPTY);
+    input_set_pad(PAD_PS1);
+    scene_set(&SCENE_ISLAND, 0);
+    scene_push(&SCENE_STORY, STORY_ARG_VISIT_HILL_HOMES);
+    frames(0, 2);
+    frames(BTN_Y, 1);
+    CHECK(scene_top() == &SCENE_STORY);
+    input_set_pad(-1);
+}

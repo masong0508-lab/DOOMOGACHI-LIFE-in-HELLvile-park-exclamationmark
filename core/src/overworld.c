@@ -978,7 +978,7 @@ static void story_update(void)
     /* GBA's input driver maps SELECT+B to synthetic BTN_Y and masks B.
      * Other ports report the physical SELECT+B chord. Accept both so
      * the city's emergency return works on actual GBA hardware. */
-    if (ow.visit && (btn_pressed(BTN_Y) ||
+    if (ow.visit && ((input_pad() == PAD_GBA && btn_pressed(BTN_Y)) ||
                      (btn_down(BTN_SELECT) && btn_pressed(BTN_B)))) {
         audio_sfx(SFX_CANCEL);
         city_visit_back();

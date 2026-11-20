@@ -280,10 +280,9 @@ static void build_menu(const Loc *L)
         /* The 3D neighborhood portal opens on the walkable path directly
          * outside this very apartment block, not a random city spawn. */
         add(E_WALK_DISTRICT, ICON_ARROW_R, "Walk the 3D district",
-            d ? "Hellvile Pits streets. START / SEL+B returns here." :
-                "Hillvile Towers streets. START / SEL+B returns here.")->arg = (int16_t)d;
+            "Visit 3D streets. SEL+B exits.")->arg = (int16_t)d;
         add(E_CITY_ATLAS, ICON_CHECK, "View true street map",
-            "The actual 3D city cells, streets and doors, not decorative art.")->arg = (int16_t)d;
+            "Real streets and doors.")->arg = (int16_t)d;
         add_activities(ACTLOC_APARTMENTS, 1);
         break; }
     case LOC_TOWN_HALL:
@@ -398,11 +397,12 @@ static void build_menu(const Loc *L)
         add(E_UNLOCKS, ICON_STAR, "Unlocks", "Everything you've earned.");
         add(E_RECORDS, ICON_CHECK, "Town records", "Island statistics.");
         add(E_NAME_ISLAND, ICON_STAR, "Name the island", "Give your island a name of its own.");
+        /* Above Help/Title/Close: this tail stays fixed for legacy
+         * START, UP x3 -> Help and the no-dead-end Close key. */
+        add(E_CITY_ATLAS, ICON_CHECK, "City Atlas", "Real 3D streets and doors.")->arg = 0;
         add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
         add(E_TITLE, ICON_ARROW_L, "Quit to title", "Back to the title screen. Save first: START here saves.");
         add(E_CLOSE, ICON_X, "Close", "Back to the map (B does it too).");
-        /* Appended after existing items to preserve legacy menu indices. */
-        add(E_CITY_ATLAS, ICON_CHECK, "City Atlas", "Map directly from the 3D world's real cells.")->arg = 0;
         return;
     default: break;
     }
