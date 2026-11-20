@@ -329,18 +329,6 @@ static void setup_map(const DoomoMap *m)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Drop-shadow ellipse's 8-bit fractional x ratio. Called by the ARM/IWRAM
- * rasterizer, but intentionally resident in cartridge ROM: the 3D overlay
- * already consumes essentially its entire stack-safe IWRAM budget.
- * Each 24-bit half-width uses a 32-bit quotient, with an exact fallback
- * for enormous projected sprites. No LUT or new persistent storage. */
-uint32_t r3d_shadow_ratio8(uint32_t dx, uint32_t halfw)
-{
-    if (halfw <= (UINT32_MAX >> 8))
-        return (dx << 8) / halfw;
-    return (uint32_t)(((uint64_t)dx << 8) / halfw);
-}
-
 typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
 #define spr_order ((SprOrder *)(gba_r3d + GBA_BIG_SPR))

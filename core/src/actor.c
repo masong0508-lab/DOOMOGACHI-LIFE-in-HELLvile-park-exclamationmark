@@ -800,8 +800,19 @@ static void demon_think(int idx)
     }
     /* gravity for walkers */
     if (!(a->flags & AF_FLYING) || a->state >= AST_DYING) {
-        int fl = cw_floor(FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU), ce;
-        cw_fits(a->x, a->y, a->radius, 30000, 0, 30000, &fl, &ce);
+        int px = FIX2INT(a->x), py = FIX2INT(a->y);
+        int cx = px / CELLU, cy = py / CELLU, ce;
+        const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
+        int fl = cell_floor(cell, cx, cy);
+        /* A demon fully inside one tile has exactly that tile's floor:
+         * no four-neighbour height scan is needed each logic tick.
+         * Preserve cw_fits for tile boundaries, lifts/steps nearby and
+         * positions against the world edge. The mover's live floor is
+         * still read through cell_floor above. */
+        if (px < a->radius || py < a->radius ||
+            (px - a->radius) / CELLU != cx || (px + a->radius) / CELLU != cx ||
+            (py - a->radius) / CELLU != cy || (py + a->radius) / CELLU != cy)
+            cw_fits(a->x, a->y, a->radius, 30000, 0, 30000, &fl, &ce);
         if (a->z > INT2FIX(fl)) {
             a->vz -= GRAVITY_FX;
             a->z += a->vz;
@@ -811,11 +822,9 @@ static void demon_think(int idx)
             a->vz = 0;
         }
         z = FIX2INT(a->z);
-        if (a->state < AST_DYING) {
-            const DoomoCell *c = map_cell_safe(&doomo_map, FIX2INT(a->x) / CELLU, FIX2INT(a->y) / CELLU);
-            if ((c->flags & CELL_LAVA) && (a->anim & 15) == 0 && a->type != THING_LORD_VAPULA)
-                actor_damage(idx, 5, -1, 0, 0, 0, 0);
-        }
+        if (a->state < AST_DYING && (cell->flags & CELL_LAVA) &&
+            (a->anim & 15) == 0 && a->type != THING_LORD_VAPULA)
+            actor_damage(idx, 5, -1, 0, 0, 0, 0);
     }
     switch (a->state) {
     case AST_DORMANT:
