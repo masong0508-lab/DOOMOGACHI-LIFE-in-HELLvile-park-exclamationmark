@@ -62,6 +62,7 @@ static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter */
 static uint8_t  gov_wait;          /* frames before the next quality retry */
 static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
 static uint32_t gov_r3d[3];        /* CPU cycles per quality tier */
+static uint8_t gov_bone_overruns; /* consecutive very slow readable views */
 static const DoomoMapDef *gov_mapdef; /* reset old scene timing on map changes */
 
 /* On the two intricate Bone maps, 2x resolution is substantially easier to
@@ -95,6 +96,7 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * existing governor retains full detail when it fits and changes
      * neither buffers nor the separate Max-detail setting. */
     uint32_t limit = m == OPT3D_MAX ? 4u : 2u;
+    int bone = r3f.map && bone_readability_map(r3f.map->def);
     if (m == OPT3D_SMOOTH || !frame) return;
     if (frame == 1) {
         if (took > limit) {
@@ -110,14 +112,30 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * large dungeon rooms. Do not keep paying for work that cannot fit a
      * 30 fps frame: quarter detail needs only 30 rays and 40 pixel rows.
      * Keep Max's previous quality contract and Smooth's existing 2x mode. */
-    if (frame == 2 && m == OPT3D_BALANCED &&
-        took > (r3f.map && bone_readability_map(r3f.map->def) ? 3u : 2u)) {
-        gov_half = 2;
-        gov_wait = 32;
-        return;
+    if (frame == 2 && m == OPT3D_BALANCED) {
+        /* A detailed Bone interior must not become a blocky 60x40 picture
+         * after one slow render. Only use the quarter-size safety valve
+         * after two consecutive severe misses (>4 vblanks each). All
+         * other levels keep their already-measured fast fallback. */
+        if (took > (bone ? 4u : 2u)) {
+            if (bone && ++gov_bone_overruns < 2u) return;
+            gov_bone_overruns = 0;
+            gov_half = 2;
+            gov_wait = bone ? 2 : 32;
+            return;
+        }
+        gov_bone_overruns = 0;
     }
     if (gov_wait) { gov_wait--; return; }
     if (frame == 3) {
+        /* Quarter-size Bone frames can suppress valuable wall and floor
+         * detail. Retry 120x80 after at most three panic frames, instead
+         * of staying pixelated due to an old pessimistic cost estimate. */
+        if (bone) {
+            gov_half = 1;
+            gov_wait = 2;
+            return;
+        }
         /* When a cheap frame leaves room for the measured half-detail
          * cost, try an upgrade. Back off if it immediately runs late. */
         uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] : gov_r3d[2] * 2u;
@@ -606,6 +624,7 @@ void plat_view3d(const DoomoView3D *v)
         gov_half = 0;
         gov_wait = 0;
         gov_backoff = 16;
+        gov_bone_overruns = 0;
         memset(gov_r3d, 0, sizeof(gov_r3d));
     }
 
@@ -686,15 +705,14 @@ void plat_view3d(const DoomoView3D *v)
          * detail. Shorten the render horizon only in Balanced's fallback. */
         if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])
             vd = 16;
-        /* Bone Capital/Cathedral: keep the 2x fallback economical enough
-         * to preserve recognizable geometry (~20 FPS when possible).
-         * Full-detail view range remains untouched; 4x remains a safety
-         * valve. No extra per-column calculations or framebuffer. */
-        if (detail && (m->def == doomo_maps[MAPID_BONE_CAPITAL] ||
-                       m->def == doomo_maps[MAPID_BONE_CATHEDRAL])) {
-            const uint32_t cap = detail == 2 ? 12u : 16u;
-            if (vd > cap) vd = cap;
-        }
+        /* Preserve the authored view distance at 120x80, especially the
+         * Cathedral's long aisles. The old hard 16-cell cap removed
+         * distant architecture from normal Balanced gameplay. Keep the
+         * 12-cell limit only for short-lived quarter-size panic frames. */
+        if (detail == 2 && vd > 12u &&
+            (m->def == doomo_maps[MAPID_BONE_CAPITAL] ||
+             m->def == doomo_maps[MAPID_BONE_CATHEDRAL]))
+            vd = 12u;
         r3f.maxd = vd << 16;
     }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
