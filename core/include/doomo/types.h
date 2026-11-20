@@ -58,7 +58,30 @@ typedef int32_t fix16;              /* 16.16 */
 #define FIX_HALF       ((fix16)0x8000)
 #define INT2FIX(i)     ((fix16)((i) * 65536))   /* safe for negatives */
 #define FIX2INT(f)     ((int32_t)((f) >> 16))
+/* ARM7TDMI THUMB cannot multiply 32x32->64 directly: the ordinary
+ * FIXMUL emits a costly __aeabi_lmul software helper at every call site.
+ * Reconstruct the EXACT low 32 output bits of (a*b)>>16 using three
+ * ordinary 32-bit products; the high words are sign-extended and all
+ * intermediate arithmetic is unsigned (defined modulo 2^32).
+ *
+ * Identity: a=ah*2^16+al, b=bh*2^16+bl, al/bl in [0,65535].
+ * (a*b)>>16 = (ah*bh<<16) + ah*bl + bh*al + (al*bl>>16).
+ * The unsigned result has exactly the same 16.16 bit pattern as the
+ * previous cast, including negative inputs and result wraparound.
+ * ARM-mode IWRAM code retains its native 64-bit multiplication, as do
+ * PS1/native/DS/other builds. No tables, state, buffers, heap, or RAM. */
+#if defined(DOOMO_PLATFORM_GBA) && defined(__thumb__)
+static inline fix16 doomo_gba_thumb_fixmul(fix16 a, fix16 b)
+{
+    uint32_t ah = (uint32_t)(a >> 16), bh = (uint32_t)(b >> 16);
+    uint32_t al = (uint32_t)a & 65535u, bl = (uint32_t)b & 65535u;
+    uint32_t v = ((ah * bh) << 16) + ah * bl + bh * al + ((al * bl) >> 16);
+    return (fix16)v;
+}
+#define FIXMUL(a, b)   doomo_gba_thumb_fixmul((a), (b))
+#else
 #define FIXMUL(a, b)   ((fix16)(((int64_t)(a) * (int64_t)(b)) >> 16))
+#endif
 /* (integration) "* 65536", not "<< 16": shifting a negative value left is
  * undefined (UBSan); GCC emits the same shift for both. */
 #define FIXDIV(a, b)   ((fix16)(((int64_t)(a) * 65536) / (b)))
