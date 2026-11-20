@@ -543,15 +543,8 @@ void r3d_draw_sprite(const R3DSprite *s)
             int32_t q;
             if (dx < 0) dx = -dx;
             if (dx >= hw12) continue;
-            /* Half height of the ellipse at this x. Nearly all onscreen
-             * shadows have hw12 <= 24 bits, so (dx << 8) fits a uint32_t.
-             * Avoid ARM7TDMI's slow signed 64-bit divide per shadow column.
-             * The rare extreme-size sprite retains the exact 64-bit path;
-             * both paths produce the same q and therefore the same pixels. */
-            if ((uint32_t)hw12 <= (UINT32_MAX >> 8))
-                q = (int32_t)(((uint32_t)dx << 8) / (uint32_t)hw12);
-            else
-                q = (int32_t)(((uint64_t)(uint32_t)dx << 8) / (uint32_t)hw12);
+            /* half height of the ellipse at this x: hh * sqrt(1 - (dx/hw)^2) */
+            q = (int32_t)(((int64_t)dx << 8) / hw12);          /* 0..255 */
             q = 256 - ((q * q) >> 8);
             hc = (hh * (q > 192 ? 4 : q > 112 ? 3 : q > 48 ? 2 : 1) + 2) >> 2;
             if (hc < 1) hc = 1;
