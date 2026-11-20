@@ -132,6 +132,7 @@ uint32_t r3d_last_frame;
 /* video_loops.s: the half-resolution view at base (vh2 rows of hw
  * halfwords) doubled in place to 2 hw x 2 vh2 */
 void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
+void r3d_up4(uint16_t *base, int hw, int vh4) IWRAM_CALL;
 
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
@@ -674,9 +675,12 @@ void plat_view3d(const DoomoView3D *v)
     draw_sprites(v);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
         r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
-    if (detail) {
+    if (detail == 2) {
+        /* Exact one-pass 4x expansion: avoids the 120x80 intermediate
+         * VRAM write/read of two consecutive r3d_up2 calls. */
+        r3d_up4(r3f.dst, vw >> 1, vh);
+    } else if (detail == 1) {
         r3d_up2(r3f.dst, vw >> 1, vh);
-        if (detail == 2) r3d_up2(r3f.dst, vw, vh << 1);
     }
     t3 = gba_cycles();
 

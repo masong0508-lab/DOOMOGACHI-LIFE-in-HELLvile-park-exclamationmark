@@ -436,6 +436,69 @@ r3d_up2:
     bx      lr
     .size   r3d_up2, . - r3d_up2
 
+@ r3d_up4: exact direct quarter-resolution (4x horizontal and vertical)
+@ expansion. Previously 60x40 -> 120x80 -> 240x160 used two r3d_up2
+@ passes and wrote/read a redundant intermediate VRAM image.
+@ Each source HALFWORD is the existing 2-pixel column. Two x2 passes
+@ repeat the original halfword four times horizontally (including if
+@ its two colour bytes differ) and the source row four times vertically.
+@ This routine writes that identical result directly, reading each
+@ source halfword once and avoiding the first pass's VRAM traffic.
+@ Source/destination overlap: process rows bottom-up, columns right-to-
+@ left exactly like r3d_up2. No extra RAM or intermediate framebuffers.
+@ Arguments: r0 base, r1 source halfwords/row, r2 source rows;
+@ stride is 240 bytes/row, as in r3d_up2.
+    .align 2
+    .global r3d_up4
+    .type   r3d_up4, %function
+r3d_up4:
+    push    {r4-r11, lr}
+    subs    r3, r2, #1
+    blt     .Lup4_done
+    mov     lr, #240
+.Lup4_row:
+    mla     r4, r3, lr, r0           @ source row
+    mov     r5, r3, lsl #2           @ 4*row
+    mla     r5, lr, r5, r0           @ output row 4r
+    add     r4, r4, r1, lsl #1       @ source end (2 bytes/halfword)
+    add     r5, r5, r1, lsl #3       @ output end (8 bytes/halfword)
+    add     r6, r5, #240            @ output row 4r+1
+    add     r7, r6, #240            @ output row 4r+2
+    add     r12, r7, #240           @ output row 4r+3
+    tst     r1, #1
+    beq     .Lup4_words
+    ldrh    r8, [r4, #-2]!
+    orr     r8, r8, r8, lsl #16      @ pair ab -> word abab
+    mov     r9, r8
+    stmdb   r5!, {r8, r9}           @ 8 pixels/halfword
+    stmdb   r6!, {r8, r9}
+    stmdb   r7!, {r8, r9}
+    stmdb   r12!, {r8, r9}
+.Lup4_words:
+    movs    r2, r1, lsr #1          @ each word holds two halfwords
+    beq     .Lup4_next
+.Lup4_loop:
+    ldr     r8, [r4, #-4]!          @ low halfword a, high halfword b
+    mov     r10, r8, lsr #16
+    orr     r10, r10, r10, lsl #16  @ bbbb
+    mov     r11, r10
+    mov     r9, r8, lsl #16
+    orr     r9, r9, r9, lsr #16    @ aaaa
+    mov     r8, r9
+    stmdb   r5!, {r8-r11}           @ aaaa aaaa bbbb bbbb
+    stmdb   r6!, {r8-r11}
+    stmdb   r7!, {r8-r11}
+    stmdb   r12!, {r8-r11}
+    subs    r2, r2, #1
+    bne     .Lup4_loop
+.Lup4_next:
+    subs    r3, r3, #1
+    bge     .Lup4_row
+.Lup4_done:
+    pop     {r4-r11, lr}
+    bx      lr
+    .size   r3d_up4, . - r3d_up4
+
 @ BLIT_TAIL loop: the pair v (r3) is in hand, p r1, end r2. Zero: skip. Both
 @ pixels set: one halfword store (post-incremented). One pixel: the only read
 @ -modify-write. Falls to .Lbl_mdone at the end of the row.
