@@ -118,6 +118,21 @@ int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
     int y0 = (FIX2INT(y) - r) / CELLU, y1 = (FIX2INT(y) + r) / CELLU;
     int cx, cy, maxf = -30000, minc = SKY_CEIL;
     if (x < INT2FIX(r) || y < INT2FIX(r)) return 0;
+    /* Most standing/walking actors fit inside one 64-unit tile.
+     * Avoid loop setup, repeated min/max and per-cell branch work
+     * for that common case. Dynamic doors/lifts use the same live
+     * cell_floor/cell_ceil helpers as the general footprint scan. */
+    if (x0 == x1 && y0 == y1) {
+        const DoomoCell *cell = map_cell_safe(&doomo_map, x0, y0);
+        int f, c;
+        if (cell->wall) return 0;
+        f = cell_floor(cell, x0, y0);
+        if (f > z + step) return 0;
+        c = cell_ceil(cell, x0, y0);
+        if (fl) *fl = f;
+        if (ce) *ce = c;
+        return c - DOOMO_MAX(f, z) >= h;
+    }
     for (cy = y0; cy <= y1; cy++)
         for (cx = x0; cx <= x1; cx++) {
             const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);

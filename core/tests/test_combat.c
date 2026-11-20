@@ -75,6 +75,61 @@ static int find_cell(int flags, int tag, int *cx, int *cy)
     return 0;
 }
 
+/* Reference footprint scan for the shared collision fast-path. Exercise
+ * its one-tile and boundary paths across the four heavy Breach maps plus
+ * the tutorial, including animated door/lift cells. Keep out-parameters
+ * identical even when the requested fit fails. */
+static int ref_cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
+{
+    int x0 = (FIX2INT(x) - r) / CELLU, x1 = (FIX2INT(x) + r) / CELLU;
+    int y0 = (FIX2INT(y) - r) / CELLU, y1 = (FIX2INT(y) + r) / CELLU;
+    int cx, cy, maxf = -30000, minc = SKY_CEIL;
+    if (x < INT2FIX(r) || y < INT2FIX(r)) return 0;
+    for (cy = y0; cy <= y1; cy++)
+        for (cx = x0; cx <= x1; cx++) {
+            int f, c;
+            if (cw_solid(cx, cy)) return 0;
+            f = cw_floor(cx, cy);
+            c = cw_ceil(cx, cy);
+            if (f > z + step) return 0;
+            if (f > maxf) maxf = f;
+            if (c < minc) minc = c;
+        }
+    if (fl) *fl = maxf;
+    if (ce) *ce = minc;
+    return minc - DOOMO_MAX(maxf, z) >= h;
+}
+
+TEST(combat_collision_single_tile_parity)
+{
+    static const uint8_t maps[] = { MAPID_VAPE_CELLAR, MAPID_CLOUD_NINE_SPIRE,
+        MAPID_PLUSHIE_FACTORY, MAPID_GRAVEYARD_SHIFT, MAPID_HELLVILE_UNDERBELLY };
+    static const int8_t offsets[] = { 0, -22, 22, 31 };
+    static const uint8_t radii[] = { 4, 14, 28 };
+    int m, cy, cx, oi, ri, checked = 0;
+    for (m = 0; m < (int)(sizeof(maps) / sizeof(maps[0])); m++) {
+        map_load_def(doomo_maps[maps[m]]);
+        for (cy = 0; cy < doomo_map.h; cy += 2)
+            for (cx = 0; cx < doomo_map.w; cx += 2)
+                for (oi = 0; oi < (int)(sizeof(offsets) / sizeof(offsets[0])); oi++)
+                    for (ri = 0; ri < (int)(sizeof(radii) / sizeof(radii[0])); ri++) {
+                        fix16 x = INT2FIX(cx * CELLU + 32 + offsets[oi]);
+                        fix16 y = INT2FIX(cy * CELLU + 32 - offsets[oi]);
+                        int floor = cw_floor(cx, cy), f0 = -9999, c0 = -9999, f1 = -9999, c1 = -9999;
+                        int z = floor + (oi == 3 ? 64 : 0);
+                        int h = ri == 0 ? 0 : (ri == 1 ? 40 : 56);
+                        int step = ri == 2 ? 255 : DOOMO_STEP_UP;
+                        int expected = ref_cw_fits(x, y, radii[ri], z, h, step, &f0, &c0);
+                        int got = cw_fits(x, y, radii[ri], z, h, step, &f1, &c1);
+                        CHECK_EQ(got, expected);
+                        CHECK_EQ(f1, f0);
+                        CHECK_EQ(c1, c0);
+                        checked++;
+                    }
+    }
+    CHECK(checked > 1000);
+}
+
 /* ---- the autopilot plays the tutorial dungeon -------------------------- */
 TEST(combat_bot_clears_vape_cellar)
 {
