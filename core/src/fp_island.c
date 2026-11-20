@@ -714,6 +714,10 @@ static void atlas_load(int side)
     I.atlas_homes = 0;
     I.menu_open = 0;
     I.hub_full = 0;
+    /* The atlas is a mode of SCENE_ISLAND, not a scene_push, so the
+     * old island hint toast otherwise floats over its physical map/title.
+     * Clear it once on entry, never every draw (proof runner capture). */
+    ui_toast_clear();
     map_load(side ? MAPID_HELLVILE : MAPID_HAHALAND);
 }
 
@@ -1500,14 +1504,14 @@ static void atlas_draw_homes(void)
         if (occupied) plat_rect(px + size / 2 - 1, py + size / 2, 2, 2, PAL_WHITE);
     }
     count = town_count_district(side, -1);
-    doomo_snprintf(buf, sizeof(buf), "House %d  Block %d Room %d  %s",
+    doomo_snprintf(buf, sizeof(buf), "Home %d  B%d/R%d  %s",
                    id, street_block(id), street_room(id),
-                   TOWN_RES(id)->status == RES_EMPTY ? "Empty" : "Occupied");
+                   TOWN_RES(id)->status == RES_EMPTY ? "Empty" : "Lived-in");
     ui_text_center(sw / 2, sh - (fp_big() ? 38 : 28), buf, PAL_WHITE);
-    doomo_snprintf(buf, sizeof(buf), "Residents %d/%d  (500 permanent addresses)", count,
+    doomo_snprintf(buf, sizeof(buf), "Residents %d/%d  |  500 lots", count,
                    DOOMO_LIVE_PER_DISTRICT);
     ui_text_center(sw / 2, sh - (fp_big() ? 26 : 18), buf, PAL_UI_GOLD);
-    ui_text_center(sw / 2, sh - 9, "D-pad House  L/R Street  A Open  B Map", PAL_WHITE);
+    ui_text_center(sw / 2, sh - 9, "Pad Move  L/R Street  A Open  B Map", PAL_WHITE);
 }
 
 static void atlas_draw(void)
