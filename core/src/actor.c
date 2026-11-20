@@ -511,6 +511,20 @@ static int demon_speed(const DoomoActor *a)
     return s;
 }
 
+/* Exact signed 32-bit square without a slow ARM7 THUMB 64-bit multiply.
+ * Split into 16-bit limbs (all intermediate multiplies stay in 32 bits).
+ * In the hot demon pursuit loop this avoids software __aeabi_lmul.
+ * No new storage, no modified range threshold or rounding. */
+#if defined(DOOMO_PLATFORM_GBA)
+static uint64_t demon_sq_gba(fix16 v)
+{
+    uint32_t u = v < 0 ? 0u - (uint32_t)v : (uint32_t)v;
+    uint32_t hi = u >> 16, lo = u & 65535u;
+    return ((uint64_t)(hi * hi) << 32) +
+           ((uint64_t)(hi * lo) << 17) + (uint64_t)(lo * lo);
+}
+#endif
+
 /* Try to move a demon by (dx, dy) world fix16. Returns 1 on success. */
 static int demon_try_move(int idx, fix16 dx, fix16 dy)
 {
@@ -577,7 +591,9 @@ static void demon_walk(int idx, int want_angle)
 {
     DoomoActor *a = &doomo_actors[idx];
     int sp = demon_speed(a);
+#if !defined(DOOMO_PLATFORM_GBA)
     fix16 step = INT2FIX(sp) / 8;
+#endif
     static const int16_t tries[6] = { 0, 512, -512, 1024, -1024, 1536 };
     int k;
     if (ai_move[idx] > 0) {
@@ -586,7 +602,24 @@ static void demon_walk(int idx, int want_angle)
     }
     for (k = 0; k < 6; k++) {
         int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;
-        fix16 dx = FIXMUL(fx_cos(ang), step), dy = FIXMUL(fx_sin(ang), step);
+        fix16 dx, dy;
+#if defined(DOOMO_PLATFORM_GBA)
+        /* step=sp/8 world units. For the engine's valid nonnegative
+         * speeds, the products fit signed 32 bits exactly:
+         * FIXMUL(cos, INT2FIX(sp)/8) == (cos*sp)>>3.
+         * Retain the original path for unexpected/invalid speeds. */
+        if ((unsigned)sp <= 32767u) {
+            dx = (fx_cos(ang) * sp) >> 3;
+            dy = (fx_sin(ang) * sp) >> 3;
+        } else {
+            fix16 step = INT2FIX(sp) / 8;
+            dx = FIXMUL(fx_cos(ang), step);
+            dy = FIXMUL(fx_sin(ang), step);
+        }
+#else
+        dx = FIXMUL(fx_cos(ang), step);
+        dy = FIXMUL(fx_sin(ang), step);
+#endif
         if (demon_try_move(idx, dx, dy) || demon_try_move(idx, dx, 0) || demon_try_move(idx, 0, dy)) {
             if (k > 0) {
                 ai_dir[idx] = (int16_t)ang;
@@ -919,7 +952,11 @@ static void demon_think(int idx)
     dx = tx - a->x;
     dy = ty - a->y;
     ang = fx_atan2(dy, dx);
+#if defined(DOOMO_PLATFORM_GBA)
+    distance_sq = demon_sq_gba(dx) + demon_sq_gba(dy);
+#else
     distance_sq = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
+#endif
 
     switch (a->state) {
     case AST_WINDUP:
