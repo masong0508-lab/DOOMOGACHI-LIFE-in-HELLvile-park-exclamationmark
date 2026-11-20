@@ -152,6 +152,21 @@ jobs:
             echo "::notice title=$t::took $((SECONDS - s)) s"
           done
 
+      # Unlike test-speed's engine ROM (which locks combat at full detail),
+      # this runs the REAL game ROM through mGBA in all three 3D modes.
+      # The named fps windows measure Smooth, Balanced, and Max separately.
+      - name: Combat FPS by quality mode (game ROM, mGBA)
+        run: |
+          set -o pipefail
+          make -C gba test-3d 2>&1 | tee gba/build/combat_quality_fps.log
+          {
+            echo '### GBA combat detail — real game ROM, mGBA'
+            echo
+            echo '```'
+            grep -E 'harness: fps (smooth|balanced|max detail)' gba/build/combat_quality_fps.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # LV10: the generated Hell Breach level scripts (tools/breach_scripts.py): the autopilot plays the 7 levels,
       # the fps table goes to the job summary (the floors only gate with BREACH2_GATES=1)
       - name: Hell Breach level scripts (GBA)
@@ -292,6 +307,7 @@ jobs:
             gba/build/profile_all.log
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
+            gba/build/combat_quality_fps.log
             gba/build/sung.log
             gba/build/sung_spikes.log
             gba/build/play_idle.log
