@@ -210,6 +210,7 @@ int  combat_difficulty(void);
 void combat_shake(int amount);
 
 int  combat_set_result_quit(void);               /* result -2 unless already set */
+void combat_bank_ammo(void);                     /* unspent magazine ammo -> saved reserve */
 
 /* ---- autopilot (combat_bot.c) ---- */
 extern void (*combat_bot_fn)(CombatCtl *ctl);

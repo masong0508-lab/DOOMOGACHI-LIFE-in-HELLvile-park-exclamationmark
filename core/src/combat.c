@@ -35,6 +35,8 @@ static int turn_ticks;
 static int select_used;
 static int lock_lost;
 static int msg_cool;
+/* The result callback is earlier in this file than the magazine helper. */
+void combat_bank_ammo(void);
 
 #define WALK_SPEED   ((fix16)(7 * 65536))
 #define ROLL_SPEED   ((fix16)(13 * 65536))
@@ -94,6 +96,9 @@ int combat_player_z(void) { return FIX2INT(doomo_player.z); }
 int combat_last_result(void) { return last_result; }
 int combat_set_result_quit(void)
 {
+    /* Also retain unspent loaded rounds when leaving a fight. Repeated
+     * scene teardown cannot duplicate ammo because magazines clear. */
+    combat_bank_ammo();
     if (last_result == 0) last_result = -2;
     return last_result;
 }
@@ -160,14 +165,44 @@ int combat_give_starter_weapons(void)
     return n;
 }
 
+/* Magazine rounds and reserve rounds are ONE persistent ammo budget.
+ * Doom-style between-level continuity: loading a magazine spends its
+ * rounds from the town's already-serialized story.ammo[] pool, and
+ * banking a finished magazine returns unspent rounds to that pool.
+ * No new save fields, save-version bump, heap or extra RAM. */
 static void fill_mags(void)
 {
     int i;
     for (i = 0; i < DOOMO_MAX_WEAPONS; i++) {
         DoomoWeaponStats s;
+        int take;
         if (!weapon_valid(i)) { combat_px.mag[i] = 0; continue; }
         weld_stats(&doomo_town.weapons[i], &s);
-        combat_px.mag[i] = s.mag_size;
+        if (s.ammo_type >= AMMO_COUNT) {
+            combat_px.mag[i] = s.mag_size;  /* melee / no-ammo weapons */
+            continue;
+        }
+        take = DOOMO_MIN((int)s.mag_size, combat_ammo(s.ammo_type));
+        combat_px.mag[i] = (uint16_t)take;
+        ammo_add(s.ammo_type, -take);
+    }
+}
+
+/* Idempotent: no duplication when both the victory tick and scene leave
+ * bank magazines. All remaining rounds are serialized in story.ammo[]
+ * by the existing save_game() format; no transient ammo disappears. */
+void combat_bank_ammo(void)
+{
+    int i;
+    for (i = 0; i < DOOMO_MAX_WEAPONS; i++) {
+        DoomoWeaponStats s;
+        int remaining = combat_px.mag[i];
+        if (!remaining || !weapon_valid(i)) continue;
+        weld_stats(&doomo_town.weapons[i], &s);
+        if (s.ammo_type < AMMO_COUNT) {
+            ammo_add(s.ammo_type, remaining);
+            combat_px.mag[i] = 0;
+        }
     }
 }
 
@@ -351,15 +386,18 @@ void combat_start_at(int map_id, int goal, int cx, int cy, int angle)
     combat_st.secrets_total = (uint16_t)(combat_st.secrets_total + count_secret_regions());
     combat_px.last_cx = -1;
     /* weapons and ammo */
-    combat_give_starter_weapons();
-    doomo_player.weapon_slot = doomo_town.story.equipped;
-    if (!weapon_valid(doomo_player.weapon_slot)) {
-        for (i = 0; i < DOOMO_MAX_WEAPONS; i++) if (weapon_valid(i)) { doomo_player.weapon_slot = (uint8_t)i; break; }
-    }
-    {
+    /* Only a genuinely new armory receives the opening ammunition
+     * grant. A veteran with zero bullets keeps zero bullets; entering
+     * another Breach is not a free refill. */
+    i = combat_give_starter_weapons();
+    if (i) {
         int t, any = 0;
         for (t = 0; t < AMMO_COUNT; t++) any += doomo_town.story.ammo[t];
         if (!any) combat_refill_ammo(100);
+    }
+    doomo_player.weapon_slot = doomo_town.story.equipped;
+    if (!weapon_valid(doomo_player.weapon_slot)) {
+        for (i = 0; i < DOOMO_MAX_WEAPONS; i++) if (weapon_valid(i)) { doomo_player.weapon_slot = (uint8_t)i; break; }
     }
     fill_mags();
     refresh_stats();
@@ -1681,6 +1719,10 @@ void combat_tick(void)
         last_result = 1;
     }
     if (combat_s.finished == 1) {
+        /* Bank the actual remaining loaded rounds at level completion.
+         * Saved ammo is therefore the exact spent/picked-up balance,
+         * including cartridges still in the magazine. */
+        combat_bank_ammo();
         doomo_town.story.kills = (uint16_t)DOOMO_MIN(doomo_town.story.kills + combat_st.kills, 60000);
         doomo_town.money += combat_st.money + (uint32_t)combat_st.secrets * 50 + 100;
         progress_add(PROG_MONEY_EARNED, combat_st.money + combat_st.secrets * 50 + 100);

@@ -94,7 +94,9 @@ static void enforce_challenge(void)
 static void br_start(void)
 {
     combat_start(lv_info[br.level].map);
-    combat_refill_ammo(100);                 /* every run starts with a full loadout */
+    /* Ammo is carried forward from the last 3D mission, not refilled
+     * for free on every Breach. A first-ever armory gets its starter
+     * allotment inside combat_start(). */
     lv_runtime_begin(br.level);
     setup_challenge();
     if (br.demo) combat_autopilot(1);
