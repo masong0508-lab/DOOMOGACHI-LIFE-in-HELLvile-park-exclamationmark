@@ -122,7 +122,11 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
          * cost, try an upgrade. Back off if it immediately runs late. */
         uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] : gov_r3d[2] * 2u;
         uint32_t est = work + (half_cost > gov_r3d[2] ? half_cost - gov_r3d[2] : 0);
-        if (est + VBL_CYC / 4u <= 2u * VBL_CYC) {
+        /* Allow 2x quality to recover at the same budget at which Bone
+         * maps retain it. Otherwise one overloaded 4x frame could leave
+         * a room stuck at emergency detail until the level is exited. */
+        uint32_t target = r3f.map && bone_readability_map(r3f.map->def) ? 3u : 2u;
+        if (est + VBL_CYC / 4u <= target * VBL_CYC) {
             gov_half = 1;
             gov_wait = 16;
         } else gov_wait = 16;
