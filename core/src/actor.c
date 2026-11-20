@@ -149,27 +149,6 @@ int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
     return minc - DOOMO_MAX(maxf, z) >= h;
 }
 
-/* GBA: exact (numerator << 16) / positive_denominator using two
- * unsigned 32-bit divisions when the direction is 16.16 unit sized.
- * ARM7TDMI has no divide instruction and its software 64-bit quotient
- * routine is very expensive; for den <= 65536 the remainders fit 16 bits
- * and ((rem << 16) / den) fits a 32-bit divide. The 64-bit fallback
- * preserves the original behavior for out-of-range / negative inputs.
- * This helper adds no data, RAM, lookup table or persistent state. */
-#if defined(DOOMO_PLATFORM_GBA)
-static int64_t cw_div16_gba(int64_t numer, int64_t den)
-{
-    if (numer >= 0 && (uint64_t)numer <= UINT32_MAX &&
-        den > 0 && den <= 65536) {
-        uint32_t d = (uint32_t)den, n = (uint32_t)numer;
-        uint32_t q = n / d;
-        uint32_t rem = n - q * d;
-        return (int64_t)(((uint64_t)q << 16) + (((uint32_t)rem << 16) / d));
-    }
-    return (numer * 65536) / den;
-}
-#endif
-
 /* Grid march along a 2D direction: calls back nothing, returns the world
  * hit distance (fix16) of a ray with slope (dz per unit of distance, fix16)
  * starting at z0 (fix16), stopping at maxd. */
@@ -179,13 +158,8 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int cx = FIX2INT(x0) / CELLU, cy = FIX2INT(y0) / CELLU;
     int stepx = dx < 0 ? -1 : 1, stepy = dy < 0 ? -1 : 1, i;
     int64_t adx = dx < 0 ? -(int64_t)dx : dx, ady = dy < 0 ? -(int64_t)dy : dy;
-#if defined(DOOMO_PLATFORM_GBA)
-    int64_t ddx = adx ? cw_div16_gba((int64_t)CELLU * 65536, adx) : ((int64_t)1 << 40);
-    int64_t ddy = ady ? cw_div16_gba((int64_t)CELLU * 65536, ady) : ((int64_t)1 << 40);
-#else
     int64_t ddx = adx ? (((int64_t)CELLU << 32) / adx) : ((int64_t)1 << 40);  /* fix16 dist per cell */
     int64_t ddy = ady ? (((int64_t)CELLU << 32) / ady) : ((int64_t)1 << 40);
-#endif
     int64_t sx, sy, d = 0, dhit = maxd;
     const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
     int fl = cell_floor(cell, cx, cy), ce = cell_ceil(cell, cx, cy);
@@ -199,17 +173,10 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int floor_valid = 0, ceil_valid = 0;
     int64_t floor_cross = 0, ceil_cross = 0;
     int64_t cellx0 = (int64_t)cx * CELLU << 16, celly0 = (int64_t)cy * CELLU << 16;
-#if defined(DOOMO_PLATFORM_GBA)
-    if (dx < 0) sx = adx ? cw_div16_gba((int64_t)x0 - cellx0, adx) : ((int64_t)1 << 40);
-    else sx = adx ? cw_div16_gba(cellx0 + ((int64_t)CELLU << 16) - x0, adx) : ((int64_t)1 << 40);
-    if (dy < 0) sy = ady ? cw_div16_gba((int64_t)y0 - celly0, ady) : ((int64_t)1 << 40);
-    else sy = ady ? cw_div16_gba(celly0 + ((int64_t)CELLU << 16) - y0, ady) : ((int64_t)1 << 40);
-#else
     if (dx < 0) sx = adx ? ((int64_t)(x0 - cellx0) << 16) / adx : ((int64_t)1 << 40);
     else sx = adx ? (((cellx0 + ((int64_t)CELLU << 16)) - x0) << 16) / adx : ((int64_t)1 << 40);
     if (dy < 0) sy = ady ? ((int64_t)(y0 - celly0) << 16) / ady : ((int64_t)1 << 40);
     else sy = ady ? (((celly0 + ((int64_t)CELLU << 16)) - y0) << 16) / ady : ((int64_t)1 << 40);
-#endif
     for (i = 0; i < 160; i++) {
         int64_t dnext = sx < sy ? sx : sy;
         /* (integration) "* 65536" instead of "<< 16" on values that can be
