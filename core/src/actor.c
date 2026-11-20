@@ -511,26 +511,20 @@ static int demon_speed(const DoomoActor *a)
     return s;
 }
 
-/* Try to move a demon by (dx, dy) world fix16. Returns 1 on success.
- * A demon_walk may supply an ordered, conservative list of nearby solid
- * blockers. Its up-to-18 candidate moves share the same starting position;
- * rescan all actors only for knockback/charge, which have no such list. */
-static int demon_try_move_near(int idx, fix16 dx, fix16 dy,
-                               const uint8_t *near, int near_count)
+/* Try to move a demon by (dx, dy) world fix16. Returns 1 on success. */
+static int demon_try_move(int idx, fix16 dx, fix16 dy)
 {
     DoomoActor *a = &doomo_actors[idx];
     fix16 nx = a->x + dx, ny = a->y + dy;
-    int fl, ce, z = FIX2INT(a->z), i, slot;
+    int fl, ce, z = FIX2INT(a->z), i;
     int flying = (a->flags & AF_FLYING) != 0;
     /* Check nearby blocking bodies before scanning tile heights. A crowded
      * doorway rejects most candidate steps here, saving 1-4 collision
      * cell and mover queries per rejected step without changing outcomes. */
     /* other solid bodies */
-    for (slot = 0; slot < (near ? near_count : actor_end); slot++) {
-        const DoomoActor *o;
+    for (i = 0; i < actor_end; i++) {
+        const DoomoActor *o = &doomo_actors[i];
         fix16 ddx, ddy, rr;
-        i = near ? near[slot] : slot;
-        o = &doomo_actors[i];
         if (i == idx || (o->flags & (AF_USED | AF_SOLID)) != (AF_USED | AF_SOLID)) continue;
         ddx = o->x - nx; ddy = o->y - ny;
         rr = INT2FIX(o->radius + a->radius - 4);
@@ -579,20 +573,13 @@ static int demon_try_move_near(int idx, fix16 dx, fix16 dy,
     return 1;
 }
 
-/* Preserve the exact full actor scan for charge and knockback movements. */
-static int demon_try_move(int idx, fix16 dx, fix16 dy)
-{
-    return demon_try_move_near(idx, dx, dy, NULL, 0);
-}
-
 static void demon_walk(int idx, int want_angle)
 {
     DoomoActor *a = &doomo_actors[idx];
     int sp = demon_speed(a);
     fix16 step = INT2FIX(sp) / 8;
     static const int16_t tries[6] = { 0, 512, -512, 1024, -1024, 1536 };
-    uint8_t near[ACTOR_MAX];
-    int k, i, near_count = 0, near_ready = 0;
+    int k;
     if (ai_move[idx] > 0) {
         ai_move[idx]--;
         want_angle = ai_dir[idx];
@@ -600,41 +587,7 @@ static void demon_walk(int idx, int want_angle)
     for (k = 0; k < 6; k++) {
         int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;
         fix16 dx = FIXMUL(fx_cos(ang), step), dy = FIXMUL(fx_sin(ang), step);
-        int moved;
-        /* Most demons accept their first diagonal step. Scan blockers
-         * once exactly as before; only build the extra neighbour list if
-         * that step failed. This avoids the unconditional 128-slot scan
-         * that hurt Cathedral and Boneyard FPS in commit 3922ae8a. */
-        if (!near_ready) {
-            moved = demon_try_move(idx, dx, dy);
-            if (!moved) {
-                int z = FIX2INT(a->z);
-                /* A rejected step leaves (x,y,z) unchanged. Every other
-                 * candidate lies within 'step' of that same origin.
-                 * Retain candidates in original slot order; no altered
-                 * collision calculations, actor state or RNG draws. */
-                for (i = 0; i < actor_end; i++) {
-                    const DoomoActor *o = &doomo_actors[i];
-                    fix16 rr, gate, ddx, ddy;
-                    if (i == idx || (o->flags & (AF_USED | AF_SOLID)) != (AF_USED | AF_SOLID)) continue;
-                    rr = INT2FIX(o->radius + a->radius - 4);
-                    gate = rr + step + INT2FIX(1);
-                    ddx = o->x - a->x;
-                    ddy = o->y - a->y;
-                    if (ddx > gate || ddx < -gate || ddy > gate || ddy < -gate) continue;
-                    if (FIX2INT(o->z) >= z + a->height || FIX2INT(o->z) + o->height <= z) continue;
-                    near[near_count++] = (uint8_t)i;
-                }
-                near_ready = 1;
-                moved = demon_try_move_near(idx, dx, 0, near, near_count) ||
-                        demon_try_move_near(idx, 0, dy, near, near_count);
-            }
-        } else {
-            moved = demon_try_move_near(idx, dx, dy, near, near_count) ||
-                    demon_try_move_near(idx, dx, 0, near, near_count) ||
-                    demon_try_move_near(idx, 0, dy, near, near_count);
-        }
-        if (moved) {
+        if (demon_try_move(idx, dx, dy) || demon_try_move(idx, dx, 0) || demon_try_move(idx, 0, dy)) {
             if (k > 0) {
                 ai_dir[idx] = (int16_t)ang;
                 ai_move[idx] = (uint8_t)(8 + rng_range(&doomo_rng, 16));
