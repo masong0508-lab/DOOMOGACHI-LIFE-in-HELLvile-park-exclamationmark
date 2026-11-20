@@ -8,11 +8,14 @@
 #     the view draws;
 #   - Smooth draws the Vape Cellar at half resolution doubled by r3d_up2:
 #     every 2x2 block of the view above the HUD is one colour;
-#   - Balanced and Max detail start at full resolution and the governor
-#     (r3d.c) drops to half resolution while full-resolution frames would
-#     show below 20 / 15 fps, which they do in this fight.
-# Floors (expect-fps) are about 85% of what the ROM measured when SP8 landed
-# (docs/GBA.md); expect-logic is the 30 Hz game speed less 1.
+#   - Balanced tries full then half resolution, and now uses an emergency
+#     quarter-detail fallback when the half-resolution scene still misses
+#     the 30 FPS frame budget. HUD is unchanged; 4x detail is intentional
+#     in demanding rooms, not a new framebuffer. Max retains full/half.
+#   - The Balanced thresholds below guard against losing the measured
+#     >4 FPS gain (22.6 first-person, 22.2 third-person in mGBA).
+#     Smooth/Max floors retain the older conservative thresholds.
+# expect-logic is the 30 Hz game speed less 1.
 wait 40
 expect-log doomo: init
 sync on 61
@@ -61,7 +64,7 @@ push COMBAT 3
 wait 200
 fps start
 wait 130
-expect-fps 12 balanced first person
+expect-fps 21 balanced first person
 expect-logic 29 balanced first person
 shot balanced_fp
 seed 1
@@ -73,7 +76,7 @@ press SELECT
 wait 200
 fps start
 wait 130
-expect-fps 12 balanced third person
+expect-fps 21 balanced third person
 expect-logic 29 balanced third person
 shot balanced_tp
 
