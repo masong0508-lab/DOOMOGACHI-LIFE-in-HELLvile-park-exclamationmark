@@ -448,6 +448,11 @@ r3d_up2:
 @ left exactly like r3d_up2. No extra RAM or intermediate framebuffers.
 @ Arguments: r0 base, r1 source halfwords/row, r2 source rows;
 @ stride is 240 bytes/row, as in r3d_up2.
+@ The 3D IWRAM overlay and 6 KB stack are already at their limits.
+@ Keep this new (optional) one-pass 4x loop in ARM ROM instead:
+@ it must never consume overlay bytes or reduce the protected stack.
+    .section .text.r3d_up4, "ax", %progbits
+    .arm
     .align 2
     .global r3d_up4
     .type   r3d_up4, %function
