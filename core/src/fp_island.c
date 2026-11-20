@@ -106,7 +106,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
        E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP,
-       E_WALK_DISTRICT };
+       E_WALK_DISTRICT, E_CITY_ATLAS };
 
 #define MENU_MAX 24
 typedef struct {
@@ -130,6 +130,7 @@ static IslScratch *isp;
 static struct {
     int sel;
     uint8_t menu_open;
+    uint8_t atlas, atlas_side; /* real cell atlas; exactly same geometry as 3D map */
     const Loc *mloc;
     int menu_t;
     int nent, esel, etop;
@@ -278,6 +279,8 @@ static void build_menu(const Loc *L)
         add(E_WALK_DISTRICT, ICON_ARROW_R, "Walk the 3D district",
             d ? "Hellvile Pits streets. START / SEL+B returns here." :
                 "Hillvile Towers streets. START / SEL+B returns here.")->arg = (int16_t)d;
+        add(E_CITY_ATLAS, ICON_CHECK, "View true street map",
+            "The actual 3D city cells, streets and doors, not decorative art.")->arg = (int16_t)d;
         add_activities(ACTLOC_APARTMENTS, 1);
         break; }
     case LOC_TOWN_HALL:
@@ -395,6 +398,8 @@ static void build_menu(const Loc *L)
         add(E_HELP, ICON_CHECK, "Help", "The Field Guide: every rule and word, explained.");   /* CL4 */
         add(E_TITLE, ICON_ARROW_L, "Quit to title", "Back to the title screen. Save first: START here saves.");
         add(E_CLOSE, ICON_X, "Close", "Back to the map (B does it too).");
+        /* Appended after existing items to preserve legacy menu indices. */
+        add(E_CITY_ATLAS, ICON_CHECK, "City Atlas", "Map directly from the 3D world's real cells.")->arg = 0;
         return;
     default: break;
     }
@@ -696,6 +701,18 @@ static void hold_drop(void)
     I.strip_dirty = 0;
 }
 
+/* A physical city atlas, derived from the same DoomoMap as the console's
+ * 3D renderer. Switch sides without another copy of the 64x64 map: only
+ * one live DoomoMap is loaded, with no extra saved state or bitmap. */
+static void atlas_load(int side)
+{
+    I.atlas = 1;
+    I.atlas_side = (uint8_t)(side != 0);
+    I.menu_open = 0;
+    I.hub_full = 0;
+    map_load(side ? MAPID_HELLVILE : MAPID_HAHALAND);
+}
+
 static void run_entry(const Entry *e)
 {
     hold_drop();
@@ -715,6 +732,7 @@ static void run_entry(const Entry *e)
     switch (e->code) {
     case E_CLOSE: I.menu_open = 0; audio_sfx(SFX_CANCEL); break;
     case E_APTS: scene_push(&SCENE_APARTMENTS, e->arg); break;
+    case E_CITY_ATLAS: atlas_load(e->arg); break;
     case E_WALK_DISTRICT:
         scene_push(&SCENE_STORY, e->arg ? STORY_ARG_VISIT_HELL_HOMES :
                                      STORY_ARG_VISIT_HILL_HOMES);
@@ -976,12 +994,38 @@ static int open_next_problem(void)
     return 1;
 }
 
+/* Controls are identical on every console: L/R switches district,
+ * A walks into the corresponding landmark, B/START returns to the hub. */
+static void atlas_update(void)
+{
+    int side = I.atlas_side;
+    if (btn_pressed(BTN_B | BTN_START)) {
+        I.atlas = 0;
+        I.dirty = 1;
+        I.hub_full = 0;
+        audio_sfx(SFX_CANCEL);
+        return;
+    }
+    if (btn_pressed(BTN_LEFT | BTN_RIGHT | BTN_L | BTN_R)) {
+        side ^= 1;
+        atlas_load(side);
+        audio_sfx(SFX_CURSOR);
+        return;
+    }
+    if (btn_pressed(BTN_A)) {
+        audio_sfx(SFX_SELECT);
+        scene_push(&SCENE_STORY, side ? STORY_ARG_VISIT_HELL_HOMES :
+                                          STORY_ARG_VISIT_HILL_HOMES);
+    }
+}
+
 static void island_update(void)
 {
     int old = I.sel;
     isl_ready();
     I.live = 1;
     fp_live();
+    if (I.atlas) { atlas_update(); return; }
     if (I.wait) { after_wait(); if (I.wait) return; }
     scan_crowds();
     if ((fp_t() & 15) == 0) count_problems();
@@ -1348,11 +1392,62 @@ static void hub_slice(FpLocDraw *ld, int slice)
 }
 int fp_island_hub_built(void) { return hub_built; }
 
+/* Small, literal physical map of the 3D city. Every pixel's source
+ * cell is the SAME cell the renderer and collision read. Horizontal
+ * identical-colour spans are merged so 64x64 never means 4096 draw calls.
+ * No map image, no extra framebuffer, no resident geometry cache. */
+static int atlas_tile_color(const DoomoCell *c, int side)
+{
+    if (c->tag >= STORY_TAG_DOOR && c->tag < STORY_TAG_DOOR + PLACE_COUNT)
+        return PAL_UI_GOLD;
+    if (c->wall) return side ? PAL_RAMP(RAMP_BONE, 5) : PAL_RAMP(RAMP_PASTEL_PINK, 5);
+    if (c->flags & CELL_LAVA) return PAL_RAMP(RAMP_LAVA, 6);
+    if (c->flags & CELL_WATER) return PAL_RAMP(RAMP_SKY, 6);
+    if (c->floor_tex == TEX_PATH || c->floor_tex == TEX_TILE_FLOOR ||
+        c->floor_tex == TEX_COBBLE || c->floor_tex == TEX_HELL_ROCK ||
+        c->floor_tex == TEX_METAL_FLOOR)
+        return side ? PAL_RAMP(RAMP_STEEL, 4) : PAL_RAMP(RAMP_STONE, 5);
+    return side ? PAL_RAMP(RAMP_VAPE, 3) : PAL_RAMP(RAMP_GRASS, 5);
+}
+
+static void atlas_draw(void)
+{
+    int side = I.atlas_side, w, h, x0, y0, sc, x, y;
+    const int wanted = side ? MAPID_HELLVILE : MAPID_HAHALAND;
+    const DoomoMap *m;
+    if (map_current_id() != wanted) map_load(wanted);  /* only on return from other scenes */
+    m = &doomo_map;
+    w = m->w; h = m->h;
+    sc = fp_big() ? 3 : 2;
+    x0 = (fp_sw() - w * sc) / 2;
+    y0 = (fp_sh() - h * sc) / 2;
+    ui_backdrop(WIN_CUTE, fp_t());
+    ui_title(fp_sw() / 2, 2, side ? "Hellvile: real streets" : "Hillvile: real streets", WIN_CUTE);
+    for (y = 0; y < h; y++) {
+        const DoomoCell *line = &m->cells[y * w];
+        for (x = 0; x < w;) {
+            int col = atlas_tile_color(&line[x], side);
+            int n = 1;
+            while (x + n < w && atlas_tile_color(&line[x + n], side) == col) n++;
+            plat_rect(x0 + x * sc, y0 + y * sc, n * sc, sc, (uint8_t)col);
+            x += n;
+        }
+    }
+    /* Door and walking-entry are the exact same map coordinates as the
+     * physical district portal (authored door 41,7 / 19,8). */
+    x = side ? 19 : 41; y = side ? 8 : 7;
+    plat_rect(x0 + x * sc - 2, y0 + y * sc - 2, sc + 4, sc + 4, PAL_BLACK);
+    plat_rect(x0 + x * sc - 1, y0 + y * sc - 1, sc + 2, sc + 2, PAL_UI_GOLD);
+    ui_text_center(fp_sw() / 2, fp_sh() - 13,
+                   "L/R District  A Walk  B Back", PAL_WHITE);
+}
+
 static void island_draw(void)
 {
     FpLocDraw ld[FP_LOC_MAX];
     int sh = fp_sh(), style = WIN_CUTE, slice = -1;
     isl_ready();
+    if (I.atlas) { atlas_draw(); I.live = 0; return; }
     /* CL1 (clarity C1): with the map showing, toasts slide in under the HUD row (the day, the clock and the purse:
      * "Rent collected" must not hide the money it changes); over a place's menu they keep the top row. The lane
      * is the same on every hub frame, so a kept frame's toast is where this frame's would be. */
