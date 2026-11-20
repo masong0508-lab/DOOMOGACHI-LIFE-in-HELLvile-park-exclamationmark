@@ -253,7 +253,7 @@ void video_flip(void)
          * 3D frame every two vblanks (~30 FPS) *when it actually fits*.
          * Max keeps the conservative three-vblank full-detail baseline
          * (~20 FPS). A full-detail frame must not be artificially held
-         * to 20 FPS in Balanced when CPU measurements say it fits 30. */
+         * to 20 FPS in Balanced when CPU measurements say it fits 30.
          * (SP8, from G9) and the pace holds: a 3D frame that needs more
          * vblanks than the pace (counting the wait for the next vblank)
          * moves it there (at most 4: 15 fps, or 3 at quarter detail), and it comes back one step
