@@ -16,6 +16,7 @@ fps start
 hold UP 130
 expect-fps 0 player cloud_nine forward
 shot player_cloud_nine
+profile 9000000
 seed 1
 scene TITLE
 wait 2
@@ -27,6 +28,7 @@ fps start
 hold UP 130
 expect-fps 0 player factory forward
 shot player_factory
+profile 9000000
 seed 1
 scene TITLE
 wait 2
@@ -38,6 +40,7 @@ fps start
 hold UP 130
 expect-fps 0 player graveyard forward
 shot player_graveyard
+profile 9000000
 seed 1
 scene TITLE
 wait 2
@@ -49,3 +52,4 @@ fps start
 hold UP 130
 expect-fps 0 player underbelly forward
 shot player_underbelly
+profile 9000000
