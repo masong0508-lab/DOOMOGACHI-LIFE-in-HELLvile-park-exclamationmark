@@ -426,10 +426,22 @@ static void draw_sprites(const DoomoView3D *v)
                 if (cf <= b->z) fz = cf;
             }
             s.shadow_y12 = r3f.hor12 + R3D_MULSHR(r3f.ez - fz, k8, 12);
-            s.shadow_hh = (int32_t)(r3d_smull(hw, (r3f.ez - fz) >> 8) / ((depth >> 8) + 1));
-            if (s.shadow_hh < 1) s.shadow_hh = 1;
-            if (s.shadow_hh > 12) s.shadow_hh = 12;
-            if (r3f.ez <= fz) s.flags &= (uint8_t)~BB_SHADOW;
+            if (r3f.ez <= fz) {
+                /* Below the shadow plane: it was never drawn. */
+                s.flags &= (uint8_t)~BB_SHADOW;
+                s.shadow_hh = 1;
+            } else {
+                /* Shadow height is clamped to 1..12 pixels. Compare first,
+                 * then use the cheaper 32-bit divide only in the narrow
+                 * unclamped case. This gives the same integer height as
+                 * the old per-sprite 64-bit division, without a new LUT,
+                 * IWRAM routine, asset or framebuffer. */
+                int64_t num = r3d_smull(hw, (r3f.ez - fz) >> 8);
+                uint32_t den = ((uint32_t)depth >> 8) + 1u;
+                if (num <= (int64_t)den) s.shadow_hh = 1;
+                else if (num >= (int64_t)den * 12) s.shadow_hh = 12;
+                else s.shadow_hh = (int32_t)((uint32_t)num / den);
+            }
         }
         r3d_draw_sprite(&s);
     }

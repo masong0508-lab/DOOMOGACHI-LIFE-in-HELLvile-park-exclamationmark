@@ -489,20 +489,13 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
     fix16 nx = a->x + dx, ny = a->y + dy;
     int fl, ce, z = FIX2INT(a->z), i;
     int flying = (a->flags & AF_FLYING) != 0;
-    if (flying) {
-        if (!cw_fits(nx, ny, a->radius, z, a->height, 255, &fl, &ce)) return 0;
-        if (z < fl) return 0;
-    } else {
-        if (!cw_fits(nx, ny, a->radius, z, a->height, DOOMO_STEP_UP, &fl, &ce)) return 0;
-        /* walkers avoid lava and big drops unless chasing hard */
-        {
-            const DoomoCell *c = map_cell_safe(&doomo_map, FIX2INT(nx) / CELLU, FIX2INT(ny) / CELLU);
-            if ((c->flags & CELL_LAVA) && !(map_cell_safe(&doomo_map, FIX2INT(a->x) / CELLU,
-                                                           FIX2INT(a->y) / CELLU)->flags & CELL_LAVA))
-                return 0;
-            if (fl < z - 64) return 0;
-        }
-    }
+    /* A zero step is not an escape route. Previously the axis fallback
+     * could report success without moving and keep a demon stuck at a
+     * corner instead of trying its next heading. */
+    if (!dx && !dy) return 0;
+    /* Check nearby blocking bodies before scanning tile heights. A crowded
+     * doorway rejects most candidate steps here, saving 1-4 collision
+     * cell and mover queries per rejected step without changing outcomes. */
     /* other solid bodies */
     for (i = 0; i < ACTOR_MAX; i++) {
         const DoomoActor *o = &doomo_actors[i];
@@ -524,6 +517,20 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
         if (doomo_player.hp > 0 && ddx < rr && ddx > -rr && ddy < rr && ddy > -rr &&
             fx_dist_lt(ddx, ddy, rr) && !(pz >= z + a->height || pz + DOOMO_PLAYER_HEIGHT <= z))
             return 0;
+    }
+    if (flying) {
+        if (!cw_fits(nx, ny, a->radius, z, a->height, 255, &fl, &ce)) return 0;
+        if (z < fl) return 0;
+    } else {
+        if (!cw_fits(nx, ny, a->radius, z, a->height, DOOMO_STEP_UP, &fl, &ce)) return 0;
+        /* walkers avoid lava and big drops unless chasing hard */
+        {
+            const DoomoCell *c = map_cell_safe(&doomo_map, FIX2INT(nx) / CELLU, FIX2INT(ny) / CELLU);
+            if ((c->flags & CELL_LAVA) && !(map_cell_safe(&doomo_map, FIX2INT(a->x) / CELLU,
+                                                           FIX2INT(a->y) / CELLU)->flags & CELL_LAVA))
+                return 0;
+            if (fl < z - 64) return 0;
+        }
     }
     a->x = nx;
     a->y = ny;
@@ -556,7 +563,10 @@ static void demon_walk(int idx, int want_angle)
             return;
         }
     }
-    /* stuck: pick a random direction for a while */
+    /* When every local detour is blocked, reverse orbit preference so
+     * skirmishers and flyers do not keep circling into the same wall.
+     * The random escape heading and its RNG cadence remain unchanged. */
+    if (a->strafe) a->strafe = (int8_t)-a->strafe;
     ai_dir[idx] = (int16_t)rng_range(&doomo_rng, 4096);
     ai_move[idx] = 10;
 }
@@ -690,13 +700,20 @@ static int looks_for_player(int idx)
 {
     DoomoActor *a = &doomo_actors[idx];
     const DemonInfo *di = DEMON(a->type);
-    fix16 px, py;
+    fix16 px, py, dx, dy, reach;
     int pz, ang, diff;
     fix16 d;
     if (doomo_player.hp <= 0) return 0;
     combat_player_eye(&px, &py, &pz);
-    d = fx_dist(px - a->x, py - a->y);
-    if (d > INT2FIX(di->sight * CELLU)) return 0;
+    dx = px - a->x;
+    dy = py - a->y;
+    reach = INT2FIX(di->sight * CELLU);
+    /* Exact square rejection before the more expensive distance root.
+     * Distant sleeping demons across the big Breach maps should not
+     * pay for fx_dist() when they cannot see the player anyway. */
+    if (dx > reach || dx < -reach || dy > reach || dy < -reach) return 0;
+    d = fx_dist(dx, dy);
+    if (d > reach) return 0;
     if (a->tflags & THF_AMBUSH) {
         ang = fx_atan2(py - a->y, px - a->x);
         diff = ((ang - a->angle + 2048) & DOOMO_ANG_MASK) - 2048;
