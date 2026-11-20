@@ -58,13 +58,14 @@ static void floor_range(int cx, int cy, int *lo, int *hi)
     if (!map_lift_range(&doomo_map, cx, cy, lo, hi)) *lo = *hi = cw_floor(cx, cy);
 }
 
-static int passable(int cx, int cy, int nx, int ny, int allow_lava)
+/* Only the BFS calls this, after bounds checking both tile coordinates.
+ * Passing direct live-map cells avoids two safe-lookup calls per edge and
+ * lets the caller reuse the source cell across all four neighbours. */
+static int passable(int cx, int cy, int nx, int ny,
+                    const DoomoCell *cur, const DoomoCell *n, int allow_lava)
 {
-    const DoomoCell *n = map_cell_safe(&doomo_map, nx, ny);
-    const DoomoCell *cur;
     int f0lo, f0hi, f1lo, f1hi, ceil;
-    if (n->wall || nx < 0 || ny < 0 || nx >= doomo_map.w || ny >= doomo_map.h) return 0;
-    cur = map_cell_safe(&doomo_map, cx, cy);
+    if (n->wall) return 0;
     if ((n->flags & CELL_LAVA) && !allow_lava) return 0;
     if (n->flags & CELL_DOOR) {
         int open = map_door_open(&doomo_map, nx, ny);
@@ -153,6 +154,7 @@ static int bfs_priority(int allow_lava, int *first_dir, int earliest_priority)
     while (head != tail) {
         int packed = BOT_QUEUE[head], cx = packed & 63, cy = (packed >> 6) & 63;
         int dir = (packed >> 12) & 3, c = cy * w + cx, k;
+        const DoomoCell *cur = &doomo_map.cells[c];
         int priority = nib_get(c);
         if (++head == BOT_Q) head = 0;
         if (c != start && priority && priority < best_priority) {
@@ -166,7 +168,7 @@ static int bfs_priority(int allow_lava, int *first_dir, int earliest_priority)
             if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
             ni = ny * w + nx;
             if (BOT_BITS[ni >> 3] & (1u << (ni & 7))) continue;
-            if (!passable(cx, cy, nx, ny, allow_lava)) continue;
+            if (!passable(cx, cy, nx, ny, cur, &doomo_map.cells[ni], allow_lava)) continue;
             if (next == BOT_Q) next = 0;
             if (next == head) continue;
             BOT_BITS[ni >> 3] |= (uint8_t)(1u << (ni & 7));
@@ -180,20 +182,22 @@ static int bfs_priority(int allow_lava, int *first_dir, int earliest_priority)
 
 static int plan(void)
 {
-    int i, count = doomo_map.w * doomo_map.h, safe_rank, lava_rank;
+    int i, x, y, safe_rank, lava_rank;
     int safe_dir, lava_dir, px, py, result_dir, earliest_priority = 7;
 #if defined(DOOMO_PLATFORM_GBA)
     gba_bot_claim();   /* Same 4 KB borrowed scratch, zero persistent RAM. */
 #endif
     memset(BOT_DIR, 0, BOT_DIR_BYTES);
-    for (i = 0; i < count; i++) {
-        const DoomoCell *c = &doomo_map.cells[i];
-        int x = i % doomo_map.w, y = i / doomo_map.w;
-        if ((c->flags & CELL_EXIT) && combat_s.goal == CGOAL_EXIT) {
-            mark(x, y, 2, &earliest_priority);
-        }
-        if (c->flags & CELL_TRIGGER) {
-            mark(x, y, 5, &earliest_priority);
+    /* Scan only once for stationary exits/triggers. Coordinates advance
+     * naturally by row instead of dividing by the map width for every
+     * tile (ARM7TDMI has no integer divide instruction). */
+    for (y = 0, i = 0; y < doomo_map.h; y++) {
+        for (x = 0; x < doomo_map.w; x++, i++) {
+            uint8_t flags = doomo_map.cells[i].flags;
+            if ((flags & CELL_EXIT) && combat_s.goal == CGOAL_EXIT)
+                mark(x, y, 2, &earliest_priority);
+            if (flags & CELL_TRIGGER)
+                mark(x, y, 5, &earliest_priority);
         }
     }
     for (i = 0; i < ACTOR_MAX; i++) {
