@@ -136,6 +136,7 @@ void r3d_up4(uint16_t *base, int hw, int vh4) IWRAM_CALL;
 
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
+static const void *cache_fade_mapdef; /* map-specific distance lighting */
 static uint32_t cm_sig;
 static const void *cache_mapdef;
 static int cache_mw, cache_mh;
@@ -234,17 +235,26 @@ static void setup_viewport(int vw, int vh, int fov)
     cache_fov = fov;
 }
 
-static void setup_fade(int amb)
+static void setup_fade(int amb, const DoomoMapDef *def)
 {
+    /* Cathedral/Capital readability: these two vast red interiors already
+     * have sector lights, but the standard 1/128-unit falloff crushes
+     * their distant architecture to near-black. Soften only their long
+     * distance fade. The same 128-byte LUT is used by walls, flats and
+     * sprites; zero additional per-pixel work or framebuffer memory. */
+    const int bone = def == doomo_maps[MAPID_BONE_CATHEDRAL] ||
+                     def == doomo_maps[MAPID_BONE_CAPITAL];
     /* Distance fade (reference semantics): one light level per 128 world
      * units. One bucket = 32 units. */
     int b;
     for (b = 0; b < R3D_FADE_N; b++) {
         int f = b >> 2;
+        if (bone && f > 5) f = 5 + ((f - 5) >> 1);
         r3d_fade[b] = (uint8_t)(f > 15 ? 15 : f);
     }
     r3f.amb = amb ? amb : 12;              /* light of cells with light 0 */
     cache_amb = amb;
+    cache_fade_mapdef = def;
 }
 
 static void setup_colormaps(void)
@@ -656,7 +666,8 @@ void plat_view3d(const DoomoView3D *v)
     }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
         setup_map(m);
-    if (m->ambient != cache_amb) setup_fade(m->ambient);
+    if (m->ambient != cache_amb || m->def != cache_fade_mapdef)
+        setup_fade(m->ambient, m->def);
 
     /* colormaps, textures, sky */
     setup_colormaps();
