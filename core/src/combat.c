@@ -1792,11 +1792,6 @@ static int player_view_dir(fix16 camx, fix16 camy, int *flip)
  * tests/test_combat.c checks order, count and keys against the old fx_dist() sort on random and tied layouts. */
 #define BB_CULL_R    ((uint64_t)INT2FIX(30 * CELLU))
 #define BB_CULL_S    ((BB_CULL_R + 1u) * (BB_CULL_R + 1u))
-/* GBA: upper bound on |rx|+|ry| for every actor inside the cull
- * circle. 91/64 > sqrt(2); the +1 matches the exact fx_dist()
- * rounded-distance cull. A corner reject avoids the two costly
- * 64-bit squares, while the exact final cull and sort stay intact. */
-#define BB_DIAG_CULL ((uint32_t)(((BB_CULL_R + 1u) * 91u + 63u) / 64u))
 #define BB_KEY_SURE  65u                  /* (65 - 1) << BB_KEY_SHIFT == 2^28 */
 /* d < 3 cells (the muzzle flash lights the actor) <=> s < (3 cells)^2 <=> key < that >> BB_KEY_SHIFT (exact: the
  * low bits of (3 cells)^2 are zero) */
@@ -1841,13 +1836,6 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
          * No state, scratch storage, or asset changes on any port. */
         if (rx > (fix16)BB_CULL_R || rx < -(fix16)BB_CULL_R || ry > (fix16)BB_CULL_R || ry < -(fix16)BB_CULL_R)
             continue;
-#if defined(DOOMO_PLATFORM_GBA)
-        /* The axis guard above ensures neither negation nor sum overflows.
-         * Only reject actors provably OUTSIDE the exact original circle;
-         * no altered sprite ordering, actor state, RNG or rendered pixels. */
-        if ((uint32_t)(rx < 0 ? -rx : rx) + (uint32_t)(ry < 0 ? -ry : ry) > BB_DIAG_CULL)
-            continue;
-#endif
         depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
         if (depth < -INT2FIX(48)) continue;
         s = bb_sq(rx, ry);
