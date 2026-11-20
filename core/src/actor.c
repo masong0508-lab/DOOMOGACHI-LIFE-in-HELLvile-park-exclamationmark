@@ -657,30 +657,28 @@ static void demon_walk(int idx, int want_angle)
         if (k == 1 && use_near) {
             int j;
             /* Allow a full world unit of rounding slack around the maximum
-             * step. All six angles have |dx|, |dy| <= step + 1 world unit.
-             * Use 64-bit differences here to avoid signed fix16 overflow
-             * in the conservative rejection bound. This happens once per
-             * STUCK movement, not for every attempted direction. */
-            const int64_t slack = (int64_t)step + INT2FIX(1);
+             * step. All six angles have |dx|, |dy| <= step + 1 world unit. */
 #if defined(DOOMO_PLATFORM_GBA)
+            /* The actor radii are uint8 and demon step is <= 10.25 world
+             * units, so this signed 16.16 envelope is far under INT32_MAX.
+             * Compute it with 32-bit operations on ARM7; 64-bit arithmetic
+             * remains in the other-port fallback below. */
+            const int32_t slack = step + INT2FIX(1);
             if (solid_dirty) solid_rebuild();
             {
                 int total = solid_count;
                 for (j = 0; j < total; j++) {
                     int slot = solid_order[j];
                     const DoomoActor *o = &doomo_actors[slot];
-                    int64_t rr;
+                    int32_t rr;
                     if (slot == idx || (o->flags & (AF_USED | AF_SOLID)) !=
                                        (AF_USED | AF_SOLID)) continue;
-                    rr = (int64_t)(o->radius + a->radius - 4) * 65536 + slack;
+                    rr = (o->radius + a->radius - 4) * 65536 + slack;
                     if (rr < 0) continue;
-                    /* Exact signed-coordinate distance, without four 64-bit
-                     * comparisons per solid blocker on ARM7TDMI. Choose the
-                     * unsigned subtraction direction using SIGNED ordering:
-                     * this gives the full 0..UINT32_MAX absolute distance,
-                     * even across INT32_MIN / INT32_MAX. A bound >= UINT32_MAX
-                     * includes every possible 32-bit coordinate difference. */
-                    if (rr < 0xFFFFFFFFLL) {
+                    /* Exact unsigned difference across the full signed
+                     * 32-bit coordinate range: signed order chooses which
+                     * unsigned subtraction has the absolute magnitude. */
+                    {
                         uint32_t bound = (uint32_t)rr;
                         uint32_t ax = (uint32_t)a->x, ay = (uint32_t)a->y;
                         uint32_t ox = (uint32_t)o->x, oy = (uint32_t)o->y;
@@ -692,6 +690,8 @@ static void demon_walk(int idx, int want_angle)
                 }
             }
 #else
+            /* Preserve the original 64-bit envelope on other ports. */
+            const int64_t slack = (int64_t)step + INT2FIX(1);
             for (j = 0; j < actor_end; j++) {
                 const DoomoActor *o = &doomo_actors[j];
                 int64_t rr;
