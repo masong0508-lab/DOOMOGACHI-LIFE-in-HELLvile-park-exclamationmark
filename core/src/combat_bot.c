@@ -61,8 +61,10 @@ static void floor_range(int cx, int cy, int *lo, int *hi)
 static int passable(int cx, int cy, int nx, int ny, int allow_lava)
 {
     const DoomoCell *n = map_cell_safe(&doomo_map, nx, ny);
+    const DoomoCell *cur;
     int f0lo, f0hi, f1lo, f1hi, ceil;
     if (n->wall || nx < 0 || ny < 0 || nx >= doomo_map.w || ny >= doomo_map.h) return 0;
+    cur = map_cell_safe(&doomo_map, cx, cy);
     if ((n->flags & CELL_LAVA) && !allow_lava) return 0;
     if (n->flags & CELL_DOOR) {
         int open = map_door_open(&doomo_map, nx, ny);
@@ -74,10 +76,22 @@ static int passable(int cx, int cy, int nx, int ny, int allow_lava)
         ceil = map_door_top(&doomo_map, nx, ny);
         if (!ceil) ceil = cw_ceil(nx, ny);
     } else {
-        ceil = cw_ceil(nx, ny);
+        /* Static map cells (most of the level) don't have animated
+         * height. Their packed 8-byte cell already contains the same
+         * height cw_ceil would calculate; avoid a second map lookup. */
+        ceil = n->ceil_tex == DOOMO_TEX_SKY ? SKY_CEIL
+                                             : n->ceil_h * DOOMO_HEIGHT_STEP;
     }
-    floor_range(cx, cy, &f0lo, &f0hi);
-    floor_range(nx, ny, &f1lo, &f1hi);
+    /* The old path called map_lift_range() twice for every BFS edge;
+     * even a normal tile made that function inspect the whole mover
+     * table before consulting cw_floor(). On huge dungeon maps that
+     * dominated GBA autopilot CPU time. Only actual lifts need it.
+     * Keep the exact dynamic floor range for moving lifts and the
+     * ordinary cell height for every other tile. No cached map data. */
+    if (cur->flags & CELL_LIFT) floor_range(cx, cy, &f0lo, &f0hi);
+    else f0lo = f0hi = cur->floor_h * DOOMO_HEIGHT_STEP;
+    if (n->flags & CELL_LIFT) floor_range(nx, ny, &f1lo, &f1hi);
+    else f1lo = f1hi = n->floor_h * DOOMO_HEIGHT_STEP;
     if (f1lo - f0hi > DOOMO_STEP_UP) return 0;
     if (ceil - DOOMO_MAX(f1lo, f0lo) < DOOMO_CROUCH_HEIGHT) return 0;
     return 1;
@@ -95,7 +109,8 @@ static int bfs_to_targets(int allow_lava)
     BOT_QUEUE[tail++] = (uint16_t)start;
     while (head != tail) {
         int c = BOT_QUEUE[head], cx = c % w, cy = c / w, k;
-        head = (head + 1) % BOT_Q;
+        /* Fixed-size ring: a compare avoids 32-bit modulo on ARM7TDMI. */
+        if (++head == BOT_Q) head = 0;
         if (c != start && (BOT_BITS[c >> 3] & (1 << (c & 7)))) {
             int d = nib_get(c) - 1;
             way_x = px + ddx[d];
@@ -109,9 +124,13 @@ static int bfs_to_targets(int allow_lava)
             if (nib_get(ni)) continue;
             if (!passable(cx, cy, nx, ny, allow_lava)) continue;
             nib_set(ni, c == start ? k + 1 : nib_get(c));
-            if ((tail + 1) % BOT_Q == head) continue;          /* queue full */
-            BOT_QUEUE[tail] = (uint16_t)ni;
-            tail = (tail + 1) % BOT_Q;
+            {   /* Preserve the original full-ring check and enqueue order. */
+                int next = tail + 1;
+                if (next == BOT_Q) next = 0;
+                if (next == head) continue;                   /* queue full */
+                BOT_QUEUE[tail] = (uint16_t)ni;
+                tail = next;
+            }
         }
     }
     return 0;
