@@ -42,6 +42,7 @@ static Mover movers[MOVER_MAX];
 static int   nmovers;
 static int   cur_map_id = -1;
 static int   last_hit;       /* lookup cache */
+static int   last_miss = -1; /* avoid rescanning unmoving empty cells */
 
 static int step_floor(int units)       /* world units -> height steps (floor) */
 {
@@ -55,8 +56,13 @@ static Mover *find_mover(const DoomoMap *m, int cx, int cy)
     if (m != &doomo_map || cx < 0 || cy < 0 || cx >= m->w || cy >= m->h) return NULL;
     idx = cy * m->w + cx;
     if (last_hit < nmovers && movers[last_hit].cell == idx) return &movers[last_hit];
+    /* Movers are registered only on map load. A negative lookup remains
+     * valid for the entire map and avoids repeating the small linear scan
+     * for frequently queried ordinary floor and ceiling cells. */
+    if (idx == last_miss) return NULL;
     for (i = 0; i < nmovers; i++)
         if (movers[i].cell == idx) { last_hit = i; return &movers[i]; }
+    last_miss = idx;
     return NULL;
 }
 
@@ -112,6 +118,7 @@ void map_load_def(const DoomoMapDef *d)
     memset(&doomo_map, 0, sizeof(doomo_map));
     nmovers = 0;
     last_hit = 0;
+    last_miss = -1;
     if (!d) return;
     doomo_map.def = d;
     doomo_map.w = d->w > DOOMO_MAP_MAX_W ? DOOMO_MAP_MAX_W : d->w;
@@ -156,6 +163,8 @@ static void load_fallback(void)
                                         SONG_HAHALAND_DAY, 12, NULL, fb_things, 1 };
     memset(&doomo_map, 0, sizeof(doomo_map));
     nmovers = 0;
+    last_hit = 0;
+    last_miss = -1;
     doomo_map.def = &fb_def;
     doomo_map.w = 8;
     doomo_map.h = 8;
