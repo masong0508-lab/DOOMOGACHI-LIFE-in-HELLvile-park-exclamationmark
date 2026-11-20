@@ -96,6 +96,21 @@ int cw_ceil(int cx, int cy)
 
 int cw_solid(int cx, int cy) { return map_cell_safe(&doomo_map, cx, cy)->wall != 0; }
 
+/* Callers that already looked up a cell can read its static heights
+ * directly. Animated doors and lifts still use their exact mover height. */
+static inline int cell_floor(const DoomoCell *cell, int cx, int cy)
+{
+    if (cell->flags & CELL_LIFT) return cw_floor(cx, cy);
+    return cell->floor_h * DOOMO_HEIGHT_STEP;
+}
+
+static inline int cell_ceil(const DoomoCell *cell, int cx, int cy)
+{
+    if (cell->ceil_tex == DOOMO_TEX_SKY && !cell->wall) return SKY_CEIL;
+    if (cell->flags & CELL_DOOR) return map_ceil_z(&doomo_map, cx, cy);
+    return cell->ceil_h * DOOMO_HEIGHT_STEP;
+}
+
 int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
 {
     int x0 = (FIX2INT(x) - r) / CELLU, x1 = (FIX2INT(x) + r) / CELLU;
@@ -106,17 +121,10 @@ int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
         for (cx = x0; cx <= x1; cx++) {
             const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
             int f, c;
-            /* The old path fetched the same cell for cw_solid, cw_floor,
-             * cw_ceil and again inside both map height helpers. Read it
-             * once for ordinary static tiles, which dominate large Breach
-             * maps. Dynamic lift/door values still use their mover. */
             if (cell->wall) return 0;
-            f = (cell->flags & CELL_LIFT) ? map_floor_z(&doomo_map, cx, cy)
-                                         : cell->floor_h * DOOMO_HEIGHT_STEP;
-            c = cell->ceil_tex == DOOMO_TEX_SKY ? SKY_CEIL
-                : (cell->flags & CELL_DOOR) ? map_ceil_z(&doomo_map, cx, cy)
-                                           : cell->ceil_h * DOOMO_HEIGHT_STEP;
+            f = cell_floor(cell, cx, cy);
             if (f > z + step) return 0;
+            c = cell_ceil(cell, cx, cy);
             if (f > maxf) maxf = f;
             if (c < minc) minc = c;
         }
@@ -137,6 +145,8 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int64_t ddx = adx ? (((int64_t)CELLU << 32) / adx) : ((int64_t)1 << 40);  /* fix16 dist per cell */
     int64_t ddy = ady ? (((int64_t)CELLU << 32) / ady) : ((int64_t)1 << 40);
     int64_t sx, sy, d = 0, dhit = maxd;
+    const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
+    int fl = cell_floor(cell, cx, cy), ce = cell_ceil(cell, cx, cy);
     /* Many Hell Breach sight rays travel across dozens of equal-height
      * tiles. A 64-bit division for every one of those tiles is especially
      * costly on ARM7TDMI (the GBA has no hardware divide). The crossing
@@ -153,7 +163,6 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     else sy = ady ? (((celly0 + ((int64_t)CELLU << 16)) - y0) << 16) / ady : ((int64_t)1 << 40);
     for (i = 0; i < 160; i++) {
         int64_t dnext = sx < sy ? sx : sy;
-        int fl = cw_floor(cx, cy), ce = cw_ceil(cx, cy);
         /* (integration) "* 65536" instead of "<< 16" on values that can be
          * negative (UBSan: left shift of negative value); same code. */
         int64_t zf = (int64_t)fl * 65536, zc = (int64_t)ce * 65536;
@@ -181,11 +190,13 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
         if (dnext >= maxd) { dhit = maxd; break; }
         d = dnext;
         if (sx < sy) { sx += ddx; cx += stepx; } else { sy += ddy; cy += stepy; }
-        if (cw_solid(cx, cy)) { dhit = d; break; }
+        cell = map_cell_safe(&doomo_map, cx, cy);
+        if (cell->wall) { dhit = d; break; }
+        fl = cell_floor(cell, cx, cy);
+        ce = cell_ceil(cell, cx, cy);
         {
             int64_t z = z0 + ((slope * d) >> 16);
-            int nf = cw_floor(cx, cy), nc = cw_ceil(cx, cy);
-            if (z < ((int64_t)nf * 65536) || (nc < SKY_CEIL && z > ((int64_t)nc * 65536))) { dhit = d; break; }
+            if (z < ((int64_t)fl * 65536) || (ce < SKY_CEIL && z > ((int64_t)ce * 65536))) { dhit = d; break; }
         }
     }
     if (dhit > maxd) dhit = maxd;
@@ -695,22 +706,17 @@ static int looks_for_player(int idx)
     const DemonInfo *di = DEMON(a->type);
     fix16 px, py, dx, dy, reach;
     int pz, ang, diff;
-    fix16 d;
     if (doomo_player.hp <= 0) return 0;
     combat_player_eye(&px, &py, &pz);
     dx = px - a->x;
     dy = py - a->y;
     reach = INT2FIX(di->sight * CELLU);
-    /* Exact square rejection before the more expensive distance root.
-     * Distant sleeping demons across the big Breach maps should not
-     * pay for fx_dist() when they cannot see the player anyway. */
     if (dx > reach || dx < -reach || dy > reach || dy < -reach) return 0;
-    d = fx_dist(dx, dy);
-    if (d > reach) return 0;
+    if (fx_dist_gt(dx, dy, reach)) return 0;
     if (a->tflags & THF_AMBUSH) {
-        ang = fx_atan2(py - a->y, px - a->x);
+        ang = fx_atan2(dy, dx);
         diff = ((ang - a->angle + 2048) & DOOMO_ANG_MASK) - 2048;
-        if ((diff < -1100 || diff > 1100) && d > INT2FIX(96)) return 0;
+        if ((diff < -1100 || diff > 1100) && fx_dist_gt(dx, dy, INT2FIX(96))) return 0;
     }
     if (!cw_los(a->x, a->y, FIX2INT(a->z) + a->height * 3 / 4, px, py, pz)) return 0;
     return 1;
@@ -757,11 +763,27 @@ static void demon_status_tick(int idx)
         actor_fx(SPR_SPARKLE, a->x, a->y, a->z + INT2FIX(a->height * 3 / 4), 3);
 }
 
+/* Compare the same floored 16.16 distance as fx_dist(). The thresholds
+ * are whole world units, so a strict '<' needs only the high word. */
+static int range_lt(uint64_t squared, int units)
+{
+    return units > 0 && (squared >> 32) < (uint32_t)units * (uint32_t)units;
+}
+
+static int range_gt(uint64_t squared, unsigned units)
+{
+    uint32_t high = (uint32_t)(squared >> 32);
+    uint32_t limit = units * units;
+    /* First out-of-range fixed-point distance is (units * 65536 + 1). */
+    return high > limit || (high == limit && (uint32_t)squared >= (units << 17) + 1);
+}
+
 static void demon_think(int idx)
 {
     DoomoActor *a = &doomo_actors[idx];
     const DemonInfo *di = DEMON(a->type);
-    fix16 tx, ty, dist;
+    fix16 tx, ty, dx, dy;
+    uint64_t distance_sq;
     int tz, ang, z = FIX2INT(a->z);
     int think = ((a->anim + idx) & 3) == 0;
     a->anim++;
@@ -859,8 +881,10 @@ static void demon_think(int idx)
         return;
     }
     target_pos(a, &tx, &ty, &tz);
-    dist = fx_dist(tx - a->x, ty - a->y);
-    ang = fx_atan2(ty - a->y, tx - a->x);
+    dx = tx - a->x;
+    dy = ty - a->y;
+    ang = fx_atan2(dy, dx);
+    distance_sq = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
 
     switch (a->state) {
     case AST_WINDUP:
@@ -892,7 +916,7 @@ static void demon_think(int idx)
         }
         if (!demon_try_move(idx, FIXMUL(fx_cos(a->angle), step), FIXMUL(fx_sin(a->angle), step)))
             hit = 1;
-        if (dist < INT2FIX(di->melee_range / 2 + a->radius + 8)) {
+        if (range_lt(distance_sq, di->melee_range / 2 + a->radius + 8)) {
             demon_melee(idx);
             hit = 1;
         }
@@ -923,28 +947,28 @@ static void demon_think(int idx)
     }
     {
         int frozen = (a->status_fx & (ST_FROZEN | ST_DAZZLED)) != 0;
-        int in_melee = dist < INT2FIX(di->melee_range + a->radius);
+        int in_melee = range_lt(distance_sq, di->melee_range + a->radius);
         int los;
         if (think) ai_los[idx] = (uint8_t)can_see_target(idx);
         los = ai_los[idx];
         if (!frozen && a->cooldown == 0) {
-            if (in_melee && di->melee_dmg && (dist < INT2FIX(di->melee_range + a->radius - 4) || !di->pk)) {
+            if (in_melee && di->melee_dmg && (range_lt(distance_sq, di->melee_range + a->radius - 4) || !di->pk)) {
                 a->state = AST_MELEE;
                 a->timer = 0;
                 return;
             }
-            if (di->ai == AI_CHARGER && los && dist < INT2FIX(5 * CELLU) && dist > INT2FIX(80)) {
+            if (di->ai == AI_CHARGER && los && range_lt(distance_sq, 5 * CELLU) && range_gt(distance_sq, 80)) {
                 a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)ang;
                 audio_sfx(SFX_DEMON_ROAR);
                 return;
             }
-            if (di->ai == AI_DIVER && los && dist < INT2FIX(6 * CELLU) && rng_chance(&doomo_rng, 6)) {
+            if (di->ai == AI_DIVER && los && range_lt(distance_sq, 6 * CELLU) && rng_chance(&doomo_rng, 6)) {
                 a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)ang;
                 return;
             }
             if (di->pk && los && think) {
                 int chance = di->ai == AI_SKIRMISH ? 30 : di->ai == AI_SNIPER ? 40 : di->ai == AI_BOSS ? 60 : 22;
-                if (dist > INT2FIX(di->sight * CELLU)) chance = 0;
+                if (range_gt(distance_sq, di->sight * CELLU)) chance = 0;
                 if (rng_chance(&doomo_rng, chance)) {
                     a->state = AST_WINDUP;
                     a->timer = 0;
@@ -958,21 +982,21 @@ static void demon_think(int idx)
             switch (di->ai) {
             case AI_SKIRMISH:
                 if ((a->anim % 45) == 0 && rng_chance(&doomo_rng, 50)) a->strafe = (int8_t)-a->strafe;
-                if (los && dist < INT2FIX(6 * CELLU)) want = ang + a->strafe * 900;
+                if (los && range_lt(distance_sq, 6 * CELLU)) want = ang + a->strafe * 900;
                 else if (los) want = ang + a->strafe * 300;
                 break;
             case AI_SNIPER:
-                if (los && dist < INT2FIX(4 * CELLU)) want = ang + 2048 + a->strafe * 400;   /* back off */
-                else if (los && dist < INT2FIX(8 * CELLU)) want = ang + a->strafe * 1024;    /* flank */
+                if (los && range_lt(distance_sq, 4 * CELLU)) want = ang + 2048 + a->strafe * 400;   /* back off */
+                else if (los && range_lt(distance_sq, 8 * CELLU)) want = ang + a->strafe * 1024;    /* flank */
                 if ((a->anim % 60) == 0) a->strafe = (int8_t)-a->strafe;
                 break;
             case AI_FLYER:
             case AI_BOSS:
-                if (los && dist < INT2FIX(4 * CELLU)) want = ang + a->strafe * 1100;
+                if (los && range_lt(distance_sq, 4 * CELLU)) want = ang + a->strafe * 1100;
                 if ((a->anim % 70) == 0) a->strafe = (int8_t)-a->strafe;
                 break;
             case AI_DIVER:
-                if (los && dist < INT2FIX(3 * CELLU)) want = ang + a->strafe * 1300;
+                if (los && range_lt(distance_sq, 3 * CELLU)) want = ang + a->strafe * 1300;
                 break;
             case AI_TANK:
             case AI_CHASER:

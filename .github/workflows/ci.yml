@@ -181,13 +181,7 @@ jobs:
       - name: Real-player FPS in four heavy Breach maps (GBA)
         run: |
           set -euo pipefail
-          mkdir -p gba/build/shots/player4
-          arm-none-eabi-nm -n gba/build/doomogachi.elf > gba/build/doomogachi.nm
-          gba/build/harness gba/build/doomogachi.gba \
-            --script gba/harness/scripts/breach_player_four.txt \
-            --nm gba/build/doomogachi.nm \
-            --shots gba/build/shots/player4 --worklog --no-fps-gates --quiet \
-            | tee gba/build/breach_player_four.log
+          make -C gba test-breach-player
           {
             echo '### Player-controlled Breach FPS (no autopilot)'
             echo

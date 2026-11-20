@@ -253,7 +253,7 @@ void video_flip(void)
          * one at most 30 (two).
          * (SP8, from G9) and the pace holds: a 3D frame that needs more
          * vblanks than the pace (counting the wait for the next vblank)
-         * moves it there (at most 4: 15 fps), and it comes back one step
+         * moves it there (at most 4: 15 fps, or 3 at quarter detail), and it comes back one step
          * only after 8 frames in a row fit the faster pace. A view that
          * hovers at a vblank boundary then shows at an even 20 (or 15)
          * instead of a ragged 30/20 or 20/15 mix. The resolution governor
@@ -263,11 +263,15 @@ void video_flip(void)
         uint32_t need = gba_view3d_frame == 1 ? 3u : 2u;
         if (gba_view3d_frame) {
             uint32_t base = need, pace = gba_view3d_pace & 7u, fit = gba_view3d_pace >> 3;
+            uint32_t max_pace = gba_view3d_frame == 3 ? 3u : 4u;
             uint32_t took = gba_vblanks - last_flip_vbl + (REG_VCOUNT < 160 ? 1u : 0u);
             r3d_gov_flip(gba_view3d_frame, took, gba_work_last);
+            /* Quarter detail is Balanced's last fallback. A slow frame
+             * there should not also hold subsequent ready frames to 15 Hz. */
+            if (pace > max_pace) { pace = max_pace; fit = 0; }
             if (pace < base) { pace = base; fit = 0; }
             if (took > pace) {
-                pace = took > 4u ? 4u : took;
+                pace = took > max_pace ? max_pace : took;
                 fit = 0;
             } else if (pace > base && took < pace) {
                 if (++fit >= 8u) { pace--; fit = 0; }
