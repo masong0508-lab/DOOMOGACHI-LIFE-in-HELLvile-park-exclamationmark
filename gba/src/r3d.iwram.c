@@ -578,16 +578,23 @@ void r3d_draw_sprite(const R3DSprite *s)
         r1--;
     {
         const uint32_t dv = s->step16;
-        for (c = c0; c < f->ncol; c++) {
+        const uint8_t *cm = r3d_cmrow[s->level];
+        /* Texture position advances by exactly 2*step16 per 2-pixel
+         * raycaster column: ((cx12 + 8192 - x0) * step16) >> 12
+         * = ((cx12 - x0) * step16 >> 12) + 2*step16.
+         * Do the expensive signed 64-bit multiply only once per sprite,
+         * not once for each on-screen column. UInt32 addition matches the
+         * old int32 truncation even when the value wraps. No pixel change. */
+        uint32_t u16 = (uint32_t)(int32_t)
+            (((int64_t)(((c0 * 2 + 1) << 12) - x0) * s->step16) >> 12);
+        const uint32_t du16 = dv << 1;
+        for (c = c0; c < f->ncol; c++, u16 += du16) {
             int32_t cx12 = (c * 2 + 1) << 12;
-            int32_t u16;
             int u, top, bot, ya, yb;
             uint32_t v;
-            const uint8_t *cm;
             uint16_t *p;
             if (cx12 >= x1) break;
-            u16 = (int32_t)(((int64_t)(cx12 - x0) * s->step16) >> 12);
-            u = u16 >> 16;
+            u = (int32_t)u16 >> 16;
             if (u >= iw) u = iw - 1;
             if (u < 0) u = 0;
             if (s->flags & BB_FLIPX) u = iw - 1 - u;
@@ -595,7 +602,6 @@ void r3d_draw_sprite(const R3DSprite *s)
             ya = r0 > top ? r0 : top;
             yb = r1 < bot ? r1 : bot;
             if (ya >= yb) continue;
-            cm = r3d_cmrow[s->level];
             if (s->trans) {
                 /* every other pixel, checkerboard alternating per frame */
                 ya += (ya + c + (int)f->frame) & 1;
