@@ -328,9 +328,11 @@ release UP
 seed 1
 scene TITLE
 wait 2
-push COMBAT 5
+push ARENA 0
 wait 40
-expect-scene COMBAT
+expect-scene ARENA
+press A
+wait 20
 fps start
 down UP
 wait 130
@@ -341,9 +343,11 @@ release UP
 seed 1
 scene TITLE
 wait 2
-push COMBAT 5
+push ARENA 0
 wait 40
-expect-scene COMBAT
+expect-scene ARENA
+press A
+wait 20
 press SELECT
 wait 12
 fps start

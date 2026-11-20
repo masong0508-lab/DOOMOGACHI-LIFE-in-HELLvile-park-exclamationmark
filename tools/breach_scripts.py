@@ -172,10 +172,11 @@ def gba_player_census_script():
                   "fps census %s %s" % (slug, camera),
                   "expect-logic 29 census %s %s" % (slug, camera),
                   "shot census_%s_%s" % (slug, camera), "release UP"]
-    # Standalone free-play 3D scene is not in LEVELS. MAPID_ARENA is 5.
+    # Start a REAL Arena wave rather than opening the bare MAPID_ARENA
+    # through SCENE_COMBAT: the latter never calls arena.c's wave spawner.
     for camera in ("first", "third"):
-        s += ["seed 1", "scene TITLE", "wait 2", "push COMBAT 5",
-              "wait 40", "expect-scene COMBAT"]
+        s += ["seed 1", "scene TITLE", "wait 2", "push ARENA 0",
+              "wait 40", "expect-scene ARENA", "press A", "wait 20"]
         if camera == "third":
             s += ["press SELECT", "wait 12"]
         s += ["fps start", "down UP", "wait 130",
