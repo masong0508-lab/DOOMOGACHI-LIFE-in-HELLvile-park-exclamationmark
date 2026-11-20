@@ -84,11 +84,16 @@ static void draw_face(uint16_t *p, int y0, int y1, const uint8_t *texcol,
                       uint32_t d16, const uint8_t *cm)
 {
     int n = y1 - y0;
-    uint32_t dv;
+    uint32_t dv, lo;
     int32_t v;
     if (n <= 0) return;
     r3f.dbg_facepx += (uint32_t)n;
-    dv = (uint32_t)(((uint64_t)d16 * r3f.invproj) >> 32);    /* texels/pixel */
+    /* ARM7TDMI has a native unsigned 32x32->64 multiply. Its upper word
+     * is EXACTLY ((uint64_t)d16 * invproj) >> 32, so texel selection and
+     * perspective remain byte-identical, with no runtime helper call. */
+    __asm__ volatile ("umull %0, %1, %2, %3"
+                      : "=&r"(lo), "=&r"(dv)
+                      : "r"(d16), "r"(r3f.invproj));
     v = (int32_t)(((y0 - r3f.hor) * 2 + 1) * (int32_t)(dv >> 1)) - r3f.ez;
     r3d_face_loop(p + y0 * LINE, n, texcol, v, (int32_t)dv, cm);
 }
@@ -209,8 +214,14 @@ static inline uint32_t dir_recip(int32_t r)
 
 static inline uint32_t mul16u(uint32_t a, uint32_t b)
 {
-    uint64_t r = ((uint64_t)a * b) >> 16;
-    return r > 0x40000000u ? 0x40000000u : (uint32_t)r;
+    uint32_t lo, hi;
+    /* Old result: min(((uint64_t)a * b) >> 16, 0x40000000).
+     * UMULL gives the exact high/low words without 64-bit temporaries.
+     * A high word of 0x4000 already reaches the saturation threshold. */
+    __asm__ volatile ("umull %0, %1, %2, %3"
+                      : "=&r"(lo), "=&r"(hi) : "r"(a), "r"(b));
+    if (hi >= 0x4000u) return 0x40000000u;
+    return (hi << 16) | (lo >> 16);
 }
 
 #define CW1_DYN  ((uint32_t)(CELL_DOOR | CELL_LIFT) << 16)
