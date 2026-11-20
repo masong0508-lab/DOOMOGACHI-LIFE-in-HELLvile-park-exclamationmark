@@ -673,10 +673,21 @@ static void demon_walk(int idx, int want_angle)
                     if (slot == idx || (o->flags & (AF_USED | AF_SOLID)) !=
                                        (AF_USED | AF_SOLID)) continue;
                     rr = (int64_t)(o->radius + a->radius - 4) * 65536 + slack;
-                    if (rr < 0 || (int64_t)o->x - a->x > rr ||
-                        (int64_t)o->x - a->x < -rr ||
-                        (int64_t)o->y - a->y > rr ||
-                        (int64_t)o->y - a->y < -rr) continue;
+                    if (rr < 0) continue;
+                    /* Exact signed-coordinate distance, without four 64-bit
+                     * comparisons per solid blocker on ARM7TDMI. Choose the
+                     * unsigned subtraction direction using SIGNED ordering:
+                     * this gives the full 0..UINT32_MAX absolute distance,
+                     * even across INT32_MIN / INT32_MAX. A bound >= UINT32_MAX
+                     * includes every possible 32-bit coordinate difference. */
+                    if (rr < 0xFFFFFFFFLL) {
+                        uint32_t bound = (uint32_t)rr;
+                        uint32_t ax = (uint32_t)a->x, ay = (uint32_t)a->y;
+                        uint32_t ox = (uint32_t)o->x, oy = (uint32_t)o->y;
+                        uint32_t ddx = o->x >= a->x ? ox - ax : ax - ox;
+                        uint32_t ddy = o->y >= a->y ? oy - ay : ay - oy;
+                        if (ddx > bound || ddy > bound) continue;
+                    }
                     near[nnear++] = (uint8_t)slot;
                 }
             }
