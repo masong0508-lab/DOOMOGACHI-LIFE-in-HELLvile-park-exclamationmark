@@ -138,6 +138,12 @@ SECTIONS
             . = ALIGN(4);
         }
     } > iwram
+    /* The 2D billboard tables borrow 1,712 bytes AFTER the 2D code.
+     * Before this reservation, shrinking the unrelated 3D renderer made
+     * the common overlay slot smaller and broke the ROM link, even though
+     * all groups individually fitted. Reserve this scratch in IWRAM,
+     * not in the 3D ROM copy: shorter rendering code must stay a win. */
+    . = MAX(., __iwram_ovl_start + SIZEOF(.ovl_2d) + 1712);
     __iwram_ovl_end = .;
     /* OVERLAY stores the groups one after the other in ROM (an empty
      * group has no LOADADDR of its own, so the addresses are summed) */
