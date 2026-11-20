@@ -24,6 +24,7 @@
 #include "doomo/game.h"
 #include "doomo/plat_ext.h"
 #include "doomo/library.h"
+#include "doomo/portrait.h"
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -1175,8 +1176,18 @@ static void draw_menu(int held)
         if (rid >= 0) {
             const DoomoLook *look = fp_host_look(rid);
             ui_fill_ellipse(fx + FIGURE_W / 2, y + h - 9, 20, 3, st->fill_lo);
+            /* G-T1: a continuously changing blink/breath/wag phase
+             * invalidated the one-image portrait cache before its
+             * sliced GBA render had finished. Hold the host's figure in
+             * one expressive pose while this menu is visible. The host
+             * still bobs and switches TALK -> HAPPY, but a steady menu
+             * no longer churns portrait jobs every few ticks. The hold
+             * is scoped to this draw so dialogue/creator animations are
+             * unaffected on every port. No additional image memory. */
+            portrait_hold(1);
             fp_figure(fx, fy + (ui_wave(t, 60, 1) > 0), look, RES_ALIVE,
                       I.menu_t < 40 ? EXPR_TALK : EXPR_HAPPY);
+            portrait_hold(0);
         }
         /* the host's greeting, wrapped on up to two lines (CL5: it scrolled by as a marquee) */
         {
