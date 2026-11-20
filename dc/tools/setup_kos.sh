@@ -366,6 +366,29 @@ toolchain_build() {
         # selftests/ (which the build reads): about 110,000 small files,
         # roughly 0.9 GB on disk, that are only used by `make check`. This is
         # the biggest single cut to the peak disk use.
+        # The kos-chain default mirror (mirrors.kernel.org) can time out on
+        # hosted runners. GCC 15.2.0's official upstream release provides
+        # a second path, with the published SHA-512 verified before unpacking.
+        # Failed prefetches fall back to kos-chain; incomplete files are
+        # removed, and future GCC versions are never trusted implicitly.
+        if [ "$KOS_GCC_VER" = 15.2.0 ] && [ ! -f "$chain/gcc-$KOS_GCC_VER.tar.xz" ]; then
+            gcc_archive="$chain/gcc-$KOS_GCC_VER.tar.xz"
+            gcc_digest=89047a2e07bd9da265b507b516ed3635adb17491c7f4f67cf090f0bd5b3fc7f2ee6e4cc4008beef7ca884b6b71dffe2bb652b21f01a702e17b468cca2d10b2de
+            for source in \
+                "https://ftp.gnu.org/gnu/gcc/gcc-$KOS_GCC_VER/gcc-$KOS_GCC_VER.tar.xz" \
+                "https://gcc.gnu.org/pub/gcc/releases/gcc-$KOS_GCC_VER/gcc-$KOS_GCC_VER.tar.xz"; do
+                say "prefetching verified GCC $KOS_GCC_VER from $source"
+                rm -f "$gcc_archive.part"
+                if curl --fail --location --retry 2 --connect-timeout 15 --max-time 240 \
+                     --silent --show-error "$source" -o "$gcc_archive.part" &&
+                   printf '%s  %s\n' "$gcc_digest" "$gcc_archive.part" | sha512sum -c --status; then
+                    mv "$gcc_archive.part" "$gcc_archive"
+                    say "GCC source SHA-512 verified"
+                    break
+                fi
+                rm -f "$gcc_archive.part"
+            done
+        fi
         chain_make fetch-gcc
         [ -d "$chain/gcc-$KOS_GCC_VER/gcc/testsuite/selftests" ] ||
             die "gcc-$KOS_GCC_VER/gcc/testsuite/selftests is missing; delete $chain/gcc-$KOS_GCC_VER and rerun"
