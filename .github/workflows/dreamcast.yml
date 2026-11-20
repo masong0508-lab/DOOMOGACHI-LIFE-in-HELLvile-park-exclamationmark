@@ -1,0 +1,121 @@
+# Dreamcast first-class portable build and emulator verification.
+# Toolchain and self-booting CDI are built from repository-pinned sources.
+# Independent of the GBA/PS1 CI so a KOS cache miss cannot block their jobs.
+name: Dreamcast console CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "dc/**"
+      - "core/**"
+      - ".github/actions/setup-kos/**"
+      - ".github/workflows/dreamcast.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dreamcast-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dreamcast:
+    name: Dreamcast CDI, KOS and Flycast integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      EGL_PLATFORM: surfaceless
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install emulator and disc test dependencies
+        run: |
+          set -euo pipefail
+          echo 'Acquire::Retries "5"; Acquire::http::Timeout "30";' | sudo tee /etc/apt/apt.conf.d/80-dreamcast-retry >/dev/null
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            gcc g++ make git python3 python3-numpy python3-pil \
+            ffmpeg zip libegl-dev libgl-dev libgles2-mesa-dev \
+            libasound2-dev libpng-dev zlib1g-dev
+
+      - name: Pinned KallistiOS toolchain (cached)
+        uses: ./.github/actions/setup-kos
+        with:
+          prefix: ~/dc
+          jobs: '4'
+
+      - name: Build portable self-booting Dreamcast disc
+        run: |
+          set -euo pipefail
+          make -C dc all-disc -j"$(nproc)" INTRO_REQUIRED=1
+          make -C dc check-elf
+          test -s dc/build/doomogachi.cdi
+          test -s dc/build/doomogachi.elf
+          test -s dc/build/1ST_READ.BIN
+          test -s dc/build/IP.BIN
+          ls -lh dc/build/doomogachi.{cdi,elf} dc/build/{1ST_READ,IP}.BIN
+
+      - name: Host-side PVR, VMU, audio and raycaster regressions
+        run: |
+          set -euo pipefail
+          make -C dc host-test
+          make -C dc v3d-test
+          make -C dc check-packdisc check-talkdisc
+          make -C dc/harness test
+
+      - name: Build pinned Flycast libretro core
+        run: |
+          set -euo pipefail
+          make -C dc/harness flycast
+          test -s dc/harness/build/flycast_libretro.so
+
+      - name: Dreamcast emulator boot, input, save, disc, 3D, sound and UI
+        run: |
+          set -euo pipefail
+          make -C dc harness-test
+          make -C dc talk-test
+
+      # End-to-end scripted journeys include story/free-play and minigames.
+      # Both test targets must pass; no silent "no emulator" fallback.
+      - name: Complete story and free-play journeys
+        run: |
+          set -euo pipefail
+          make -C dc family-test
+          make -C dc family-test2
+
+      - name: Package portable CDI and debugging files
+        if: always()
+        run: |
+          mkdir -p dist
+          for file in doomogachi.cdi doomogachi.elf 1ST_READ.BIN IP.BIN; do
+            if [ -s "dc/build/$file" ]; then cp "dc/build/$file" "dist/$file"; fi
+          done
+          if [ -s dist/doomogachi.cdi ]; then
+            cp dc/README.md dist/README-Dreamcast.md
+            (cd dist && sha256sum -- doomogachi.cdi > SHA256SUMS.txt)
+          fi
+          ls -lh dist
+
+      - name: Upload Dreamcast portable image and files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-dreamcast
+          path: dist/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload emulator screenshots and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreamcast-test-evidence
+          path: |
+            dc/build/shots/
+            dc/harness/build/flycast_build.log
+          retention-days: 14
+          if-no-files-found: ignore
