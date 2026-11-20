@@ -28,6 +28,8 @@ static struct {
     uint16_t t, warn_t;
     int16_t  bonus;
     LvScore  sc;
+    /* A watch-demo is not a real sortie: retain the user's exact ammo. */
+    uint16_t demo_ammo[AMMO_COUNT];
 } br;
 
 static int br_style_wanted(void) { return br.mode == LVM_CUTE_ONLY ? WSTYLE_CUTE : WSTYLE_BRUTAL; }
@@ -99,7 +101,12 @@ static void br_start(void)
      * allotment inside combat_start(). */
     lv_runtime_begin(br.level);
     setup_challenge();
-    if (br.demo) combat_autopilot(1);
+    if (br.demo) {
+        /* The demo needs munitions for its long scripted gauntlets;
+         * the player never receives these free refills. */
+        combat_refill_ammo(100);
+        combat_autopilot(1);
+    }
     br.state = BR_INTRO;
     br.t = 0;
     br.sel = 0;
@@ -112,6 +119,10 @@ static void br_enter(int arg)
     br.level = (uint8_t)lv_startable(arg & 0xFF);
     br.mode = (uint8_t)(((arg >> 8) & 0xF) < LVM_COUNT ? (arg >> 8) & 0xF : LVM_NORMAL);
     br.demo = (uint8_t)((arg & LVF_DEMO) != 0);
+    if (br.demo) {
+        int t;
+        for (t = 0; t < AMMO_COUNT; t++) br.demo_ammo[t] = doomo_town.story.ammo[t];
+    }
     br_start();
     /* LV11 (plan 6.3): a dark level's first visit opens on its content note and waits for A; B goes back. A demo
      * and the autopilot skip it and leave the flag alone. */
@@ -122,7 +133,13 @@ static void br_leave(void)
 {
     combat_s.active = 0;
     combat_set_result_quit();
-    if (br.demo) combat_autopilot(0);
+    if (br.demo) {
+        int t;
+        combat_autopilot(0);
+        /* Restore live inventory after the show, including ammo loaded
+         * in magazines. Demo rounds are never stored into a real save. */
+        for (t = 0; t < AMMO_COUNT; t++) doomo_town.story.ammo[t] = br.demo_ammo[t];
+    }
     if (br.gore_forced) {
         opt_set(OPT_GORE, br.old_gore);
         br.gore_forced = 0;
@@ -139,6 +156,9 @@ static void leave_scene(void)
 static void play_tick(void)
 {
     int fin;
+    /* The demo has no persistent loadout and must never strand the bot
+     * on a route when its ammo runs dry. Keep normal gameplay untouched. */
+    if (br.demo && (br.t & 31) == 0) combat_refill_ammo(100);
     lv_runtime_pre();
     if (br_challenge()) enforce_challenge();
     combat_tick();
