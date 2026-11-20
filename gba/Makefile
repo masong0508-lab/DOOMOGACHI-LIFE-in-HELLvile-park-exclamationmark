@@ -162,7 +162,7 @@ CORE_OBJS := $(call core_obj,$(CORE_SRCS))
 # over the core's weak stubs, and the core's strong definitions win over both.
 ALL_OBJS  := $(GBA_OBJS) $(CORE_OBJS)
 
-.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-oldsave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-play profile-creator test-creator test-creator-sliders test-speed2 test-breach2 profile-speed2 profile-concert profile-exorcism clean sizes
+.PHONY: all rom engine-test engine-test-nocore harness test test-et test-game test-save test-coresave test-oldsave test-cutsave test-cardgone test-home test-ow test-lang test-optvol test-exorcism test-speed test-life profile-title profile-pause profile-invaded profile-all test-talk profile-sung profile-play profile-creator test-creator test-creator-sliders test-speed2 test-breach2 test-3d-census profile-speed2 profile-concert profile-exorcism clean sizes
 .DEFAULT_GOAL := all
 
 # Cartridge size (user decision 2026-11-01): the game ROM is a full 256 Mbit
@@ -767,3 +767,16 @@ test-breach-player: harness
 	    > $(BUILD)/breach_player_four.log 2>&1 || { tail -n 40 $(BUILD)/breach_player_four.log; exit 1; }
 	@grep '^harness: fps player ' $(BUILD)/breach_player_four.log
 # --- end LV10 ---
+
+# --- Whole-game GBA 3D performance census. Every built Breach level in
+# tools/breach_scripts.py, both first/third person, plus free-play arena.
+# This reports >=22 / >=30 FPS targets but deliberately does not hard-gate
+# frames until all baseline cases meet them; >=29 logic ticks/s is gated.
+GBA3D_CENSUS_LOG ?= $(BUILD)/gba3d_census.log
+.PHONY: test-3d-census
+test-3d-census: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/3d_census
+	@$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/3d_census.txt \\
+	    --shots $(SHOTS)/3d_census --quiet > $(GBA3D_CENSUS_LOG) 2>&1 || { tail -n 65 $(GBA3D_CENSUS_LOG); exit 1; }
+	@$(PYTHON) $(ROOT)/tools/gba3d_census.py $(GBA3D_CENSUS_LOG) --csv $(BUILD)/gba3d_census.csv

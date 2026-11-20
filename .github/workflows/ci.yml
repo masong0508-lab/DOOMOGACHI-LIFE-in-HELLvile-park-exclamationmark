@@ -191,6 +191,20 @@ jobs:
             python3 gba/tools/profile_report.py gba/build/breach_player_four.log 12 || true
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # 3D goal covers the complete playable Breach registry, both cameras
+      # and the standalone arena. Unlike the four historically comparable
+      # stress windows, this census grows automatically as levels are built.
+      # FPS is report-only until it reaches the 22 interim / ~30 final floor.
+      - name: Census every built GBA 3D level (player-controlled)
+        run: |
+          set -euo pipefail
+          make -C gba test-3d-census | tee gba/build/gba3d_census_summary.md
+          {
+            echo '### Whole-game GBA 3D performance census (Balanced, real player)'
+            echo
+            cat gba/build/gba3d_census_summary.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Collect ROMs
         run: |
           mkdir -p dist
@@ -325,6 +339,9 @@ jobs:
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
             gba/build/breach_player_four.log
+            gba/build/gba3d_census.log
+            gba/build/gba3d_census.csv
+            gba/build/gba3d_census_summary.md
             gba/build/sung.log
             gba/build/sung_spikes.log
             gba/build/play_idle.log
