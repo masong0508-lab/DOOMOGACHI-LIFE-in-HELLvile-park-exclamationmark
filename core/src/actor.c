@@ -1053,8 +1053,14 @@ static void demon_think(int idx)
     target_pos(a, &tx, &ty, &tz);
     dx = tx - a->x;
     dy = ty - a->y;
-    ang = fx_atan2(dy, dx);
-    distance_sq = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
+    /* The charge lunge keeps its launch angle until it stops; it never
+     * reads ang. Windup and melee aim every tick, but never read the
+     * squared distance. Skip the otherwise expensive atan2 search and
+     * 64-bit squares in these states, retaining exactly the original
+     * values on every path that observes them (no AI/RNG changes). */
+    ang = a->state == AST_CHARGE ? 0 : fx_atan2(dy, dx);
+    distance_sq = (a->state == AST_WINDUP || a->state == AST_MELEE) ? 0 :
+                  (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
 
     switch (a->state) {
     case AST_WINDUP:
