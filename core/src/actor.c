@@ -149,6 +149,27 @@ int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
     return minc - DOOMO_MAX(maxf, z) >= h;
 }
 
+/* GBA: exact (numerator << 16) / positive_denominator using two
+ * unsigned 32-bit divisions when the direction is 16.16 unit sized.
+ * ARM7TDMI has no divide instruction and its software 64-bit quotient
+ * routine is very expensive; for den <= 65536 the remainders fit 16 bits
+ * and ((rem << 16) / den) fits a 32-bit divide. The 64-bit fallback
+ * preserves the original behavior for out-of-range / negative inputs.
+ * This helper adds no data, RAM, lookup table or persistent state. */
+#if defined(DOOMO_PLATFORM_GBA)
+static int64_t cw_div16_gba(int64_t numer, int64_t den)
+{
+    if (numer >= 0 && (uint64_t)numer <= UINT32_MAX &&
+        den > 0 && den <= 65536) {
+        uint32_t d = (uint32_t)den, n = (uint32_t)numer;
+        uint32_t q = n / d;
+        uint32_t rem = n - q * d;
+        return (int64_t)(((uint64_t)q << 16) + (((uint32_t)rem << 16) / d));
+    }
+    return (numer * 65536) / den;
+}
+#endif
+
 /* Grid march along a 2D direction: calls back nothing, returns the world
  * hit distance (fix16) of a ray with slope (dz per unit of distance, fix16)
  * starting at z0 (fix16), stopping at maxd. */
@@ -158,8 +179,13 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int cx = FIX2INT(x0) / CELLU, cy = FIX2INT(y0) / CELLU;
     int stepx = dx < 0 ? -1 : 1, stepy = dy < 0 ? -1 : 1, i;
     int64_t adx = dx < 0 ? -(int64_t)dx : dx, ady = dy < 0 ? -(int64_t)dy : dy;
+#if defined(DOOMO_PLATFORM_GBA)
+    int64_t ddx = adx ? cw_div16_gba((int64_t)CELLU * 65536, adx) : ((int64_t)1 << 40);
+    int64_t ddy = ady ? cw_div16_gba((int64_t)CELLU * 65536, ady) : ((int64_t)1 << 40);
+#else
     int64_t ddx = adx ? (((int64_t)CELLU << 32) / adx) : ((int64_t)1 << 40);  /* fix16 dist per cell */
     int64_t ddy = ady ? (((int64_t)CELLU << 32) / ady) : ((int64_t)1 << 40);
+#endif
     int64_t sx, sy, d = 0, dhit = maxd;
     const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
     int fl = cell_floor(cell, cx, cy), ce = cell_ceil(cell, cx, cy);
@@ -173,10 +199,17 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
     int floor_valid = 0, ceil_valid = 0;
     int64_t floor_cross = 0, ceil_cross = 0;
     int64_t cellx0 = (int64_t)cx * CELLU << 16, celly0 = (int64_t)cy * CELLU << 16;
+#if defined(DOOMO_PLATFORM_GBA)
+    if (dx < 0) sx = adx ? cw_div16_gba((int64_t)x0 - cellx0, adx) : ((int64_t)1 << 40);
+    else sx = adx ? cw_div16_gba(cellx0 + ((int64_t)CELLU << 16) - x0, adx) : ((int64_t)1 << 40);
+    if (dy < 0) sy = ady ? cw_div16_gba((int64_t)y0 - celly0, ady) : ((int64_t)1 << 40);
+    else sy = ady ? cw_div16_gba(celly0 + ((int64_t)CELLU << 16) - y0, ady) : ((int64_t)1 << 40);
+#else
     if (dx < 0) sx = adx ? ((int64_t)(x0 - cellx0) << 16) / adx : ((int64_t)1 << 40);
     else sx = adx ? (((cellx0 + ((int64_t)CELLU << 16)) - x0) << 16) / adx : ((int64_t)1 << 40);
     if (dy < 0) sy = ady ? ((int64_t)(y0 - celly0) << 16) / ady : ((int64_t)1 << 40);
     else sy = ady ? (((celly0 + ((int64_t)CELLU << 16)) - y0) << 16) / ady : ((int64_t)1 << 40);
+#endif
     for (i = 0; i < 160; i++) {
         int64_t dnext = sx < sy ? sx : sy;
         /* (integration) "* 65536" instead of "<< 16" on values that can be
@@ -511,20 +544,6 @@ static int demon_speed(const DoomoActor *a)
     return s;
 }
 
-/* Exact signed 32-bit square without a slow ARM7 THUMB 64-bit multiply.
- * Split into 16-bit limbs (all intermediate multiplies stay in 32 bits).
- * In the hot demon pursuit loop this avoids software __aeabi_lmul.
- * No new storage, no modified range threshold or rounding. */
-#if defined(DOOMO_PLATFORM_GBA)
-static uint64_t demon_sq_gba(fix16 v)
-{
-    uint32_t u = v < 0 ? 0u - (uint32_t)v : (uint32_t)v;
-    uint32_t hi = u >> 16, lo = u & 65535u;
-    return ((uint64_t)(hi * hi) << 32) +
-           ((uint64_t)(hi * lo) << 17) + (uint64_t)(lo * lo);
-}
-#endif
-
 /* Try to move a demon by (dx, dy) world fix16. Returns 1 on success. */
 static int demon_try_move(int idx, fix16 dx, fix16 dy)
 {
@@ -591,9 +610,7 @@ static void demon_walk(int idx, int want_angle)
 {
     DoomoActor *a = &doomo_actors[idx];
     int sp = demon_speed(a);
-#if !defined(DOOMO_PLATFORM_GBA)
     fix16 step = INT2FIX(sp) / 8;
-#endif
     static const int16_t tries[6] = { 0, 512, -512, 1024, -1024, 1536 };
     int k;
     if (ai_move[idx] > 0) {
@@ -602,24 +619,7 @@ static void demon_walk(int idx, int want_angle)
     }
     for (k = 0; k < 6; k++) {
         int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;
-        fix16 dx, dy;
-#if defined(DOOMO_PLATFORM_GBA)
-        /* step=sp/8 world units. For the engine's valid nonnegative
-         * speeds, the products fit signed 32 bits exactly:
-         * FIXMUL(cos, INT2FIX(sp)/8) == (cos*sp)>>3.
-         * Retain the original path for unexpected/invalid speeds. */
-        if ((unsigned)sp <= 32767u) {
-            dx = (fx_cos(ang) * sp) >> 3;
-            dy = (fx_sin(ang) * sp) >> 3;
-        } else {
-            fix16 step = INT2FIX(sp) / 8;
-            dx = FIXMUL(fx_cos(ang), step);
-            dy = FIXMUL(fx_sin(ang), step);
-        }
-#else
-        dx = FIXMUL(fx_cos(ang), step);
-        dy = FIXMUL(fx_sin(ang), step);
-#endif
+        fix16 dx = FIXMUL(fx_cos(ang), step), dy = FIXMUL(fx_sin(ang), step);
         if (demon_try_move(idx, dx, dy) || demon_try_move(idx, dx, 0) || demon_try_move(idx, 0, dy)) {
             if (k > 0) {
                 ai_dir[idx] = (int16_t)ang;
@@ -952,11 +952,7 @@ static void demon_think(int idx)
     dx = tx - a->x;
     dy = ty - a->y;
     ang = fx_atan2(dy, dx);
-#if defined(DOOMO_PLATFORM_GBA)
-    distance_sq = demon_sq_gba(dx) + demon_sq_gba(dy);
-#else
     distance_sq = (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
-#endif
 
     switch (a->state) {
     case AST_WINDUP:
