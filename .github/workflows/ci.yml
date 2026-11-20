@@ -205,8 +205,19 @@ jobs:
             cat gba/build/gba3d_census_summary.md
             echo
             echo '### CPU hotspots (five slowest representative player windows)'
-            python3 gba/tools/profile_report.py gba/build/gba3d_census.log 10 | grep -E '^\\| census (cathedral|graveyard|sewers|cloud_nine)' || true
           } >> "$GITHUB_STEP_SUMMARY"
+          # Keep the five hotspot rows in the job log AND the summary,
+          # not only the private Actions step-summary attachment.
+          # Missing symbols / sampling must fail this instrumentation check.
+          python3 gba/tools/profile_report.py gba/build/gba3d_census.log 10 \
+            | grep -E '^[|] census (cathedral (first|third)|graveyard first|sewers first|cloud_nine first) [|]' \
+            > gba/build/gba3d_profiles.md
+          test "$(wc -l < gba/build/gba3d_profiles.md)" -eq 5
+          if grep -Fq '(no profile)' gba/build/gba3d_profiles.md; then
+            echo 'ERROR: missing GBA 3D profile samples' >&2
+            exit 1
+          fi
+          cat gba/build/gba3d_profiles.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Collect ROMs
         run: |
@@ -345,6 +356,7 @@ jobs:
             gba/build/gba3d_census.log
             gba/build/gba3d_census.csv
             gba/build/gba3d_census_summary.md
+            gba/build/gba3d_profiles.md
             gba/build/sung.log
             gba/build/sung_spikes.log
             gba/build/play_idle.log
