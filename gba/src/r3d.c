@@ -62,6 +62,16 @@ static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter */
 static uint8_t  gov_wait;          /* frames before the next quality retry */
 static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
 static uint32_t gov_r3d[3];        /* CPU cycles per quality tier */
+static const DoomoMapDef *gov_mapdef; /* reset old scene timing on map changes */
+
+/* On the two intricate Bone maps, 2x resolution is substantially easier to
+ * read than emergency 4x. Keep 2x while it costs at most three vblanks
+ * (~20 FPS); 4x remains available for genuinely slower views. */
+static int bone_readability_map(const DoomoMapDef *def)
+{
+    return def == doomo_maps[MAPID_BONE_CAPITAL] ||
+           def == doomo_maps[MAPID_BONE_CATHEDRAL];
+}
 
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
@@ -100,7 +110,8 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * large dungeon rooms. Do not keep paying for work that cannot fit a
      * 30 fps frame: quarter detail needs only 30 rays and 40 pixel rows.
      * Keep Max's previous quality contract and Smooth's existing 2x mode. */
-    if (frame == 2 && m == OPT3D_BALANCED && took > 2u) {
+    if (frame == 2 && m == OPT3D_BALANCED &&
+        took > (r3f.map && bone_readability_map(r3f.map->def) ? 3u : 2u)) {
         gov_half = 2;
         gov_wait = 32;
         return;
@@ -584,6 +595,15 @@ void plat_view3d(const DoomoView3D *v)
     gba_big_claim(GBA_BIG_BY_R3D);
     t0 = gba_cycles();
     m = v->map;
+    /* Scene changes invalidate cost estimates from the previous level:
+     * otherwise entering an intricate map may inherit its 4x fallback. */
+    if (gov_mapdef != m->def) {
+        gov_mapdef = m->def;
+        gov_half = 0;
+        gov_wait = 0;
+        gov_backoff = 16;
+        memset(gov_r3d, 0, sizeof(gov_r3d));
+    }
 
     /* viewport: even x / width (2-pixel columns), clipped to the screen */
     vx = v->vx & ~1;
@@ -662,14 +682,13 @@ void plat_view3d(const DoomoView3D *v)
          * detail. Shorten the render horizon only in Balanced's fallback. */
         if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])
             vd = 16;
-        /* Bone Capital/Cathedral have dense walls, ceilings and tall
-         * interiors. Under adaptive detail, cap distant ray traversal
-         * before it forces the next frame into a lower quality tier.
-         * Preserve the authored full-distance scene in Max/full detail.
-         * No additional memory or per-column calculation is required. */
+        /* Bone Capital/Cathedral: keep the 2x fallback economical enough
+         * to preserve recognizable geometry (~20 FPS when possible).
+         * Full-detail view range remains untouched; 4x remains a safety
+         * valve. No extra per-column calculations or framebuffer. */
         if (detail && (m->def == doomo_maps[MAPID_BONE_CAPITAL] ||
                        m->def == doomo_maps[MAPID_BONE_CATHEDRAL])) {
-            const uint32_t cap = detail == 2 ? 12u : 20u;
+            const uint32_t cap = detail == 2 ? 12u : 16u;
             if (vd > cap) vd = cap;
         }
         r3f.maxd = vd << 16;
