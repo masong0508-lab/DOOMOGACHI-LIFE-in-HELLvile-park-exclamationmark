@@ -975,7 +975,11 @@ static void story_update(void)
     if (ow.pause) { pause_update(); return; }
     /* A one-press return route on all consoles. B normally means Run;
      * only SELECT+B exits a Free Play visit, never an actual Story game. */
-    if (ow.visit && btn_down(BTN_SELECT) && btn_pressed(BTN_B)) {
+    /* GBA's input driver maps SELECT+B to synthetic BTN_Y and masks B.
+     * Other ports report the physical SELECT+B chord. Accept both so
+     * the city's emergency return works on actual GBA hardware. */
+    if (ow.visit && (btn_pressed(BTN_Y) ||
+                     (btn_down(BTN_SELECT) && btn_pressed(BTN_B)))) {
         audio_sfx(SFX_CANCEL);
         city_visit_back();
         return;

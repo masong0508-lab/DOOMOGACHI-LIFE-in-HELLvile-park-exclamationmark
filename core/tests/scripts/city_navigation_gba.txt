@@ -1,0 +1,25 @@
+# runner-flags: --gba-input
+# The same SELECT+B return must function with real GBA synthetic Y mapping.
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+press LEFT
+wait 5
+press A
+wait 8
+press DOWN
+press DOWN
+press A
+expect-scene STORY
+wait 10
+shot gba_city_01_entered_walkable_district
+press SELECT B
+expect-scene ISLAND
+wait 8
+shot gba_city_02_returned_to_hub

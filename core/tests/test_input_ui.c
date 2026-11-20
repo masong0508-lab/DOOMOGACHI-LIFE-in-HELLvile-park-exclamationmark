@@ -337,3 +337,20 @@ TEST(city_visit_start_select_hold_is_an_emergency_return)
     CHECK(scene_top() == &SCENE_TITLE);
     CHECK_EQ(scene_depth(), 1);
 }
+
+
+/* GBA remaps SELECT+B to Y and suppresses the physical B bit.
+ * Regression: returning from 3D must work with that actual controller
+ * mapping, not only on a native keyboard/PS1 pad. */
+TEST(city_visit_gba_select_b_synthetic_chord_recovers_hub)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 0xC17Au, TOWN_POP_EMPTY);
+    scene_set(&SCENE_ISLAND, 0);
+    scene_push(&SCENE_STORY, STORY_ARG_VISIT_HELL_HOMES);
+    CHECK(scene_top() == &SCENE_STORY);
+    frames(DOOMO_INPUT_SYNTH_XY, 3);
+    frames(DOOMO_INPUT_SYNTH_XY | BTN_SELECT | BTN_B, 1);
+    CHECK(scene_top() == &SCENE_ISLAND);
+    CHECK_EQ(scene_depth(), 1);
+}
