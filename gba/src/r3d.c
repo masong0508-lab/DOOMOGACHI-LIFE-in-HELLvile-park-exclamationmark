@@ -440,6 +440,15 @@ static void draw_sprites(const DoomoView3D *v)
             uint32_t den = scale * (uint32_t)k8;
             s.step16 = den ? 0xFFFFFFFFu / den : 0x10000u;
         }
+        /* Project the first visible texel in ROM, avoiding one ARM7 64-bit
+         * multiply PER sprite column inside the tightly budgeted IWRAM
+         * 3D overlay. The exact original integer truncation is retained. */
+        {
+            int c0 = (s.x0_12 - 1) >> 13;
+            if (c0 < 0) c0 = 0;
+            s.u16_start = (uint32_t)(int32_t)
+                (((int64_t)((((c0 * 2 + 1) << 12) - s.x0_12) * s.step16)) >> 12);
+        }
         if (b->flags & BB_FULLBRIGHT) {
             level = 15;
         } else {

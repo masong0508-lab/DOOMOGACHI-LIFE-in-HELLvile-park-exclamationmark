@@ -578,16 +578,16 @@ void r3d_draw_sprite(const R3DSprite *s)
         r1--;
     {
         const uint32_t dv = s->step16;
-        for (c = c0; c < f->ncol; c++) {
+        uint32_t u16 = s->u16_start;
+        const uint32_t du16 = dv << 1;
+        for (c = c0; c < f->ncol; c++, u16 += du16) {
             int32_t cx12 = (c * 2 + 1) << 12;
-            int32_t u16;
             int u, top, bot, ya, yb;
             uint32_t v;
             const uint8_t *cm;
             uint16_t *p;
             if (cx12 >= x1) break;
-            u16 = (int32_t)(((int64_t)(cx12 - x0) * s->step16) >> 12);
-            u = u16 >> 16;
+            u = (int32_t)u16 >> 16;
             if (u >= iw) u = iw - 1;
             if (u < 0) u = 0;
             if (s->flags & BB_FLIPX) u = iw - 1 - u;

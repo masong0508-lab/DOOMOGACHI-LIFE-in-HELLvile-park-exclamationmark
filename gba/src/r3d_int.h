@@ -187,6 +187,7 @@ typedef struct R3DSprite {
     int32_t  x0_12;                /* screen x of the left edge, 20.12   */
     int32_t  ytop12;               /* screen y of the top edge, 20.12    */
     uint32_t step16;               /* texels per screen pixel, 16.16     */
+    uint32_t u16_start;             /* tex u at first visible ray column  */
     int32_t  w12, h12;             /* screen size in pixels, 20.12       */
     uint8_t  level, flags, trans, pad;
     int32_t  shadow_y12;           /* floor y under the feet (shadow)     */
