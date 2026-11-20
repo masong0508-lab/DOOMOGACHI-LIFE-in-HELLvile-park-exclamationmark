@@ -104,10 +104,18 @@ int cw_fits(fix16 x, fix16 y, int r, int z, int h, int step, int *fl, int *ce)
     if (x < INT2FIX(r) || y < INT2FIX(r)) return 0;
     for (cy = y0; cy <= y1; cy++)
         for (cx = x0; cx <= x1; cx++) {
+            const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
             int f, c;
-            if (cw_solid(cx, cy)) return 0;
-            f = cw_floor(cx, cy);
-            c = cw_ceil(cx, cy);
+            /* The old path fetched the same cell for cw_solid, cw_floor,
+             * cw_ceil and again inside both map height helpers. Read it
+             * once for ordinary static tiles, which dominate large Breach
+             * maps. Dynamic lift/door values still use their mover. */
+            if (cell->wall) return 0;
+            f = (cell->flags & CELL_LIFT) ? map_floor_z(&doomo_map, cx, cy)
+                                         : cell->floor_h * DOOMO_HEIGHT_STEP;
+            c = cell->ceil_tex == DOOMO_TEX_SKY ? SKY_CEIL
+                : (cell->flags & CELL_DOOR) ? map_ceil_z(&doomo_map, cx, cy)
+                                           : cell->ceil_h * DOOMO_HEIGHT_STEP;
             if (f > z + step) return 0;
             if (f > maxf) maxf = f;
             if (c < minc) minc = c;
