@@ -48,9 +48,9 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  * of the NEXT 3D view from how many vblanks the last ones took; nothing in
  * the game ever sees it.
  *   Smooth    half resolution always (G7's "Faster").
- *   Balanced  full resolution while a full-resolution frame shows at 20 fps
- *             or better (3 vblanks); a slower one switches to half
- *             resolution. From half resolution it comes back only when the
+ *   Balanced  targets 30 fps (2 vblanks): a full-resolution frame taking
+ *             longer switches to half resolution, keeping the HUD sharp.
+ *             From half resolution it comes back only when the
  *             last frame plus what full resolution costs over half (r3d
  *             cycles measured at both) fits again, at most once per
  *             gov_wait frames (16, doubled after every failed try, <= 240).
@@ -78,7 +78,12 @@ static int view_half(void)
 void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
 {
     int m = opt_get(OPT_3D_FAST);
-    uint32_t limit = m == OPT3D_MAX ? 4u : 3u;
+    /* Two vblanks = 30 fps at the GBA's ~59.73 Hz video refresh.
+     * Balanced previously tolerated 3 (20 fps) before stepping down;
+     * that prioritized texture resolution over responsiveness. The
+     * existing governor retains full detail when it fits and changes
+     * neither buffers nor the separate Max-detail setting. */
+    uint32_t limit = m == OPT3D_MAX ? 4u : 2u;
     if (m == OPT3D_SMOOTH || !frame) return;
     if (frame == 1) {
         if (took > limit) {

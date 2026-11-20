@@ -121,6 +121,35 @@ void map_load_def(const DoomoMapDef *d)
     doomo_map.ambient = d->ambient;
     n = doomo_map.w * doomo_map.h;
     map_def_cells(d, doomo_map.cells, doomo_map.w, doomo_map.h);
+    /* One-time dungeon wayfinding light pass: the exit becomes an obvious
+     * destination and the approaches catch a little of its light. Key
+     * doors get a clear warm/cold threshold rather than disappearing in
+     * dark corridors. No sprites, textures, extra RAM, or per-frame work.
+     * The live cells are already a copy; authored ROM maps stay unchanged.
+     * Do not light secret doors: their concealment is intentional. */
+    if (doomo_map.kind == MAP_DUNGEON) {
+        int w = doomo_map.w, h = doomo_map.h;
+        for (i = 0; i < n; i++) {
+            DoomoCell *c = &doomo_map.cells[i];
+            if (c->flags & CELL_EXIT) {
+                int x = i % w, y = i / w;
+                c->light = 15;
+                if (x > 0 && !doomo_map.cells[i - 1].wall && doomo_map.cells[i - 1].light < 13)
+                    doomo_map.cells[i - 1].light = 13;
+                if (x + 1 < w && !doomo_map.cells[i + 1].wall && doomo_map.cells[i + 1].light < 13)
+                    doomo_map.cells[i + 1].light = 13;
+                if (y > 0 && !doomo_map.cells[i - w].wall && doomo_map.cells[i - w].light < 13)
+                    doomo_map.cells[i - w].light = 13;
+                if (y + 1 < h && !doomo_map.cells[i + w].wall && doomo_map.cells[i + w].light < 13)
+                    doomo_map.cells[i + w].light = 13;
+            }
+            /* Only the two key-locked doors need a beacon; remote/boss
+             * doors and concealed doors retain their designed mood. */
+            if ((c->flags & CELL_DOOR) && !(c->flags & CELL_SECRET) &&
+                (c->tag == DOOMO_DOOR_TAG_RED || c->tag == DOOMO_DOOR_TAG_BLUE) && c->light < 13)
+                c->light = 13;
+        }
+    }
     for (i = 0; i < n && nmovers < MOVER_MAX; i++) {
         DoomoCell *c = &doomo_map.cells[i];
         Mover *mv;
