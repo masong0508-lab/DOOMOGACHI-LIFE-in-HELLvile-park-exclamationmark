@@ -9,15 +9,18 @@
  * box. arg FP_SL_ARG_LOAD hides saving (loading from the title).
  */
 #include "fp_int.h"
+#include "levels_int.h"
+#include "doomo/link_code.h"
 
-enum { ACT_SAVE, ACT_LOAD, ACT_ERASE, ACT_N };
-static const char *const act_names[ACT_N] = { "Save", "Load", "Erase" };
+enum { ACT_SAVE, ACT_LOAD, ACT_ERASE, ACT_LINK, ACT_N };
+static const char *const act_names[ACT_N] = { "Save", "Load", "Erase", "Link" };
 
 static struct {
     int slot, act, t, load_only, busy_t;
     DoomoSaveInfo info[2];
     uint8_t has[2];
     char msg[96];
+    char code[DOOMO_LINK_CODE_SIZE + 1];
     int msg_t, msg_bad;
 } L;
 
@@ -43,6 +46,7 @@ static int act_ok(int slot, int act)
         if (L.load_only) return 0;
         return slot == (doomo_town.mode == TOWN_STORY ? 0 : 1);
     case ACT_LOAD: case ACT_ERASE: return L.has[slot];
+    case ACT_LINK: return !L.load_only;
     default: return 0;
     }
 }
@@ -52,6 +56,54 @@ static void say(const char *m, int bad)
     fp_strcpy(L.msg, m, sizeof(L.msg));
     L.msg_t = 150;
     L.msg_bad = bad;
+}
+
+/* Link codes deliberately MERGE portable achievements, not entire saves.
+ * Re-entering the same code cannot duplicate coins or records. Resident
+ * databases and platform-specific state stay on their original console. */
+static void link_export(void)
+{
+    DoomoLinkProgress d;
+    int i;
+    d.breach = progress_get(PROG_BREACH_RANKS);
+    d.money = doomo_town.money;
+    d.exorcisms = doomo_town.exorcisms_won;
+    d.gold = 0;
+    for (i = 0; i < LV_OLD_COUNT; i++)
+        if (lv_gold(i)) d.gold |= (uint8_t)(1u << i);
+    if (!doomo_link_encode(&d, L.code, sizeof(L.code))) {
+        say("Could not make transfer code.", 1);
+        return;
+    }
+    ui_say(-1, "GBA <-> PS1 progress transfer. Copy this code:");
+    ui_say(-1, L.code);
+    ui_say(-1, "On the other console, Save & Load > Link, then START to type it.");
+}
+
+static void link_import_done(int ok)
+{
+    DoomoLinkProgress d;
+    uint32_t prev;
+    int i;
+    if (!ok) return;
+    if (!doomo_link_decode(&d, L.code)) {
+        say("Bad link code (check letters/checksum).", 1);
+        audio_sfx(SFX_ERROR);
+        return;
+    }
+    prev = progress_get(PROG_BREACH_RANKS);
+    for (i = 0; i < LV_OLD_COUNT; i++) {
+        int rank = (int)((d.breach >> (i * 3)) & 7u);
+        if (rank) lv_set_rank(i, rank);
+        if (d.gold & (1u << i)) unlock_grant_quiet(LVU_GOLD0 + i);
+    }
+    (void)prev; /* lv_set_rank merges rather than overwrites local records */
+    lv_set_horde_best((int)(d.breach >> 21));
+    if (doomo_town.money < d.money) doomo_town.money = d.money;
+    if (doomo_town.exorcisms_won < d.exorcisms) doomo_town.exorcisms_won = d.exorcisms;
+    unlock_check_all();
+    say("Code imported! Save to keep your progress.", 0);
+    audio_sfx(SFX_HAPPY);
 }
 
 static void do_save(void)
@@ -120,6 +172,12 @@ static void sl_update(void)
     if (btn_repeat(BTN_UP | BTN_DOWN)) { L.slot ^= 1; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_LEFT)) { L.act = (L.act + ACT_N - 1) % ACT_N; audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_RIGHT)) { L.act = (L.act + 1) % ACT_N; audio_sfx(SFX_CURSOR); }
+    if (btn_pressed(BTN_START) && L.act == ACT_LINK && !L.load_only) {
+        L.code[0] = 0;
+        audio_sfx(SFX_SELECT);
+        ui_text_entry("Enter GBA/PS1 link code", L.code, sizeof(L.code), link_import_done);
+        return;
+    }
     if (btn_pressed(BTN_A)) {
         if (!act_ok(L.slot, L.act)) {
             audio_sfx(SFX_ERROR);
@@ -137,9 +195,13 @@ static void sl_update(void)
         case ACT_LOAD:
             ui_confirm(L.load_only ? "Load this save?" : "Load this save? Unsaved progress will be lost!", cb_load);
             break;
-        default:
+        case ACT_ERASE:
             ui_confirm("Erase this save?", cb_erase1);
             break;
+        case ACT_LINK:
+            link_export();
+            break;
+        default: break;
         }
         return;
     }
@@ -202,9 +264,10 @@ static void sl_draw(void)
     for (s = 0; s < 2; s++) slot_card(x, y0 + s * (h + gap), w, h, s, s == L.slot);
     /* action buttons */
     {
-        int bw = big ? 70 : 56, by = y0 + 2 * (h + gap) + 2, bx0 = (sw - (ACT_N * (bw + 12) - 12)) / 2;
+        int bw = big ? 60 : 42, gapw = big ? 12 : 10;
+        int by = y0 + 2 * (h + gap) + 2, bx0 = (sw - (ACT_N * (bw + gapw) - gapw)) / 2;
         for (i = 0; i < ACT_N; i++)
-            ui_button(bx0 + i * (bw + 12), by, bw, act_names[i], i == L.act,
+            ui_button(bx0 + i * (bw + gapw), by, bw, act_names[i], i == L.act,
                       act_ok(L.slot, i) ? (i == ACT_ERASE ? WIN_HELL : WIN_CUTE) : WIN_CREAM);
     }
     if (L.msg_t) {
@@ -212,7 +275,8 @@ static void sl_draw(void)
         fp_pill(8, my, sw - 16, 13, L.msg_bad ? PAL_UI_RED : st->fill_hi, st->outline, PAL_WHITE);
         fp_marquee(14, my + 3, sw - 28, L.msg, L.msg_bad ? PAL_WHITE : st->text, 150 - L.msg_t);
     }
-    ui_hint(STR_ICON_ARROW_U STR_ICON_ARROW_D " Slot  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Action  " STR_ICON_A " Go", WIN_CUTE);
+    ui_hint(L.act == ACT_LINK ? "A Show code   START Enter code"
+            : STR_ICON_ARROW_U STR_ICON_ARROW_D " Slot  " STR_ICON_ARROW_L STR_ICON_ARROW_R " Action  " STR_ICON_A " Go", WIN_CUTE);
     fp_fx_draw();
 }
 
