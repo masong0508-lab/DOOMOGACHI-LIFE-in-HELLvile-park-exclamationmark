@@ -211,6 +211,7 @@ void combat_shake(int amount);
 
 int  combat_set_result_quit(void);               /* result -2 unless already set */
 void combat_bank_ammo(void);                     /* unspent magazine ammo -> saved reserve */
+void combat_prepare_demo_ammo(void);              /* demo playback only: full starting loadout */
 
 /* ---- autopilot (combat_bot.c) ---- */
 extern void (*combat_bot_fn)(CombatCtl *ctl);

@@ -104,7 +104,7 @@ static void br_start(void)
     if (br.demo) {
         /* The demo needs munitions for its long scripted gauntlets;
          * the player never receives these free refills. */
-        combat_refill_ammo(100);
+        combat_prepare_demo_ammo();
         combat_autopilot(1);
     }
     br.state = BR_INTRO;
@@ -156,9 +156,8 @@ static void leave_scene(void)
 static void play_tick(void)
 {
     int fin;
-    /* The demo has no persistent loadout and must never strand the bot
-     * on a route when its ammo runs dry. Keep normal gameplay untouched. */
-    if (br.demo && (br.t & 31) == 0) combat_refill_ammo(100);
+    /* Demos receive their classic temporary loadout at start;
+     * regular levels only use their real carried ammo. */
     lv_runtime_pre();
     if (br_challenge()) enforce_challenge();
     combat_tick();

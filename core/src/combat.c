@@ -191,6 +191,22 @@ static void fill_mags(void)
 /* Idempotent: no duplication when both the victory tick and scene leave
  * bank magazines. All remaining rounds are serialized in story.ammo[]
  * by the existing save_game() format; no transient ammo disappears. */
+/* Playback-only: reproduce the original full starting magazines and
+ * reserve allotment so scripted demonstrations retain their routes and
+ * kills even when the real player's carried ammo was exhausted.
+ * Demo's starting reserves are restored on scene leave. */
+void combat_prepare_demo_ammo(void)
+{
+    int i;
+    for (i = 0; i < DOOMO_MAX_WEAPONS; i++) {
+        DoomoWeaponStats s;
+        if (!weapon_valid(i)) continue;
+        weld_stats(&doomo_town.weapons[i], &s);
+        combat_px.mag[i] = s.mag_size;
+    }
+    combat_refill_ammo(100);
+}
+
 void combat_bank_ammo(void)
 {
     int i;
