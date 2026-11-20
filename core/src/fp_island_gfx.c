@@ -313,10 +313,24 @@ static void box(int x, int y, int w, int h, uint8_t dark, uint8_t base, uint8_t 
     R(x + w - 3, y + 2, 2, h - 3, dark);
 }
 
-/* triangular roof: apex at (cx, y), h rows tall, w wide at the base */
+/* Volumetric miniature roof: a recessed dark rear pitch at +4,-3 and a
+ * lit front gable, with a continuous heavy eave and a few shingle courses.
+ * The dark back plane and bright left slope create readable 3D depth even
+ * at 240x160. Both passes are STATIC and captured by the existing building
+ * sprite cache: no added images, buffers, RAM or per-frame primitive calls. */
 static void roof(int cx, int y, int w, int h, uint8_t dark, uint8_t base, uint8_t light)
 {
     int i;
+    if (w < 4 || h < 2) return;
+    /* Rear pitch and ridge, shifted up/right like a little perspective roof. */
+    for (i = 0; i < h; i++) {
+        int rw = 1 + (w - 1) * (i + 1) / h;
+        int x0 = cx + 4 - rw / 2;
+        R(x0 - 1, y - 3 + i, rw + 2, 1, ui_darker(dark));
+        R(x0, y - 3 + i, rw, 1, dark);
+        if (i % 3 == 1 && rw > 5) R(x0 + 1, y - 3 + i, rw - 2, 1, base);
+    }
+    /* Front gable: lit left slope, shaded right pitch and darker edges. */
     for (i = 0; i < h; i++) {
         int rw = 1 + (w - 1) * (i + 1) / h, x0 = cx - rw / 2;
         R(x0 - 1, y + i, rw + 2, 1, ui_darker(dark));
@@ -325,7 +339,25 @@ static void roof(int cx, int y, int w, int h, uint8_t dark, uint8_t base, uint8_
             R(x0 + 1, y + i, rw / 3, 1, light);
             R(x0 + rw - rw / 4, y + i, rw / 4, 1, dark);
         }
+        if (i && i % 3 == 0 && rw > 8)
+            R(x0 + 2, y + i, rw - 4, 1, light);
     }
+    /* The overhang creates the dark thickness that the old flat triangle
+     * lacked, but still sits behind rooftop signs drawn afterwards. */
+    R(cx - w / 2 - 2, y + h, w + 5, 2, ui_darker(dark));
+    R(cx - w / 2 - 1, y + h, w + 3, 1, light);
+}
+
+/* Deep flat roof for apartment towers: offset upper slab and heavy fascia.
+ * All detail is made of tiny rectangles and baked once into the scene scratch. */
+static void roof_terrace(int x, int y, int w, uint8_t dark, uint8_t base, uint8_t light)
+{
+    R(x + 3, y - 6, w + 1, 4, dark);       /* recessed rear deck */
+    R(x + 4, y - 7, w - 1, 1, light);     /* upper parapet */
+    R(x - 2, y - 4, w + 5, 3, ui_darker(dark));
+    R(x - 1, y - 4, w + 3, 1, light);    /* sunlit front parapet */
+    R(x, y - 3, w + 1, 1, base);
+    R(x + w + 1, y - 4, 2, 2, dark);    /* shaded right return */
 }
 
 /* window: lit ones glow untinted at night */
@@ -958,9 +990,11 @@ static void b_towers(int x, int y, int hell)
     uint8_t l = hell ? PAL_RAMP(RAMP_VAPE, 5) : PAL_PAINT(PAINT_BUBBLEGUM, 2);
     if (ST) {
         box(bx, by, w, h, d, b, l);
-        /* roof trim */
-        R(bx - 1, by - 2, w + 2, 3, hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0));
-        R(bx, by - 2, w, 1, hell ? PAL_RAMP(RAMP_STONE, 3) : PAL_PAINT(PAINT_ROSE, 2));
+        /* Layered rooftop terrace, with a visible dark right-hand face. */
+        roof_terrace(bx, by, w,
+                     hell ? PAL_RAMP(RAMP_STONE, 1) : PAL_PAINT(PAINT_ROSE, 0),
+                     hell ? PAL_RAMP(RAMP_VAPE, 3) : PAL_PAINT(PAINT_ROSE, 1),
+                     hell ? PAL_RAMP(RAMP_STONE, 5) : PAL_PAINT(PAINT_ROSE, 2));
         for (j = 0; j < 4; j++)
             for (i = 0; i < 3; i++)
                 win(bx + 3 + i * 5, by + 3 + j * 5, 3, 3, night_lit(x * 31 + i * 7 + j * 13 + hell),
@@ -1002,6 +1036,8 @@ static void b_town_hall(int x, int y)
     int hr = town_hour() % 12, mn = doomo_town.minute % 60;
     if (ST) {
         box(bx, by, w, h, PAL_RAMP(RAMP_PEACH, 5), PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PEACH, 7));
+        roof(x, by - 4, w + 4, 5, PAL_PAINT(PAINT_ROSE, 0),
+             PAL_PAINT(PAINT_ROSE, 1), PAL_PAINT(PAINT_ROSE, 2));
         /* columns */
         R(bx + 3, by + 4, 2, h - 5, PAL_WHITE);
         R(bx + w - 6, by + 4, 2, h - 5, PAL_WHITE);
@@ -1083,6 +1119,8 @@ static void b_cafe(int x, int y)
     int w = 20, h = 13, bx = x - w / 2, by = y - h;
     if (DY && !ST) { chimney_smoke(bx + w - 3, by - 1, PAL_RAMP(RAMP_STONE, 6)); return; }
     box(bx, by, w, h, PAL_RAMP(RAMP_WOOD, 4), PAL_RAMP(RAMP_WOOD, 5), PAL_RAMP(RAMP_WOOD, 6));
+    roof(x, by - 5, w + 4, 6, PAL_PAINT(PAINT_CHOCOLATE, 0),
+         PAL_PAINT(PAINT_TANGERINE, 1), PAL_PAINT(PAINT_LEMON, 2));
     awning(bx - 1, by + 1, w + 2, PAL_PAINT(PAINT_MINT, 1), PAL_WHITE);
     win(bx + 3, by + 6, 5, 4, night_lit(402), PAL_RAMP(RAMP_WOOD, 3));
     R(x + 2, y - 7, 5, 7, PAL_PAINT(PAINT_CHOCOLATE, 1));
@@ -1125,7 +1163,8 @@ static void b_hospital(int x, int y)
     int pulse = (g_t / 15) % 2;
     if (ST) {
         box(bx, by, w, h, PAL_RAMP(RAMP_MINT, 4), PAL_RAMP(RAMP_MINT, 6), PAL_RAMP(RAMP_MINT, 7));
-        R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_MINT, 3));
+        roof(x, by - 5, w + 4, 6, PAL_RAMP(RAMP_MINT, 2),
+             PAL_RAMP(RAMP_MINT, 4), PAL_RAMP(RAMP_MINT, 7));
         win(bx + 3, by + 4, 3, 3, night_lit(501), PAL_RAMP(RAMP_MINT, 3));
         win(bx + w - 7, by + 4, 3, 3, night_lit(502), PAL_RAMP(RAMP_MINT, 3));
         win(bx + 3, by + 9, 3, 3, night_lit(503), PAL_RAMP(RAMP_MINT, 3));
@@ -1228,7 +1267,8 @@ static void b_workshop(int x, int y)
     int w = 22, h = 13, bx = x - w / 2, by = y - h;
     if (ST) {
         box(bx, by, w, h, PAL_RAMP(RAMP_STEEL, 3), PAL_RAMP(RAMP_STEEL, 4), PAL_RAMP(RAMP_STEEL, 6));
-        R(bx - 1, by - 2, w + 2, 3, PAL_RAMP(RAMP_WOOD, 2));
+        roof(x, by - 5, w + 4, 6, PAL_RAMP(RAMP_STONE, 1),
+             PAL_RAMP(RAMP_STEEL, 3), PAL_RAMP(RAMP_STEEL, 7));
         /* garage door stripes */
         R(x - 6, y - 8, 12, 8, PAL_RAMP(RAMP_STEEL, 2));
         R(x - 6, y - 6, 12, 1, PAL_RAMP(RAMP_STEEL, 5));
