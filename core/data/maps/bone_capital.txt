@@ -1,0 +1,163 @@
+# BONE CAPITAL. A full 64x64 city, with short sightlines and no added RAM.
+# Ossuary Gates > Skull Market > Bone Forge > High Crown Lift > Skybridge
+# > Warden's Organ Gate. Blue key unlocks a high secret shortcut.
+# Existing tiles, actors and world mechanics only: efficient even on GBA.
+map bone_capital
+title "Bone Capital"
+kind dungeon
+sky HELL
+music CHURCH
+ambient 9
+
+cell # wall=BONE_WALL ch=12
+cell F wall=BONE_WALL ch=40                                    # the cathedral shell
+cell S wall=STAINED_GLASS ch=40
+cell K wall=SKULL_MOSAIC ch=40
+cell P wall=BONE_WALL ch=8                                     # courtyard pillars
+cell I wall=BONE_WALL                                          # nave pillars / tower cores
+cell o wall=RUST_METAL ch=20                                   # organ pipes (heights in the ceilh overlay)
+cell H wall=HEDGE ch=3
+cell W wall=BONE_WALL ch=56                                    # the two bell-less towers of the facade
+cell Y wall=SKULL_MOSAIC ch=46                                 # facade buttresses
+cell Z wall=BONE_WALL ch=40                                    # the arch posts (their top is the arch's roof)
+cell y floor=HELL_ROCK ceil=sky fh=0 light=11
+cell g floor=GORE_FLOOR ceil=sky fh=0 light=11
+cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava           # the font of the damned
+cell z floor=INFECTED_GRASS ceil=sky fh=1 light=13 flags=secret # hidden nook
+cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=12  # the great arch (open)
+cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=11
+cell s floor=BONE_WALL ceil=SKULL_MOSAIC fh=1 ch=22 light=10   # spiral steps (overlay)
+cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=10
+cell c floor=CARPET ceil=SKULL_MOSAIC fh=0 ch=40 light=11      # the aisle
+cell q floor=WOOD_FLOOR ceil=SKULL_MOSAIC fh=1 ch=40 light=10  # pews
+cell G floor=BONE_WALL ceil=SKULL_MOSAIC fh=12 ch=40 light=10  # galleries
+cell x floor=TILE_FLOOR ceil=sky fh=0 light=12                 # the crossing (open sky)
+cell X floor=BONE_WALL ceil=sky fh=12 light=12                 # gallery under the sky
+cell l floor=LAVA ceil=sky fh=-3 light=15 flags=lava
+cell a floor=CARPET ceil=SKULL_MOSAIC fh=2 ch=40 light=12      # apse stairs (overlay)
+cell U floor=CARPET ceil=DOOR_HELL fh=6 ch=16 light=12 flags=door tag=2 # blue door
+cell t floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=12 ch=26 light=11
+cell L floor=PENTAGRAM_FLOOR ceil=sky fh=12 light=14 flags=lift tag=24 # bell tower lift
+cell b floor=WOOD_FLOOR ceil=sky fh=24 light=13                # bell chamber
+cell B floor=WOOD_WALL ceil=sky fh=27 light=15 flags=secret    # above the bells
+cell T wall=BONE_WALL ch=31                                    # bell tower walls
+cell A floor=BONE_WALL ceil=SKULL_MOSAIC fh=13 ch=26 light=13  # bone altar
+cell e floor=TILE_FLOOR ceil=BONE_WALL fh=12 ch=21 light=11 flags=door # secret door behind the altar
+cell r floor=CARPET ceil=STAINED_GLASS fh=12 ch=21 light=15 flags=secret # the reliquary
+cell p floor=GORE_FLOOR ceil=sky fh=6 light=11
+cell k floor=WOOD_FLOOR ceil=sky fh=8 light=13                 # organ console
+cell j floor=GORE_FLOOR ceil=sky fh=6 light=11 flags=trigger tag=21
+cell O floor=GORE_FLOOR ceil=RUST_METAL fh=6 ch=15 light=13 flags=door tag=20 # the centre pipes open
+cell E floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=6 ch=15 light=15 flags=exit
+cell h like=y floor=PENTAGRAM_FLOOR light=15 flags=lift tag=12
+cell 2 like=y fh=2 light=13
+cell 4 like=y fh=4 light=13
+cell 6 like=y fh=6 light=14
+cell 8 like=y fh=8 light=14
+cell u like=U fh=12 ch=28 light=13
+
+grid
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEEEFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFpppppFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFpppppFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFpOOOpFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFpppppFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXpppppXXXXXXXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXYXXXXXXXXXXXYXXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXXXXDXXXXXXXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXWXXXXXXXXXXXXXXWXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXXSXXXXXXXXSPXXXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXXXXXXXXXXXXFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXTXXXXXXXXPXXXXXTXFFFFFFFFFYXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXXXXXXXuXXXXXWSXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFSFFXXXXXXXXXXXXXXXXXXXSXXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXXXXXXXXXXXXXXXXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFXXXXXXXFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDyhhhyyYFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFyyyyyyyFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFyyyyyyyFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFyyyyyyyy~~~yyyyyyyyyYyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyyyyyyyyyyyyyyYyyyy~~~yyyyyyyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyygggggggggyyyyyyyyyyyyyyyTyyyyyWFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyygggggggggyyyyyyyyyyyPyyyyyyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyyPggggggggyPyyyyWyyyyyyyyyyyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyyggg~~~gggyyyyyyyyyyyyyyyyyyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFyyyyggg~~~gggyyyDyggggggggggggyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFyyyyygggggggggyyyyyggTgggggggggyyyWyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFyyyyTgggggggggyyyyyggggggggggggyyyyyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFyyyyDgggggggggyyyyyYyyyyyyyyyyyyyyPyFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFyyyWygggggggggyyyyyyyyyyyyyyyyyyyyyyFFFF
+FFFFFFFFFFFFFFFgggggggggyYyyygggggggggggyyWyyFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFgggggggggyyyyPgggggggggggyPyyyFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFDFFFgggggggggyyyyygggggggggggTyyyyFFFFFFFFFFFFFFFFFFF
+FFFFYyyyygggggygggPgggYgyyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFF
+FFFFFyyyygggggygzzzgggggyyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFF
+FFFFFyyyygggggygzzzgPgggyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyPygggggyggggggWggyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFWyyyygggggygggggggggyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyTygggggyyyyTyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyyygggggyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFF~~~yygggggyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFF~~~yygggggyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyyygggggyyyyPyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyPygggggyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyyygggggyyy~~~yyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFyyyyyyyyyyyy~~~yyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyggggggggyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyYyyggggggggyyyyTyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFWyyyPggggggggyyyPyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyggggggggyyyyyWyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyggggggggyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyggggggggyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyTyPyyyyyyyyyyPyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyyyyyyyyyyyyyYyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyzzzyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyzzzyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+end
+
+thing 9 58 PLAYER_START angle=270
+thing 7 55 PROP_TORCH
+thing 18 55 PROP_TORCH
+thing 10 49 PROP_SIGN angle=270
+thing 7 56 AMMO_SHELLS
+thing 14 58 HEALTH_SMALL
+thing 6 59 SOUL_ORB
+thing 12 55 IMPLING angle=90
+thing 17 53 IMPLING angle=180
+thing 9 46 HELLHOUND_PUP
+thing 12 41 AMMO_BULLETS
+thing 17 40 KEY_BLUE
+thing 8 38 BONE_JESTER angle=90
+thing 19 38 IMPLING angle=180
+thing 17 37 SOUL_ORB
+thing 20 33 AMMO_CELLS
+thing 30 32 GARGOYLE angle=270
+thing 33 33 SLIME_BELCHER angle=90
+thing 38 33 HEALTH_BIG
+thing 28 25 AMMO_ROCKETS
+thing 37 27 CYBER_PIGGY angle=180
+thing 46 28 CANDY
+thing 50 25 PUFF_DEMON angle=90
+thing 57 24 HEALTH_SMALL
+thing 54 20 AMMO_SHELLS
+thing 54 17 PROP_TORCH
+thing 52 16 PROP_SKULLS
+thing 46 16 VAPE_WRAITH angle=180
+thing 41 16 AMMO_BULLETS
+thing 40 12 ARMOR
+thing 29 10 AMMO_ROCKETS
+thing 34 10 BONE_JESTER angle=90 arg=20 tflags=boss,kill_event
+thing 38 9 GARGOYLE angle=180 arg=20 tflags=kill_event
+thing 33 7 HEALTH_BIG
+thing 33 3 SOUL_ORB
+thing 57 29 PROP_TORCH
+thing 7 42 PROP_SKULLS
+thing 33 30 PROP_TORCH

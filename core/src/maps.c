@@ -28,6 +28,7 @@ extern const DoomoMapDef map_def_the_undercroft WEAKREF;
 extern const DoomoMapDef map_def_glum_pipes WEAKREF;
 extern const DoomoMapDef map_def_boneyard_buffet WEAKREF;
 extern const DoomoMapDef map_def_the_wall WEAKREF;
+extern const DoomoMapDef map_def_bone_capital WEAKREF;
 
 const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_hahaland,          /* MAPID_HAHALAND          (story)  */
@@ -46,5 +47,6 @@ const DoomoMapDef *const doomo_maps[MAPID_COUNT] = {
     &map_def_the_undercroft,        /* MAPID_THE_UNDERCROFT        (levels) */
     &map_def_glum_pipes,            /* MAPID_GLUM_PIPES            (levels) */
     &map_def_boneyard_buffet,       /* MAPID_BONEYARD_BUFFET       (levels) */
-    &map_def_the_wall               /* MAPID_THE_WALL              (levels) */
+    &map_def_the_wall,              /* MAPID_THE_WALL              (levels) */
+    &map_def_bone_capital           /* MAPID_BONE_CAPITAL           (levels) */
 };

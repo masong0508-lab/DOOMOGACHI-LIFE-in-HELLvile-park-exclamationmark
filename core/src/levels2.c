@@ -83,9 +83,11 @@ LV_HOSTVAR LevelInfo lv_info[LV_TABLE_N] = {
       "Dinner and a show! Lights on:\nthe band holds very still.",
       "Keep the lights on.",
       MAPID_BONEYARD_BUFFET, LB_NONE, 220, 150, SONG_HELLVILE, WIN_CREAM, PAL_PAINT(PAINT_CHERRY, 1), ICON_NOTE, 38, 34, 6, 255 },
-    { "Hellvile Pits Highrise", "HELL BREACH 14",
-      "Tall towers, one landlord and\nlaundry lines you can ride.",
-      NOT_BUILT(260, 175, WIN_HELL, PAL_PAINT(PAINT_RUST, 1), ICON_HOUSE) },
+    { "Bone Capital", "HELL BREACH 14",
+      "Ivory streets, sky bridges and\na crown atop the bone city.",
+      "The city is built out of bad deeds.",
+      MAPID_BONE_CAPITAL, LB_NONE, 340, 230, SONG_CHURCH, WIN_HELL,
+      PAL_RAMP(RAMP_BONE, 6), ICON_CROSS, 9, 58, 8, 255 },
     { "The Department of Contracts", "HELL BREACH 15",
       "Take a number. Get it stamped.\nThen stamp back.",
       NOT_BUILT(210, 140, WIN_CREAM, PAL_PAINT(PAINT_CARAMEL, 1), ICON_CHECK) },
@@ -166,7 +168,7 @@ const LevelReg lv_reg[LV_TABLE_N] = {
     { LVP_HELL, LVG_DARK, LVK_BEAT, BEAT_EP3_4, LVT_CH3 },                    /* The Glum Pipes */
     { LVP_HELL, LVG_DARK, LVK_BEAT, BEAT_EP4_1, LVT_CH4 },                    /* The Wall */
     { LVP_HELL, LVG_GBA, LVK_BEAT, BEAT_EP4_3, LVT_CH4 },                     /* Boneyard Buffet & Bandstand */
-    { LVP_HELL, 0, LVK_BEAT, BEAT_EP4_4, LVT_CH4 },                           /* Hellvile Pits Highrise */
+    { LVP_HELL, LVG_GBA, LVK_AFTER_LEVEL, LV_CATHEDRAL, LVT_CLEAR_FIRST }, /* Bone Capital */
     { LVP_HELL, LVG_GBA, LVK_BEAT, BEAT_EP4_5, LVT_CH4 },                     /* The Department of Contracts */
     { LVP_HELL, 0, LVK_CHAPTER, STORY_CH_DONE, LVT_POSTGAME },                /* The Ninth Cloud */
     { LVP_ARREARS, LVG_GBA | LVG_DARK, LVK_NGPLUS, 0, LVT_NGPLUS },           /* Day One */
