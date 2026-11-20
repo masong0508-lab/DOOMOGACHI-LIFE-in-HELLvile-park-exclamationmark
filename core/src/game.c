@@ -10,6 +10,7 @@
 
 static uint32_t frames;
 static uint8_t  inited;
+static uint8_t rescue_hold; /* START+SELECT emergency recovery, 45 ticks */
 
 uint32_t doomo_image_new_uid(void)
 {
@@ -44,6 +45,7 @@ void doomo_init(void)
     opt_config_load();                  /* U0: machine-wide settings (language, volumes, Mature ...) */
     town_new(TOWN_FREEPLAY, rng_next(&doomo_rng), TOWN_POP_EMPTY);
     frames = 0;
+    rescue_hold = 0;
     inited = 1;
     scene_set(&SCENE_BOOT, 0);
 }
@@ -52,6 +54,17 @@ void doomo_frame(uint32_t buttons)
 {
     frames++;
     input_update(buttons);
+    /* START+SELECT for 1.5s always returns to the hub; from a hub it
+     * returns to title. Raw buttons still work under tips, 3D cameras,
+     * cutscenes and modal UI. Trigger once per hold (release to rearm).
+     * One byte of persistent RAM; no per-frame graphics/heap. */
+    if ((buttons & (BTN_START | BTN_SELECT)) == (BTN_START | BTN_SELECT)) {
+        if (rescue_hold < 46) rescue_hold++;
+        if (rescue_hold == 45 && scene_recover_to_hub()) {
+            input_eat();
+            ui_toast_kind("Back to city / title", UI_TOAST_SYSTEM);
+        }
+    } else rescue_hold = 0;
     tips_input();                       /* CL4: a tip card takes the presses while it is up */
     audio_tick();
     scene_update();

@@ -12,6 +12,8 @@
 #include "doomo/platform.h"
 #include "doomo/plat_ext.h"
 #include "doomo/options_store.h"
+#include "doomo/town.h"
+#include "doomo/story.h"
 
 typedef struct {
     const DoomoScene *s;
@@ -171,6 +173,37 @@ const DoomoScene *scene_top(void)
 }
 
 int scene_depth(void) { return depth; }
+
+/* A dependable way out even when a scene's normal Back button is lost.
+ * Prefer unwinding to the actual hub instance, retaining camera/cursor
+ * state; do not create a fresh island if that instance still exists.
+ * In a root hub, a second recovery goes to title. No heap or scene
+ * allocation and only called on a deliberate long key combination. */
+int scene_recover_to_hub(void)
+{
+    const DoomoScene *hub = doomo_town.mode == TOWN_STORY ? &SCENE_STORY : &SCENE_ISLAND;
+    int i, target = -1;
+    if (depth == 0 || scene_top() == &SCENE_BOOT) return 0;
+    for (i = depth - 1; i >= 0; i--)
+        if (stack[i].s == hub) { target = i; break; }
+    if (target < 0)
+        for (i = depth - 1; i >= 0; i--)
+            if (stack[i].s == &SCENE_TITLE) { target = i; break; }
+    if (target >= 0 && target < depth - 1) {
+        while (depth > target + 1) scene_pop();
+        return 1;
+    }
+    if (target >= 0 && stack[target].s == hub) {
+        scene_set(&SCENE_TITLE, 0);
+        return 1;
+    }
+    if (scene_top() == &SCENE_TITLE) return 0;
+    if (hub == &SCENE_STORY && doomo_town.story.chapter == STORY_CH_NONE)
+        scene_set(&SCENE_TITLE, 0);
+    else
+        scene_set(hub, hub == &SCENE_STORY ? STORY_ARG_CONTINUE : 0);
+    return 1;
+}
 
 /* G0 (scene.h): the code of the first non-overlay scene of the stack, for
  * a modal's callback */

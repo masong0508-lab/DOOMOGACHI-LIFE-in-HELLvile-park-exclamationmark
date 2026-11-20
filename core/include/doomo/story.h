@@ -60,6 +60,10 @@ enum { STORY_ARG_CONTINUE = 0,       /* resume doomo_town.story            */
        STORY_ARG_VISIT_HAHALAND = 10,/* free play: stroll around, no plot  */
        STORY_ARG_VISIT_HELLVILE = 11,
        STORY_ARG_VISIT_PARK = 12,
+       /* Free Play district portals share exact physical door anchors
+        * with the authored 3D city maps (not arbitrary world positions). */
+       STORY_ARG_VISIT_HILL_HOMES = 13,
+       STORY_ARG_VISIT_HELL_HOMES = 14,
        /* debugging / runner scripts / attract mode: a fresh story town
         * jumped to beat (arg - STORY_ARG_DEBUG_BEAT) by story_debug_jump();
         * STORY_ARG_DEBUG_NIGHT + beat does the same at 21:30. */

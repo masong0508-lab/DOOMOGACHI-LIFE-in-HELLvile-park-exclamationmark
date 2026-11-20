@@ -524,7 +524,9 @@ static void draw_prompt(int style)
     }
     /* CL1 (clarity C1): the first controls hint is shown here, in the prompt slot, once the region banner has
      * gone (it used to be a toast over the objective) */
-    if (!what && ow.hint_t && !ow.banner_t) what = OW_CONTROLS_HINT;
+    if (!what && ow.visit && !ow.banner_t)
+        what = "START Menu  SEL+B City Map";
+    else if (!what && ow.hint_t && !ow.banner_t) what = OW_CONTROLS_HINT;
     if (!what || plat_draw_skipped()) return;
     w = ui_text_width(what) + 14;
     x = (sw - w) / 2;
@@ -825,8 +827,11 @@ void owfx_draw_pause_ex(int settled)
     ui_text(x + 8, by + 18, buf, st->text_dim);
     for (i = 0; i < ow_pause_count(); i++) {
         int bx = x + 72, bw = w - 80;
-        if (ow_pause_row(i, NULL)) ui_button(bx, y + 8 + i * bh, bw, ow_pause_names[i], i == ow.pause_sel, style);
-        else ui_button_off(bx, y + 8 + i * bh, bw, ow_pause_names[i], i == ow.pause_sel, style);
+        const char *label = ow.visit && i == 8 ? "Back to City Map" :
+                            ow.visit && i == 4 ? "City Map (Back)" :
+                            ow_pause_names[i];
+        if (ow_pause_row(i, NULL)) ui_button(bx, y + 8 + i * bh, bw, label, i == ow.pause_sel, style);
+        else ui_button_off(bx, y + 8 + i * bh, bw, label, i == ow.pause_sel, style);
     }
     {
         /* C11: what the highlighted row does (or why it is greyed), under the rows */

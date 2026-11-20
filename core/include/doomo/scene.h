@@ -20,6 +20,10 @@ void scene_push(const DoomoScene *s, int arg);
 void scene_pop(void);                           /* resumes the one below  */
 const DoomoScene *scene_top(void);
 int  scene_depth(void);
+/* Emergency recovery: unwind to the existing Story/Free Play hub if
+ * available, otherwise rebuild it from the current town. From the hub
+ * return to title. Never modifies saves or allocates a scene. */
+int  scene_recover_to_hub(void);
 void scene_update(void);                        /* called by doomo_frame  */
 void scene_draw(void);
 /* Ticks since the top scene was entered. */

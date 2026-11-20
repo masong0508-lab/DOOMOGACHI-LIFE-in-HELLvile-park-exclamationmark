@@ -299,3 +299,41 @@ TEST(scene_scratch_is_shared_and_owned)
     CHECK(scene_scratch(0, 16) == NULL);
     CHECK(!scene_scratch_mine(0));
 }
+
+
+/* City accessibility: visiting 3D streets never destroys the caller's
+ * Free Play hub. START+SELECT works under the 3D scene's pause menu. */
+TEST(city_visit_returns_to_original_free_play_hub)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 0xBADA55u, TOWN_POP_EMPTY);
+    scene_set(&SCENE_ISLAND, 0);
+    scene_push(&SCENE_STORY, STORY_ARG_VISIT_HILL_HOMES);
+    CHECK(scene_top() == &SCENE_STORY);
+    CHECK_EQ(scene_depth(), 2);
+    CHECK(scene_recover_to_hub());
+    CHECK(scene_top() == &SCENE_ISLAND);
+    CHECK_EQ(scene_depth(), 1);
+    /* Same guarantee for the Hellvile door and a nested options panel. */
+    scene_push(&SCENE_STORY, STORY_ARG_VISIT_HELL_HOMES);
+    scene_push(&SCENE_OPTIONS, 0);
+    CHECK(scene_recover_to_hub());
+    CHECK(scene_top() == &SCENE_ISLAND);
+    CHECK_EQ(scene_depth(), 1);
+}
+
+TEST(city_visit_start_select_hold_is_an_emergency_return)
+{
+    test_reset();
+    town_new(TOWN_FREEPLAY, 0xC17Au, TOWN_POP_EMPTY);
+    scene_set(&SCENE_ISLAND, 0);
+    scene_push(&SCENE_STORY, STORY_ARG_VISIT_HILL_HOMES);
+    frames(0, 2);
+    frames(BTN_START | BTN_SELECT, 45);
+    CHECK(scene_top() == &SCENE_ISLAND);
+    CHECK_EQ(scene_depth(), 1);
+    frames(0, 2);  /* rearm after releasing the keys */
+    frames(BTN_START | BTN_SELECT, 45);
+    CHECK(scene_top() == &SCENE_TITLE);
+    CHECK_EQ(scene_depth(), 1);
+}

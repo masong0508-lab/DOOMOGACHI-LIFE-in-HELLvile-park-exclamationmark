@@ -298,9 +298,16 @@ static void story_enter(int arg)
     ow.near_prop = -1;
     ow.near_spot = -1;
     owfx_init();
-    if (arg >= STORY_ARG_VISIT_HAHALAND && arg <= STORY_ARG_VISIT_PARK) {
-        static const uint8_t maps[3] = { MAPID_HAHALAND, MAPID_HELLVILE, MAPID_PARK_UNITED };
-        static const uint8_t sx[3] = { 34, 3, 16 }, sy[3] = { 26, 27, 26 };
+    if (arg >= STORY_ARG_VISIT_HAHALAND && arg <= STORY_ARG_VISIT_HELL_HOMES) {
+        /* These locations are the actual entrance path cells opposite the
+         * apartments' doors: HaHaland's (41,7) and Hellvile's (19,8).
+         * The hub's house symbols now lead to the matching 3D blocks. */
+        static const uint8_t maps[5] = {
+            MAPID_HAHALAND, MAPID_HELLVILE, MAPID_PARK_UNITED,
+            MAPID_HAHALAND, MAPID_HELLVILE
+        };
+        static const uint8_t sx[5] = { 34, 3, 16, 41, 19 };
+        static const uint8_t sy[5] = { 26, 27, 26, 9, 10 };
         int k = arg - STORY_ARG_VISIT_HAHALAND;
         ow.visit = 1;
         ow.started = 1;
@@ -763,20 +770,35 @@ int ow_pause_row(int i, const char **help)
         h = ok ? "Your weapons. Rivet welds new ones." :
             story_chapter() <= 2 ? "Not yet: Rivet welds you a weapon in Chapter 2." : "Rivet hasn't welded you anything yet.";
         break;
-    case PM_MAP: h = "Where you are and where to go next."; break;
+    case PM_MAP: h = ow.visit ? "Return from the 3D streets to the illustrated City Map." :
+                             "Where you are and where to go next."; break;
     case PM_OPTIONS: h = "Sound, text, controls and language."; break;
     case PM_SAVE: h = ow.visit ? "Strolls aren't saved." : "Save your story (START does it too)."; break;
     case PM_HELP: h = "The Field Guide: every rule, button and word, explained."; break;   /* CL4 */
-    case PM_TITLE: h = "Quit to the title screen."; break;
+    case PM_TITLE: h = ow.visit ? "Leave the 3D visit and return to the City Map." :
+                               "Quit to the title screen."; break;
     default: break;
     }
     if (help) *help = h;
     return ok;
 }
 
+static void city_visit_back(void)
+{
+    /* Visits were pushed from the illustrated Free Play hub; pop instead
+     * of setting TITLE (which lost the caller and looked like a lockout).
+     * Standalone visits also have a deterministic hub fallback. */
+    if (!ow.visit) return;
+    ow.pause = 0;
+    if (scene_depth() > 1) scene_pop();
+    else scene_set(&SCENE_ISLAND, 0);
+}
+
 static void title_yes(int yes)
 {
-    if (yes) { ow_sync_to_save(); scene_set(&SCENE_TITLE, 0); }
+    if (!yes) return;
+    if (ow.visit) city_visit_back();
+    else { ow_sync_to_save(); scene_set(&SCENE_TITLE, 0); }
 }
 
 /* U3b: START inside the pause panel saves the story and closes the panel (J6: START, START = 2
@@ -816,14 +838,19 @@ static void pause_activate(int sel)
         PAUSE_OFF();
         story_push_scene(&SCENE_WORKSHOP, 0, PEND_OTHER, CTX_FREE, 0);
         break;
-    case PM_MAP: PAUSE_OFF(); story_push_scene(&SCENE_QUESTLOG, 3, PEND_OTHER, CTX_FREE, 0); break;
+    case PM_MAP:
+        PAUSE_OFF();
+        if (ow.visit) city_visit_back();
+        else story_push_scene(&SCENE_QUESTLOG, 3, PEND_OTHER, CTX_FREE, 0);
+        break;
     case PM_OPTIONS: PAUSE_OFF(); story_push_scene(&SCENE_OPTIONS, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_SAVE:
         if (pause_save()) PAUSE_OFF();
         break;
     case PM_HELP: PAUSE_OFF(); story_push_scene(&SCENE_LIB_HELP, 0, PEND_OTHER, CTX_FREE, 0); break;
     case PM_TITLE:
-        ui_confirm(ow.visit ? "Leave and go back?" : "Return to the title? Unsaved progress is lost.", title_yes);
+        if (ow.visit) { PAUSE_OFF(); city_visit_back(); }
+        else ui_confirm("Return to the title? Unsaved progress is lost.", title_yes);
         break;
     default: break;
     }
@@ -946,6 +973,13 @@ static void story_update(void)
     if (ow_beat_live()) ow_beat_step();            /* --- S1 M5: the overworld hosts a beat --- */
     if (!ow.visit && auto_events()) return;
     if (ow.pause) { pause_update(); return; }
+    /* A one-press return route on all consoles. B normally means Run;
+     * only SELECT+B exits a Free Play visit, never an actual Story game. */
+    if (ow.visit && btn_down(BTN_SELECT) && btn_pressed(BTN_B)) {
+        audio_sfx(SFX_CANCEL);
+        city_visit_back();
+        return;
+    }
     story_coop_ability_tick();                     /* MP1: a co-op hero's passive and Y ability */
     if (btn_pressed(BTN_START)) {
         ow.pause = 1;

@@ -105,7 +105,8 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_FUZZ_TALK, E_TREAT, E_WORKSHOP, E_ARENA, E_GRAVES, E_STROLL, E_PICNIC,
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
-       E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP };
+       E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP,
+       E_WALK_DISTRICT };
 
 #define MENU_MAX 24
 typedef struct {
@@ -272,6 +273,11 @@ static void build_menu(const Loc *L)
         e = add(E_MOVE_IN, ICON_EGG, "Move someone in", "Create a brand new citizen for a free home.");
         if (e) e->arg = (int16_t)d;
         lock_row(e, !(d ? free_hell : free_hill), full_reason(d));
+        /* The 3D neighborhood portal opens on the walkable path directly
+         * outside this very apartment block, not a random city spawn. */
+        add(E_WALK_DISTRICT, ICON_ARROW_R, "Walk the 3D district",
+            d ? "Hellvile Pits streets. START / SEL+B returns here." :
+                "Hillvile Towers streets. START / SEL+B returns here.")->arg = (int16_t)d;
         add_activities(ACTLOC_APARTMENTS, 1);
         break; }
     case LOC_TOWN_HALL:
@@ -709,6 +715,10 @@ static void run_entry(const Entry *e)
     switch (e->code) {
     case E_CLOSE: I.menu_open = 0; audio_sfx(SFX_CANCEL); break;
     case E_APTS: scene_push(&SCENE_APARTMENTS, e->arg); break;
+    case E_WALK_DISTRICT:
+        scene_push(&SCENE_STORY, e->arg ? STORY_ARG_VISIT_HELL_HOMES :
+                                     STORY_ARG_VISIT_HILL_HOMES);
+        break;
     case E_MOVE_IN: case E_CREATE_HILL: case E_CREATE_HELL: {
         int d = e->code == E_CREATE_HELL || (e->code == E_MOVE_IN && e->arg);
         I.wait = FP_WAIT_CREATOR;
