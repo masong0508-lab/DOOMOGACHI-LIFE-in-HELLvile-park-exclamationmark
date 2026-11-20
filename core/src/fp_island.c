@@ -1282,10 +1282,12 @@ static void hub_over_map(FpLocDraw *ld, int style)
         }
     }
     if (!I.menu_open) {
-        /* C3 (1.6b): the hub's buttons, between the corner buttons above the news ticker (whose badge names L) */
+        /* Single primary-action trail. News already carries its L badge on
+         * the ticker and Folks its R badge by the citizen icon, so repeating
+         * both in the bottom bar used width and draw calls without helping
+         * navigation. Keep their button shortcuts unchanged on every port. */
         static const UiPrompt hub_bar[] = {
-            { BTN_A, 0, "Go" }, { BTN_START, 1, "Menu" }, { BTN_SELECT, 2, "Family" },
-            { BTN_L, 3, "News" }, { BTN_R, 3, "Folks" }
+            { BTN_A, 0, "Go" }, { BTN_START, 1, "Menu" }, { BTN_SELECT, 2, "Family" }
         };
         ui_prompts_at(hub_bar, (int)DOOMO_COUNTOF(hub_bar), style, sh - 27, sw - 2 * (fp_big() ? 50 : 34) - 12);
         fp_ticker(sh - 13, style);

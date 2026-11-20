@@ -976,46 +976,42 @@ static const uint8_t tab_rail_paint[STAB_COUNT] = {
     PAINT_GRAPE, PAINT_PEACH, PAINT_CHERRY, PAINT_HONEY
 };
 
-/* the tab strip: icons, the current tab spelled out, play status */
+/* Three-step page trail instead of eight simultaneous tabs. All ports use
+ * the same shared renderer, and the active tab is a stable baked pill (no
+ * per-frame bounce/cache-key churn on GBA). Neighbour names plus L/R identify
+ * both directions without a row of cryptic numbered icons. The page cycle
+ * and SELECT+L/R controls are unchanged, including NOTES pattern switching. */
 static void draw_tabs(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
-    int i, x = 4, y = 3, wide = 1, b = ui_wave((int)studio.t, 20, 1) > 0, total = 0;
-    int active_x = 4, active_w = 0;
-    for (i = 0; i < STAB_COUNT; i++) total += ui_text_width(st_tab_label(i)) + 22;
-    if (total > plat_screen_w() - 40) wide = 0;     /* names only on the current tab */
-    for (i = 0; i < STAB_COUNT; i++) {
-        int sel = i == studio.tab, w;
-        const char *nm = st_tab_label(i);
-        w = (sel || wide) ? ui_text_width(nm) + 20 : 17;
-        if (sel) {
+    int i, x = 4, y = 3, active_x = 4, active_w = 0;
+    for (i = -1; i <= 1; ++i) {
+        int tab = (studio.tab + i + STAB_COUNT) % STAB_COUNT;
+        const char *nm = st_tab_label(tab);
+        int w = ui_text_width(nm) + (i == 0 ? 20 : 17);
+        if (i == 0) {
             active_x = x;
             active_w = w;
-            tab_pill_sel(x, y - 1 - b, w, st);
-            tab_icon(i, x + 8, y + 5 - b, PAL_WHITE);
-            ui_text_shadow(x + 15, y + 2 - b, nm, PAL_WHITE, ui_darker(st->accent));
+            tab_pill_sel(x, y - 1, w, st);
+            tab_icon(tab, x + 8, y + 5, PAL_WHITE);
+            ui_text_shadow(x + 15, y + 2, nm, PAL_WHITE, ui_darker(st->accent));
         } else {
             tab_pill(x, y + 1, w, st);
-            if (wide) {
-                tab_icon(i, x + 8, y + 7, st->text_dim);
-                ui_text(x + 15, y + 3, nm, st->text_dim);
+            if (i < 0) {
+                ui_text(x + 4, y + 3, "L", st->accent_d);
+                ui_text(x + 13, y + 3, nm, st->text_dim);
             } else {
-                /* ST-EASY: a short pill says where it is: L / R beside the current tab, else its number (one glyph:
-                 * cheaper than the icon, and it names the order) */
-                char hint[2] = { 0, 0 };
-                int d = (i - studio.tab + STAB_COUNT) % STAB_COUNT;
-                hint[0] = d == STAB_COUNT - 1 ? 'L' : d == 1 ? 'R' : (char)('1' + i);
-                ui_text(x + 6, y + 3, hint, st->text_dim);
+                ui_text(x + 4, y + 3, nm, st->text_dim);
+                ui_text(x + w - 8, y + 3, "R", st->accent_d);
             }
         }
         x += w + 2;
     }
-    /* Keep the header's baseline quiet; the short coloured segment identifies
-     * the active page at both 240x160 and 320x240 without another label. */
+    /* Constant tab underline: its selected segment follows the focused page
+     * rather than a pulsing tab, keeping redraw and image-cache work steady. */
     plat_rect(4, 18, plat_screen_w() - 8, 1, st->fill_hi);
-    if (active_w > 0)
-        plat_rect(active_x, 18, active_w, 2,
-                  PAL_PAINT(tab_rail_paint[studio.tab % STAB_COUNT], 1));
+    plat_rect(active_x, 18, active_w, 2,
+              PAL_PAINT(tab_rail_paint[studio.tab % STAB_COUNT], 1));
     /* right side: playing indicator / tempo heart */
     {
         int sw = plat_screen_w(), age = song_beat_age();
