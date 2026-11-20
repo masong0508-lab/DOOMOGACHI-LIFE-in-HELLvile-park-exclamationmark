@@ -47,7 +47,7 @@ LV_HOSTVAR LevelInfo lv_info[LV_TABLE_N] = {
       MAPID_GRAVEYARD_SHIFT, LB_WIDOW, 260, 175, SONG_HELLVILE, WIN_DARK,
       PAL_PAINT(PAINT_ECTOPLASM, 1), ICON_GHOST, 17, 37, 5, 230 },
     { "Bone Cathedral", "HELL BREACH 6",
-      "A gothic hell church that goes\nUP. Bell tower. Pipe organ.",
+      "A towering bone cathedral.\nAscend its shattered belfry.",
       "Let us pray. Loudly. With rockets.",
       MAPID_BONE_CATHEDRAL, LB_BONEBOTTOM, 280, 190, SONG_HELL_BREACH, WIN_HELL,
       PAL_RAMP(RAMP_BONE, 6), ICON_CROSS, 22, 33, 10, 200 },
