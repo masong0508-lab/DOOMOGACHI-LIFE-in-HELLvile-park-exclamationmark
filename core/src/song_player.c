@@ -519,6 +519,8 @@ static struct {
     int16_t  over;            /* singer override (resident id) or -1        */
     int16_t  prev_music;      /* background song to restore                  */
     uint8_t  on, solo, solo_pat;
+    uint8_t  mute_mask;       /* live editor mixer: one bit per output lane */
+    int8_t   solo_track;      /* -1 all lanes, else 0..3                    */
     uint8_t  blk;             /* ST-ADV: 1 = the continuation block of a 3 / 4 bar pattern is playing (same pass, same lyric line) */
     uint16_t ord;
     uint8_t  step;
@@ -554,6 +556,7 @@ static struct {
     uint8_t  pv_ticks, pv_ch;
     Sent     sent[4];
 } P;
+static uint8_t mixer_ready;
 
 /* ST-ADV Mix view pan: the lane's own setting (0 left, 1 middle, 2 right) goes to the platform when a note sounds and
  * whenever it changes; a classic song, a preview and a stopped song are the middle. A platform that cannot pan ignores it. */
@@ -1098,6 +1101,7 @@ static int env(int base, int age, int shape)
 static void render_tones(void)
 {
     int t;
+    if (!mixer_ready) { P.solo_track = -1; mixer_ready = 1; }
     for (t = 0; t < 3; t++) {
         int f = 0, v = 0, w = P.wave[t];
         if (P.jam[t]) {
@@ -1119,10 +1123,13 @@ static void render_tones(void)
                 f += ((P.ticks >> 1) & 1) ? f / 160 : -(f / 160);
         }
         if (P.note[t] && P.age[t] < 255) P.age[t]++;
+        if ((P.mute_mask & (1u << t)) || (P.solo_track >= 0 && P.solo_track != t)) f = v = 0;
         if (t == 1 && audio_voice_busy()) { P.sent[1].valid = 0; continue; }
         send(t, f, v, w);
     }
-    if (P.drum) {
+    if ((P.mute_mask & (1u << 3)) || (P.solo_track >= 0 && P.solo_track != 3)) {
+        send(3, 0, 0, WAVE_NOISE);
+    } else if (P.drum) {
         const DrumDef *d = &kits[P.dkit][P.drum];
         int f = (P.dage >= d->sweep || !d->sweep) ? d->f1 :
                 d->f0 + ((int)d->f1 - (int)d->f0) * P.dage / d->sweep;
@@ -1210,6 +1217,17 @@ void song_play(const DoomoSong *s, int singer_override)
 {
     start(s, singer_override, 0, 0, 0, 0);
 }
+
+void song_mixer_set(uint8_t mute_mask, int solo_track)
+{
+    mixer_ready = 1;
+    P.mute_mask = (uint8_t)(mute_mask & 15u);
+    P.solo_track = (int8_t)(solo_track >= 0 && solo_track < 4 ? solo_track : -1);
+    if (P.on) render_tones();
+}
+
+uint8_t song_mixer_mute(void) { return P.mute_mask; }
+int song_mixer_solo(void) { return P.solo_track; }
 
 void song_play_pattern(const DoomoSong *s, int pattern, int step)
 {

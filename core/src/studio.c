@@ -793,13 +793,14 @@ static void tab_icon(int tab, int cx, int cy, uint8_t c)
  * pixel for pixel. The images live in the shared scene scratch (re-claimed and rebuilt when another scene took it). */
 #define TP_RECT ST_RECT
 
-#if ST_BAKE
-#define BAKE_TAG   0x53424B45u          /* 'SBKE' */
 static void ez_init(StEasy *e)
 {
     memset(e, 0, sizeof(*e));
     e->level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+    e->solo_track = -1;
 }
+#if ST_BAKE
+#define BAKE_TAG   0x53424B45u          /* 'SBKE' */
 #define BAKE_ENTS  40
 #define BAKE_POOL  (10752 - STUDIO_TABSTATE - (int)sizeof(DoomoSong))  /* BakeSt is the whole 12 KB scene scratch (CHOIR's tiles are ~750 B each) */
 typedef struct { uint32_t k0, k1; DoomoImage img; int16_t bx, by; } BakeEnt;
@@ -895,7 +896,7 @@ static NoBakeSt *nb_get(void)
     e = (NoBakeSt *)scene_scratch(EZ_TAG, (uint32_t)sizeof(NoBakeSt));
     if (e) {
         memset(e, 0, sizeof(*e));
-        e->ez.level = (studio_stats.lines & STUDIO_LINES_LEVEL) ? 1 : 0;
+        ez_init(&e->ez);
     }
     return e;
 }
@@ -920,6 +921,12 @@ void *st_tab_state(int *fresh)
     return e->xs;
 }
 #endif
+
+void st_mixer_apply(void)
+{
+    StEasy *e = st_easy();
+    song_mixer_set(e ? e->mute_mask : 0, e ? e->solo_track : -1);
+}
 
 
 /* a tab's pill: the current tab (3 rounded rects and a highlight, anchor = its outer top-left) and the others (outline
@@ -1179,6 +1186,7 @@ static void studio_enter(int arg)
     studio.sel_held = studio.sel_used = 0;
     studio.prev_music = (int16_t)audio_music_current();
     audio_music(SONG_NONE);
+    st_mixer_apply();
     plat_reverb(PLAT_REVERB_ROOM);          /* PS1: the SPU room reverb on the tone voices (MS-S4) */
     if (arg <= STUDIO_ARG_DEMO(0) && arg > STUDIO_ARG_DEMO(STUDIO_TEMPLATES)) {
         /* runner / tests: premade citizens move in, a template is loaded */
@@ -1242,6 +1250,7 @@ static void studio_leave(void)
     song_stop();
     stage_leave();
     studio.active = 0;
+    song_mixer_set(0, -1);
     plat_reverb(PLAT_REVERB_OFF);
     audio_music(studio.prev_music);
 }

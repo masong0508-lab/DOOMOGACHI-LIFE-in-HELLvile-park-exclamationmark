@@ -110,6 +110,39 @@ static void cycle_part(int line, int d)
     audio_sfx(SFX_CURSOR);
 }
 
+/* A deliberately cheap lyric check: compare the vowel tail of the last word
+ * in neighbouring line pairs. It runs only from the tools menu and allocates
+ * nothing, so the editor's frame time and RAM stay unchanged. */
+static int rhyme_tail(const char *s, char out[8])
+{
+    int end = (int)strlen(s), start, vowel = -1, i, n = 0;
+    while (end && !((s[end - 1] >= 'A' && s[end - 1] <= 'Z') || (s[end - 1] >= 'a' && s[end - 1] <= 'z'))) end--;
+    start = end;
+    while (start && ((s[start - 1] >= 'A' && s[start - 1] <= 'Z') || (s[start - 1] >= 'a' && s[start - 1] <= 'z'))) start--;
+    for (i = start; i < end; i++) {
+        char c = (char)(s[i] | 32);
+        if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y') vowel = i;
+    }
+    if (vowel < 0) vowel = DOOMO_MAX(start, end - 2);
+    for (i = vowel; i < end && n < 7; i++) out[n++] = (char)(s[i] | 32);
+    out[n] = 0;
+    return n;
+}
+
+static void rhyme_report(void)
+{
+    int i, pairs = 0, rhymes = 0, lines = st_line_count(SS);
+    for (i = 0; i + 1 < lines; i += 2) {
+        char a[8], b[8];
+        if (!rhyme_tail(st_line_text(SS, i), a) || !rhyme_tail(st_line_text(SS, i + 1), b)) continue;
+        pairs++;
+        if (!strcmp(a, b)) rhymes++;
+    }
+    if (!pairs) st_msg("Write two lyric lines first");
+    else st_msg("Rhymes: %d of %d line pairs", rhymes, pairs);
+    audio_sfx(rhymes ? SFX_SPARKLE : SFX_CURSOR);
+}
+
 static void lyric_tools(int c)
 {
     int i, n = 0;
@@ -159,6 +192,7 @@ static void lyric_tools(int c)
         else st_msg("%d word%s, %d note%s: too many", w, w == 1 ? "" : "s", nn, nn == 1 ? "" : "s");
         audio_sfx(v == 0 ? SFX_SPARKLE : SFX_CURSOR);
         break; }
+    case 7: rhyme_report(); break;
     default: break;
     }
 }
@@ -187,14 +221,14 @@ void tab_lyrics_update(void)
         ui_text_entry(prompt, studio.edit, SONG_LYRIC_LEN, lyric_done);
     }
     if (studio_sel_tap) {
-        static const char *const items[7] = { "Sing this line", "Auto-fit all lines",
+        static const char *const items[8] = { "Sing this line", "Auto-fit all lines",
                                               "Share out parts", "Write lyrics for me",
-                                              "Clear this line", "Fit this line", "How does it fit?" };
-        static const char *const help[7] = { "Hear this line sung.", "Fit every line to its notes.",
+                                              "Clear this line", "Fit this line", "How does it fit?", "Check the rhymes" };
+        static const char *const help[8] = { "Hear this line sung.", "Fit every line to its notes.",
                                              "Share the lines out.", "Have lyrics written for you.",
                                              "Empty this line.", "Fit this line to its notes.",
-                                             "Count words against notes." };
-        st_popup("Lyric tools", items, 7, 0, lyric_tools);
+                                             "Count words against notes.", "Compare each pair's ending sound." };
+        st_popup("Lyric tools", items, 8, 0, lyric_tools);
         st_popup_help(help);
     }
 }

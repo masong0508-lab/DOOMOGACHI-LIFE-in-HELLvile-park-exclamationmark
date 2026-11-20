@@ -47,6 +47,7 @@ typedef struct PlayState {
     uint16_t hold_btn, hold_t;       /* the pad that holds the latest recorded note, ticks held */
     uint16_t cacc;                   /* count-in beat accumulator */
     uint8_t  stale;                  /* a setting changed: recompute the notes below at the next tick */
+    uint8_t  metro, metro_step;      /* optional beat click and last clicked sequencer step */
     uint8_t  roots[4];               /* the song's chord roots (pitch classes) */
     uint8_t  notes[8];               /* the notes the melody pads play now (a few divisions each: kept, not redone per frame) */
     uint8_t  ctri[4][3];             /* the chords' notes: root (low), third, fifth */
@@ -180,6 +181,7 @@ static PlayState *ps(void)
     if (p && fresh) {
         if (studio.undo_open) ed_commit();               /* the scratch was taken by another scene mid-take: close its step */
         p->quant = Q_16;
+        p->metro_step = 0xFF;
         refresh(p);
     }
     return p;
@@ -406,6 +408,7 @@ static void loop_toggle(PlayState *p)
 /* a tick of the recorder: count-in beats, the loop, a held pad */
 static void service(PlayState *p)
 {
+    int step;
     if (p->stale || studio.tab_t < 2) refresh(p);
     else if ((studio.t & 7) < 4) refresh_part(p, studio.t & 7);       /* roots, notes, notes, chords: one a tick */
     if (p->take_open && !studio.undo_open) {          /* an undo took the open take away */
@@ -423,6 +426,10 @@ static void service(PlayState *p)
     } else if (p->rec == REC_ON && !song_playing()) {
         take_end(p);                                  /* the loop ended under us */
     }
+    step = song_playing() ? song_pos_step() : -1;
+    if (p->metro && p->rec != REC_COUNT && step >= 0 && step != p->metro_step && (step & 3) == 0)
+        audio_sfx(SFX_TIK);
+    p->metro_step = (uint8_t)(step < 0 ? 0xFF : step);
     if (p->hold_btn) {
         if (btn_down(p->hold_btn)) { if (p->hold_t < 60000) p->hold_t++; }
         else hold_release(p);
@@ -483,22 +490,27 @@ static void play_menu_done(int c)
         rec_start(p);                       /* the route for a pad that cannot make SELECT+START (Dreamcast) */
 #endif
         break;
+    case 8:
+        p->metro ^= 1;
+        p->metro_step = 0xFF;
+        st_msg(p->metro ? "Metronome: on" : "Metronome: off");
+        break;
     default: break;
     }
 }
 
 static void open_menu(PlayState *p)
 {
-    static const char *const items[8] = { "Notes / Drums", "Next track", "Quantize", "Overdub / Replace",
+    static const char *const items[9] = { "Notes / Drums", "Next track", "Quantize", "Overdub / Replace",
                                           "Loop part", "Next pattern", "Chord set",
 #if defined(DOOMO_PLATFORM_GBA)
-                                          "Notes 1-4 / 5-8" };
+                                          "Notes 1-4 / 5-8", "Metronome on / off" };
 #else
-                                          "Record a take" };            /* a menu already open while recording stops the take */
+                                          "Record a take", "Metronome on / off" }; /* a menu already open while recording stops the take */
 #endif
     if (p->rec) take_end(p);
     song_jam_off(-1);
-    st_popup("Play tools", items, 8, 0, play_menu_done);
+    st_popup("Play tools", items, 9, 0, play_menu_done);
 }
 
 /* ====================================================================== */

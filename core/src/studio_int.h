@@ -44,6 +44,8 @@ typedef struct StudioStats {
     uint16_t genres;         /* bit per genre ever saved                   */
     uint8_t  best_choir;     /* biggest choir that performed               */
     uint8_t  encores;        /* standing ovations                          */
+    uint16_t request_day;    /* day + 1 of the last fulfilled song request */
+    uint8_t  requests;       /* daily audience requests fulfilled           */
 } StudioStats;
 extern StudioStats studio_stats;
 void studio_stats_reset(void);
@@ -178,6 +180,8 @@ typedef struct StEasy {
     uint16_t redo_used;
     uint8_t  redo_steps;
     uint8_t  level;             /* 0 Easy, 1 Advanced (mirrors studio_stats.lines bit 15) */
+    uint8_t  mute_mask;         /* live mixer, one bit per audible lane (not saved) */
+    int8_t   solo_track;        /* -1 none, else audible lane 0..3              */
     uint8_t  edited;            /* an edit was made this session: the one-line help stops */
     uint8_t  redo_lost;         /* the last undo was too big to keep for a redo (say so) */
     uint8_t  mk_valid;          /* the top undo step is the Start card's make: recompose it on redo (no big image) */
@@ -198,6 +202,7 @@ typedef struct StEasy {
     uint8_t  redo[STUDIO_REDO_BYTES];
 } StEasy;
 StEasy *st_easy(void);
+void st_mixer_apply(void);
 
 /* ---- studio.c: shared services ------------------------------------------------ */
 void st_msg(const char *fmt, ...);

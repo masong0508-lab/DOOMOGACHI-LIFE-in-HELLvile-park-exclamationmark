@@ -59,13 +59,36 @@ int lib_jukebox_pct(void)
 
 static int sfx_tab(void) { return lib_b.tab == TAB_SFX; }
 
-static void rebuild(void)
+static int favorite_count(void)
 {
-    lib_b.count = (int16_t)(sfx_tab() ? SFX_COUNT - 1 : SONG_COUNT - 1);
-    lib_clamp();
+    int i, n = 0;
+    for (i = 0; i < SONG_BOOK_SIZE; i++)
+        if ((doomo_song_book[i].flags & (SONGF_VALID | SONGF_FAVORITE)) == (SONGF_VALID | SONGF_FAVORITE)) n++;
+    return n;
 }
 
-static int entry(int i) { return i + 1; }      /* skip SONG_NONE / SFX_NONE */
+static int favorite_slot(int n)
+{
+    int i;
+    for (i = 0; i < SONG_BOOK_SIZE; i++)
+        if ((doomo_song_book[i].flags & (SONGF_VALID | SONGF_FAVORITE)) == (SONGF_VALID | SONGF_FAVORITE) && n-- == 0) return i;
+    return -1;
+}
+
+/* Built-in entries are their SONG_* id; Studio favorites are 0x80 | slot. */
+static int entry(int i)
+{
+    if (sfx_tab() || i < SONG_COUNT - 1) return i + 1;
+    return 0x80 | favorite_slot(i - (SONG_COUNT - 1));
+}
+static int custom_entry(int e) { return (e & 0x80) != 0; }
+static int custom_slot(int e) { return e & 0x7F; }
+
+static void rebuild(void)
+{
+    lib_b.count = (int16_t)(sfx_tab() ? SFX_COUNT - 1 : SONG_COUNT - 1 + favorite_count());
+    lib_clamp();
+}
 
 static int bits_count(uint32_t v)
 {
@@ -120,7 +143,10 @@ static void juke_enter(int arg)
 
 static void juke_leave(void)
 {
-    if (scene_scratch_mine(LIB_SCRATCH_TAG)) audio_music(J.prev_song);
+    if (scene_scratch_mine(LIB_SCRATCH_TAG)) {
+        if (song_playing()) song_stop();
+        audio_music(J.prev_song);
+    }
 }
 
 static void play_selected(void)
@@ -133,16 +159,23 @@ static void play_selected(void)
         J.sfx_played[e >> 5] |= 1u << (e & 31);
         return;
     }
-    if (!song_ok(e)) { audio_sfx(SFX_ERROR); return; }
+    if (!custom_entry(e) && !song_ok(e)) { audio_sfx(SFX_ERROR); return; }
     if (J.playing == e) {                  /* press again: stop */
-        audio_music(SONG_NONE);
+        if (custom_entry(e)) song_stop(); else audio_music(SONG_NONE);
         J.playing = 0;
         return;
     }
-    audio_music(e);
+    if (song_playing()) song_stop();
+    if (custom_entry(e)) {
+        int slot = custom_slot(e);
+        audio_music(SONG_NONE);
+        if (slot < 0 || slot >= SONG_BOOK_SIZE || !(doomo_song_book[slot].flags & SONGF_VALID)) return;
+        song_mixer_set(0, -1);
+        song_play(&doomo_song_book[slot], -1);
+    } else audio_music(e);
     J.playing = (uint8_t)e;
     J.play_t = 0;
-    J.played |= 1u << e;
+    if (!custom_entry(e)) J.played |= 1u << e;
     if (bits_count(J.played) >= 10) unlock_grant(LIB_UL_DJ);
 }
 
@@ -151,6 +184,10 @@ static void juke_update(void)
     if (lib_w_lost(1)) return;
     if (J.play_t < 60000) J.play_t++;
     J.spin = (uint8_t)(J.spin + (J.playing ? 1 : 0));
+    if (J.playing && custom_entry(J.playing)) {
+        song_tick();
+        if (!song_playing()) J.playing = 0;
+    }
     switch (lib_nav(N_TABS, 0)) {
     case LIBE_TAB: rebuild(); break;
     case LIBE_OPEN:
@@ -159,6 +196,7 @@ static void juke_update(void)
         play_selected();
         break;
     case LIBE_FILTER:          /* SELECT: stop the music */
+        if (song_playing()) song_stop();
         audio_music(SONG_NONE);
         J.playing = 0;
         break;
@@ -180,6 +218,15 @@ static void row(int i, int x, int y, int w, int sel)
         ui_text(x, y + 2, buf, st->text_dim);
         ui_text(x + 36, y + 2, lib_fit(audio_sfx_name(e), w - 44, buf, sizeof(buf)), st->text);
         if (heard) plat_text(x + w - 6, y + 2, STR_ICON_CHECK, PAL_PAINT(PAINT_LIME, 1));
+        return;
+    }
+    if (custom_entry(e)) {
+        int slot = custom_slot(e);
+        const DoomoSong *s = slot >= 0 && slot < SONG_BOOK_SIZE ? &doomo_song_book[slot] : NULL;
+        doomo_snprintf(buf, sizeof(buf), "ST-%d", slot + 1);
+        ui_text(x, y + 2, buf, J.playing == e ? PAL_UI_GOLD : st->text_dim);
+        ui_text(x + 28, y + 2, lib_fit(s && s->title[0] ? s->title : "Studio favorite", w - 38, buf, sizeof(buf)), st->text);
+        if (J.playing == e) plat_text(x + w - 6, y + 2, STR_ICON_NOTE, PAL_UI_GOLD);
         return;
     }
     if (!song_ok(e)) {
@@ -252,9 +299,10 @@ static void song_panel(int x, int y, int w, int h)
 {
     const UiStyle *st = ui_style(WIN_DARK);
     int e = entry(lib_b.sel), big = lib_big(), r = big ? 34 : 24;
-    int cx = x + r + 8, cy = y + r + 6, ok = song_ok(e);
+    int cx = x + r + 8, cy = y + r + 6, ok = custom_entry(e) || song_ok(e);
+    const DoomoSong *custom = custom_entry(e) ? &doomo_song_book[custom_slot(e)] : NULL;
     char buf[48];
-    record(cx, cy, r, ok ? e : 0, J.playing == e);
+    record(cx, cy, r, ok ? (custom ? custom->genre + 1 : e) : 0, J.playing == e);
     /* the dancing Boreagotchi */
     {
         int beat = J.playing ? (int)(audio_music_ticks() / 8) : (int)(lib_b.t / 30);
@@ -275,18 +323,24 @@ static void song_panel(int x, int y, int w, int h)
     }
     {
         int ty = y + 2 * r + 12;
-        ui_text_shadow(x + 6, ty, ok ? lib_fit(audio_song_name(e), w - 12, buf, sizeof(buf)) : "Locked song",
+        ui_text_shadow(x + 6, ty, ok ? lib_fit(custom ? custom->title : audio_song_name(e), w - 12, buf, sizeof(buf)) : "Locked song",
                        st->accent, PAL_BLACK);
         ty += 11;
         if (ok) {
-            uint32_t len = audio_song_length(e), at = J.playing == e ? audio_music_ticks() % (len ? len : 1) : 0;
+            uint32_t len = custom ? song_length_ticks(custom) : audio_song_length(e);
+            uint32_t at = J.playing == e ? (custom ? song_pos_ticks() : audio_music_ticks()) % (len ? len : 1) : 0;
             doomo_snprintf(buf, sizeof(buf), "%d:%02d / %d:%02d", (int)(at / 30 / 60), (int)(at / 30 % 60),
                            (int)(len / 30 / 60), (int)(len / 30 % 60));
             ui_text(x + 6, ty, buf, st->text_dim);
             ui_bar(x + 6, ty + 10, w - 12, 5, (int)at, (int)(len ? len : 1), PAL_PAINT(PAINT_LAVENDER, 1));
             ty += 19;
-            if (ty + 2 * FONT_LINE < y + h - (big ? 34 : 4) && e < (int)DOOMO_COUNTOF(song_notes))
-                ui_text_wrap(x + 6, ty, w - 12, song_notes[e], st->text, 1);
+            if (ty + 2 * FONT_LINE < y + h - (big ? 34 : 4)) {
+                if (custom) {
+                    doomo_snprintf(buf, sizeof(buf), "Your Studio favorite - %s, %d bpm",
+                                   doomo_music_names[custom->genre % MUSIC_COUNT], custom->bpm);
+                    ui_text_wrap(x + 6, ty, w - 12, buf, st->text, 1);
+                } else if (e < (int)DOOMO_COUNTOF(song_notes)) ui_text_wrap(x + 6, ty, w - 12, song_notes[e], st->text, 1);
+            }
         } else {
             const DoomoUnlock *u = unlock_find(UL_CAT_GALLERY, GAL_JUKEBOX, e);
             ui_text_wrap(x + 6, ty, w - 12, u ? u->how : "Keep playing!", st->text_dim, 1);

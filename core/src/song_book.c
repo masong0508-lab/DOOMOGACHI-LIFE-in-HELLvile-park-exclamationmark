@@ -199,7 +199,8 @@ static int get_song(SbIn *in, DoomoSong *s)
     return 1;
 }
 
-#define STATS_BYTES 13
+#define STATS_OLD_BYTES 13
+#define STATS_BYTES     16
 
 static uint32_t encode(uint8_t *dst, uint32_t cap)
 {
@@ -216,6 +217,8 @@ static uint32_t encode(uint8_t *dst, uint32_t cap)
     ob(&o, studio_stats.best_choir);
     ob(&o, studio_stats.encores);
     ob(&o, 0);                                    /* reserved */
+    o16(&o, studio_stats.request_day);
+    ob(&o, studio_stats.requests);
     for (i = 0; i < SONG_BOOK_SIZE; i++)
         if (doomo_song_book[i].flags & SONGF_VALID) mask |= 1u << i;
     ob(&o, mask);
@@ -260,7 +263,9 @@ static int ext_read(const uint8_t *src, uint32_t len, uint16_t version)
     if (version < 1) return 0;
     in.src = src; in.len = len; in.pos = 0; in.err = 0;
     n = ib(&in);
-    if (n < STATS_BYTES) return 0;
+    /* The original Studio chunk has 13 bytes.  New fields are appended so
+     * cartridges and memory cards made before daily requests still load. */
+    if (n < STATS_OLD_BYTES) return 0;
     memset(&st, 0, sizeof(st));
     st.saved = (uint16_t)i16(&in);
     st.performed = (uint16_t)i16(&in);
@@ -269,7 +274,11 @@ static int ext_read(const uint8_t *src, uint32_t len, uint16_t version)
     st.genres = (uint16_t)i16(&in);
     st.best_choir = (uint8_t)ib(&in);
     st.encores = (uint8_t)ib(&in);
-    for (i = 12; i < n; i++) ib(&in);
+    i = 12;
+    if (i < n) { (void)ib(&in); i++; }              /* reserved in every modern chunk */
+    if (i + 2 <= n) { st.request_day = (uint16_t)i16(&in); i += 2; }
+    if (i < n) { st.requests = (uint8_t)ib(&in); i++; }
+    while (i++ < n) ib(&in);
     mask = ib(&in);
     if (in.err || (mask >> SONG_BOOK_SIZE)) return 0;
     ext_reset();

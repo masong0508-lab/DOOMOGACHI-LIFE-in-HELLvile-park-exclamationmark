@@ -19,6 +19,21 @@
 
 static const uint8_t sec_paint[SECTION_COUNT] = { PAINT_ROSE, PAINT_PEACH, PAINT_MINT, PAINT_SKY };
 
+static int request_genre(void)
+{
+    return (int)(doomo_hash32(doomo_town.seed ^ 0x53545544u ^ doomo_town.day * 2654435761u) % MUSIC_COUNT);
+}
+
+static int crowd_fans(void)
+{
+    int i, n = 0;
+    for (i = 0; i < STUDIO_CROWD; i++) {
+        const DoomoResident *r = studio.crowd[i] >= 0 ? town_res(studio.crowd[i]) : NULL;
+        if (r && RES_LIKE_MUSIC(r) % MUSIC_COUNT == SS->genre % MUSIC_COUNT) n++;
+    }
+    return n;
+}
+
 int stage_fullscreen(void) { return studio.show != 0; }
 
 void stage_leave(void)
@@ -82,12 +97,17 @@ void stage_start(void)
 /* ---- results -------------------------------------------------------------- */
 static void finish_show(void)
 {
-    int i, n = song_singer_count(SS), happy, prev = -1;
+    int i, n = song_singer_count(SS), happy, prev = -1, fans = crowd_fans();
     song_stop();
     studio.show = 2;
     studio.show_t = 0;
-    studio.applause = (uint8_t)DOOMO_MIN(100, studio.applause + n + 10 * studio.fit_lines /
+    studio.applause = (uint8_t)DOOMO_MIN(100, studio.applause + n + fans * 3 + 10 * studio.fit_lines /
                                                  DOOMO_MAX(studio.sung_lines, 1));
+    if (SS->genre % MUSIC_COUNT == request_genre() && studio_stats.request_day != (uint16_t)(doomo_town.day + 1u)) {
+        studio.applause = (uint8_t)DOOMO_MIN(100, studio.applause + 12);
+        studio_stats.request_day = (uint16_t)(doomo_town.day + 1u);
+        if (studio_stats.requests < 255) studio_stats.requests++;
+    }
     studio.encore = studio.applause >= 80;
     happy = 6 + studio.applause / 8;
     studio.happy_gain = (uint8_t)happy;
@@ -95,7 +115,8 @@ static void finish_show(void)
         int id = song_singer_id(SS, i);
         DoomoResident *r = id >= 0 ? town_res(id) : NULL;
         if (!r) continue;
-        r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HAPPY] + happy);
+        r->stat[STAT_HAPPY] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HAPPY] + happy +
+            (RES_LIKE_MUSIC(r) % MUSIC_COUNT == SS->genre % MUSIC_COUNT ? 4 : 0));
         r->stat[STAT_SOCIAL] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_SOCIAL] + 5);
         /* singing together brings neighbours on the risers closer */
         if (prev >= 0 && prev != id) rel_adjust(prev, id, 2);
@@ -892,6 +913,11 @@ void tab_stage_draw(StRect r)
         doomo_snprintf(buf, sizeof(buf), "%d singer%s " STR_ICON_HEART " %s", n, n == 1 ? "" : "s",
                        doomo_choir_layout_names[SS->choir_layout % CHOIR_LAYOUT_COUNT]);
     ui_text_center(r.x + r.w / 2, r.y + 30, buf, PAL_PAINT(PAINT_LAVENDER, 2));
+    if (studio_stats.request_day != (uint16_t)(doomo_town.day + 1u)) {
+        doomo_snprintf(buf, sizeof(buf), "Today's request: %s", doomo_music_names[request_genre()]);
+        ui_text_center(r.x + r.w / 2, r.y + 39, buf,
+                       SS->genre % MUSIC_COUNT == request_genre() ? PAL_UI_GOLD : PAL_GRAY_L);
+    }
     /* the line-up on a little stage between two curtains */
     b.x = r.x + 18; b.w = r.w - 36; b.floor = r.y + r.h - (wide ? 40 : 28); b.y = r.y + 40;
     plat_rect(r.x + 8, b.floor, r.w - 16, r.y + r.h - 9 - b.floor, PAL_RAMP(RAMP_WOOD, 4));

@@ -26,7 +26,7 @@
 #define META ((int)(offsetof(SongExt, trk) + sizeof(((SongExt *)0)->trk)))   /* ... and the 8 track settings of the Mix view */
 #define AK(r) (0x4000 + (r))            /* coalescing keys: repeated nudges of one setting are one undo step */
 
-static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing */
+static uint8_t mix_col;                 /* Mix view: 0 pan, 1 sound, 2 swing, 3 live state */
 static uint8_t g_pat, g_trk, g_stp, g_top;      /* the Note grid's cursor: pattern, track, step; g_top = the highest pitch on screen */
 static uint8_t g_note[SX_TRACKS];               /* each track's pitch cursor (a drum track: its drum 1..8); 0 = not set yet */
 static char pat_ch(int p) { return (char)(p < 26 ? 'A' + p : 'a' + p - 26); }     /* a pattern's letter: A..Z, then a..f (32 patterns) */
@@ -630,7 +630,19 @@ static void mix_adjust(int d)
         return;
     }
     t = &X->trk[row];
-    if (mix_col == 0) { if (adv_edit(e_trk_pan, row, t->pan + d, AK(0x210 + row))) audio_sfx(SFX_CURSOR); }
+    if (mix_col == 3) {
+        StEasy *e = st_easy();
+        int lane = songx_lane_of(row), state;
+        if (!e) return;
+        state = e->solo_track == lane ? 2 : (e->mute_mask & (1u << lane)) ? 1 : 0;
+        state = (state + (d < 0 ? 2 : 1)) % 3;
+        e->mute_mask &= (uint8_t)~(1u << lane);
+        if (e->solo_track == lane) e->solo_track = -1;
+        if (state == 1) e->mute_mask |= (uint8_t)(1u << lane);
+        else if (state == 2) e->solo_track = (int8_t)lane;
+        st_mixer_apply();
+        audio_sfx(SFX_CURSOR);
+    } else if (mix_col == 0) { if (adv_edit(e_trk_pan, row, t->pan + d, AK(0x210 + row))) audio_sfx(SFX_CURSOR); }
     else if (mix_col == 1) { if (adv_edit(e_trk_env, row, t->env + d + 4, AK(0x220 + row))) audio_sfx(SFX_CURSOR); }
     else if (adv_edit(e_trk_swing, row, t->swing + d, AK(0x230 + row))) audio_sfx(SFX_CURSOR);
 }
@@ -644,7 +656,7 @@ static void mix_update(void)
     if (btn_repeat(BTN_DOWN)) { studio.asel = (uint8_t)((studio.asel + 1) % rows); audio_sfx(SFX_CURSOR); }
     if (btn_repeat(BTN_LEFT)) mix_adjust(-1);
     if (btn_repeat(BTN_RIGHT)) mix_adjust(1);
-    if (btn_pressed(BTN_A) && studio.asel < mix_tracks()) { mix_col = (uint8_t)((mix_col + 1) % 3); audio_sfx(SFX_CURSOR); }
+    if (btn_pressed(BTN_A) && studio.asel < mix_tracks()) { mix_col = (uint8_t)((mix_col + 1) % 4); audio_sfx(SFX_CURSOR); }
     else if (btn_pressed(BTN_A)) mix_adjust(1);
 }
 
@@ -1730,13 +1742,14 @@ static void mix_draw(StRect r)
     static const char *const env_s[4] = { "Soft", "Punchy", "Long", "Pluck" };
     const UiStyle *st = ui_style(WIN_CREAM);
     int rh = st_wide() ? 15 : 12, nt = mix_tracks(), i, y0 = r.y + 6 + rh;
-    int cx[3] = { r.x + 78, r.x + 130, r.x + 186 };
+    int cx[4] = { r.x + 70, r.x + 113, r.x + 164, r.x + 204 };
     char buf[24];
     st_panel(r.x, r.y, r.w, r.h, WIN_CREAM);
     ui_text(r.x + 12, r.y + 5, "Mix", st->text);
     ui_text(cx[0] + 4, r.y + 5, "Pan", mix_col == 0 ? st->accent : st->text_dim);
     ui_text(cx[1] + 4, r.y + 5, "Sound", mix_col == 1 ? st->accent : st->text_dim);
     ui_text(cx[2] + 4, r.y + 5, "Swing", mix_col == 2 ? st->accent : st->text_dim);
+    ui_text(cx[3] + 4, r.y + 5, "Live", mix_col == 3 ? st->accent : st->text_dim);
     for (i = 0; i <= nt; i++) {
         int y = y0 + i * rh, sel = i == studio.asel;
         uint8_t tc = sel ? PAL_WHITE : st->text;
@@ -1752,11 +1765,14 @@ static void mix_draw(StRect r)
         ui_text(r.x + 16, y + 1, tname[i], tc);
         {
             int col;
-            const char *v[3];
+            const char *v[4];
             char sw[8];
+            StEasy *e = st_easy();
+            int lane = songx_lane_of(i);
             if (X->trk[i].swing) doomo_snprintf(sw, sizeof(sw), "%d", X->trk[i].swing); else doomo_snprintf(sw, sizeof(sw), "song");
             v[0] = pan_s[X->trk[i].pan % 3]; v[1] = env_s[X->trk[i].env & 3]; v[2] = sw;
-            for (col = 0; col < 3; col++) {
+            v[3] = e && e->solo_track == lane ? "Solo" : e && (e->mute_mask & (1u << lane)) ? "Mute" : "On";
+            for (col = 0; col < 4; col++) {
                 int hot = sel && col == mix_col;
                 doomo_snprintf(buf, sizeof(buf), hot ? "<%s>" : "%s", v[col]);
                 ui_text(cx[col] + (hot ? 0 : 4), y + 1, buf, tc);

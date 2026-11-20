@@ -106,6 +106,13 @@ struct SongExt;
 /* ST-ADV: play a song with its Advanced arrangement (sections, key / tempo per section, fades, folded tracks);
  * x == NULL is exactly song_play(). The studio's other play calls stay classic. */
 void song_play_ext(const DoomoSong *s, const struct SongExt *x, int singer_override);
+/* Live mixer for editors / jukeboxes. `mute_mask` is one bit per audible
+ * lane; `solo_track` is -1 or lane 0..3. It is playback state, deliberately
+ * not part of DoomoSong or the save format. Changing it while playing takes
+ * effect immediately. */
+void song_mixer_set(uint8_t mute_mask, int solo_track);
+uint8_t song_mixer_mute(void);
+int song_mixer_solo(void);
 void song_stop(void);
 int  song_playing(void);
 void song_tick(void);                 /* call once per frame while playing */
