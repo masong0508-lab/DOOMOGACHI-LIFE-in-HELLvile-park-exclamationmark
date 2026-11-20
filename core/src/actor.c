@@ -489,10 +489,6 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
     fix16 nx = a->x + dx, ny = a->y + dy;
     int fl, ce, z = FIX2INT(a->z), i;
     int flying = (a->flags & AF_FLYING) != 0;
-    /* A zero step is not an escape route. Previously the axis fallback
-     * could report success without moving and keep a demon stuck at a
-     * corner instead of trying its next heading. */
-    if (!dx && !dy) return 0;
     /* Check nearby blocking bodies before scanning tile heights. A crowded
      * doorway rejects most candidate steps here, saving 1-4 collision
      * cell and mover queries per rejected step without changing outcomes. */
@@ -563,10 +559,7 @@ static void demon_walk(int idx, int want_angle)
             return;
         }
     }
-    /* When every local detour is blocked, reverse orbit preference so
-     * skirmishers and flyers do not keep circling into the same wall.
-     * The random escape heading and its RNG cadence remain unchanged. */
-    if (a->strafe) a->strafe = (int8_t)-a->strafe;
+    /* stuck: pick a random direction for a while */
     ai_dir[idx] = (int16_t)rng_range(&doomo_rng, 4096);
     ai_move[idx] = 10;
 }
