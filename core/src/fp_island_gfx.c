@@ -38,8 +38,21 @@ static void use_geo(void)
 
 const FpMap *fp_map(void) { use_geo(); return &M; }
 
-int fp_mx(int u) { use_geo(); return M.x + u * M.w / 256; }
-int fp_my(int u) { use_geo(); return M.y + u * M.h / 256; }
+/* Internal projected coordinates: every map phase enters through
+ * fp_island_draw_map_part(), which calls fp_island_geometry() first.
+ * Avoid the platform screen-size queries and geometry check at each
+ * landmark, road endpoint, decoration and walker. The public forms
+ * retain their validation for callers outside the draw pass. */
+static int map_x_ready(int u) { return M.x + u * M.w / 256; }
+static int map_y_ready(int u)
+{
+    int v = 128 + (u - 128) * 17 / 16;
+    if (v < 4) v = 4;
+    if (v > 252) v = 252;
+    return M.y + v * M.h / 256;
+}
+int fp_mx(int u) { use_geo(); return map_x_ready(u); }
+int fp_my(int u) { use_geo(); return map_y_ready(u); }
 
 static int isqrt_i(int v) { return v <= 0 ? 0 : (int)fx_isqrt((uint32_t)v); }
 
@@ -47,11 +60,12 @@ static void build_geometry(void)
 {
     int row, sw = fp_sw(), sh = fp_sh();
     M.x = 0;
-    /* PS1 hub pass: let the island use more of the 320x240 frame.
-     * Keep a slim top/bottom safety margin for the HUD and corner prompts. */
-    M.y = 10;
+    /* Fill more of the available vertical screen while keeping a safe
+     * HUD margin. No extra rows are allocated: FP_GEO_ROWS already bounds
+     * the coastline buffers on every port. */
+    M.y = sh >= 200 ? 7 : 5;
     M.w = sw;
-    M.h = sh - 20;
+    M.h = sh - 2 * M.y;
     if (M.h > FP_GEO_ROWS - 2) M.h = FP_GEO_ROWS - 2;
     G->geo_w = (int16_t)sw;
     G->geo_h = (int16_t)sh;
@@ -77,15 +91,21 @@ static void build_geometry(void)
 
 void fp_island_geometry(void) { use_geo(); }
 
-/* Is the screen point on land, and on which side (0 hill, 1 hell)? */
-int fp_island_side_at(int x, int y)
+/* Ready-only side probe for glints. Map draw has already claimed and
+ * validated G, so probing ocean pixels should not query the platform. */
+static int side_at_ready(int x, int y)
 {
-    int row;
-    use_geo();
-    row = y - M.y;
+    int row = y - M.y;
     if (row < 0 || row >= M.h || coast_l[row] < 0) return -1;
     if (x < coast_l[row] || x > coast_r[row]) return -1;
     return x > river_c[row] + 5 ? 1 : 0;
+}
+
+/* Is the screen point on land, and on which side (0 hill, 1 hell)? */
+int fp_island_side_at(int x, int y)
+{
+    use_geo();
+    return side_at_ready(x, y);
 }
 
 /* ====================================================================== */
@@ -378,43 +398,43 @@ static uint8_t hell_ground(int row)
 
 static void draw_glints_body(void)
 {
-    int i, t = g_q, night = g_tint == TINT_NIGHT;
+    int i, t = g_q, night = g_tint == TINT_NIGHT, gold = golden_hour();
     for (i = 0; i < 18; i++) {
         uint32_t h = doomo_hash32((uint32_t)i * 977u + 5u);
         int x = M.x + (int)((h & 0xFFF) % (uint32_t)M.w);
         int y = M.y + 3 + (int)((h >> 12) % (uint32_t)DOOMO_MAX(M.h - 6, 1));
         int ph = (t / 3 + (int)(h >> 20)) % 64;
         x = M.x + (x - M.x + t / 8) % M.w;
-        if (fp_island_side_at(x, y) >= 0 || fp_island_side_at(x + 6, y) >= 0) continue;
+        if (side_at_ready(x, y) >= 0 || side_at_ready(x + 6, y) >= 0) continue;
         if (ph < 40) {
             int w = ph < 20 ? 2 + ph / 5 : 6 - (ph - 20) / 5;
-            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : golden_hour() ? PAL_RAMP(RAMP_CANDY, 7) : PAL_WHITE);
-            if (w > 3) R(x + 1, y + 1, w - 2, 1, golden_hour() ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_SKY, 7));
+            RG(x, y, w, 1, night ? PAL_RAMP(RAMP_SKY, 4) : gold ? PAL_RAMP(RAMP_CANDY, 7) : PAL_WHITE);
+            if (w > 3) R(x + 1, y + 1, w - 2, 1, gold ? PAL_RAMP(RAMP_LAVA, 7) : PAL_RAMP(RAMP_SKY, 7));
         }
     }
 }
 
 static void draw_sea(void)
 {
-    int i, t = g_t, night = g_tint == TINT_NIGHT;
+    int i, t = g_t, night = g_tint == TINT_NIGHT, gold = golden_hour();
     int bands = 4, bh = (M.h + bands - 1) / bands;
     static const uint8_t day[4] = { PAL_RAMP(RAMP_SKY, 6), PAL_RAMP(RAMP_MINT, 6),
                                     PAL_RAMP(RAMP_MINT, 5), PAL_RAMP(RAMP_SKY, 5) };
     static const uint8_t dusk[4] = { PAL_RAMP(RAMP_PEACH, 6), PAL_RAMP(RAMP_PASTEL_PINK, 6),
                                      PAL_RAMP(RAMP_PASTEL_PINK, 5), PAL_RAMP(RAMP_VAPE, 5) };
-    const uint8_t *band = golden_hour() ? dusk : day;
+    const uint8_t *band = gold ? dusk : day;
     for (i = 0; i < bands; i++) {
         int y = M.y + i * bh;
         R(M.x, y, M.w, DOOMO_MIN(bh, M.y + M.h - y), band[i]);
         if (i) CK(M.x, y, M.w, 1, tc(band[i - 1]));
     }
     /* wave glints drifting along (recorded per animation step) */
-    lr_run(&L_glint, (int32_t)((g_q / ANIM_Q) & 0x3FFF) | (night << 14) | (golden_hour() << 15), draw_glints_body);
+    lr_run(&L_glint, (int32_t)((g_q / ANIM_Q) & 0x3FFF) | (night << 14) | (gold << 15), draw_glints_body);
     if (night) {
         for (i = 0; i < 14; i++) {
             uint32_t h = doomo_hash32((uint32_t)i * 7919u + 3u);
             int x = M.x + (int)(h % (uint32_t)M.w), y = M.y + (int)((h >> 10) % (uint32_t)M.h);
-            if (fp_island_side_at(x, y) >= 0) continue;
+            if (side_at_ready(x, y) >= 0) continue;
             ui_sparkle(x, y, (t / 4 + i * 5) & 15, PAL_RAMP(RAMP_CANDY, 7));
         }
     }
@@ -598,7 +618,7 @@ static void draw_patches_body(void)
     int i, t = g_t;
     for (i = 0; i < DOOMO_COUNTOF(hill_patches); i++) {
         const Patch *p = &hill_patches[i];
-        int x = fp_mx(p->x), y = fp_my(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
+        int x = map_x_ready(p->x), y = map_y_ready(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
         E(x, y, rx, ry, PAL_RAMP(RAMP_GRASS, 7));
         E(x - rx / 4, y - ry / 4, rx / 2, ry / 2, PAL_RAMP(RAMP_MINT, 7));
         R(x - rx / 2, y, 1, 1, PAL_RAMP(RAMP_PASTEL_PINK, 6));
@@ -606,7 +626,7 @@ static void draw_patches_body(void)
     }
     for (i = 0; i < DOOMO_COUNTOF(hell_patches); i++) {
         const Patch *p = &hell_patches[i];
-        int x = fp_mx(p->x), y = fp_my(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
+        int x = map_x_ready(p->x), y = map_y_ready(p->y), rx = p->rx * M.w / 256 + 1, ry = p->ry * M.h / 256 + 1;
         int glow = ((t / 8) + i * 3) % 12;
         E(x, y, rx * 3 / 4, ry * 3 / 4, PAL_RAMP(RAMP_VAPE, 3));
         E(x + rx / 5, y + ry / 5, rx / 2, ry / 2, PAL_RAMP(RAMP_VAPE, 2));
@@ -646,11 +666,12 @@ static const Seg roads[] = {
 
 static void draw_roads_body(void)
 {
-    /* Five-pixel streets stay legible on a 320x240 PS1 framebuffer. */
-    int i, rw = 5;
+    /* Wider paths on 320+ layouts improve the road network's hierarchy.
+     * Tiny screens keep the original five-pixel footprint. */
+    int i, rw = fp_sw() >= 300 ? 6 : 5;
     for (i = 0; i < DOOMO_COUNTOF(roads); i++) {
         const Seg *s = &roads[i];
-        int x0 = fp_mx(s->x0), y0 = fp_my(s->y0), x1 = fp_mx(s->x1), y1 = fp_my(s->y1);
+        int x0 = map_x_ready(s->x0), y0 = map_y_ready(s->y0), x1 = map_x_ready(s->x1), y1 = map_y_ready(s->y1);
         int hell = s->x0 >= 140;
         uint8_t top = hell ? PAL_RAMP(RAMP_VAPE, 6) : PAL_RAMP(RAMP_PEACH, 7);
         uint8_t mid = hell ? PAL_RAMP(RAMP_VAPE, 5) : PAL_RAMP(RAMP_PEACH, 6);
@@ -661,10 +682,10 @@ static void draw_roads_body(void)
             R(x0, y0, x1 - x0 + rw, rw - 1, mid);
             if (!hell) {
                 int x;
-                for (x = x0 + 4; x < x1; x += 9) R(x, y0 + 1, 3, 1, PAL_RAMP(RAMP_PEACH, 7));
+                for (x = x0 + 4; x < x1; x += 12) R(x, y0 + 1, 3, 1, PAL_RAMP(RAMP_PEACH, 7));
             } else {
                 int x;
-                for (x = x0 + 2; x < x1; x += 4) R(x, y0 + (x & 1), 2, 1, PAL_RAMP(RAMP_VAPE, 4));
+                for (x = x0 + 2; x < x1; x += 6) R(x, y0 + (x & 1), 2, 1, PAL_RAMP(RAMP_VAPE, 4));
             }
         } else {
             R(x0 - 1, y0, rw + 2, y1 - y0 + rw, edge);
@@ -672,7 +693,7 @@ static void draw_roads_body(void)
             R(x0, y0, 1, y1 - y0 + rw - 1, top);
             if (hell) {
                 int y;
-                for (y = y0 + 2; y < y1; y += 4) R(x0 + 1, y + (y & 1), 1, 2, PAL_RAMP(RAMP_VAPE, 4));
+                for (y = y0 + 2; y < y1; y += 6) R(x0 + 1, y + (y & 1), 1, 2, PAL_RAMP(RAMP_VAPE, 4));
             }
         }
     }
@@ -803,7 +824,7 @@ static void draw_deco_xy(const Deco *d, int x, int y)
 
 static void draw_deco(const Deco *d)
 {
-    int x = fp_mx(d->x), y = fp_my(d->y);
+    int x = map_x_ready(d->x), y = map_y_ready(d->y);
     if (hidden(x - 24, y - 40, 48, 48)) return;          /* (well inside any deco) */
     draw_deco_xy(d, x, y);
 }
@@ -879,7 +900,7 @@ static void draw_decos(void)
     for (i = 0; i < 5; i++) fl = fl * 2 + (ui_wave(t + i * 10, 40, 1) > 0);
     for (i = 0; i < DOOMO_COUNTOF(decos); i++) {
         const Deco *d = &decos[i];
-        int x = fp_mx(d->x), y = fp_my(d->y), dx = x - DV_REC_X, dy = y - DV_REC_Y;
+        int x = map_x_ready(d->x), y = map_y_ready(d->y), dx = x - DV_REC_X, dy = y - DV_REC_Y;
         DVar *v;
         const LRect *r;
         if (hidden(x - 24, y - 40, 48, 48)) continue;         /* (well inside any deco) */
@@ -1537,8 +1558,8 @@ static void draw_walkers_body(void)
         if (len <= 0) continue;
         p = (int)((h + (uint32_t)(t * (1 + (h >> 28) % 2) / 4)) % (uint32_t)(len * 2));
         if (p > len) p = len * 2 - p;                /* walk back and forth */
-        x = fp_mx(s->x0 + (s->y0 == s->y1 ? p : 0)) + 1;
-        y = fp_my(s->y0 + (s->y0 == s->y1 ? 0 : p)) + 1;
+        x = map_x_ready(s->x0 + (s->y0 == s->y1 ? p : 0)) + 1;
+        y = map_y_ready(s->y0 + (s->y0 == s->y1 ? 0 : p)) + 1;
         hell = s->x0 >= 140;
         step = (t / 6 + i) & 1;
         if (hell && town_is_night() == 0 && (i & 1)) continue;
