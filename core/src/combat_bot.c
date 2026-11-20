@@ -111,24 +111,22 @@ static int passable(int cx, int cy, int nx, int ny, int allow_lava)
  * This is *only* debug/demo autopilot routing, not enemy AI or the player's
  * collision/physics. The priority order and safe-before-lava preference
  * match the old planner. No heap, framebuffer, or extra static data. */
-static int target_priority;
-static int earliest_priority;
-static void mark1(int cx, int cy)
+static void mark1(int cx, int cy, int priority, int *earliest_priority)
 {
     int i, old;
     if (cx < 0 || cy < 0 || cx >= doomo_map.w || cy >= doomo_map.h) return;
     i = cy * doomo_map.w + cx;
     old = nib_get(i);
-    if (!old || target_priority < old) nib_set(i, target_priority);
-    if (target_priority < earliest_priority) earliest_priority = target_priority;
+    if (!old || priority < old) nib_set(i, priority);
+    if (priority < *earliest_priority) *earliest_priority = priority;
 }
 
 /* Pickups / demons over lava are targeted through safe adjacent tiles. */
-static void mark(int cx, int cy)
+static void mark(int cx, int cy, int priority, int *earliest_priority)
 {
     int k;
     if (!(map_cell_safe(&doomo_map, cx, cy)->flags & CELL_LAVA)) {
-        mark1(cx, cy);
+        mark1(cx, cy, priority, earliest_priority);
         return;
     }
     for (k = 0; k < 8; k++) {
@@ -136,14 +134,14 @@ static void mark(int cx, int cy)
         static const int8_t oy[8] = { 0, 0, 1, -1, 1, -1, 1, -1 };
         int nx = cx + ox[k], ny = cy + oy[k];
         const DoomoCell *c = map_cell_safe(&doomo_map, nx, ny);
-        if (!c->wall && !(c->flags & CELL_LAVA)) mark1(nx, ny);
+        if (!c->wall && !(c->flags & CELL_LAVA)) mark1(nx, ny, priority, earliest_priority);
     }
 }
 
 /* Returns best reachable goal priority and its first move direction.
  * BFS order is identical to the old four-neighbour traversal, so the
  * chosen path for a given priority and lava rule remains shortest. */
-static int bfs_priority(int allow_lava, int *first_dir)
+static int bfs_priority(int allow_lava, int *first_dir, int earliest_priority)
 {
     int w = doomo_map.w, h = doomo_map.h;
     int px = FIX2INT(doomo_player.x) / CELLU, py = FIX2INT(doomo_player.y) / CELLU;
@@ -183,44 +181,43 @@ static int bfs_priority(int allow_lava, int *first_dir)
 static int plan(void)
 {
     int i, count = doomo_map.w * doomo_map.h, safe_rank, lava_rank;
-    int safe_dir, lava_dir, px, py, result_dir;
+    int safe_dir, lava_dir, px, py, result_dir, earliest_priority = 7;
 #if defined(DOOMO_PLATFORM_GBA)
     gba_bot_claim();   /* Same 4 KB borrowed scratch, zero persistent RAM. */
 #endif
     memset(BOT_DIR, 0, BOT_DIR_BYTES);
-    earliest_priority = 7;
     for (i = 0; i < count; i++) {
         const DoomoCell *c = &doomo_map.cells[i];
         int x = i % doomo_map.w, y = i / doomo_map.w;
         if ((c->flags & CELL_EXIT) && combat_s.goal == CGOAL_EXIT) {
-            target_priority = 2; mark(x, y);
+            mark(x, y, 2, &earliest_priority);
         }
         if (c->flags & CELL_TRIGGER) {
-            target_priority = 5; mark(x, y);
+            mark(x, y, 5, &earliest_priority);
         }
     }
     for (i = 0; i < ACTOR_MAX; i++) {
         const DoomoActor *a = &doomo_actors[i];
         int x = FIX2INT(a->x) / CELLU, y = FIX2INT(a->y) / CELLU;
         if (a->flags & AF_PICKUP) {
-            target_priority = 6; mark(x, y);
+            mark(x, y, 6, &earliest_priority);
             if (a->type == THING_KEY_RED || a->type == THING_KEY_BLUE) {
-                target_priority = 3; mark(x, y);
+                mark(x, y, 3, &earliest_priority);
             }
             if (doomo_player.hp < 50 &&
                 (a->type == THING_HEALTH_SMALL || a->type == THING_HEALTH_BIG ||
                  a->type == THING_SOUL_ORB || a->type == THING_ARMOR)) {
-                target_priority = 1; mark(x, y);
+                mark(x, y, 1, &earliest_priority);
             }
         }
         if ((a->flags & AF_SHOOTABLE) && IS_DEMON(a->type) && a->hp > 0) {
-            target_priority = 4; mark(x, y);
+            mark(x, y, 4, &earliest_priority);
         }
     }
     if (earliest_priority == 7) return 0;
-    safe_rank = bfs_priority(0, &safe_dir);
+    safe_rank = bfs_priority(0, &safe_dir, earliest_priority);
     if (safe_rank > earliest_priority) {
-        lava_rank = bfs_priority(1, &lava_dir);
+        lava_rank = bfs_priority(1, &lava_dir, earliest_priority);
         /* A higher-priority goal reachable through lava wins, as it did
          * when the original planner retried each category across lava. */
         if (lava_rank < safe_rank) {
