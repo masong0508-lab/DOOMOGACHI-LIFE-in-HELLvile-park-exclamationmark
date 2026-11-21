@@ -126,7 +126,9 @@ int story_item_price(int item)
 /* ---- the menu ----------------------------------------------------------------------- */
 enum { OPT_TALK, OPT_BUY, OPT_ACT, OPT_REST, OPT_WORKSHOP, OPT_SHOPSCREEN, OPT_GRAVE,
        OPT_HEAL, OPT_LEAVE, OPT_INSIDE, OPT_MEET };
-#define MENU_MAX 7
+/* UI dialogue choice entries are capped at DLG_OPTS=6. Do not exceed
+ * that cap or drop the always-required Leave option. */
+#define MENU_MAX 6
 static const char *menu_txt[MENU_MAX];
 static uint8_t menu_op[MENU_MAX];
 static int menu_n, menu_place;
@@ -345,7 +347,10 @@ static void open_menu(int p)
     {
         int venue = meeting_venue(p);
         int guest = venue >= 0 ? talk_outcome_meet_ready(venue) : -1;
-        if (guest >= 0) {
+        /* Reserve exactly one slot for Leave. A full existing place menu
+         * takes priority over a new optional rendezvous. No hidden Leave
+         * button, no unselectable seventh row on GBA/PS1. */
+        if (guest >= 0 && menu_n < MENU_MAX - 1) {
             const DoomoResident *friend = town_res(guest);
             doomo_snprintf(meet_label, sizeof meet_label, "Meet up with %s", friend->name);
             add_opt(meet_label, OPT_MEET);

@@ -198,3 +198,12 @@ spawn presentation, saved pending appointments, and several activity
 choices per venue. The new native action test verifies the right
 venue, single-consumption behavior, changed needs and shared memory.
 No 3D raycasting, NPC arrays or per-frame work is added.
+
+### Six-choice dialogue safety
+
+The normal Story place picker has **six** slots (the UI's
+`DLG_OPTS` constant); any seventh choice would be silently dropped.
+The new meetup row therefore appears only when there is capacity
+*after reserving a slot for Leave*. Existing place options always take
+precedence, and menu size remains six on all ports. This prevents a
+missing Leave option or a soft lock at a crowded building menu.
