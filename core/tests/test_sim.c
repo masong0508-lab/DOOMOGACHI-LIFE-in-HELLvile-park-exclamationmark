@@ -604,7 +604,13 @@ static uint32_t news_stream(uint32_t h, uint32_t seed, int pop, int days, uint32
  * gained hysteresis (the seeded run takes a different, equally valid path: 16,575
  * bytes) and again by S3-1 (the resident pass is spread over the 15 game minutes instead of
  * running all 1,000 residents in 32 ticks: the same rates, another order of the updates and
- * so another seeded path, 16,629 bytes; test_sim_pass.c holds the new behaviour). */
+ * so another seeded path, 16,629 bytes; test_sim_pass.c holds the new behaviour).
+ * The social-destination update on main (215868f through 707a060) chooses
+ * visited venues using actual live friends and rivals; this deliberately
+ * alters some resident schedules and their subsequent seeded news. Both
+ * untouched main CI and the new Talk branch produced 16,761 bytes and
+ * hash 2e97204b. The independent per-event and social-goal tests retain
+ * their invariants. */
 TEST(sim_news_records_print_the_old_headlines)
 {
     uint32_t h = 2166136261u, bytes = 0;
@@ -613,8 +619,8 @@ TEST(sim_news_records_print_the_old_headlines)
     h = news_stream(h, 9, TOWN_POP_RANDOM, 3, &bytes);
     printf("    news stream: %u bytes, hash %08x\n", (unsigned)bytes, (unsigned)h);
     if (DOOMO_RES_SLOTS) return;        /* LIVE=500: another town, other headlines */
-    CHECK_EQ_U(bytes, 16629u);
-    CHECK_EQ_U(h, 0x7bc898aeu);
+    CHECK_EQ_U(bytes, 16761u);
+    CHECK_EQ_U(h, 0x2e97204bu);
 }
 
 TEST(sim_news_records_and_free_lines)
