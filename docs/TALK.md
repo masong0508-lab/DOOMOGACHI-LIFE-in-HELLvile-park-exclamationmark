@@ -1,5 +1,37 @@
 # Talk: the live house conversation
 
+**Adaptive social dialogue policy (2026-11-21):** The quick-reply picker now
+uses a small, bounded predictive planner, not purely a rotated list.
+After at least two real turns, it evaluates eligible follow-up actions against
+the existing drama manager's simulated reception (talk_dm_expect): resident
+mood, persona, custom traits, topic stance, and relationship. It also weighs
+engagement, tension, the in-session change in trust, the last player act,
+and the six most recent conversation-history entries. In a deteriorating or
+heated exchange, repair options rank above another insult or joke. Repeated
+player actions are down-ranked, never prohibited, so the player remains free
+to choose any otherwise-legal action through the full menu.
+
+If an active subject has a reviewed, direct lexical association with this
+resident's actual saved topic, a conversation that has lasted three turns
+can offer a distinct fourth-slot **semantic bridge** into that memory. It
+never claims a shared experience that did not happen, and it does not force
+the topic change. No bridges are offered in sincere/grief talk or immediately
+after a topic change. All proposed lines still pass the same speaker,
+audience, concept and safety checks, and selections still enter the real
+drama manager with its game simulation outcomes.
+
+This is **game-native social AI, not an embedded neural network or an
+unbounded language model**: it makes more use of the existing simulation and
+memory rather than claiming model-scale general intelligence. Candidates are
+bounded by the existing short act lists (at most nine for the last slot);
+history inspection is capped at six events; execution occurs when menu
+choices are regenerated, never every rendered frame. No new persistent
+resident fields, save bytes, textures, heap allocations, or language-bank
+requirements. Tests in core/tests/test_talk_quick.c pin down novelty,
+stable seeded behavior, actual association gating, sincerity, and argument
+repair. Build/emulator validation of this newest revision remains separate
+from the committed code.
+
 **Playable social history (2026-11-20):** On a one-person-targeted Talk screen,
 open **Options > Our history**. The screen shows the town's remembered-resident
 usage and count of active/ready commitments, this person's open favor (if any),
@@ -81,13 +113,14 @@ Contents:
 | T9, T10 | pointer input; other languages (after the script rewrite) | to do |
 | TP0-TP4, TD0-TD3 | the PS1 and Dreamcast ports | TD1 done (the bank is read from the disc, docs/DREAMCAST.md "Talk on the Dreamcast (TD1)"); TD2 partly done (Talk plays on the Dreamcast with the typed line, the pad fallback and 40-column bubbles; HD text since DC10B, and the "Talk is warming up..." note while the bank loads, docs/DREAMCAST.md "Talk: the warming-up note and HD text (DC10B)"); the rest to do (TD0's prerequisites are in: DC3, DC4, DC8 with zoom 2 and `plat_room_project`, and the Flycast core, approved and built) |
 
-Nothing in the game can reach Talk yet. `home_talk_enter()` is a weak
-default that answers "not available", and no platform sets `PLATF_TALK`.
-T5a generates lines, but **only the unit tests and the census call it**:
-the house mode (T8) is what makes it reachable in play. Every line the
-generator writes has already gone through the T4 gate (the player's
-utterance) and the S3 output lint (the line), and the property tests over
-generated lines (P1-P8, section 2) are green.
+**Current integration:** The Talk screen is reachable from the house
+on native, GBA and Dreamcast builds which enable PLATF_TALK; the
+Dreamcast disc supplies its language bank during boot. The weak
+home_talk_enter() fallback is retained for targets that do not link
+Talk, including shipping PS1 while its experimental profile exceeds the
+currently approved RAM budget. Every spoken utterance uses the T4 audience
+gate and S3 output lint. CI and emulator acceptance must be checked for
+each commit; a source-level feature is not automatically a verified port.
 
 ---------------------------------------------------------------------------
 
