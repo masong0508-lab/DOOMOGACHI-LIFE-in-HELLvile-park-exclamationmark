@@ -48,10 +48,11 @@ int ps2_audio_init(void)
 void ps2_audio_frame(void)
 {
     if(!running)return;
-    /* Never block the GS/logic scheduler for a late IOP consumer.
-     * This trades an occasional audio drop for correct gameplay speed. */
-    if(audsrv_available()<(int)sizeof pcm)return;
+    /* Advance the synth on every logic tick, even when SPU2 is full:
+     * dropping one block must not delay a whole section of the score. */
     ps2_synth_render(&synth,pcm,PS2_SOUND_FRAMES);
+    /* Never block the GS/logic scheduler for a late IOP consumer. */
+    if(audsrv_available()<(int)sizeof pcm)return;
     (void)audsrv_play_audio((const char *)pcm,(int)sizeof pcm);
 }
 void plat_tone(int ch,uint16_t hz,uint8_t vol,uint8_t wave)
