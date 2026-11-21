@@ -157,6 +157,8 @@ int main(void)
         }
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
+        /* Never carry last frame's sprite/GIF commands forward. */
+        gsKit_queue_reset(gs->Os_Queue);
         field++;
     }
     return 0;
