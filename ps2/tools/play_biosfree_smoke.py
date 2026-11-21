@@ -30,7 +30,7 @@ def main():
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
         raise SystemExit("Missing or unusually small PS2 boot image")
-    if args.launch == "elf" and iso.open("rb").read(4) != b"\\x7fELF":
+    if args.launch == "elf" and iso.open("rb").read(4) != b"\x7fELF":
         raise SystemExit("--launch elf requires a native PS2 EE executable")
     if args.seconds < 15:
         raise SystemExit("At least 15 seconds needed for a meaningful boot probe")
