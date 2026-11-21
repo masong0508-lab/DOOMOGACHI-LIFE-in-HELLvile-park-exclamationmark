@@ -171,6 +171,7 @@ int main(int argc,char **argv)
     draw_boot(gs);
     gsKit_queue_exec(gs);
     gsKit_sync_flip(gs);
+    gsKit_queue_reset(gs->Os_Queue);
     SifInitRpc(0);
     s_pad_open=ps2_pad_init();
     printf("[PS2] DOOMOGACHI PS2-0 boot - GS 640x448 NTSC, PAD=%d\n",s_pad_open);
