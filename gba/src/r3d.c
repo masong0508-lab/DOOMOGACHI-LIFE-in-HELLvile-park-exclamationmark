@@ -293,7 +293,7 @@ static void setup_fade(int amb, const DoomoMapDef *def)
     for (b = 0; b < R3D_FADE_N; b++) {
         int f = b >> 2;
         if ((cathedral || capital) && f > 5) {
-            int far_cap = cathedral ? 7 : 9;
+            int far_cap = cathedral ? 5 : 9; /* cathedral stone stays readable across the nave */
             f = 5 + ((f - 5) >> 1);
             if (f > far_cap) f = far_cap;
         }
