@@ -129,3 +129,39 @@ If six-pixel signature still dominates, inspect frame work, cooldown
 and the governor; do not claim the new tier fixed blur without
 evidence. Keep FPS, ROM integrity and exact-tick scenery inspection
 as independent acceptance checks.
+
+## GBA-only compact Bone edition: playable geometry budget
+
+The original Cathedral (48×56) and Capital (64×64) **remain full-size** on
+PS1, PC, Dreamcast and other ports. For the GBA only, `map_load_def()`
+clips decorative *solid* buttresses, mast, tower/spire roofs above 40 height
+steps (320 world units). This lowers **28 Cathedral and 24 Capital solid
+cells**: existing heights 46/56/80/112 now stop at 40. Open cells,
+reachable floors, stairs, the blue-key path, keys, pickups, boss triggers,
+doors, lifts, exits, map widths/heights and actors are unchanged. The
+maximum walkable platform is below 40 steps; the change cannot make a
+new climbable roof within the 24-world-unit step-up limit. No extra
+texture, frame buffer, RAM, or ongoing CPU cost is introduced.
+
+The GBA renderer also limits ray/view horizon in these two maps:
+* **Cathedral**: Balanced and Smooth up to 18 cells; 80×54 emergency
+  fallback up to 16; Max detail up to 26.
+* **Capital**: Balanced and Smooth up to 20 cells; 80×54 emergency
+  fallback up to 16; Max detail up to 26.
+
+This is a **deliberate GBA-specific visual simplification**. It can reduce
+distant panorama, and clipping distant sprites is consistent with the
+ray horizon. Nearby landmark geometry and all navigation remain intact.
+It does not change simulation or the maps used by other ports.
+
+### Acceptance test
+
+Build `make -C gba rom`; run `make -C gba test-3d-census` and compare
+the same camera/movement windows against the earlier 15–16 Cathedral
+and 18–19 Capital drawn FPS baseline. Keep ≈30 logic TPS and test the
+blue-key lift, secret rooms, choir waves, organ boss and exits.
+Inspect first-/third-person GBA screenshots **from this commit**, including
+the Cathedral entrance and interior aisle and Capital gate, market,
+lift and skybridge. If the shortened horizon hides important threats or
+landmarks, raise that area's limit; do not silently remove encounters.
+No FPS or ROM success claim until GBA CI and emulator runs complete.

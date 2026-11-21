@@ -768,6 +768,19 @@ void plat_view3d(const DoomoView3D *v)
          * the horizon there); 0 or out of range = R3D_MAXDIST, the same frames as before */
         uint32_t vd = v->view_dist;
         if (vd < R3D_MINDIST || vd > R3D_MAXDIST) vd = R3D_MAXDIST;
+        /* GBA-only compact Bone presentation. Rendering 40-cell-long
+         * outdoor/nave sightlines costs far more than the extra stone
+         * detail is worth at 96x64. Keep recognizable nearby facades
+         * and the actual full-sized walkable map; limit only the rays
+         * (and sprites beyond the same horizon). Max detail gets a
+         * longer panorama, Balanced/Smooth favor playable frame pacing.
+         * No changes to AI, targeting, collisions, goals or map data. */
+        if (bone_readability_map(m->def)) {
+            uint32_t cap = (opt_get(OPT_3D_FAST) == OPT3D_MAX) ? 26u :
+                           (detail == 4 ? 16u :
+                           (m->def == doomo_maps[MAPID_BONE_CATHEDRAL] ? 18u : 20u));
+            if (vd > cap) vd = cap;
+        }
         /* Graveyard's long outdoor rays are still costly at quarter
          * detail. Shorten the render horizon only in Balanced's fallback. */
         if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])

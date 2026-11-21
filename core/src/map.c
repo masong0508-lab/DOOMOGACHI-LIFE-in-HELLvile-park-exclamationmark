@@ -136,6 +136,23 @@ void map_load_def(const DoomoMapDef *d)
     memset(doomo_map.cells + n, 0, sizeof(doomo_map.cells) - (size_t)n * sizeof(DoomoCell));
 #endif
     map_def_cells(d, doomo_map.cells, doomo_map.w, doomo_map.h);
+#if defined(DOOMO_PLATFORM_GBA)
+    /* The GBA's Bone edition retains every tile, door, lift, key, route,
+     * encounter and exit, but scales down the NON-INTERACTIVE skyline.
+     * The authored ROM maps (used by native, PS1 and other ports) stay
+     * untouched. A 320-unit (40-step) decorative tower is still above
+     * all climbable platforms (the highest is 27 steps), so this does
+     * not create a new reachable roof or change pathfinding.
+     * Run once per level load; no heap, extra RAM or per-frame work. */
+    if (d == doomo_maps[MAPID_BONE_CATHEDRAL] ||
+        d == doomo_maps[MAPID_BONE_CAPITAL]) {
+        for (i = 0; i < n; i++) {
+            DoomoCell *c = &doomo_map.cells[i];
+            if (c->wall && !c->flags && c->ceil_h > 40)
+                c->ceil_h = 40;
+        }
+    }
+#endif
     /* One-time dungeon wayfinding light pass: the exit becomes an obvious
      * destination and the approaches catch a little of its light. Key
      * doors get a clear warm/cold threshold rather than disappearing in
