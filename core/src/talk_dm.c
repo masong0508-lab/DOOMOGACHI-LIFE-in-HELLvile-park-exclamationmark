@@ -1394,6 +1394,39 @@ int talk_dm_open(TalkState *s)
 }
 
 /* ---- idle chatter (5.4) ------------------------------------------------------------- */
+/* A resident can receive a completed favor without making the player
+ * leave and reopen Talk. Reuse the exact TQ_DONE generator and outcome event
+ * used by the opening sequence; do NOT hand-edit money, relationships, or
+ * quest state here. The house applies it at its next session boundary. */
+int talk_dm_hand_in(TalkState *s, int slot)
+{
+    int kind, st, i, id;
+    TalkQuest q;
+    if (!s || (s->flags & TDF_OVER) || s->conv.care ||
+        s->care_left || !talker(s, slot) ||
+        (s->q_kind && (s->q_st & TQ_ST_ASKED)) ||
+        s->nplan > s->plan_at || s->nev >= TALK_EVENTS_MAX)
+        return 0;
+    id = res_id(s, slot);
+    if (id < 0 || !talk_quest_state(id, &kind, &st, NULL, NULL) ||
+        !talk_quest_ready(id))
+        return 0;
+    /* The phrase is generated with this exact living resident's request,
+     * including the real requested item or target when applicable. */
+    if (!talk_quest_derive(id, kind, NULL, 0, 0, &q) &&
+        kind != TQK_COMPANY && kind != TQK_SECRET)
+        return 0;
+    for (i = 0; i < s->nev; i++)
+        if (s->ev[i].kind == TEV_QUEST_DONE && s->ev[i].a == slot)
+            return 0;       /* cannot claim this reward twice */
+    s->nlines = s->nplan = s->plan_at = 0;
+    s->idle_n = 0;
+    s->idle_frames = 0;
+    s->exchange++;
+    plan_add(s, DK_QUEST, slot, -1, QUEST_ARG(TQP_DONE, kind));
+    return s->nplan != 0;
+}
+
 int talk_dm_tick(TalkState *s, int frames)
 {
     DoomoRng rng;
