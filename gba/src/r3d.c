@@ -275,11 +275,12 @@ static void setup_viewport(int vw, int vh, int fov)
 
 static void setup_fade(int amb, const DoomoMapDef *def)
 {
-    /* Cathedral/Capital readability: these two vast red interiors already
-     * have sector lights, but the standard 1/128-unit falloff crushes
-     * their distant architecture to near-black. Soften only their long
-     * distance fade. The same 128-byte LUT is used by walls, flats and
-     * sprites; zero additional per-pixel work or framebuffer memory. */
+    /* Cathedral/Capital readability: their long aisles and city vistas
+     * otherwise fade toward black before their landmarks can be seen.
+     * Preserve the authored near/mid-range lighting curve, but retain
+     * a little dim light in the farthest distance so silhouettes stay
+     * legible. The shared 128-byte LUT does all the work on map changes:
+     * no extra ray steps, per-pixel instructions, or framebuffer RAM. */
     const int bone = def == doomo_maps[MAPID_BONE_CATHEDRAL] ||
                      def == doomo_maps[MAPID_BONE_CAPITAL];
     /* Distance fade (reference semantics): one light level per 128 world
@@ -287,7 +288,10 @@ static void setup_fade(int amb, const DoomoMapDef *def)
     int b;
     for (b = 0; b < R3D_FADE_N; b++) {
         int f = b >> 2;
-        if (bone && f > 5) f = 5 + ((f - 5) >> 1);
+        if (bone && f > 5) {
+            f = 5 + ((f - 5) >> 1);
+            if (f > 9) f = 9; /* keep distant arches above near-black */
+        }
         r3d_fade[b] = (uint8_t)(f > 15 ? 15 : f);
     }
     r3f.amb = amb ? amb : 12;              /* light of cells with light 0 */
