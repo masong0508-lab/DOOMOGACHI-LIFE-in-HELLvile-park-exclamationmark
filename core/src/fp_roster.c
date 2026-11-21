@@ -331,6 +331,10 @@ static void cb_search(int ok)
     use_state();
     rebuild(rs);
     rs->top = 0;
+    rs->stable = 0;
+    /* A search result has a new focused face. Queue it here, rather
+     * than waiting for the next general roster navigation tick. */
+    warm_card_faces();
     if (ok && rs->search[0] && n_ids > 0) fp_achieve(UL_FP_SEARCHER);
 }
 
@@ -389,7 +393,16 @@ static void roster_update(void)
     }
     rs->last_frame = doomo_frame_count();
     rs->pop_t++;
-    if (rs->filter_open) { filter_update(); return; }
+    if (rs->filter_open) {
+        filter_update();
+        if (!rs->filter_open) {
+            /* Returning from the filter sheet can reveal a new selected
+             * citizen. Claim the next idle slice before drawing the card. */
+            rs->stable = 0;
+            warm_card_faces();
+        }
+        return;
+    }
     old = rs->sel;
     if (btn_repeat(BTN_UP) && n_ids) rs->sel = (int16_t)(rs->sel > 0 ? rs->sel - 1 : n_ids - 1);
     if (btn_repeat(BTN_DOWN) && n_ids) rs->sel = (int16_t)(rs->sel < n_ids - 1 ? rs->sel + 1 : 0);
@@ -403,10 +416,9 @@ static void roster_update(void)
     } else if (rs->stable < 1000) {
         rs->stable++;
     }
-    /* A new selection gets first claim on the next idle render slice.
-     * On a stationary card, the same slot opportunistically prepares
-     * the nearest neighbor without replacing the active job. */
-    warm_card_faces();
+    /* Switch the district before scheduling prefetch: the previous
+     * selection might no longer be on this page, and warming it here
+     * would steal the only pending job from the actual selected card. */
     if (btn_pressed(BTN_L | BTN_R)) {
         rs->district = (uint8_t)((rs->district + (btn_pressed(BTN_L) ? 2 : 1)) % 3);
         audio_sfx(SFX_BLIP);
@@ -417,6 +429,9 @@ static void roster_update(void)
         warm_card_faces();
         return;
     }
+    /* One focused face per tick; neighboring faces are warmed after the
+     * selection settles, within the existing idle-budget scheduler. */
+    warm_card_faces();
     if (btn_pressed(BTN_START)) {
         audio_sfx(SFX_SELECT);
         rs->filter_open = 1;
