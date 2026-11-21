@@ -139,6 +139,15 @@ jobs:
           sh tools/ci_apt.sh gcc make python3 gcc-arm-none-eabi libnewlib-arm-none-eabi libmgba-dev
           arm-none-eabi-gcc --version | head -n 1
 
+      # Catch ARMv4T video scaler syntax/arch regressions *before* the
+      # expensive ROM asset bake and native preview generation begin.
+      - name: GBA ARM7TDMI assembly preflight
+        run: |
+          mkdir -p gba/build/preflight
+          arm-none-eabi-gcc -mcpu=arm7tdmi -mtune=arm7tdmi -mthumb-interwork \
+            -g -x assembler-with-cpp -c gba/src/video_loops.s \
+            -o gba/build/preflight/video_loops.o
+
       - name: Build the game ROM
         run: make -C gba -j"$(nproc)"
 
