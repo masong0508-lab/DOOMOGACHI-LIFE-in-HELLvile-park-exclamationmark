@@ -570,10 +570,12 @@ static void health_panel(int x, int y, const HudPal *p)
 {
     int hp = doomo_player.hp, low = hp > 0 && hp <= 30;
     int beat = low ? (combat_px.heartbeat % (hp <= 15 ? 18 : 26)) : 99;
-    int hs = 5 + (beat < 3 ? 2 : beat < 6 ? 1 : 0);
+    /* Small two-tick heartbeat, not a large flashing heart and number.
+     * The health panel remains legible and can be retained more often. */
+    int hs = 5 + (low && beat < 2 ? 1 : 0);
     face_badge(x, y - 14, p);
     if (UI_PANELS) {                                      /* SP8 (see face_badge) */
-        uint32_t key = ui_key_int(ui_panel_key(), (combat_s.hell >= 128) | (low ? hs << 1 | (hud_t & 4) << 4 : 0));
+        uint32_t key = ui_key_int(ui_panel_key(), (combat_s.hell >= 128) | (low ? hs << 1 : 0));
         key = ui_key_int(key, DOOMO_MAX(hp, 0));
         key = ui_key_int(key, doomo_player.armor);
         if (!plat_panel_begin(PANEL_COMBAT_HEALTH, x + 50, y - 2, 56, 30, key)) { plat_panel_end(); return; }
@@ -581,7 +583,7 @@ static void health_panel(int x, int y, const HudPal *p)
     panel(x + 50, y - 2, 52, 30, p);
     /* C10: health is a heart in every mode (the hell HUD drew a skull, which read as "demons") */
     ui_heart(x + 59, y + 6, hs, low ? PAL_UI_RED : combat_s.hell >= 128 ? PAL_RAMP(RAMP_LAVA, 6) : PAL_PAINT(PAINT_CHERRY, 1));
-    num_big(x + 67, y, DOOMO_MAX(hp, 0), low ? (hud_t & 4 ? p->accent : p->text) : p->text, p->text_out);
+    num_big(x + 67, y, DOOMO_MAX(hp, 0), low ? p->accent : p->text, p->text_out);
     icon_shield(x + 59, y + 19, doomo_player.armor ? PAL_UI_MINT : p->dim, p->outline);
     {
         char buf[8];
