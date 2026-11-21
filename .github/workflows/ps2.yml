@@ -26,6 +26,11 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
             ps2/tests/indexed_blit_test.c -o /tmp/ps2-blit-test
           /tmp/ps2-blit-test
+      - name: Check dual-bank memory-card save journal and rollback
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/save_journal_test.c -o /tmp/ps2-save-journal-test
+          /tmp/ps2-save-journal-test
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
