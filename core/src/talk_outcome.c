@@ -257,12 +257,12 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
  * Unlike meet_ready, this reports a missed/pending appointment too, so the
  * Talk journal can explain why no guest appeared at the expected place.
  * No sim tick, heap, or new save data. */
-int talk_outcome_meet_plan(int resident_id)
+int talk_outcome_meet_plan(int guest_id)
 {
     const LedP *p;
-    if (!resident_id(resident_id) || !alive_resident(resident_id)) return -1;
+    if (!resident_id(guest_id) || !alive_resident(guest_id)) return -1;
     roll();
-    p = led_peek(resident_id);
+    p = led_peek(guest_id);
     if (!p || !(p->flags & LPF_INVITE) ||
         p->pad == 0 || p->pad > ACT_COUNT) return -1;
     return (int)p->pad - 1;
