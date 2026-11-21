@@ -344,7 +344,7 @@ TEST(talk_scene_history_reports_real_favor_progress)
     TalkQuest q;
     const char *kind;
     char label[64];
-    int row, i, saw_goal = 0, saw_ready = 0, money0;
+    int row, i, saw_goal = 0, money0;
 
     town();
     CHECK(open_talk(ID_NANA));
@@ -383,7 +383,9 @@ TEST(talk_scene_history_reports_real_favor_progress)
     CHECK_EQ((int)doomo_town.money, money0);
 
     /* Receiving the requested item while chatting updates the journal.
-     * Simply inspecting it must neither consume it nor grant a reward. */
+     * An unready request can be inspected without consequence; selecting
+     * one that IS ready now starts the real thank-you and hand-in flow.
+     * The other end-to-end test verifies payout after reading that reply. */
     CHECK(inv_add(q.item, 1) >= 1);
     press(BTN_B);
     go_to(find_row("history", -1, -1)); press(BTN_A);
@@ -392,11 +394,9 @@ TEST(talk_scene_history_reports_real_favor_progress)
     CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
     CHECK(strstr(label, "ready") != NULL);
     go_to(row); press(BTN_A);
-    for (i = 0; ui_toast_text(i); i++)
-        if (strstr(ui_toast_text(i), "Ready!") != NULL) saw_ready = 1;
-    CHECK(saw_ready);
-    CHECK_EQ(inv_count(q.item), 1);
-    CHECK_EQ((int)doomo_town.money, money0);
+    CHECK(talk_scene_debug(&d) && d.busy); /* a resident really answers */
+    CHECK_EQ(inv_count(q.item), 1);        /* no premature consumption */
+    CHECK_EQ((int)doomo_town.money, money0); /* no premature reward */
 }
 
 TEST(talk_scene_open_favor_is_accessible_from_main)
