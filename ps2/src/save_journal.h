@@ -55,6 +55,8 @@ static inline int ps2_sj_decode(const uint8_t *h,uint32_t max,
 /* Compare counters across wrap; newest is at most 2^31 saves ahead. */
 static inline int ps2_sj_newer(uint32_t a,uint32_t b)
 {
-    return (int32_t)(a-b)>0;
+    /* Unsigned subtraction has defined rollover; avoid converting a
+     * value above INT32_MAX to signed (implementation-defined in C99). */
+    return a!=b && (uint32_t)(a-b)<0x80000000u;
 }
 #endif
