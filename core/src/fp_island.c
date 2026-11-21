@@ -26,6 +26,9 @@
 #include "doomo/library.h"
 #include "doomo/portrait.h"
 #include "doomo/street.h"    /* one immutable address for every 1000 house slots */
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -107,7 +110,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
        E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP,
-       E_WALK_DISTRICT, E_CITY_ATLAS };
+       E_WALK_DISTRICT, E_CITY_ATLAS, E_MEET };
 
 #define MENU_MAX 24
 typedef struct {
@@ -406,6 +409,25 @@ static void build_menu(const Loc *L)
         return;
     default: break;
     }
+#ifdef DOOMO_HAS_TALK
+    /* An accepted invitation now has a clear arrival point even for
+     * Free Play users who never open the 3D Story street/door menu.
+     * Query only on menu construction (and its existing 32-frame refresh),
+     * never during island rendering or in the population scan. */
+    if (L->act != NOLOC && L->act < ACT_COUNT) {
+        int guest = talk_outcome_meet_ready(L->act);
+        if (guest >= 0) {
+            const DoomoResident *friend = town_res(guest);
+            char label[30];
+            if (friend) {
+                doomo_snprintf(label, sizeof label, "Meet %s here!", friend->name);
+                e = add(E_MEET, ICON_HEART, label,
+                        "Your friend arrived! Chat or share an activity.");
+                if (e) e->arg = (int16_t)L->act;
+            }
+        }
+    }
+#endif
     add(E_CLOSE, ICON_X, "Leave", "Back to the map (B does it too).");
 }
 
@@ -721,6 +743,82 @@ static void atlas_load(int side)
     map_load(side ? MAPID_HELLVILE : MAPID_HAHALAND);
 }
 
+#ifdef DOOMO_HAS_TALK
+/* The same day-scoped reservation the 3D place door uses. There is
+ * never a separate hub-only date, resident duplicate or phantom meetup. */
+static const char *meet_options[3] = {
+    "Catch up (free)", "Spend time together", "Maybe later"
+};
+
+static const char *meet_activity_name(int venue)
+{
+    switch (venue) {
+    case ACT_CAFE: return "Share snacks (6 H$)";
+    case ACT_PARK: return "Take a walk";
+    case ACT_BEACH: return "Enjoy the sea air";
+    case ACT_CONCERT: return "Hear the concert";
+    case ACT_WORKSHOP: return "Tinker together";
+    case ACT_SHOP: return "Browse the shelves";
+    case ACT_CHURCH: return "Reflect together";
+    default: return "Spend time together";
+    }
+}
+
+static const char *meet_reply(int venue, int kind)
+{
+    if (kind == TALK_MEET_CHAT) return "I'm glad you came! It's nice to catch up.";
+    switch (venue) {
+    case ACT_CAFE: return "A snack with a friend is better than eating alone!";
+    case ACT_PARK: return "That walk cleared my head. Let's do it again!";
+    case ACT_BEACH: return "The sea looks different when you're here.";
+    case ACT_CONCERT: return "That music will stay with me for a while.";
+    case ACT_WORKSHOP: return "We made a mess and some good memories!";
+    case ACT_SHOP: return "Window-shopping together was surprisingly fun.";
+    case ACT_CHURCH: return "Thanks for the quiet company. I needed it.";
+    default: return "Thanks for making time for me today!";
+    }
+}
+
+static void meet_pick(int choice)
+{
+    int venue = I.mloc ? I.mloc->act : -1, guest, kind, done;
+    if (choice < 0 || choice >= 2 || venue < 0 || venue >= ACT_COUNT) return;
+    kind = choice == 0 ? TALK_MEET_CHAT : TALK_MEET_ACTIVITY;
+    guest = talk_outcome_meet_ready(venue);
+    if (guest < 0) {
+        ui_toast("Your guest has left. Invite them again another day.");
+        I.menu_dirty = 1;
+        return;
+    }
+    if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE && doomo_town.money < 6u) {
+        ui_say(guest, "We can still talk for free. Two snacks cost 6 H$.");
+        return; /* not charged, not consumed */
+    }
+    done = talk_outcome_meet_kind(venue, kind);
+    if (done < 0) {
+        ui_toast("The planned meetup is no longer available.");
+        I.menu_dirty = 1;
+        return;
+    }
+    I.menu_dirty = 1; /* remove the consumed invite before the next menu draw */
+    audio_sfx(SFX_HAPPY);
+    fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_HEART, 8);
+    ui_say(done, meet_reply(venue, kind));
+}
+
+static void open_meet(int venue)
+{
+    int guest = talk_outcome_meet_ready(venue);
+    if (guest < 0) {
+        ui_toast("Your invited friend isn't here now.");
+        I.menu_dirty = 1;
+        return;
+    }
+    meet_options[1] = meet_activity_name(venue);
+    ui_choice(guest, "What shall we do together?", meet_options, 3, meet_pick);
+}
+#endif
+
 static void run_entry(const Entry *e)
 {
     hold_drop();
@@ -788,6 +886,9 @@ static void run_entry(const Entry *e)
     case E_ROSTER: scene_push(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
     case E_FAMILY: scene_push(&SCENE_FAMILY, 0); break;
     case E_PET: open_pet(); break;
+#ifdef DOOMO_HAS_TALK
+    case E_MEET: open_meet(e->arg); break;
+#endif
     case E_HERE:
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "%s", fp_activity_name(e->arg));
         fp_pick_act(fp_tmp, e->arg, cb_open);
