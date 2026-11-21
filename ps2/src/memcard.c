@@ -50,8 +50,11 @@ int ps2_memcard_init(void)
         /* A pad driver may already have loaded this module. Continue
          * only if MCMAN and MCSERV genuinely initialize below. */
     }
-    if(SifLoadModule("rom0:MCMAN",0,NULL)<0) return 0;
-    if(SifLoadModule("rom0:MCSERV",0,NULL)<0) return 0;
+    /* Some launchers pre-load MCMAN/MCSERV; a second SifLoadModule can
+     * return "already resident". The actual mcInit RPC decides whether
+     * the service is usable, not the module loader's status alone. */
+    (void)SifLoadModule("rom0:MCMAN",0,NULL);
+    (void)SifLoadModule("rom0:MCSERV",0,NULL);
     mc_ready=(uint8_t)(mcInit(MC_TYPE_MC)>=0);
     return mc_ready && card_ready();
 }
