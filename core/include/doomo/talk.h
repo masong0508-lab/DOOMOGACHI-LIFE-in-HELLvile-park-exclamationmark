@@ -1308,6 +1308,11 @@ void talk_outcome_reset(void);
  * The story-place interaction passes its concrete venue when the player
  * physically uses that location's door/menu. Returns guest ID, or -1. */
 int talk_outcome_meet_ready(int venue);
+/* The still-pending venue of this particular resident, or -1 if no
+ * invitation is outstanding today. A plan may be temporarily unavailable
+ * after the resident's schedule changes; use meet_ready to confirm they
+ * are actually present before offering an on-site action. Read-only. */
+int talk_outcome_meet_plan(int resident_id);
 /* On-site choice, not a remote Talk action. Both variants consume a single
  * accepted meetup; an invalid venue, an insufficient cafe budget, or a
  * declined dialogue choice has no effect. 0 = chat, 1 = local activity. */
