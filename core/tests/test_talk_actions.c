@@ -26,6 +26,15 @@
 #include "doomo/items.h"
 #include "doomo/resident_acc.h"
 #include "doomo/playas.h"
+#include "../src/fp_int.h"
+#include "../src/fp_island.h"
+
+/* Free Play island menu's read-only inspection hooks. */
+int fp_island_select_kind(int kind);
+int fp_island_menu_open(void);
+int fp_island_menu_count(void);
+const char *fp_island_menu_label(int index);
+int fp_island_menu_select(const char *label);
 
 static void premade_town(void)
 {
@@ -534,6 +543,72 @@ TEST(action_meetup_requires_a_real_matching_place)
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), -1); /* one visit, not farmable */
     doomo_town.day++;                         /* day rollover drops pending plans */
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    talk_db_close();
+}
+
+/* The actual Free Play City Map, not only the Story-mode door, must let
+ * the player meet a friend at the accepted destination. A real A press
+ * selects the hub's guest, then a real A press chooses free chat. */
+static void meetup_frames(uint32_t buttons, int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        plat_begin_frame();
+        doomo_frame(buttons);
+        plat_end_frame();
+    }
+}
+static void meetup_press(uint32_t b)
+{
+    meetup_frames(b, 1);
+    meetup_frames(0, 1);
+}
+
+TEST(action_meetup_is_reachable_and_one_shot_from_freeplay_hub)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    int a, i, found = 0, tries;
+    uint16_t cafe;
+    char label[64];
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe != 0);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    meetup_frames(0, 5);
+    fp_island_select_kind(LOC_CAFE);
+    for (tries = 0; tries < 3 && !fp_island_menu_open(); tries++) {
+        meetup_press(BTN_A);
+        meetup_frames(0, 3);
+    }
+    CHECK(fp_island_menu_open());
+    label[0] = 0;
+    for (i = 0; i < fp_island_menu_count(); i++) {
+        const char *txt = fp_island_menu_label(i);
+        if (strncmp(txt, "Meet ", 5) == 0) {
+            doomo_snprintf(label, sizeof(label), "%s", txt);
+            found++;
+        }
+    }
+    CHECK_EQ(found, 1);
+    CHECK(fp_island_menu_select(label));
+    meetup_press(BTN_A); /* opens the real modal choice */
+    for (tries = 0; tries < 12 && talk_outcome_meet_ready(ACT_CAFE) == a; tries++) {
+        meetup_frames(0, 15);
+        meetup_press(BTN_A); /* first choice = free catch-up */
+    }
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
     talk_db_close();
 }
 
