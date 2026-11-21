@@ -40,9 +40,10 @@ static int card_ready(void)
     if(!mc_ready || mcGetInfo(MC_PORT,MC_SLOT,&type,&free_space,&fmt)<0)
         return 0;
     r=sync_result();
-    /* mcGetInfo returns -1 for a newly inserted formatted card and 0
-     * for the same formatted card. Do not reformat a card automatically. */
-    return r>=-1 && type==2;
+    /* MCSERV returns -1 when a *formatted* card has just changed;
+     * -2 is unformatted and must never be accepted for writing. On
+     * XMCSERV the format flag is explicit. Do not format automatically. */
+    return type==2 && r>=-1 && (r==-1 || fmt!=0);
 }
 int ps2_memcard_init(void)
 {
