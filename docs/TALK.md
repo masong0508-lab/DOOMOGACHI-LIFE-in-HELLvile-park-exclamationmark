@@ -1,5 +1,35 @@
 # Talk: the live house conversation
 
+**Consequential long-term social memory and playable commitments (2026-11-21):**
+A previous compliment, insult, or unresolved promise now affects the
+resident's *actual* reaction score in subsequent talks, not just a line
+guard. Reconciliation is recommended after real recorded hurt, while urgent
+current illness, hunger, fear, and distress take precedence. The inputs are
+the same resident's saved `TMF_*` bits loaded into TalkConv at session
+start; this reuses the original 12-byte resident memory record. There is
+no new neural model, learned weight file, or per-frame reasoning pass.
+
+An accepted resident favor appears as **Your favor: check goal >** on
+the main Talk screen; when it is truly ready, that becomes **Favor ready:
+check request >**. The shortcut selects the genuine request in **Our
+history**. Once ready, pressing A on that request now generates the
+resident's normal `TQP_DONE` thank-you *inside the current conversation*
+through `talk_dm_hand_in`. After the player reads the thanks, Talk
+applies its existing `TEV_QUEST_DONE` through `talk_outcome_end`: a real
+item is consumed (when required), the actual reward is paid, the bond and
+mood effects are applied under their normal daily limits, and the quest
+settles. The same resident remains available for further conversation
+after a seamless fresh-session boundary. No invented reward is given for
+opening a menu. The hand-in refuses an unready, duplicate, interrupted,
+or full-event-queue request; a missing generated thank-you also blocks
+payout. This costs one transient Talk-scene flag and no new save format.
+
+The tests `test_talk_quick.c`, `test_talk_quests.c`, and
+`test_talk_scene.c` exercise previous-event reception, safety priority,
+live quest visibility, in-session generated hand-in, item/money transfer,
+and double-payment prevention. Those are source changes committed to
+main; the newest console and native CI must still validate them.
+
 **Adaptive social dialogue policy (2026-11-21):** The quick-reply picker now
 uses a small, bounded predictive planner, not purely a rotated list.
 After at least two real turns, it evaluates eligible follow-up actions against
