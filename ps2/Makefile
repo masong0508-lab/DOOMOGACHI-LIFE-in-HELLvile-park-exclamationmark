@@ -25,11 +25,12 @@ all: $(EE_BIN)
 GS_ONLY_BIN := build/doomogachi_ps2_gs_only.elf
 GS_CT16_BIN := build/doomogachi_ps2_gs_ct16.elf
 GS_ALPHA_BIN := build/doomogachi_ps2_gs_alpha.elf
+GS_TEXTURE_BIN := build/doomogachi_ps2_gs_texture.elf
 .PHONY: gs-only gs-probes
 gs-only: $(GS_ONLY_BIN)
 # Cross-compile independent GS experiments, changing just one state each.
 # They reuse the same source, renderer and libraries; no game data is added.
-gs-probes: gs-only $(GS_CT16_BIN) $(GS_ALPHA_BIN)
+gs-probes: gs-only $(GS_CT16_BIN) $(GS_ALPHA_BIN) $(GS_TEXTURE_BIN)
 build/gs_only.o: src/gs_only.c
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
@@ -48,6 +49,15 @@ build/gs_only_alpha.o: src/gs_only.c
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_GS_PROBE_ALPHA=1 -c $< -o $@
 $(GS_ALPHA_BIN): build/gs_only_alpha.o
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
+		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
+
+# Isolated CT16 texture DMA/sprite probe matches the game's 512x256
+# GS texture/VRAM format and has no controller, disc, audio or save calls.
+build/gs_texture.o: src/gs_texture.c
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+$(GS_TEXTURE_BIN): build/gs_texture.o
 	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
 		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
 

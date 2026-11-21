@@ -119,7 +119,7 @@ jobs:
           # Isolate native GS output from all IOP startup, PADMAN, CD,
           # audio and memory-card RPCs, for black-screen emulator triage.
           make -C ps2 gs-probes
-          for elf in doomogachi_ps2_gs_only doomogachi_ps2_gs_ct16 doomogachi_ps2_gs_alpha; do
+          for elf in doomogachi_ps2_gs_only doomogachi_ps2_gs_ct16 doomogachi_ps2_gs_alpha doomogachi_ps2_gs_texture; do
             test -s "ps2/build/$elf.elf"
             mips64r5900el-ps2-elf-readelf -h "ps2/build/$elf.elf"
           done
@@ -184,6 +184,7 @@ jobs:
             ps2/build/doomogachi_ps2_gs_only.elf
             ps2/build/doomogachi_ps2_gs_ct16.elf
             ps2/build/doomogachi_ps2_gs_alpha.elf
+            ps2/build/doomogachi_ps2_gs_texture.elf
             ps2/build/BUILD_SOURCE.txt
           if-no-files-found: error
 
@@ -275,6 +276,23 @@ jobs:
         with:
           name: doomogachi-ps2-bootstrap-elf
           path: ps2/build
+      - name: Retrieve directly linked game ELF for disc-vs-ELF isolation
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-prototype
+          path: ps2/build
+      - name: Try real game ELF without CD/DVD boot path (non-gating probe)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_game.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.elf --launch elf \
+              --out ps2/build/play-game-elf --seconds 25 --software-gl
       - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
         if: always()
         timeout-minutes: 4
@@ -305,6 +323,16 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_gs_ct16.elf --launch elf \
               --out ps2/build/play-gs-ct16 --seconds 20 --software-gl --require-motion
+      - name: Try CT16 texture upload and sprite without any IOP services
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_texture.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_texture.elf --launch elf \
+              --out ps2/build/play-gs-texture --seconds 20 --software-gl --require-motion
       # Known failing negative control: the alpha-on probe produced a
       # completely black Play! viewport while both alpha-off probes passed.
       # Retain the screenshots/logs for diagnosis, but do not block a
@@ -331,4 +359,6 @@ jobs:
             ps2/build/play-gsonly/
             ps2/build/play-gs-ct16/
             ps2/build/play-gs-alpha/
+            ps2/build/play-gs-texture/
+            ps2/build/play-game-elf/
           if-no-files-found: warn
