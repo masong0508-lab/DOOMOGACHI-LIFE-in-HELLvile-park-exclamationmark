@@ -96,3 +96,20 @@ Not yet tried on hardware.
 | `tests/overworld/` | DC7: `run_flycast.sh` (the overworld scripts on Flycast, the native runner and the host's software PVR), `compare3d.py`, `sheet.py`, the Hellvile walks |
 | `tests/house/` | DC8: `run_flycast.sh` (room_ref's golden frames drawn by the game on Flycast; the house scripts on Flycast, the host's software PVR and the native runner), `compare_house.py`; the host test is `tests/gfx2d/test_dc_room.c` |
 | `tests/audio/` | DC5: `test_audio.c` (host: the mixer's units), `sndtee.c` + `run_compare.sh` (the mixer against musrender on runner scripts), `compare.py`, the Flycast scripts and `run_flycast.sh` |
+
+### Dreamcast texture-cache safety and PR verification
+
+The 2D PAL8 texture cache now uses a reusable vacant-slot cursor instead
+of walking all 2,048 dynamic entries from the beginning for every new
+resident portrait, view texture or remapped copy. Evictions return their
+slots to the cursor, so the cache still observes the same frame safety,
+VRAM ceiling and texture identity rules. There are no new per-frame scans
+or framebuffers. Malformed source dimensions and null buffers are rejected
+**before** calculating their checksum or twiddling a static texture.
+The host PVR regression suite exercises this path.
+
+The pinned KallistiOS build, host parity tests, Flycast boot, input,
+3D/bone scenes, Talk, story and Free Play journeys are now also triggered
+by pull requests touching the Dreamcast or shared core, rather than
+exclusively by a post-merge main commit. Final performance and gameplay
+claims still require the resulting CI report.

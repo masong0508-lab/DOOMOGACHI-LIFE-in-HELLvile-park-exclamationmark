@@ -431,8 +431,24 @@ static void test_texcache(void)
     static uint8_t big[16][256 * 128];
     DoomoImage a = { 32, 32, px, 0x01000AAAu }, b = { 32, 32, px, 0 };
     DoomoImage bigimg[16];
-    uint32_t up;
+    uint32_t up, failed;
     int i, f;
+    /* A malformed uid-less picture must be rejected before pix_sum()
+     * reads beyond its buffer; a static font update must not overwrite
+     * neighboring texture memory. Both paths run in KOS and on the host. */
+    {
+        DoomoImage missing = { 32, 32, NULL, 0 };
+        DoomoImage invalid_w = { 0, 32, px, 0 };
+        DoomoImage oversized = { 1025, 32, px, 0 };
+        failed = dc2d_stats.tex_fail;
+        CHECK(dc2d_tex_image_new(NULL, 0) == -1, "NULL image accepted");
+        CHECK(dc2d_tex_image_new(&missing, 1) == -1, "image without pixels accepted");
+        CHECK(dc2d_tex_image_new(&invalid_w, 0) == -1, "zero-width image hashed");
+        CHECK(dc2d_tex_image_new(&oversized, 0) == -1, "oversized image hashed");
+        CHECK(dc2d_stats.tex_fail >= failed + 4, "invalid textures did not report failure");
+        CHECK(dc2d_tex_static(px, 16, 16, 8, 8) == -1, "invalid static source bounds accepted");
+        CHECK(dc2d_tex_static(NULL, 8, 8, 8, 8) == -1, "NULL static accepted");
+    }
     memset(px, 5, sizeof(px));
     frame_begin(); plat_image(0, 0, &a, 1, 0, 0); frame_end();
     up = dc2d_stats.uploads;
