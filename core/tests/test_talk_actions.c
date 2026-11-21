@@ -25,6 +25,7 @@
 #include "doomo/sim.h"
 #include "doomo/items.h"
 #include "doomo/resident_acc.h"
+#include "doomo/playas.h"
 
 static void premade_town(void)
 {
