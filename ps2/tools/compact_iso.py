@@ -46,7 +46,7 @@ def check_iso(iso):
         raise ValueError("Not a standard ISO9660 primary volume descriptor")
 
     listing = subprocess.run(
-        ["xorriso", "-indev", str(iso), "-find", "/", "-type", "f", "-print"],
+        ["xorriso", "-indev", str(iso), "-find", "/", "-type", "f"],
         text=True, capture_output=True, check=True
     )
     names = {
