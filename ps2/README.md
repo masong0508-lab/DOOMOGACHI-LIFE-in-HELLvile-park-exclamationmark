@@ -265,3 +265,79 @@ padding guards. A native reproduction passed 134,098 sanitizer-backed
 checks, but this is not a PS2 hardware performance measurement. FPS
 improvement depends on how many frames are genuinely unchanged. The
 portable reference 3D geometry still renders into the indexed buffer.
+
+## PS2-9 compact disc images and low-storage CI artifacts
+
+Three outputs are available from the **same, real game build**:
+
+| Format | How to use | Is it natively playable? |
+|---|---|---|
+| ISO | Game image for PS2 homebrew loaders, disc tools, Play! and PCSX2 | Yes, subject to successful game/loader testing |
+| CHD | Losslessly compressed DVD image for modern PCSX2 and other CHD-enabled emulators | Yes on compatible emulators; not a generic PS2 hardware/OPL format |
+| ISO.ZST | High-ratio Zstandard download/backup of the ISO | No. Decompress to ISO first |
+
+The native disc recipe includes **only** SYSTEM.CNF, DOOMOG.ELF,
+TALK_EN.BIN and AUDSRV.IRX. It now uses xorriso's -no-pad option by
+default so the ISO does not carry the historical 300 KiB trailing pad.
+For a physical disc project where extra padding is desirable, use
+PS2_ISO_PAD=1. No gameplay resources, Talk words or music are discarded.
+
+### Local build
+
+On Linux, install MAME's chdman (typically mame-tools), zstd and
+xorriso alongside the existing PS2SDK/gsKit toolchain:
+
+```sh
+make -C ps2 compact
+# Native ISO: ps2/build/doomogachi_ps2_game.iso
+# Emulator CHD: ps2/build/compact/doomogachi_ps2_game.chd
+# Archive: ps2/build/compact/doomogachi_ps2_game.iso.zst
+# Verification: ps2/build/compact/manifest.json
+#               ps2/build/compact/SHA256SUMS.txt
+#               ps2/build/compact/SIZE_REPORT.md
+```
+
+The Zstandard level defaults to 15 and can be tuned with
+PS2_ZSTD_LEVEL=19 for stronger (slower) compression, or a lower level
+for faster turnaround. To compress a prebuilt ISO without rebuilding
+the PS2 application:
+
+```sh
+python3 ps2/tools/compact_iso.py \
+  --iso ps2/build/doomogachi_ps2_game.iso \
+  --out-dir ps2/build/compact --zstd-level 15
+```
+
+To restore the original bytes:
+
+```sh
+chdman extractdvd -i ps2/build/compact/doomogachi_ps2_game.chd -o restored.iso
+zstd -d -f -o restored.iso ps2/build/compact/doomogachi_ps2_game.iso.zst
+```
+
+Use different output paths if restoring both formats concurrently.
+The packager validates the ISO9660 primary volume descriptor and all
+required boot/data files before conversion. It then runs chdman verify,
+extracts the CHD, decompresses the .iso.zst archive, and compares each
+entire restored ISO's length and SHA-256 to the baseline. Any mismatch
+stops artifact publication. The manifest reports actual bytes saved;
+CHD might save less than Zstandard depending on the generated build.
+
+### GitHub Actions workflow and retention
+
+The existing PS2 EE workflow has a **compact-images** job that
+downloads the game ISO produced by the exact same workflow, rather
+than rebuilding a different game. It uploads compact files, SHA256SUMS
+and a size comparison for **14 days**. The temporary uncompressed ISO
+artifact remains available for **3 days** so that the Play! boot job
+can still retrieve it. GitHub's upload step disables redundant ZIP
+recompression of CHD and Zstandard files.
+
+The independent **PS2 compact-image packaging tests** workflow runs
+real chdman and zstd against a synthetic ISO fixture, checking the
+complete round trip, required disc files and failure paths. This
+host-side test can run even if the EE compiler is unavailable. It does
+not claim that the synthetic ELF is executable or that the real game
+has passed emulator testing. The release gate is still an actual
+cross-compiled game ISO and successful Play!/PCSX2 walkthrough.
+
