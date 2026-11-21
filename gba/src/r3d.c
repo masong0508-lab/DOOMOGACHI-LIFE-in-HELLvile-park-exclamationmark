@@ -382,6 +382,9 @@ static void setup_map(const DoomoMap *m)
 }
 
 /* ------------------------------------------------------------------------- */
+/* r3d.iwram.c (ARM 3D overlay): preserve the single final >>16
+ * while computing both products in one call from THUMB sprite setup. */
+int32_t r3d_dot16(int32_t ax, int32_t bx, int32_t ay, int32_t by) IWRAM_CALL;
 typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
 #define spr_order ((SprOrder *)(gba_r3d + GBA_BIG_SPR))
@@ -402,7 +405,7 @@ static void draw_sprites(const DoomoView3D *v)
         if (!b->img || !b->img->pix || !b->img->w || !b->img->h) continue;
         dx = b->x - r3f.ex;
         dy = b->y - r3f.ey;
-        depth = (int32_t)((r3d_smull(dx, r3f.fx) + r3d_smull(dy, r3f.fy)) >> 16);
+        depth = r3d_dot16(dx, r3f.fx, dy, r3f.fy);
         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
         if (depth > smax) continue;
         spr_order[n].depth = depth;
@@ -427,7 +430,7 @@ static void draw_sprites(const DoomoView3D *v)
         R3DSprite s;
         int32_t depth = spr_order[i].depth;
         int32_t dx = b->x - r3f.ex, dy = b->y - r3f.ey;
-        int32_t lat = (int32_t)((r3d_smull(dx, r3f.rx) + r3d_smull(dy, r3f.ry)) >> 16);
+        int32_t lat = r3d_dot16(dx, r3f.rx, dy, r3f.ry);
         int32_t k8 = r3d_k8((uint32_t)depth);
         uint32_t scale = b->scale ? b->scale : 256;
         int32_t ww16 = (int32_t)(img->w * scale) << 8;     /* world width 16.16 */
