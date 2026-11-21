@@ -144,6 +144,11 @@ static char meet_label[48];
 static int meeting_venue(int place)
 {
     switch (place) {
+    /* Fun Fair lies inside the town park; the pier is the public access
+     * point for its beachfront. Both have a real Story place menu, unlike
+     * an arbitrary position on the outdoor map. */
+    case PLACE_FUN_FAIR: return ACT_PARK;
+    case PLACE_PIER: case PLACE_HELL_PIER: return ACT_BEACH;
     case PLACE_CAFE: case PLACE_STALLS: return ACT_CAFE;
     case PLACE_CHURCH: return ACT_CHURCH;
     case PLACE_SHOP: return ACT_SHOP;

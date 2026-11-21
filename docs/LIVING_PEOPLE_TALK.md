@@ -183,19 +183,21 @@ one invitation cannot be claimed twice. The input appears only on
 platforms where Talk is enabled; non-Talk ports retain their place
 menus. Neither the player nor the citizen is secretly teleported.
 
-The supported physical place menus are cafe/stalls, church, shop,
-workshop, concert hall and vape shop. Park and beach invitations still
-update the resident's activity, **but are not yet claimable at a place
-menu**, because those locations lack an exact corresponding building
-trigger. The rendezvous currently expires on day rollover and does
-not survive loading a save partway through the day. Those are honest
-limitations, not features to pretend completed.
+Physical meetup points now cover **all eight** invitations:
+the Fun Fair inside the park for ACT_PARK; the Pier or Bone Pier
+as the beachfront arrival point for ACT_BEACH; cafe/stalls, church,
+shop, workshop, concert hall and vape shop for the six indoor venues.
+The Fun Fair and piers are **arrival proxies**, not an assertion that
+the player was standing at the exact pixel the NPC reached. Each
+requires entering a real place menu before the meeting can be claimed.
+The rendezvous currently expires on day rollover and does not survive
+loading a save partway through the day. Those remain honest limitations.
 
 This is a *location-validated interaction*, not yet a scene with both
 characters visibly walking together, or full family/group outings.
-Future steps: outdoor park/beach interaction zones, place-aware NPC
-spawn presentation, saved pending appointments, and several activity
-choices per venue. The new native action test verifies the right
+Future steps: exact outdoor interaction zones (rather than Fun Fair
+and pier proxies), place-aware NPC spawn presentation, saved pending
+appointments, and several activity choices per venue. The new native action test verifies the right
 venue, single-consumption behavior, changed needs and shared memory.
 No 3D raycasting, NPC arrays or per-frame work is added.
 
