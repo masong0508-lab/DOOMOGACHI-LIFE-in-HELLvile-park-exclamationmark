@@ -6,6 +6,7 @@
 #include "doomo/beat.h"
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
+#include "doomo/textures.h"
 #include "../src/overworld_int.h"
 #include "../src/audio_int.h"
 
@@ -24,6 +25,40 @@ static void on_map(int beat)
     scene_set(&SCENE_STORY, STORY_ARG_DEBUG_BEAT + beat);
     for (i = 0; i < 400 && scene_top() != &SCENE_STORY; i++) frame(i & 1 ? BTN_A : 0);
     for (i = 0; i < 10; i++) frame(0);
+}
+
+/* Overworld rendering has two clocks: the global frame counter keeps
+ * advancing during a dialogue, but the STORY simulation is paused.  Water,
+ * lava, slime and prop frame selection must use the latter or the host PVR
+ * reference and Dreamcast can freeze two different animation frames. */
+extern void ow_view_fill(DoomoOverworldView *v);
+
+TEST(ow_script_dialogue_freezes_overworld_texture_phase)
+{
+    DoomoOverworldView before, after;
+    const DoomoImage *water;
+    uint32_t tick;
+    int i;
+
+    on_map(BEAT_C1_FRIENDS);
+    ow_view_fill(&before);
+    CHECK_EQ(before.time, (uint16_t)ow.t);
+    tick = ow.t;
+    frame(0);
+    CHECK_EQ(ow.t, tick + 1);       /* animated world still advances while playing */
+    ow_view_fill(&before);
+    water = texture_image(TEX_WATER, before.time);
+    CHECK(water != NULL);
+
+    ui_say(-1, "The stream waits until we finish talking.");
+    CHECK(ui_dialog_active());
+    tick = ow.t;
+    for (i = 0; i < 40; i++) frame(0); /* > the 8-tick water texture period */
+    CHECK(ui_dialog_active());
+    CHECK_EQ(ow.t, tick);         /* the world, unlike the global clock, is paused */
+    ow_view_fill(&after);
+    CHECK_EQ(after.time, before.time);
+    CHECK(texture_image(TEX_WATER, after.time) == water);
 }
 
 static int ambient(void)
