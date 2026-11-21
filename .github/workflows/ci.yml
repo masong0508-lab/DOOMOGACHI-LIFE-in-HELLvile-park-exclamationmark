@@ -305,6 +305,21 @@ jobs:
             echo '```'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Portrait responsiveness regression probe: cold card, continuous
+      # DOWN scrolling, idle-cache finish and the selected resident open.
+      # Informational until the exact FPS baseline is measured.
+      - name: Profile roster portrait streaming under continuous scroll (GBA)
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo '## GBA resident portraits: cold face, scrolling, settled face, resident screen'
+            echo '~~~'
+            make -C gba profile-roster-scroll 2>&1 | grep -E '^harness: (fps|latency)|profile-roster-scroll|error|FAIL' || true
+            echo '~~~'
+          } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+
       # Every scene of the tour with a PC profile: ranked by work ms, how far each is from the 30 fps
       # budget and which functions to fix first.
       - name: Profile every scene (road to 30 fps)
@@ -399,6 +414,8 @@ jobs:
             gba/build/play_loop.log
             gba/build/play_idle_spikes.log
             gba/build/play_loop_spikes.log
+            gba/build/roster_scroll.log
+            gba/build/shots/roster/
             gba/build/shots/speed/
             gba/build/shots/title/
           if-no-files-found: ignore

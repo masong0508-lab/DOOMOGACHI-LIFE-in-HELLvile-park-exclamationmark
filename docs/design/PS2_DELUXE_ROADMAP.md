@@ -201,3 +201,15 @@ on a direct resident-scene entry. Interactions that change expression
 queue their new face before starting the corresponding FX/dialogue.
 These requests use the existing single background portrait job and
 unchanged 18/27KB pool, rather than new portrait textures or allocations.
+
+### GBA portrait-scroll performance instrument
+
+A separate mGBA harness journey, `gba/harness/scripts/roster_scroll.txt`,
+now measures the cold selected card, 130 ticks of continuous DOWN
+scrolling, the settled card and the transition into a resident screen.
+`make -C gba profile-roster-scroll` emits FPS, CPU work and transition
+latency, with screenshots included in the CI speed-report artifact.
+It does **not** alter the existing `life_speed.txt` scene timings or
+pre-existing FPS regression thresholds. CI reports these measured
+numbers without setting an unverified speed floor. The PS2 import
+should use the same fixed-seed navigation test before raising limits.
