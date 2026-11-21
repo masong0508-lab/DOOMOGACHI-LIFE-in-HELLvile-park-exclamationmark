@@ -24,6 +24,7 @@ static u16 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
 static u16 colors[256];
 static GSTEXTURE picture;
 static uint32_t frame_ticks;
+static uint32_t gs_upload_count;  /* attempted 256KiB texture DMA uploads */
 static uint8_t drawing;
 
 int plat_screen_w(void){return W;}
@@ -133,6 +134,7 @@ int ps2_game2d_init(GSGLOBAL *gs)
 {
     unsigned i;
     memset(&picture,0,sizeof picture);
+    gs_upload_count=0;
     /* GS sampling covers 320x240; the larger power-of-two texture edge
      * is always transparent. The edge is never touched by game drawing,
      * so clear it once at boot instead of 106KiB every 30Hz upload. */
@@ -160,10 +162,30 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
          * fields and unchanged logic frames. No duplicate backing image
          * or probabilistic hash; exact per-pixel comparison is the gate. */
         gsKit_texture_upload(gs,&picture);
+        gs_upload_count++;
     }
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
     gsKit_prim_sprite_texture(gs,&picture,22.0f,0.0f,0.0f,0.0f,
                               618.0f,448.0f,(float)W,(float)H,1,tint);
+}
+
+/* Sparse emulator diagnostics: a framebuffer checksum plus the true
+ * upload count distinguishes a progressing simulation from a static or
+ * frozen rendering loop without a second 320x240 buffer. This is never
+ * used to suppress uploads (exact comparisons do that). */
+void ps2_game2d_probe(uint32_t *ticks,uint32_t *uploads,uint32_t *frame_hash)
+{
+    if(ticks)*ticks=frame_ticks;
+    if(uploads)*uploads=gs_upload_count;
+    if(frame_hash){
+        uint32_t h=2166136261u;
+        unsigned i;
+        for(i=0;i<W*H;i++){
+            h^=(uint32_t)fb[i];
+            h*=16777619u;
+        }
+        *frame_hash=h;
+    }
 }
 
 /* Real map/first-person geometry is rendered in ref_overworld.c and
