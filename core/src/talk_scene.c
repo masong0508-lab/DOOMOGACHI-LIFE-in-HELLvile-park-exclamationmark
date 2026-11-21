@@ -888,6 +888,8 @@ static void build_topics(void)
     uint32_t tags[4];
     const TalkLine *thread = talk_quick_thread(&T.s, NULL);
     uint16_t active = T.topic ? T.topic : T.s.topic_stack[0];
+    int stock_start = T.nstock > 0;
+    int stock_remaining = T.nstock - stock_start;
     int i, w, count;
     T.page = PG_TOPIC;
     T.nrows = 0;
@@ -896,20 +898,22 @@ static void build_topics(void)
     if (T.to >= 0 && T.to < T.n)
         for (w = 0; w < 5; w++)
             if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w));
+    /* Preserve the shortest path to the default topic. */
+    if (stock_start) topic_add(T.stock[0]);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
     if (!q_grief(active) &&
         (!thread || (!(thread->flags & TLF_SINCERE) && !TA_IS_SAFETY(thread->act) && !q_grief(thread->topic)))) {
-        for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + T.nstock < TROWS; i++)
+        for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + stock_remaining < TROWS; i++)
             if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
                 topic_add(concept);
         count = talk_db_assoc(active, links, NULL);
-        for (i = 0; i < count && T.nrows + T.nstock < TROWS; i++)
+        for (i = 0; i < count && T.nrows + stock_remaining < TROWS; i++)
             if (links[i] != active && !q_grief(links[i]) &&
                 talk_gen_concept_ok(links[i], &T.s.conv.aud))
                 topic_add(links[i]);
     }
-    for (i = 0; i < T.nstock; i++) topic_add(T.stock[i]);
+    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i]);
     list_reset();
 }
 
