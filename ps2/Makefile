@@ -20,6 +20,18 @@ include $(PS2SDK)/samples/Makefile.eeglobal
 .PHONY: all clean
 all: $(EE_BIN)
 
+# Minimal EE/GS-only animation: independent of PADMAN, libmc, SPU2,
+# CDVD and the gameplay core. It is a troubleshooting ELF, never a ROM.
+GS_ONLY_BIN := build/doomogachi_ps2_gs_only.elf
+.PHONY: gs-only
+gs-only: $(GS_ONLY_BIN)
+build/gs_only.o: src/gs_only.c
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+$(GS_ONLY_BIN): build/gs_only.o
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
+		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
+
 build/main.o: src/main.c src/padmap.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
