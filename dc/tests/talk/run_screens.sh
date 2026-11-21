@@ -18,6 +18,26 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)
 if [ $# -gt 0 ]; then SCRIPTS=$*; else SCRIPTS='talk_pad talk_typed home_talk_basic home_talk_group home_talk_safety home_talk_visit'; fi
 mkdir -p "$OUT"
+# Keep the two safety journeys semantically identical. Console boot time,
+# screenshots and intentional waits differ; gameplay and safety assertions must
+# not. A past failure remained red because only the native copy was updated.
+# This is a cheap host check, before building 60+ seconds of Flycast captures.
+strip_safety_ops() {
+    awk '
+        /^[[:space:]]*($|#)/ { next }
+        /^wait[[:space:]]/ { next }
+        /^shot[[:space:]]/ { next }
+        /^talk-ready([[:space:]]|$)/ { next }
+        { gsub(/\r$/, ""); print }
+    ' "$1"
+}
+strip_safety_ops "$root/core/tests/scripts/home_talk_safety.txt" > "$OUT/safety_native.ops"
+strip_safety_ops "$here/home_talk_safety.txt" > "$OUT/safety_dreamcast.ops"
+if ! cmp -s "$OUT/safety_native.ops" "$OUT/safety_dreamcast.ops"; then
+    echo "Talk safety journeys diverged (native vs Dreamcast):" >&2
+    diff -u "$OUT/safety_native.ops" "$OUT/safety_dreamcast.ops" >&2 || :
+    exit 1
+fi
 sum=$OUT/summary.txt
 : > "$sum"
 bad=0
