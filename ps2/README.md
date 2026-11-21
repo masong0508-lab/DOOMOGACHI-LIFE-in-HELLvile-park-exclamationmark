@@ -50,8 +50,9 @@ the upstream `ps2dev/ps2dev` container and uploads it on success.
 3. Implement the shared 3D/overworld/room contract with correct map
    geometry, sorting and occlusion, not placeholder vistas.
 4. PS2 audio (IOP RPC/mixer), disc-side Talk banks and game assets.
-5. Memory-card save serialization: atomic replacement/CRC/readback;
-   no writes until failure handling exists.
+5. Memory-card persistence: PS2-2 now uses two alternating CRC-verified
+   files per slot; finish emulator and physical-card power-loss, corruption,
+   full-card, removal and re-insertion tests before shipping.
 6. PCSX2 boot and full menu/scene walkthrough, then real console tests.
 7. Update on-device pad labels to the PS1-like PS2 scheme and add
    PAL/NTSC/widescreen options. Never advertise true 60Hz game logic
@@ -79,10 +80,11 @@ or per-frame texture allocation is introduced.
 
 **Known incomplete:** geometry is real but still CPU-rendered; GS
 native polygons, performance profiling and PCSX2 screenshots are the
-next graphics milestones. Audio is
-silent, memory-card writes return failure instead of pretending to
-save, and disc-side Talk assets are not available. Do not use this as
-the released game or treat a successful ELF link as proof of playability.
+next graphics milestones. Audio is silent and disc-side Talk assets
+are not available. PS2-2 now links a real memory-card transport, but
+its persistence must still be exercised in PCSX2 and on hardware.
+Do not use this as the released game or treat a successful ELF link
+as proof of playability.
 The extra experimental ELF is informational CI until PCSX2 testing,
 real renderer and save/audio backends pass.
 
@@ -100,3 +102,27 @@ buttons. The core receives the generated left-stick D-pad mask, allowing
 its existing analog movement/camera damping to distinguish a stick from
 the physical D-pad. Temporary on-screen button labels reuse the PS1
 DualShock convention (Cross / Circle / Square / Triangle).
+
+## PS2-2 experimental memory-card persistence
+
+The **game** ELF now uses the PS2SDK `libmc` IOP service and the native
+`save_game()` / `load_game()` codec. A formatted PlayStation 2 memory card
+in port 0 / slot 0 stores two alternating image files for each core save
+slot under `/DOOMOGACHI/` (`STORYA`, `STORYB`, `ISLANDA`,
+`ISLANDB`). Each file consists of a 16-byte DMS2 generation/length/CRC
+header followed by the **unchanged** checksummed DMOO save image.
+
+A new save writes only the older or invalid copy, flushes and closes the
+file, then reopens and verifies the entire content before returning success.
+A load validates both copies and chooses the newest fully valid generation.
+Incomplete/corrupt newer writes fall back to the previous complete copy;
+there is no new save data format for any other console. Card absence or an
+unformatted card is a real error, never a successful volatile save.
+
+The save code uses 1 KiB of aligned IOP transfer scratch, no heap and no
+extra framebuffer. No auto-format or deletion of unrelated card content.
+The game does **not yet** include a PS2 Browser icon, an in-game card-slot
+selector, or a verified resume test after process restart/power loss.
+The host `save_journal_test` checks CRC, torn-write fallback, bounds and
+generation rollover, but is not a substitute for actual libmc integration
+on PCSX2 or hardware. Treat the feature as **experimental until tested**.
