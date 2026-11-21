@@ -403,6 +403,48 @@ static int job_venue(int id)
     return j == 0xFF ? 0xFF : j - 1;
 }
 
+/* World-AI: choose company from the two most recent *real* visitors at
+ * a venue, not a fabricated "friend nearby" line. The existing venue ring
+ * and relationship graph are enough; no new resident arrays, save fields,
+ * searches over the entire town, or heap. Called on schedule selection,
+ * not in the render loop. Testable as a pure read of world state. */
+int sim_venue_social_bias(int id, int venue)
+{
+    const DoomoResident *self;
+    int n, score = 0;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS ||
+        venue < 0 || venue >= ACT_COUNT || !sim_is_venue(venue) ||
+        venue == ACT_WANDERING || venue == ACT_HAUNTING)
+        return 0;
+    self = town_res(id);
+    if (!self || self->status != RES_ALIVE ||
+        (self->stat[STAT_SOCIAL] >= 60 && self->mood != MOOD_LONELY))
+        return 0;
+    for (n = 1; n <= 2; n++) {
+        const int slot = (sim_s.ring_pos[venue] + SIM_RING - n) % SIM_RING;
+        int other = sim_s.ring[venue][slot], kind, v;
+        const DoomoResident *seen;
+        const DoomoEdge *edge;
+        if (other < 0 || other >= DOOMO_MAX_RESIDENTS || other == id) continue;
+        seen = town_res(other);
+        if (!seen || !sim_alive_ok(seen) || seen->activity != venue) continue;
+        edge = rel_find(id, other); /* binary search of the sorted edge graph */
+        if (!edge) continue;
+        kind = edge->kind & REL_KIND_MASK;
+        v = edge->value;
+        if (kind == REL_DATING || kind == REL_MARRIED) score += 21;
+        else if (kind == REL_BEST_FRIEND && v > 0) score += 15;
+        else if (kind == REL_FRIEND && v > 0) score += 8 + v / 15;
+        else if (kind == REL_FAMILY && v > 0) score += 9;
+        else if (kind == REL_RIVAL && v < 0) score -= 10;
+        else if (kind == REL_NEMESIS && v < 0) score -= 17;
+        else if (kind == REL_EX && v < 0) score -= 6;
+    }
+    if (score > 36) score = 36;
+    if (score < -20) score = -20;
+    return score;
+}
+
 static int story_vape_open(void)
 {
     return doomo_town.mode != TOWN_STORY || doomo_town.story.chapter >= 2;
@@ -510,6 +552,25 @@ static int decide_activity(int id, const DoomoResident *r, const ResIn *in)
     if (r->stat[STAT_ENERGY] < 30) w[ACT_HOME] += 25;
     if (r->stat[STAT_SANITY] < 35) w[ACT_CHURCH] += 10;
     if (r->stat[STAT_CORRUPTION] >= 60) w[ACT_CHURCH] += 6;
+    /* Believable world-scale goals: a social need sends someone toward
+     * their ACTUAL friends/partner at a venue, not a random crowd. Known
+     * rivals can discourage a stop. Preserve every schedule/availability
+     * restriction: a closed or disallowed venue (weight 0) stays closed.
+     * Eight candidate locations x two cached visitors, once per routine
+     * decision; deterministic and no new RNG draws. */
+    if (r->stat[STAT_SOCIAL] < 60 || r->mood == MOOD_LONELY) {
+        static const uint8_t social_places[] = {
+            ACT_PARK, ACT_CAFE, ACT_SHOP, ACT_CHURCH, ACT_WORKSHOP,
+            ACT_BEACH, ACT_CONCERT, ACT_VAPE_SHOP
+        };
+        for (i = 0; i < (int)sizeof social_places; i++) {
+            int venue = social_places[i], bias;
+            if (!w[venue]) continue;
+            bias = sim_venue_social_bias(id, venue);
+            w[venue] += bias;
+            if (w[venue] < 0) w[venue] = 0;
+        }
+    }
 
     for (i = 0, total = 0; i < ACT_COUNT; i++) total += w[i];
     pick = (int)(((hh >> 16) * (uint32_t)(total > 0 ? total : 1)) >> 16);
