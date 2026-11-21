@@ -251,3 +251,17 @@ are busy; the workflow cancels superseded PS2 runs for the same branch.
 A successful host mixer/CDVD mock test **does not** prove SPU2 output or
 optical-disc reads in Play! / PCSX2. Keep the PR draft until the real
 EE build and emulator captures pass.
+
+## PS2-7 exact-content GS upload suppression
+
+The renderer now compares the indexed 320x240 output against its existing
+512x256 RGB5551 DMA staging texture. If nothing changed, it draws the
+resident texture without re-uploading **256 KiB** to GS VRAM. Changed
+frames copy exactly the differing pixels and perform the normal full
+texture upload; nothing else is allocated. The test
+`ps2/tests/indexed_present_test.c` verifies first-upload behavior,
+identical-frame suppression, random pixel changes, color parity and
+padding guards. A native reproduction passed 134,098 sanitizer-backed
+checks, but this is not a PS2 hardware performance measurement. FPS
+improvement depends on how many frames are genuinely unchanged. The
+portable reference 3D geometry still renders into the indexed buffer.
