@@ -74,10 +74,11 @@ jobs:
           assert struct.unpack_from('<I',bank,16)[0]==len(bank)
           print('PS2 Talk bank valid:',len(bank),'bytes')
           PY
-      - name: Lint BIOS-free Play! emulator harness
+      - name: Verify Play! game-tick telemetry and emulator harness
         run: |
-          python3 -m py_compile ps2/tools/play_biosfree_smoke.py
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py
           python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
+          python3 ps2/tests/probe_log_test.py
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
