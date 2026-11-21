@@ -398,6 +398,7 @@ static const NewsTmpl news_tmpl[NT_COUNT] = {
 #ifdef DOOMO_HAS_TALK
     [NT_TALK_QUEST]      = { "%s says you are a lifesaver. Small favours, big town.", "a" },
     [NT_TALK_MEET]       = { "%s met %s at %s today. Good company!", "abV" },
+    [NT_TALK_MEET_FAV]   = { "%s showed %s their favorite spot at %s!", "abV" },
 #endif
 };
 

@@ -544,8 +544,11 @@ TEST(action_meetup_requires_a_real_matching_place)
     CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
     news_after = sim_news_count();
     CHECK(news_after > news_before);
-    CHECK(sim_news_record(0) && sim_news_record(0)->tmpl == NT_TALK_MEET);
-    CHECK(strstr(sim_news(0), "met") != NULL);
+    CHECK(sim_news_record(0) &&
+          sim_news_record(0)->tmpl ==
+          (sim_favourite_venue(a) == ACT_CAFE ? NT_TALK_MEET_FAV : NT_TALK_MEET));
+    CHECK(strstr(sim_news(0), sim_favourite_venue(a) == ACT_CAFE ?
+                 "favorite" : "met") != NULL);
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), -1); /* one visit, not farmable */
     CHECK_EQ(sim_news_count(), news_after); /* cannot invent repeated headlines */
     doomo_town.day++;                         /* day rollover drops pending plans */

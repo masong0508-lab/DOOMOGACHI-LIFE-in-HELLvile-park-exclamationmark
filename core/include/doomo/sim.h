@@ -141,11 +141,17 @@ enum {
 #ifdef DOOMO_HAS_TALK
     NT_TALK_QUEST,                  /* TQ-QUESTS: a request handed in (an adult giver; never a child) */
     NT_TALK_MEET,                   /* confirmed on-site meetup, never an accepted invite alone */
+    NT_TALK_MEET_FAV,               /* verified visit to the guest's real favorite venue */
 #endif
     NT_COUNT
 };
 #ifndef DOOMO_HAS_TALK
 #define NT_TALK_QUEST NT_COUNT      /* a build without Talk has no such headline (no table slot, no text: 0 B on the PS1) */
+/* Some test translation units compile without DOOMO_HAS_TALK while the
+ * linked Talk sim does. Stable IDs for assertions, no templates in
+ * stripped builds. Never post these from a non-Talk build. */
+#define NT_TALK_MEET     (NT_TALK_WALKOUT + 2)
+#define NT_TALK_MEET_FAV (NT_TALK_WALKOUT + 3)
 #endif
 /* Post a headline: template, table index, NEWS_IDS(...) or a number. */
 void sim_news_rec(int tmpl, int arg8, uint32_t v);

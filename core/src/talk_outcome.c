@@ -370,7 +370,10 @@ int talk_outcome_meet_kind(int venue, int kind)
      * paid any required cost and shared an actual activity. Since the
      * appointment was consumed above, revisiting the menu cannot
      * fabricate another headline. */
-    sim_news_rec(NT_TALK_MEET, venue, NEWS_IDS(id, avatar, NEWS_NONE));
+#ifdef DOOMO_HAS_TALK
+    sim_news_rec(sim_favourite_venue(id) == venue ? NT_TALK_MEET_FAV : NT_TALK_MEET,
+                 venue, NEWS_IDS(id, avatar, NEWS_NONE));
+#endif
     return id;
 }
 
