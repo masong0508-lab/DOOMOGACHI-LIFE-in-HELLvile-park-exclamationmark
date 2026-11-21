@@ -15,8 +15,10 @@ export PS2DEV=/usr/local/ps2dev
 export PS2SDK="$PS2DEV/ps2sdk"
 export GSKIT="$PS2DEV/gsKit"
 export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2SDK/bin"
-cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
-cmake --build ps2/build --parallel
+make -C ps2 -j2
+# Optional, if CMake is installed:
+# cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
+# cmake --build ps2/build --parallel
 ```
 
 ELF: `ps2/build/doomogachi_ps2.elf` (launch on PCSX2 or on homebrew-enabled

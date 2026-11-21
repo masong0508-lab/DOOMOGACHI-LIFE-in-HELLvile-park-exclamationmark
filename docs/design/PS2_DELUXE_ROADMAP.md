@@ -225,3 +225,13 @@ it remains an unverified boot prototype until the job succeeds and
 PCSX2 runs it. The current debug screen is deliberately *not* a
 claimed substitute for the shared-core gameplay. Cross-port PR #5
 stays separate and must clear its console gates first.
+
+### PS2-0 first CI correction
+
+The upstream `ps2dev/ps2dev` image provides the EE GCC cross
+compiler, PS2SDK and gsKit but does not include CMake. The first PS2
+artifact job therefore exited before compilation. A native PS2SDK
+GNU Make build target (`ps2/Makefile`) has now been added and the
+workflow calls it directly. CMake remains optional for a local setup.
+Do not mistake this environment fix for verified GS boot: ELF link and
+PCSX2/hardware validation remain gates.
