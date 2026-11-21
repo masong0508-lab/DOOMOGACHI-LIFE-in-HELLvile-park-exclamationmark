@@ -112,7 +112,7 @@ int main(void)
             if((field%240u)==0u){
                 uint32_t ticks,uploads,hash;
                 ps2_game2d_probe(&ticks,&uploads,&hash);
-                printf("PS2_FRAME_HEARTBEAT tick=%lu gs_uploads=%lu indexed_fnv=%08lx\\n",
+                printf("PS2_FRAME_HEARTBEAT tick=%lu gs_uploads=%lu indexed_fnv=%08lx\n",
                        (unsigned long)ticks,(unsigned long)uploads,
                        (unsigned long)hash);
             }
