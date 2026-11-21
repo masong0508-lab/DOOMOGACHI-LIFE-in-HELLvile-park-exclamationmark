@@ -170,9 +170,7 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
 
 /* Real map/first-person geometry is rendered in ref_overworld.c and
  * ref_view3d.c, using the same pixel buffer. */
-void plat_tone(int ch,uint16_t hz,uint8_t vol,uint8_t wave)
-{(void)ch;(void)hz;(void)vol;(void)wave;}
-void plat_sample(int sfx,uint8_t vol){(void)sfx;(void)vol;}
+/* Real SPU2 plat_tone/plat_sample are supplied by audio.c. */
 /* PS2-2: save transport is implemented in memcard.c. */
 uint32_t plat_entropy(void){return 0xCE11A17u;}
 uint32_t plat_ticks(void){return frame_ticks;}
