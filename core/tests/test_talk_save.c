@@ -219,6 +219,8 @@ TEST(talk_mem_expanded_capacity_is_real)
 {
     int i;
     premade_town();
+    CHECK_EQ(talk_mem_capacity(), TALK_MEM_MAX);
+    CHECK_EQ(talk_mem_pinned_count(), 0);
     CHECK(TALK_MEM_MAX > 24);
     /* The old limit must not cause eviction on a newly supported port. */
     for (i = 0; i < 25; i++)
