@@ -12,6 +12,7 @@
 #include <gsKit.h>
 #include "game2d.h"
 #include "indexed_blit.h"
+#include "indexed_present.h"
 #include "doomo/doomo.h"
 #include "doomo/font.h"
 #include "doomo/palette.h"
@@ -153,14 +154,11 @@ int ps2_game2d_init(GSGLOBAL *gs)
 }
 void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
 {
-    unsigned y,x;
     u64 tint=GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0);
-    if(upload_frame){
-        for(y=0;y<H;y++){
-            u16 *dst=upload+y*TEX_W;
-            const uint8_t *src=fb+y*W;
-            for(x=0;x<W;x++)dst[x]=colors[src[x]];
-        }
+    if(upload_frame && ps2_indexed_update(fb,W,upload,TEX_W,W,H,colors)){
+        /* The full texture remains resident in GS VRAM during alternate
+         * fields and unchanged logic frames. No duplicate backing image
+         * or probabilistic hash; exact per-pixel comparison is the gate. */
         gsKit_texture_upload(gs,&picture);
     }
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
