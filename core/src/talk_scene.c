@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -918,12 +918,13 @@ static void perform_care(int kind, int item)
     build_main();
 }
 
-static void topic_add(uint16_t c)
+static void topic_add(uint16_t c, int kind)
 {
     int i;
     if (c == TC_NONE) return;
-    for (i = 0; i < T.nrows; i++) if (T.row[i].kind == K_PICK && T.row[i].v == c) return;
-    add_row(K_PICK, 0, c);
+    for (i = 0; i < T.nrows; i++)
+        if (T.row[i].v == c && (T.row[i].kind == K_PICK || T.row[i].kind == K_TOPIC_LINK)) return;
+    add_row(kind, 0, c);
 }
 
 static void build_topics(void)
@@ -939,26 +940,26 @@ static void build_topics(void)
     T.page = PG_TOPIC;
     T.nrows = 0;
     add_row(K_NOTOPIC, 0, 0);
-    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i]);
+    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK);
     if (T.to >= 0 && T.to < T.n)
         for (w = 0; w < 5; w++)
-            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w));
+            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK);
     /* Preserve the shortest path to the default topic. */
-    if (stock_start) topic_add(T.stock[0]);
+    if (stock_start) topic_add(T.stock[0], K_PICK);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
     if (!q_grief(active) &&
         (!thread || (!(thread->flags & TLF_SINCERE) && !TA_IS_SAFETY(thread->act) && !q_grief(thread->topic)))) {
         for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + stock_remaining < TROWS; i++)
             if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
-                topic_add(concept);
+                topic_add(concept, K_PICK);
         count = talk_db_assoc(active, links, NULL);
         for (i = 0; i < count && T.nrows + stock_remaining < TROWS; i++)
             if (links[i] != active && !q_grief(links[i]) &&
                 talk_gen_concept_ok(links[i], &T.s.conv.aud))
-                topic_add(links[i]);
+                topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK);
     }
-    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i]);
+    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK);
     list_reset();
 }
 
@@ -1059,6 +1060,10 @@ static const char *row_text(int index, char *buf)
     case K_QUICK: expand(T.quick[r->arg].text, T.quick[r->arg].topic, buf, 48); break;
     case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
     case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
+    case K_TOPIC_LINK:
+        topic_name(r->v, tn, (int)sizeof tn);
+        doomo_snprintf(buf, 48, "Ask about %s", tn);
+        break;
     case K_PICK:
         if (r->arg) doomo_snprintf(buf, 48, "%s", res_name(r->v));
         else topic_name(r->v, buf, 48);
@@ -1431,6 +1436,7 @@ static void activate(int i)
         else ui_toast("This request has been settled.");
         break;
     }
+    case K_TOPIC_LINK:
     case K_HISTORY_TOPIC:
         if (talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v)) {
             T.topic = r->v;
@@ -1796,7 +1802,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

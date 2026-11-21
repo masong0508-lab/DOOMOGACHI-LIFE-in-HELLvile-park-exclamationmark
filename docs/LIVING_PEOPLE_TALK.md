@@ -43,8 +43,9 @@ rules remain authoritative even when more language data is present.
 
 Open **Options → Topic** during Talk. **Band**, **Fishing** and **Gardening**
 are entry points. After discussing or selecting a topic, reopen the picker
-for related choices. Recent topics and known likes still appear, and the
-picker reserves space for the usual stock topics. The links are read when
+for related choices. Choose **Ask about …** to ask the resident directly
+and continue from their answer. Recent topics and known likes still appear,
+and the picker reserves space for the usual stock topics. The links are read when
 the picker opens and go through the existing audience and grief checks.
 
 | Starting topic | Linked subjects | What to cover in the next writing pass |

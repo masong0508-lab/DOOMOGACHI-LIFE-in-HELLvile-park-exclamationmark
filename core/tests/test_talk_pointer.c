@@ -195,7 +195,8 @@ TEST(pointer_talk_scroll_options_invite_people_typed_line)
     CHECK_EQ(opt, n - 2);
     click(LX, ly(4));                                    /* Options */
     CHECK_EQ(page_of(), 4);
-    CHECK_EQ(rows_of(), 2);                              /* Topic, Invite someone (alone with Nana) */
+    CHECK_EQ(rows_of(), 3);                              /* Topic, Invite someone, Our history */
+    CHECK_EQ(talk_scene_find("Our history"), 2);
     click(LX, ly(0));                                    /* Topic */
     CHECK_EQ(page_of(), 2);
     click(LX, hy());

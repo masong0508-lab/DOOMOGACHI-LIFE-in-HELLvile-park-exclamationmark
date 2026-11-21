@@ -364,6 +364,43 @@ TEST(talk_scene_history_topic_is_a_real_followup_question)
     CHECK(strstr(d.you, "pie") != NULL); /* asks the resident, not a fake transcript */
 }
 
+TEST(talk_scene_linked_topics_ask_and_continue_the_conversation)
+{
+    TalkSceneDebug d;
+    uint16_t band = 0, song = 0, lyrics = 0, wf = 0;
+    uint32_t tags[4];
+    int i, row;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("band", &band, &wf, tags) >= 0 && band != TC_NONE);
+    CHECK(talk_lex_find("song", &song, &wf, tags) >= 0 && song != TC_NONE);
+    CHECK(talk_lex_find("lyrics", &lyrics, &wf, tags) >= 0 && lyrics != TC_NONE);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A); /* Topic */
+    row = find_row("pick", 0, band);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A); /* Topic */
+    row = find_row("topiclink", 0, song);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "song") != NULL);
+    for (i = 0; i < 40 && talk_scene_debug(&d) && d.busy; i++) {
+        frames(0, 90); press(BTN_A);
+    }
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A); /* Topic */
+    row = find_row("topiclink", 0, lyrics);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "lyric") != NULL);
+}
+
 TEST(talk_scene_history_repeat_play_really_changes_simulation)
 {
     TalkSceneDebug d;
