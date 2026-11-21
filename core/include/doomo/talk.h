@@ -1176,7 +1176,8 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint8_t   exchange;             /* exchanges so far (the interruption gap)        */
     uint8_t   last_cut;             /* the exchange of the last interruption          */
     uint8_t   last_act;             /* the player's act before this one               */
-    uint8_t   mem_earned;           /* TMF_* the player earned this session           */
+    uint8_t   mem_earned;           /* TMF_* aggregate (existing summary format)     */
+    uint8_t   mem_to[TALK_PARTS_MAX]; /* TMF_* per addressee; bystanders aren't all insulted */
     uint8_t   nhist, nev;
     uint8_t   nlines;               /* lines of the current exchange so far           */
     uint8_t   nplan, plan_at;       /* the exchange's plan and the next entry         */
