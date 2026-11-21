@@ -106,6 +106,16 @@ int main(void)
             plat_end_frame();
             ps2_audio_frame();
             ps2_game2d_present(gs,1);
+            /* Sparse EE-console heartbeat (~4s at 60 fields): useful to
+             * diagnose a black/frozen emulator screen or runaway uploads.
+             * Hash is not computed during normal frames. */
+            if((field%240u)==0u){
+                uint32_t ticks,uploads,hash;
+                ps2_game2d_probe(&ticks,&uploads,&hash);
+                printf("PS2_FRAME_HEARTBEAT tick=%lu gs_uploads=%lu indexed_fnv=%08lx\\n",
+                       (unsigned long)ticks,(unsigned long)uploads,
+                       (unsigned long)hash);
+            }
         }else{
             /* Draw the same completed image from GS VRAM: no simulation
              * tick or upload on alternate fields, and no black flicker. */
