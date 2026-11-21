@@ -212,6 +212,19 @@ static inline uint32_t dir_recip(int32_t r)
     return gba_recip8[a] << 4;
 }
 
+/* Signed 16.16 multiply, with exactly the old ((int64_t)a*b)>>16
+ * rounding and wraparound. ARM7TDMI executes SMULL natively; spelling
+ * out the two result words avoids a possible THUMB/libgcc long-multiply
+ * path in the per-ray and per-wall-face hot loops. No table, heap, RAM,
+ * ray distance, texture coordinate or frame pixel changes. */
+static inline int32_t mul16s(int32_t a, int32_t b)
+{
+    uint32_t lo, hi;
+    __asm__ volatile ("smull %0, %1, %2, %3"
+                      : "=&r"(lo), "=&r"(hi) : "r"(a), "r"(b));
+    return (int32_t)((hi << 16) | (lo >> 16));
+}
+
 static inline uint32_t mul16u(uint32_t a, uint32_t b)
 {
     uint32_t lo, hi;
@@ -233,11 +246,11 @@ static void face(ColState *s, int y0, int y1, int tex, int lit, uint32_t d16)
 {
     int u;
     if (s->wk.side == 0) {
-        int32_t hit = s->ey + (int32_t)(((int64_t)s->rdy * (int32_t)d16) >> 16);
+        int32_t hit = s->ey + mul16s(s->rdy, (int32_t)d16);
         u = (hit >> 16) & 63;
         if (s->stx < 0) u = 63 - u;
     } else {
-        int32_t hit = s->ex + (int32_t)(((int64_t)s->rdx * (int32_t)d16) >> 16);
+        int32_t hit = s->ex + mul16s(s->rdx, (int32_t)d16);
         u = (hit >> 16) & 63;
         if (s->sty > 0) u = 63 - u;
     }
@@ -425,8 +438,8 @@ static void column(int c)
         r3d_nclips[c] = 0;
         return;
     }
-    rdx = f->fx + (int32_t)(((int64_t)f->rx * t) >> 16);
-    rdy = f->fy + (int32_t)(((int64_t)f->ry * t) >> 16);
+    rdx = f->fx + mul16s(f->rx, t);
+    rdy = f->fy + mul16s(f->ry, t);
     s->rdx = rdx;
     s->rdy = rdy;
     FL.cm = s->cm;
