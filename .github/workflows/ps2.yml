@@ -131,3 +131,38 @@ jobs:
             ps2/build/doomogachi_ps2.elf
             ps2/build/BUILD_SOURCE.txt
           if-no-files-found: error
+
+
+  biosfree-play-smoke:
+    name: BIOS-free Play! PS2 boot capture
+    runs-on: ubuntu-24.04
+    needs: [ps2-elf]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Xvfb, Flatpak and screenshot tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
+      - name: Retrieve game ISO compiled in this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build
+      - name: Attempt real boot in Play! (no external BIOS required)
+        timeout-minutes: 5
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_game.iso
+          xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+            ps2/build/doomogachi_ps2_game.iso --seconds 35
+      - name: Preserve emulator log and two boot screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-play-biosfree-capture
+          path: ps2/build/play-smoke/
+          if-no-files-found: warn
