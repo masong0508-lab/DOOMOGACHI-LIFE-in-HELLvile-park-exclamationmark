@@ -520,7 +520,7 @@ TEST(action_meetup_requires_a_real_matching_place)
     TalkOutcome o;
     TalkSummary sum;
     uint16_t cafe;
-    int a, happy;
+    int a, happy, news_before, news_after;
     premade_town();
     CHECK(open_en());
     people();
@@ -535,12 +535,19 @@ TEST(action_meetup_requires_a_real_matching_place)
     CHECK_EQ(talk_outcome_meet_ready(ACT_PARK), -1);
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
     happy = town_res(a)->stat[STAT_HAPPY];
+    news_before = sim_news_count();
     CHECK_EQ(talk_outcome_meet(ACT_PARK), -1);
     CHECK_EQ(town_res(a)->stat[STAT_HAPPY], happy);
+    CHECK_EQ(sim_news_count(), news_before); /* a false arrival made no news */
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), a);
     CHECK(town_res(a)->stat[STAT_HAPPY] >= happy);
     CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    news_after = sim_news_count();
+    CHECK(news_after > news_before);
+    CHECK(sim_news_record(0) && sim_news_record(0)->tmpl == NT_TALK_MEET);
+    CHECK(strstr(sim_news(0), "met") != NULL);
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), -1); /* one visit, not farmable */
+    CHECK_EQ(sim_news_count(), news_after); /* cannot invent repeated headlines */
     doomo_town.day++;                         /* day rollover drops pending plans */
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
     talk_db_close();
