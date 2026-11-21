@@ -69,7 +69,8 @@ void plat_shade_rect(int x,int y,int w,int h,int level)
     if(level>=DOOMO_LIGHT_LEVELS)level=DOOMO_LIGHT_LEVELS-1;
     map=doomo_colormap[level];
     if(x<0){w+=x;x=0;}if(y<0){h+=y;y=0;}
-    if(w>W-x)w=W-x;if(h>H-y)h=H-y;
+    if(w>W-x)w=W-x;
+    if(h>H-y)h=H-y;
     if(w<=0||h<=0)return;
     for(row=0;row<h;row++){
         uint8_t *p=fb+(y+row)*W+x;
@@ -96,7 +97,8 @@ void plat_image(int x,int y,const DoomoImage *img,int scale,int flags,uint8_t co
 {
     int iy,ix,dx,dy;
     if(!img||!img->pix||!img->w||!img->h)return;
-    if(scale<1)scale=1;if(scale>4)scale=4;
+    if(scale<1)scale=1;
+    if(scale>4)scale=4;
     /* A fully visible 1x image is the common UI/portrait path.
      * Composition is clipped-safe but avoids one screen-bound check per
      * opaque texel, leaving clipped/shadowed/scaled cases unchanged. */
@@ -142,7 +144,10 @@ int ps2_game2d_init(GSGLOBAL *gs)
     picture.Width=TEX_W;picture.Height=TEX_H;
     picture.PSM=GS_PSM_CT16;
     picture.Filter=GS_FILTER_NEAREST;
-    picture.Mem=upload;
+    /* gsKit declares GSTEXTURE.Mem as u32* for all texture PSMs.
+     * CT16 uploads remain packed u16 pixels; the upload byte size is
+     * derived from picture.PSM, not the pointer's C element type. */
+    picture.Mem=(u32 *)(void *)upload;
     picture.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(TEX_W,TEX_H,picture.PSM),
                                   GSKIT_ALLOC_USERBUFFER);
     if(picture.Vram==GSKIT_ALLOC_ERROR)return 0;
