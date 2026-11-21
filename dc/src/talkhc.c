@@ -21,7 +21,7 @@
 
 #ifdef DOOMO_TALK_DEBUG
 
-static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick" };
+static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "comfort" };
 #define NKINDS ((int)(sizeof kinds / sizeof kinds[0]))
 
 static const struct { const char *name; int id; } acts[] = {
@@ -84,8 +84,19 @@ uint32_t dc_talk_hcmd(uint32_t arg, const char *name)
         static const char *const pages[] = { "main", "acts", "topic", "invite", "more" };
         if (!on) return 0;
         for (i = 0; i < 5; i++) if (!strcmp(d.page, pages[i])) pg = i;
+        /* Keep the old packed state stable for every existing harness. */
         return 1u | (uint32_t)(d.busy != 0) << 1 | (uint32_t)pg << 2 | (uint32_t)(d.sel & 63) << 5 |
                (uint32_t)(d.nrows & 63) << 11 | (uint32_t)((d.to_id + 1) & 2047) << 17 | (uint32_t)(d.gate & 7) << 28;
+    }
+    case DC_TQ_PAGE: {
+        static const char *const pages[] = {
+            "main", "acts", "topic", "invite", "more", "outing",
+            "show", "give", "care", "feed", "heal", "history"
+        };
+        if (!on) return 0;
+        for (i = 0; i < (int)(sizeof pages / sizeof pages[0]); i++)
+            if (!strcmp(d.page, pages[i])) return (uint32_t)i + 1u;
+        return 0;
     }
     case DC_TQ_FIND: {                  /* kind<<8 | (n+1)<<12 | (v+1)<<22; name: the row's exact text, "" any */
         int kind = (int)(arg >> 8 & 15), n = (int)(arg >> 12 & 1023) - 1, v = (int)(arg >> 22 & 1023) - 1;
