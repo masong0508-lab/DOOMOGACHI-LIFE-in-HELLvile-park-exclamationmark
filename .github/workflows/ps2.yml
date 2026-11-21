@@ -78,8 +78,9 @@ jobs:
         run: python3 ps2/tests/test_boot_order.py
       - name: Verify Play! game-tick telemetry and emulator harness
         run: |
-          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py
           python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
+          python3 ps2/tools/pcsx2_visual_check.py --help >/dev/null
           python3 ps2/tests/probe_log_test.py
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
