@@ -28,20 +28,24 @@ cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
   separately gates >=29 logic TPS. On the GBA-tested
   [`6af86e2b`](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/commit/6af86e2b699b)
   build, **7/24** reached >=22 drawn FPS; **0/24** reached >=29.5.
-  These are harder 3D scenarios than most of the speed-tour screens.
+  The later `4543d33d` GBA emulator job also reported **7/24** >=22
+  and **0/24** >=29.5. These are harder 3D scenarios than most of the
+  speed-tour screens.
 - **Bone map comparison (Balanced mode; headless mGBA; both cameras):**
 
-  | map / camera | `49ca800f` drawn FPS | `6af86e2b` drawn FPS | later-stage target |
-  |---|---:|---:|---:|
-  | Bone Cathedral / first person | 14.5 | **15.4** | >=24 |
-  | Bone Cathedral / third person | 14.4 | **15.5** | >=24 |
-  | Bone Capital / first person | 15.6 | **18.1** | >=24 |
-  | Bone Capital / third person | 15.9 | **18.7** | >=24 |
+  | map / camera | `49ca800f` drawn FPS | `6af86e2b` drawn FPS | `4543d33d` drawn FPS | target |
+  |---|---:|---:|---:|---:|
+  | Bone Cathedral / first person | 14.5 | 15.4 | **16.1** | >=24 |
+  | Bone Cathedral / third person | 14.4 | 15.5 | **16.2** | >=24 |
+  | Bone Capital / first person | 15.6 | 18.1 | **18.3** | >=24 |
+  | Bone Capital / third person | 15.9 | 18.7 | **18.6** | >=24 |
 
-  On `6af86e2b`, logic remains about **29.8-30.0 TPS** in all four.
-  Mean frame work is **55.2 / 53.1 ms** (Cathedral first / third) and
-  **47.5 / 45.4 ms** (Capital first / third). The interim **24 drawn
-  FPS** goal is **not achieved** on any of the four measured windows.
+  On `4543d33d`, logic remains about **29.9-30.1 TPS** in all four.
+  Mean frame work is **53.2 / 51.3 ms** (Cathedral first / third) and
+  **46.7 / 44.7 ms** (Capital first / third). Compared with `6af86e2b`,
+  Cathedral improves by 0.7 FPS in each camera, Capital first-person
+  improves by 0.2 FPS, and Capital third-person falls by 0.1 FPS.
+  The interim **24 drawn FPS** goal is **not achieved** in any camera.
   Repeat the same movement and camera scripts before claiming an improvement:
   `gba/harness/scripts/3d_census.txt`, and inspect p95/p99 frame work,
   late VBlanks, spikes and captured screenshots, not just an FPS average.
@@ -50,13 +54,14 @@ cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
   silhouettes, the full-resolution 240x160 HUD and the third-person
   character. Balanced uses a specialized **80x54** intermediate fallback
   (scaled to screen) rather than relying on the blockier 60x40 emergency
-  tier on these two levels. A later LUT-only distant-fade adjustment and
-  ray-direction SMULL patch landed in `4ae9a5af`/`4543d33d`;
-  neither has a **completed comparable emulator FPS result at the time of
-  this status entry**. The clarity change still needs screenshot review;
-  do not assume pixel parity with the earlier, darker distance fade.
-- **Validation:** The full GBA CI at `6af86e2b` passed; the Bone GBA
-  census and actor-collision regression checks also passed. Build/engine,
+  tier on these two levels. The later LUT-only distant-fade adjustment and
+  ray-direction SMULL patch in `4ae9a5af`/`4543d33d` have now passed
+  the GBA ROM/emulator test and have the FPS results above. The lighting
+  change still needs screenshot-by-screenshot review; do **not** assert
+  pixel parity with the earlier, darker distance fade.
+- **Validation:** The full GBA CI at `6af86e2b` passed, and the GBA
+  ROM/headless-mGBA job at `4543d33d` also passed; the Bone census
+  and actor-collision regression checks passed. Build/engine,
   ROM RAM/overlay limits, logic ticks, map exit playthroughs, and both
   camera views remain hard constraints. A future patch should not silently
   weaken a floor or cut the authored draw distance to buy FPS.
@@ -68,13 +73,13 @@ cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
   `f47bd327` reports the Bone-specific >=24 FPS goal and P99 work for all
   four cameras in `tools/gba3d_census.py`. These commits are implementation
   or instrumentation, **not** evidence of an FPS increase: compare their
-  finished GBA CI census and screenshots with `6af86e2b` before revising
+  finished GBA CI census and screenshots with `4543d33d` before revising
   any performance number.
 
 Useful commands:
 
 ```sh
-make -C gba test-speed2 SPEED2=\"action creator library story\" SPEED2_GATES=1
+make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1
 make -C gba test-3d-census
 make -C gba test-3d
 ```
