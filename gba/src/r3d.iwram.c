@@ -558,9 +558,15 @@ void r3d_draw_sprite(const R3DSprite *s)
     const uint32_t d8 = (uint32_t)s->depth16 >> 13;
     int32_t x0 = s->x0_12, x1 = s->x0_12 + s->w12;
     int c0 = (x0 + 0x0FFF - 0x1000) >> 13;     /* first column whose centre >= x0 */
+    /* The exclusive final sprite column is exactly the first whose
+     * centre reaches x1. Clamp once, instead of testing the right edge
+     * in every textured column; no sample, UV or clipping differences. */
+    int cend = (int)(((int64_t)x1 + 0xFFF) >> 13);
     int c, r0, r1;
     int32_t vr0;
     if (c0 < 0) c0 = 0;
+    if (cend > f->ncol) cend = f->ncol;
+    if (cend < 0) cend = 0;
     r0 = (s->ytop12 + 0x800) >> 12;
     r1 = (s->ytop12 + s->h12 + 0x800) >> 12;
     if (r0 < 0) r0 = 0;
@@ -620,13 +626,11 @@ void r3d_draw_sprite(const R3DSprite *s)
         const uint32_t dv = s->step16;
         uint32_t u16 = s->u16_start;
         const uint32_t du16 = dv << 1;
-        for (c = c0; c < f->ncol; c++, u16 += du16) {
-            int32_t cx12 = (c * 2 + 1) << 12;
+        for (c = c0; c < cend; c++, u16 += du16) {
             int u, top, bot, ya, yb;
             uint32_t v;
             const uint8_t *cm;
             uint16_t *p;
-            if (cx12 >= x1) break;
             u = (int32_t)u16 >> 16;
             if (u >= iw) u = iw - 1;
             if (u < 0) u = 0;
