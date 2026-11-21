@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -779,6 +779,11 @@ static void build_history(void)
         int shown = talk_quest_ready(id) ? TQS_READY : st;
         add_row(K_HISTORY_QUEST, kind, (shown << 8) | days);
     }
+    /* An observable explanation of the living relationship state. Players
+     * should not need to decode numerical engagement or tension flags to
+     * know whether an apology or a casual question makes sense. This is
+     * sampled only on opening History, not drawn/calculated each frame. */
+    add_row(K_HISTORY_TONE, T.s.part[T.to].engage, T.s.tension);
     if (m) {
         if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
             !q_grief(m->topic_a))
@@ -1123,6 +1128,13 @@ static const char *row_text(int index, char *buf)
     case K_HISTORY_INFO:
         doomo_snprintf(buf, 48, "Town memory: %d/%d, %d open",
                        (int)r->v, talk_mem_capacity(), (int)r->arg);
+        break;
+    case K_HISTORY_TONE:
+        doomo_snprintf(buf, 48, "This talk: %s",
+                       r->v >= TALK_TENSION_ARGUE ? "argument heating up" :
+                       r->arg < 30 ? "keeping their distance" :
+                       r->arg < 60 ? "warming up cautiously" :
+                                     "comfortable together");
         break;
     case K_HISTORY_QUEST: {
         int st = r->v >> 8, days = r->v & 0xff;
@@ -1579,6 +1591,13 @@ static void activate(int i)
     case K_HISTORY_INFO:
         ui_toast("Open favors are protected from eviction.");
         break;
+    case K_HISTORY_TONE:
+        ui_toast(r->v >= TALK_TENSION_ARGUE ?
+                 "Listen or apologize before this becomes a fight." :
+                 r->arg < 30 ? "Ask how they feel; give them room." :
+                 r->arg < 60 ? "Take an interest in what matters to them." :
+                               "They seem comfortable talking to you.");
+        break;
     case K_HISTORY_QUEST: {
         int id, kind, state, days, i;
         TalkQuestRow q;
@@ -1993,7 +2012,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
