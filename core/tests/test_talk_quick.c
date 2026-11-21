@@ -440,6 +440,38 @@ TEST(talk_quick_predictive_policy_discourages_repeat_acts)
     talk_db_close();
 }
 
+/* The DM keeps an in-session bond delta and engagement score. The
+ * quick planner should react to that recent feedback, not just the saved
+ * relationship from before the talk began. The player can still manually
+ * select an edgy act from its category page; this only improves suggestions. */
+TEST(talk_quick_predictive_policy_can_repair_a_heated_conversation)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    int i, n;
+    premade_town();
+    CHECK(open_db());
+    begin2(&s, ID_NANA, -1, 119u);
+    put_line(&s, 0, -1, TA_COMPLAIN, TC_NONE, 0);
+    s.turn = 4;
+    s.nhist = 1;
+    s.hist[0].who = 0xffu;
+    s.hist[0].act = TA_ASK_FEELING;
+    s.hist[0].flags = THF_PLAYER;
+    s.last_act = TA_ASK_FEELING;
+    s.part[0].rel_d_player = -8;     /* bad exchange in THIS session */
+    s.part[0].engage = 18;          /* at risk of walking away */
+    s.tension = TALK_TENSION_ARGUE + 1;
+    for (i = 0; i < 24; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, (uint32_t)i, g);
+        CHECK(n >= 2);
+        CHECK_MSG(g[0].act == TA_SYMPATHIZE || g[0].act == TA_COMFORT,
+                  "heated talk suggested act %d instead of a repair", g[0].act);
+        CHECK(g[0].act != TA_JOKE && g[0].act != TA_TEASE);
+    }
+    talk_db_close();
+}
+
 /* A resident's *actual saved subject*, when explicitly associated with
  * what they are discussing now, makes a fourth-slot segue rather than an
  * unrelated forced topic change. It remains optional and respects grief. */
