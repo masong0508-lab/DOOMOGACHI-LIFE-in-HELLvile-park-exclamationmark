@@ -66,9 +66,15 @@ int ps2_memcard_init(void)
      * the service is usable, not the module loader's status alone. */
     (void)SifLoadModule("rom0:MCMAN",0,NULL);
     (void)SifLoadModule("rom0:MCSERV",0,NULL);
-    mc_formatted=0;
+    /* A repeated mcInit() does NOT imply that MCMAN has observed a newly
+     * inserted card. Its subsequent mcGetInfo/mcSync can legally return
+     * 0 ("same card"), with fmt=0 on the old MCSERV. Preserve a
+     * previously confirmed formatted state across an RPC reinit; the
+     * actual card_ready() call below still invalidates it for removed,
+     * unformatted or wrong-type cards. A failed mcInit clears it. */
     mc_ready=(uint8_t)(mcInit(MC_TYPE_MC)>=0);
-    return mc_ready && card_ready();
+    if(!mc_ready){mc_formatted=0;return 0;}
+    return card_ready();
 }
 static int open_bank(int slot,int bank,int flags)
 {

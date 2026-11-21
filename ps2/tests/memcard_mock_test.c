@@ -30,7 +30,12 @@ static int failures,checks;
 
 int SifLoadModule(const char *name,int argc,const char *argv)
 {(void)name;(void)argc;(void)argv;return 1;}
-int mcInit(int type){card_seen=0;return type==MC_TYPE_MC?0:-1;}
+int mcInit(int type)
+{
+    /* mcInit resets client RPC binding, NOT the IOP's remembered card
+     * identity. A second mcGetInfo may therefore return r=0 / fmt=0. */
+    return type==MC_TYPE_MC?0:-1;
+}
 int mcSync(int mode,int *cmd,int *result)
 {(void)mode;(void)cmd;if(result)*result=pending;return 1;}
 int mcGetInfo(int port,int slot,int *type,int *free_space,int *format)
