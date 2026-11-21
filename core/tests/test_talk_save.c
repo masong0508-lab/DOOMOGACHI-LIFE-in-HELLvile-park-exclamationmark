@@ -215,6 +215,36 @@ TEST(talk_mem_lru_evicts_the_oldest)
     talk_mem_reset();
 }
 
+TEST(talk_mem_full_preserves_pending_promises)
+{
+    int i;
+    premade_town();
+    /* A full LRU must not silently delete active or ready requests,
+     * even if a new resident starts a conversation. */
+    for (i = 0; i < TALK_MEM_MAX; i++) {
+        int state = (i & 1) ? TQS_READY : TQS_ACTIVE;
+        CHECK(alive(i) >= 0);
+        CHECK(talk_mem_quest_set(alive(i), TQK_FETCH, state, 3, 0));
+    }
+    CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK(!talk_mem_touch(alive(TALK_MEM_MAX)));
+    CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    for (i = 0; i < TALK_MEM_MAX; i++) {
+        int kind = 0, state = 0;
+        CHECK(talk_mem_quest_get(alive(i), &kind, &state, NULL, NULL));
+        CHECK_EQ(kind, TQK_FETCH);
+        CHECK_EQ(state, (i & 1) ? TQS_READY : TQS_ACTIVE);
+    }
+    /* Settled memories can be evicted; the oldest settled one goes first. */
+    CHECK(talk_mem_quest_set(alive(0), TQK_FETCH, TQS_SETTLED, 2, 0));
+    CHECK(talk_mem_touch(alive(TALK_MEM_MAX)));
+    CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK(talk_mem_find(alive(0)) == NULL);
+    for (i = 1; i < TALK_MEM_MAX; i++)
+        CHECK(talk_mem_quest_get(alive(i), NULL, NULL, NULL, NULL));
+    talk_mem_reset();
+}
+
 TEST(talk_mem_day_rollover_clears_refused_today_only)
 {
     const TalkMem *e;
