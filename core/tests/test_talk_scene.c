@@ -442,6 +442,46 @@ TEST(talk_scene_open_favor_is_accessible_from_main)
     CHECK_EQ(inv_count(item), 1);
 }
 
+TEST(talk_scene_hands_in_a_real_favor_without_leaving_chat)
+{
+    TalkSceneDebug d;
+    TalkQuest q;
+    int row, k, cash, before, kind, state;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_quest_derive(ID_NANA, TQK_FETCH, NULL, 0, 0, &q));
+    CHECK(q.item > ITEM_NONE);
+    while (inv_count(q.item) > 0) CHECK(inv_take(q.item, 1));
+    CHECK(talk_mem_quest_set(ID_NANA, TQK_FETCH, TQS_ACTIVE, 3, 0));
+    CHECK(inv_add(q.item, 1) >= 1);
+    before = inv_count(q.item);
+    cash = (int)doomo_town.money;
+
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_B);                 /* refresh the main action list */
+    row = find_row("history", 1, TQS_READY);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "history") == 0);
+    row = find_row("historyquest", TQK_FETCH, -1);
+    CHECK(row >= 0);
+    CHECK_EQ(d.sel, row);
+    press(BTN_A);                 /* present the item NOW, not on the next visit */
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK_EQ((int)doomo_town.money, cash); /* reward waits for the real response */
+    for (k = 0; k < 50 && talk_scene_debug(&d) && d.busy; k++) {
+        frames(0, 90);
+        press(BTN_A);
+    }
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "main");
+    CHECK_EQ((int)doomo_town.money, cash + talk_quest_reward(TQK_FETCH, 0));
+    CHECK_EQ(inv_count(q.item), before - 1);
+    CHECK(talk_quest_state(ID_NANA, &kind, &state, NULL, NULL));
+    CHECK_EQ(state, TQS_SETTLED);
+    CHECK_EQ(find_row("history", 1, -1), -1); /* no fake ready reward left */
+}
+
 TEST(talk_scene_history_topic_is_a_real_followup_question)
 {
     TalkSceneDebug d;
