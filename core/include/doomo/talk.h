@@ -719,7 +719,9 @@ int talk_scene_person_x(int i);
  * twin of PLATF_TALK: the native host today); without it this is a plain
  * table nobody saves, and --gc-sections drops it where nobody calls it. */
 #define TALK_MEM_VERSION 1            /* the registry's chunk version, and payload byte 0 of a memory-only chunk */
-#define TALK_MEM_VERSION_TRAITS 2     /* payload byte 0 when a tail of explicit trait sets follows (TM1) */
+#define TALK_MEM_VERSION_TRAITS 2     /* legacy payload with a trait tail: high likes bits were unused */
+#define TALK_MEM_VERSION_EVENTS 3     /* memory-only payload, with shared-event flags in likes_known */
+#define TALK_MEM_VERSION_EVENTS_TRAITS 4 /* memory and traits, with shared events; outer registry stays v1 */
 #define TALK_SAVE_WORST (TALK_MEM_WORST + 1 + 6 * 24)   /* + the trait tail: 1 + 6 x TALK_TRAIT_CUSTOM_MAX */
 typedef struct TalkMem {
     uint16_t id;                  /* a resident, the hero or a pool id            */

@@ -333,7 +333,9 @@ static uint32_t talk_write(uint8_t *dst, uint32_t cap)
     uint32_t n = talk_size(), tr = talk_trait_save_size();
     int i;
     if (!n || cap < n) return 0;
-    dst[0] = tr ? TALK_MEM_VERSION_TRAITS : TALK_MEM_VERSION;     /* 1: memory only (as before), 2: + traits tail */
+    /* New payload versions distinguish actual event flags from stray bits
+     * in legacy v1/v2 likes_known. Outer save chunk version stays 1. */
+    dst[0] = (uint8_t)(tr ? TALK_MEM_VERSION_EVENTS_TRAITS : TALK_MEM_VERSION_EVENTS);
     dst[1] = mem.count;
     put16(dst + 2, mem.day);
     for (i = 0; i < mem.count; i++) {
@@ -357,12 +359,16 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
     talk_mem_reset();
     if (version != TALK_MEM_VERSION) return 0;               /* a later format: ignored */
     if (len == 0) return 1;                                   /* the empty chunk */
-    if (len < TALK_MEM_HDR || (src[0] != TALK_MEM_VERSION && src[0] != TALK_MEM_VERSION_TRAITS)) return 0;
+    if (len < TALK_MEM_HDR ||
+        (src[0] != TALK_MEM_VERSION && src[0] != TALK_MEM_VERSION_TRAITS &&
+         src[0] != TALK_MEM_VERSION_EVENTS && src[0] != TALK_MEM_VERSION_EVENTS_TRAITS))
+        return 0;
     n = src[1];
     if (n > TALK_MEM_MAX || len < (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
-    if (src[0] == TALK_MEM_VERSION && len != (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
-    if (src[0] == TALK_MEM_VERSION_TRAITS &&
-        len == (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;      /* a v2 chunk carries a tail */
+    if ((src[0] == TALK_MEM_VERSION || src[0] == TALK_MEM_VERSION_EVENTS) &&
+        len != (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
+    if ((src[0] == TALK_MEM_VERSION_TRAITS || src[0] == TALK_MEM_VERSION_EVENTS_TRAITS) &&
+        len == (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
     mem.day = (uint16_t)get16(src + 2);
     for (i = 0; i < n; i++) {
         const uint8_t *p = src + TALK_MEM_HDR + i * TALK_MEM_ENTRY;
@@ -375,13 +381,16 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         e->topic_a = (uint16_t)(get16(p + 4) & TOPIC_MASK);
         e->topic_b = (uint16_t)(get16(p + 6) & TOPIC_MASK);
         e->flags = (uint8_t)(p[8] & TMF_SAVED);
-        e->likes_known = (uint8_t)(p[9] & MEMORY_MASK);
+        /* Older payloads never wrote event bits; strip high noise rather
+         * than inventing memories of invitations/playing/gifts. */
+        e->likes_known = (uint8_t)(p[9] &
+            (src[0] >= TALK_MEM_VERSION_EVENTS ? MEMORY_MASK : LIKES_MASK));
         e->spare = (uint16_t)(get16(p + 10) & TMEM_SPARE);
         if (TQB_KIND(e->spare) >= TQK_COUNT || (TQB_KIND(e->spare) == 0 && (e->spare & TMEM_QUEST)) ||
             (TQB_KIND(e->spare) && TQB_STATE(e->spare) == TQS_NONE))
             e->spare = (uint16_t)(e->spare & TMEM_DEPTH);                     /* a bad request field: none */
     }
-    if (src[0] == TALK_MEM_VERSION_TRAITS) {                   /* TM1: the explicit trait sets */
+    if (src[0] == TALK_MEM_VERSION_TRAITS || src[0] == TALK_MEM_VERSION_EVENTS_TRAITS) { /* trait tail */
         uint32_t at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);
         if (!talk_trait_save_read(src + at, len - at)) { talk_mem_reset(); return 0; }
     }

@@ -207,3 +207,15 @@ The new meetup row therefore appears only when there is capacity
 *after reserving a slot for Leave*. Existing place options always take
 precedence, and menu size remains six on all ports. This prevents a
 missing Leave option or a soft lock at a crowded building menu.
+
+### Safe save migration for event memories
+
+The outer `TALK` save registry still uses version 1, and its 12-byte
+entry and maximum chunk length are unchanged. The **payload byte 0** now
+uses 3 for memory-only, or 4 when there is also an explicit-trait tail.
+Old payloads 1 and 2 continue loading, but their high three
+`likes_known` bits are masked out, as in the earlier implementation.
+Only v3/v4 saves restore the new actual shared-event markers. This
+prevents uninitialized high bits in old saves from being mistaken for
+real meetings or gifts. Native round-trip and old-save tests cover the
+new version and unchanged-structure migration rules.

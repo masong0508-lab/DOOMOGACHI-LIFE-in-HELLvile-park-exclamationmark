@@ -272,6 +272,7 @@ TEST(talk_mem_shared_experiences_keep_the_save_budget)
     CHECK_EQ(sizeof(TalkMem), TALK_MEM_ENTRY);
     size = ext()->write(bytes, sizeof bytes);
     CHECK(size > 0 && size <= TALK_SAVE_WORST);
+    CHECK_EQ(bytes[0], TALK_MEM_VERSION_EVENTS);
     talk_mem_reset();
     CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_GIFTED));
     CHECK(ext()->read(bytes, size, TALK_MEM_VERSION));
@@ -370,7 +371,7 @@ TEST(talk_mem_chunk_round_trip)
     len = ext()->write(b, sizeof b);
     CHECK_EQ(len, TALK_MEM_WORST);
     CHECK(len <= SAVE_EXT_MAX_TALK);
-    CHECK_EQ(b[0], TALK_MEM_VERSION);
+    CHECK_EQ(b[0], TALK_MEM_VERSION_EVENTS);
     CHECK_EQ(b[1], TALK_MEM_MAX);
     CHECK_EQ(b[2] | (b[3] << 8), 70000 & 0xFFFF);
     CHECK_EQ(ext()->write(b2, sizeof b2), len);           /* twice: the same bytes (a streamed save) */
@@ -473,7 +474,8 @@ TEST(talk_mem_chunk_stale_entries_are_harmless)
     CHECK_EQ(e->topic_a, 4090);                           /* 12 bits; kept: another language pack may know it */
     CHECK_EQ(e->topic_b, pie);
     CHECK_EQ(e->flags, TMF_INSULTED);
-    CHECK_EQ(e->likes_known, 2);
+    CHECK_EQ(e->likes_known, 2);            /* stray high bits stripped from a v1 chunk */
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_ALL));
     CHECK_EQ(e->spare, 0);
     CHECK(talk_db_nconcepts() < 4090);
     /* a conversation: the unknown topic is skipped for the one before; Vex has none */
