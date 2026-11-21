@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -682,12 +682,18 @@ static void build_history(void)
         if (m->topic_b && m->topic_b != m->topic_a &&
             talk_gen_concept_ok(m->topic_b, &T.s.conv.aud) && !q_grief(m->topic_b))
             add_row(K_HISTORY_TOPIC, 1, m->topic_b);
-        if (m->likes_known & TALK_SHARED_PLAYED)
+        if (m->likes_known & TALK_SHARED_PLAYED) {
             add_row(K_HISTORY_EVENT, TALK_SHARED_PLAYED, 0);
-        if (m->likes_known & TALK_SHARED_GIFTED)
+            add_row(K_HISTORY_REPEAT, TALK_SHARED_PLAYED, 0);
+        }
+        if (m->likes_known & TALK_SHARED_GIFTED) {
             add_row(K_HISTORY_EVENT, TALK_SHARED_GIFTED, 0);
-        if (m->likes_known & TALK_SHARED_INVITED)
+            add_row(K_HISTORY_REPEAT, TALK_SHARED_GIFTED, 0);
+        }
+        if (m->likes_known & TALK_SHARED_INVITED) {
             add_row(K_HISTORY_EVENT, TALK_SHARED_INVITED, 0);
+            add_row(K_HISTORY_REPEAT, TALK_SHARED_INVITED, 0);
+        }
     }
     list_reset();
 }
@@ -1025,6 +1031,12 @@ static const char *row_text(int index, char *buf)
                        r->arg == TALK_SHARED_PLAYED ? "Recall playing together" :
                        r->arg == TALK_SHARED_GIFTED ? "Recall their gift" :
                        "Recall an invitation");
+        break;
+    case K_HISTORY_REPEAT:
+        doomo_snprintf(buf, 48, "%s",
+                       r->arg == TALK_SHARED_PLAYED ? "Play together again" :
+                       r->arg == TALK_SHARED_GIFTED ? "Give another gift >" :
+                       "Invite them out again >");
         break;
     case K_HELP: doomo_snprintf(buf, 48, "Help with their needs >"); break;
     case K_COMFORT: doomo_snprintf(buf, 48, "Comfort them"); break;
@@ -1426,6 +1438,15 @@ static void activate(int i)
         }
         break;
     case K_HISTORY_EVENT: reminisce(r->arg); break;
+    case K_HISTORY_REPEAT:
+        /* Never allow a forged/stale row to manufacture a memory. These
+         * dispatch into the *real* activity, inventory and venue paths. */
+        if (T.to < 0 || T.to >= T.n ||
+            !talk_mem_shared(T.ids[T.to], r->arg)) { build_history(); break; }
+        if (r->arg == TALK_SHARED_PLAYED) play_together();
+        else if (r->arg == TALK_SHARED_GIFTED) build_give_items();
+        else if (r->arg == TALK_SHARED_INVITED) build_outings();
+        break;
     case K_HELP: build_care(); break;
     case K_COMFORT: case K_CLEAN: perform_care(r->kind, 0); break;
     case K_FEED: build_care_items(0); break;
@@ -1775,7 +1796,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
