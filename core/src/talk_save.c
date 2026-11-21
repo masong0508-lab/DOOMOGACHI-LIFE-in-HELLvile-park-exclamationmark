@@ -141,13 +141,22 @@ static TalkMem *touch(int id)
     i = index_of(id);
     if (i < 0) {
         if (mem.count == TALK_MEM_MAX) {                     /* LRU: the last one goes, unless it holds a request (TQ) */
-            int v = mem.count - 1;
-            while (v >= 0 && TQB_KIND(mem.e[v].spare) &&
-                   (TQB_STATE(mem.e[v].spare) == TQS_ACTIVE ||
-                    TQB_STATE(mem.e[v].spare) == TQS_READY)) v--;
-            /* A promise still in progress must never disappear merely
-             * because somebody else starts a conversation. If all 24
-             * slots are committed, keep the existing records intact. */
+            int v, fallback = -1;
+            /* Keep commitments, then favor memories of actual shared
+             * experiences over routine greetings. Search from oldest to
+             * newest, so the oldest casual record goes first. */
+            for (v = mem.count - 1; v >= 0; v--) {
+                unsigned sp = mem.e[v].spare;
+                if (TQB_KIND(sp) &&
+                    (TQB_STATE(sp) == TQS_ACTIVE || TQB_STATE(sp) == TQS_READY))
+                    continue;
+                if (fallback < 0) fallback = v;
+                if (!(mem.e[v].likes_known & TALK_SHARED_ALL) &&
+                    !(mem.e[v].flags & TMF_LAST)) break;
+            }
+            if (v < 0) v = fallback;
+            /* Every slot may hold an open commitment. Never silently
+             * discard one just to remember another casual chat. */
             if (v < 0) return NULL;
             drop(v);
         }
