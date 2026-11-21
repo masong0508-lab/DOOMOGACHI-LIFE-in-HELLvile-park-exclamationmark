@@ -574,6 +574,49 @@ TEST(quest_accept_and_hand_in)
     CHECK_EQ(talk_quest_complete(giver), -1);
 }
 
+/* A fulfilled request can be returned without closing and re-entering
+ * Talk. The generated thanks is the same TQP_DONE path used by the opener,
+ * and its ordinary outcome event pays the reward exactly once. */
+TEST(quest_hand_in_during_live_talk_has_one_real_reward)
+{
+    TalkState s;
+    TalkQuest q;
+    TalkOutcome out;
+    int giver, kind, st, before, cash, lines = 0;
+    premade_town();
+    CHECK(open_en());
+    people();
+    CHECK(nadult >= 3);
+    giver = adults[2];
+    CHECK(talk_quest_derive(giver, TQK_FETCH, NULL, 0, 0, &q));
+    CHECK(q.item > ITEM_NONE);
+    while (inv_count(q.item) > 0) CHECK(inv_take(q.item, 1));
+    CHECK(talk_mem_quest_set(giver, TQK_FETCH, TQS_ACTIVE, 3, 0));
+    talk_outcome_begin(&s, DOOMO_PLAYER_ID, &giver, 1, 4701u);
+    CHECK(!talk_dm_hand_in(&s, -1));
+    CHECK(!talk_dm_hand_in(&s, 0));   /* no item, no imaginary hand-in */
+    CHECK(inv_add(q.item, 2) >= 2);
+    before = inv_count(q.item);
+    cash = (int)doomo_town.money;
+    CHECK(talk_dm_hand_in(&s, 0));
+    CHECK(!talk_dm_hand_in(&s, 0));    /* the thank-you is still planned */
+    while (talk_dm_step(&s, NULL)) lines++;
+    CHECK(lines >= 1);               /* the actual grammar generated thanks */
+    CHECK_EQ(st_ev(&s, TEV_QUEST_DONE), 1);
+    CHECK(!talk_dm_hand_in(&s, 0));   /* pending event prevents a second claim */
+    CHECK_EQ(inv_count(q.item), before);
+    CHECK_EQ((int)doomo_town.money, cash);
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.quests_done, 1);
+    CHECK_EQ(out.skipped, 0);
+    CHECK_EQ((int)doomo_town.money, cash + talk_quest_reward(TQK_FETCH, 0));
+    CHECK_EQ(inv_count(q.item), before - 1);
+    CHECK(talk_quest_state(giver, &kind, &st, NULL, NULL));
+    CHECK_EQ(st, TQS_SETTLED);
+    CHECK_EQ(talk_quest_complete(giver), -1);
+    talk_db_close();
+}
+
 TEST(quest_decline_haggle_more)
 {
     TalkState s;
