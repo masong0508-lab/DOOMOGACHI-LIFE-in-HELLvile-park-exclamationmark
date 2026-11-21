@@ -287,6 +287,42 @@ TEST(talk_scene_only_remembers_actual_shared_events)
     CHECK(strstr(d.you, "Remember") != NULL);
 }
 
+TEST(talk_scene_offer_and_give_are_real_actions)
+{
+    TalkSceneDebug d;
+    int row;
+    town();
+    CHECK(inv_add(ITEM_PLUSHIE, 1) >= 1);
+    CHECK(open_talk(ID_NANA));
+    /* Be nice -> Offer help is a real care menu, not a canned promise. */
+    row = find_row("cat", talk_scene_act_cat(TA_OFFER), -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    row = find_row("act", TA_OFFER, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "care") == 0);
+    CHECK(find_row("comfort", -1, -1) >= 0);
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "main") == 0);
+
+    /* Gestures -> Give requires a real item in the bag. The item is not
+     * consumed until its specific inventory row is selected. */
+    row = find_row("cat", talk_scene_act_cat(TA_GIVE), -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    row = find_row("act", TA_GIVE, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "give") == 0);
+    CHECK(find_row("giveitem", ITEM_PLUSHIE, -1) >= 0);
+    CHECK(inv_count(ITEM_PLUSHIE) >= 1);
+}
+
 TEST(talk_scene_a_quick_reply_is_one_press)
 {
     TalkSceneDebug d;

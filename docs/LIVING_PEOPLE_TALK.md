@@ -305,3 +305,19 @@ retained pending invitations after refusal, and no duplicate rewards.
 
 This is a concrete venue-aware activity simulation, not yet a full
 walk-together animation or PS1/Dreamcast neural language model.
+
+## Every visible help/give intention reaches a real gameplay action
+
+The original **Be nice -> Offer help** and **Gestures -> Give** actions
+could previously send a polite sentence or `*holds something out*` even
+when nothing actionable happened. Both now open the same verified
+**Help with their needs** and **Give a gift** menus used by dedicated
+Talk buttons. Quick replies and recognised typed `TA_OFFER`,
+`TA_GIVE`, or `TA_INVITE` intentions route to these menus as well,
+instead of implying supplies changed hands or a visit was planned.
+
+The menus check actual resident status, inventory, minor-room rules and
+venue eligibility. Opening a menu alone never consumes an item, changes
+needs, or records a meeting. Native controller tests exercise both
+category paths, including no premature item consumption. The change
+uses no new resident save fields, persistent RAM, or per-frame work.

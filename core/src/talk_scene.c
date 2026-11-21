@@ -1200,6 +1200,8 @@ static void say_quick(int i)
     /* A suggested invitation with no specified real venue must open the
      * destination picker. Never promise an arbitrary nearby activity. */
     if (g->act == TA_INVITE) { build_outings(); return; }
+    if (g->act == TA_OFFER)  { build_care(); return; }
+    if (g->act == TA_GIVE)   { build_give_items(); return; }
     memset(&u, 0, sizeof u);
     u.act[0] = g->act;
     u.topic[0] = g->topic;
@@ -1246,6 +1248,13 @@ static void say_typed(void)
     if (!talk_parse(T.typed, &pc, &u, info)) { ui_toast("Typing isn't available here."); return; }
     if (u.act[0] == TA_NONE) u.act[0] = TA_UNKNOWN;
     if (u.target < 0 && T.n == 1) u.target = 0;
+    /* Spoken intentions that promise an actual game action must not
+     * turn into empty gestures. Use exactly the same verified target,
+     * inventory and activity menus as the controller actions. */
+    if (u.target >= 0 && u.target < T.n) T.to = u.target;
+    if (u.act[0] == TA_INVITE) { build_outings(); return; }
+    if (u.act[0] == TA_OFFER) { build_care(); return; }
+    if (u.act[0] == TA_GIVE) { build_give_items(); return; }
     say_utter(&u);
     build_main();
 }
@@ -1295,6 +1304,8 @@ static void activate(int i)
     case K_CAT: build_acts(r->arg); break;
     case K_ACT:
         if (r->arg == TA_INVITE) { build_outings(); break; }
+        if (r->arg == TA_OFFER) { build_care(); break; }
+        if (r->arg == TA_GIVE) { build_give_items(); break; }
         if (wants_topic(r->arg) && T.topic == TC_NONE) { T.pending = r->arg; build_topics(); }
         else say_act(r->arg);
         break;
