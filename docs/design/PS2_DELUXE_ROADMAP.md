@@ -158,3 +158,19 @@ social-vignette picker also visits physical slots and never creates bonds.
 A native regression explicitly verifies an isolated high resident ID,
 living/ghost/dead status transitions, and the 255+ crowd saturation.
 The PS2 port must preserve this slot-index/roster-ID separation.
+
+### Pre-PS2 optimization: resident directory graph membership
+
+The roster's **Couples**, **Singles**, and **Cross-border** filters now
+build a 125-byte temporary membership mask from one read-only pass
+over the sorted relationship graph, rather than repeatedly searching
+up to 2,000 edges for every displayed citizen. The filtered list is
+still in the same resident-ID order (or the chosen explicit sort),
+and the UI still rebuilds when it is resumed or a filter changes.
+In particular, a genuine cross-border friendship is now discoverable
+even if it was outside the first 12 contacts in the old scan.
+
+The temporary mask is stack-local, never saved or stored between
+frames. A native regression checks that friends, partners and
+singles enter/leave the relevant filters when the real graph changes.
+The console builds exclude the test-only inspection helper.

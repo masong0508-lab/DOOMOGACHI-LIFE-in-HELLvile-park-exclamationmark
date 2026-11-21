@@ -13,6 +13,7 @@ int fp_island_menu_count(void);
 const char *fp_island_menu_label(int i);
 int fp_island_menu_select(const char *label);
 int fp_island_crowd_snapshot(int act);
+int fp_roster_debug_tag_match(int tag, int id);
 
 static void frames(uint32_t b, int n)
 {
@@ -106,6 +107,38 @@ TEST(freeplay_crowds_saturate_instead_of_wrapping_at_256)
     }
     CHECK(n > 255);
     CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 255);
+}
+
+/* The roster's special relationship filters are a single graph snapshot,
+ * not up to 1,000 re-scans per filter change. Keep their exact ordinary
+ * semantics (including cross-side friendships, dating and singles). */
+TEST(freeplay_roster_relationship_filters_follow_the_live_graph)
+{
+    DoomoResident *a, *b;
+    fp_new_island(TOWN_POP_EMPTY, 4244);
+    CHECK(town_bind(23) >= 0 && town_bind(722) >= 0);
+    a = TOWN_RES(23);
+    b = TOWN_RES(722);
+    resident_default(a);
+    resident_default(b);
+    a->status = b->status = RES_ALIVE;
+    CHECK(!fp_roster_debug_tag_match(5, 23)); /* couples */
+    CHECK(fp_roster_debug_tag_match(6, 23));  /* singles */
+    CHECK(!fp_roster_debug_tag_match(7, 23)); /* cross-border */
+    CHECK(rel_get_or_add(23, 722) != NULL);
+    rel_set_kind(23, 722, REL_FRIEND);
+    CHECK(fp_roster_debug_tag_match(7, 23));
+    CHECK(fp_roster_debug_tag_match(7, 722));
+    CHECK(fp_roster_debug_tag_match(6, 23));
+    rel_set_kind(23, 722, REL_DATING);
+    CHECK(fp_roster_debug_tag_match(5, 23));
+    CHECK(fp_roster_debug_tag_match(5, 722));
+    CHECK(!fp_roster_debug_tag_match(6, 23));
+    rel_set_kind(23, 722, REL_ACQUAINTANCE);
+    CHECK(!fp_roster_debug_tag_match(7, 23));
+    CHECK(!fp_roster_debug_tag_match(5, 23));
+    CHECK(fp_roster_debug_tag_match(6, 23));
+    CHECK(!fp_roster_debug_tag_match(7, DOOMO_PLAYER_ID));
 }
 
 TEST(freeplay_new_island_scene_classic)

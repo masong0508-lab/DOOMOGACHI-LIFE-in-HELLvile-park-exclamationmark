@@ -59,23 +59,37 @@ static int pick_act = -1;
 
 /* ====================================================================== */
 /* matching                                                                 */
-static int has_partner(int id)
+/* Filters for couple/single/cross-border used to walk the sorted
+ * relationship graph anew for each of up to 1,000 residents. Build
+ * one 125-byte temporary membership mask from the actual graph on
+ * each filter change / scene return. No long-lived cache, invalidation
+ * hazard, save bytes or allocations. The bitset represents the *full*
+ * graph: a 13th cross-border friend is no longer silently invisible. */
+#define ROSTER_BITS ((DOOMO_MAX_RESIDENTS + 7) / 8)
+static void related_mask(int tag, uint8_t bits[ROSTER_BITS])
 {
-    int p = sim_partner_of(id);
-    return p >= 0;
+    int i;
+    memset(bits, 0, ROSTER_BITS);
+    if (tag != TAG_COUPLE && tag != TAG_SINGLE && tag != TAG_CROSS) return;
+    for (i = 0; i < doomo_town.edge_count; i++) {
+        const DoomoEdge *e = &doomo_town.edges[i];
+        int k = e->kind & REL_KIND_MASK;
+        int marked;
+        if (tag == TAG_CROSS)
+            marked = e->a < DOOMO_MAX_RESIDENTS && e->b < DOOMO_MAX_RESIDENTS &&
+                     RES_DISTRICT(e->a) != RES_DISTRICT(e->b) &&
+                     (k == REL_FRIEND || k == REL_BEST_FRIEND ||
+                      k == REL_DATING || k == REL_MARRIED);
+        else marked = (k == REL_DATING || k == REL_MARRIED);
+        if (!marked) continue;
+        if (e->a < DOOMO_MAX_RESIDENTS) bits[e->a >> 3] |= (uint8_t)(1u << (e->a & 7));
+        if (e->b < DOOMO_MAX_RESIDENTS) bits[e->b >> 3] |= (uint8_t)(1u << (e->b & 7));
+    }
 }
 
-static int has_cross_friend(int id)
+static int marked_related(const uint8_t bits[ROSTER_BITS], int id)
 {
-    uint16_t out[12];
-    int n = rel_list(id, out, 12), i;
-    for (i = 0; i < n; i++) {
-        int k = rel_kind(id, out[i]);
-        if (out[i] < DOOMO_MAX_RESIDENTS && RES_DISTRICT(out[i]) != RES_DISTRICT(id) &&
-            (k == REL_FRIEND || k == REL_BEST_FRIEND || k == REL_DATING || k == REL_MARRIED))
-            return 1;
-    }
-    return 0;
+    return (bits[id >> 3] & (uint8_t)(1u << (id & 7))) != 0;
 }
 
 int fp_pick_match(int kind, int id)
@@ -97,7 +111,7 @@ int fp_pick_match(int kind, int id)
     }
 }
 
-static int match(const RosterState *s, int id)
+static int match(const RosterState *s, int id, const uint8_t related[ROSTER_BITS])
 {
     const DoomoResident *r = TOWN_RES(id);
     if (r->status == RES_EMPTY) return 0;
@@ -113,9 +127,9 @@ static int match(const RosterState *s, int id)
     case TAG_CUSTOM: if (!(r->flags & RF_CUSTOM)) return 0; break;
     case TAG_FAV: if (!(r->flags & RF_FAVORITE)) return 0; break;
     case TAG_PREMADE: if (r->flags & RF_CUSTOM) return 0; break;
-    case TAG_COUPLE: if (!has_partner(id)) return 0; break;
-    case TAG_SINGLE: if (has_partner(id) || !fp_living_status(r->status)) return 0; break;
-    case TAG_CROSS: if (!has_cross_friend(id)) return 0; break;
+    case TAG_COUPLE: if (!marked_related(related, id)) return 0; break;
+    case TAG_SINGLE: if (marked_related(related, id) || !fp_living_status(r->status)) return 0; break;
+    case TAG_CROSS: if (!marked_related(related, id)) return 0; break;
     default: break;
     }
     if (s->search[0] && !fp_strcasestr(r->name, s->search)) return 0;
@@ -147,10 +161,12 @@ static int cmp_res(int a, int b)
 
 static void rebuild(RosterState *s)
 {
+    uint8_t related[ROSTER_BITS];
     int i, keep = s->sel_id;
+    related_mask(s->tag, related); /* one graph pass rather than a pass per resident */
     n_ids = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (match(s, i)) ids[n_ids++] = (uint16_t)i;
+        if (match(s, i, related)) ids[n_ids++] = (uint16_t)i;
     sort_mode = s->sort;
     if (s->sort != SORT_ROOM) fp_sort_u16(ids, n_ids, cmp_res);
     built_for = s;
@@ -160,6 +176,22 @@ static void rebuild(RosterState *s)
     if (n_ids) s->sel_id = (int16_t)ids[s->sel];
     else s->sel_id = -1;
 }
+
+/* Native-only regression access to the exact built membership semantics.
+ * Tests exercise edge changes without needing a menu animation or needing
+ * any extra code in the console / PS2 renderer. */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+int fp_roster_debug_tag_match(int tag, int id)
+{
+    RosterState s;
+    uint8_t related[ROSTER_BITS];
+    if (tag < TAG_ANY || tag >= TAG_COUNT || id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
+    memset(&s, 0, sizeof s);
+    s.tag = (uint8_t)tag;
+    related_mask(tag, related);
+    return match(&s, id, related);
+}
+#endif
 
 /* ====================================================================== */
 /* layout                                                                   */
