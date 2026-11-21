@@ -697,6 +697,31 @@ static int topic_term(int id, int act, uint16_t topic)
     return d;
 }
 
+/* A relationship is more than its current numeric bond. The existing
+ * twelve-byte-per-resident save record distinguishes an earlier kindness,
+ * hurtful exchange or outstanding promise. Those facts affect how THIS
+ * resident receives a similar action in a later conversation. This is a
+ * bounded bias, never a new generated fact or a fabricated memory. */
+static int remembered_reception(unsigned flags, int act)
+{
+    int v = 0;
+    if (flags & TMF_INSULTED) {
+        if (act == TA_APOLOGIZE || act == TA_SYMPATHIZE ||
+            act == TA_COMFORT) v += 2;
+        else if (act == TA_TEASE || act == TA_MOCK ||
+                 act == TA_INSULT || act == TA_DISMISS) v -= 2;
+    }
+    if (flags & TMF_COMPLIMENTED) {
+        if (act == TA_GREET || act == TA_THANK || act == TA_ASK_FEELING)
+            v += 1;                /* the last encounter was kind */
+    }
+    if (flags & TMF_PROMISED) {
+        if (act == TA_PROMISE) v -= 3;  /* promises aren't free progress */
+        if (act == TA_GIVE || act == TA_OFFER) v += 1;
+    }
+    return v;
+}
+
 int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t topic)
 {
     DoomoResident buf;
@@ -712,6 +737,11 @@ int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t top
         TalkTraitBias b = talk_trait_bias_id(id, act, topic_root(topic), s->conv.aud.any_minor);
         v = clampi(v + talk_trait_take(&b), -10, 8);
     }
+    /* This snapshot came from talk_mem_begin at conversation entry, so
+     * later dialogue reads a stable personal history, even if the memory
+     * table LRU moves while a group conversation is in progress. */
+    if (!TA_IS_SAFETY(act) && !TA_IS_ROMANCE(act) && act > TA_NONE && act < TA_COUNT)
+        v = clampi(v + remembered_reception(s->conv.mem_flags[slot], act), -10, 8);
     return v;
 }
 
