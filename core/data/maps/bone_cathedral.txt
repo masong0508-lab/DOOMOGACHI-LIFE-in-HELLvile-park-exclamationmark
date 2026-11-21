@@ -19,7 +19,7 @@ title "Bone Cathedral"
 kind dungeon
 sky HELL
 music CHURCH
-ambient 9
+ambient 12
 
 cell # wall=BONE_WALL ch=12
 cell F wall=BONE_WALL ch=40                                    # the cathedral shell
