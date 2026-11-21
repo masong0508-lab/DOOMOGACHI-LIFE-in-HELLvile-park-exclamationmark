@@ -1526,22 +1526,22 @@ static void give_item(int item)
 static void tell_oddity(void)
 {
     static const char *const food[4] = {
-        "I'd name a tiny moon after %s. That seems reasonable.",
-        "My emergency plan has three steps. Step one: %s.",
-        "I once wrote a thank-you note to %s. I never sent it.",
-        "Some people collect stamps. I think about %s."
+        "I put a place setting out for %s. It looked lonely.",
+        "I dreamed a cloud tasted like %s. I woke up hungry.",
+        "I tried to share %s with my shadow. It wasn't hungry.",
+        "I wish my front door smelled like %s. Is that possible?"
     };
     static const char *const hobby[4] = {
-        "I practice %s in my head while waiting for the bus.",
-        "I have a secret notebook about %s. It has a title page.",
-        "I take %s seriously. The universe may disagree.",
-        "In my dreams I'm the world's politest expert at %s."
+        "I showed a little flower how to do %s. It just stared.",
+        "I keep %s notes under my pillow. It gets lumpy.",
+        "I practiced %s in a dream. I forgot the rules.",
+        "I made a tiny medal for %s. I gave it to a spoon."
     };
     static const char *const music[4] = {
-        "When %s plays, I imagine the streetlights dancing.",
-        "I think %s deserves its own weather forecast.",
-        "My brain plays %s when I find a lost sock.",
-        "I once tried to hum %s to a houseplant. No review yet."
+        "My shoes tap to %s even when I tell them not to.",
+        "The floorboards hum %s after dark. Quietly.",
+        "I think the moon likes %s. It always looks pleased.",
+        "I played %s for a houseplant. It stood up straighter."
     };
     char line[144];
     int id, which, start, i, flavor;

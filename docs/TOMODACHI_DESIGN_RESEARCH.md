@@ -150,3 +150,13 @@ force romances, or add another hidden quest. It is deliberately quiet,
 warm and slightly uncanny: the player can enjoy the world without
 treating every scene as a task to complete. An integration test confirms
 co-location and no forced bond update.
+
+### Tone refinement: sincere oddness instead of clever one-liners
+
+The Nintendo development team's Part 1 interview describes an important
+ingredient: residents shouldn't always know they are being funny. The
+player notices that an utterly earnest thought is bizarre. This pass
+rewrote the short oddity dialogue to sound more innocent and particular,
+and lets observing pairs use the *actual* first resident's hobby/food
+rather than one interchangeable stock joke. The existing grief/difficult-
+mood gate remains. Scenes still emerge only from real co-location.

@@ -824,6 +824,7 @@ static void observe_moment(int act)
 {
     int i, a = -1, b = -1, kind;
     const DoomoResident *r;
+    char line[112];
     if (act < 0 || act >= ACT_COUNT) return;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         r = town_res(i);
@@ -842,24 +843,41 @@ static void observe_moment(int act)
             ui_say(a, "I came outside to clear my head. It's taking a while.");
         else if (act == ACT_CONCERT)
             ui_say(a, "Do you think the floorboards can hear the music?");
-        else
-            ui_say(a, "I wonder where the shadows go when the lights turn on.");
+        else {
+            doomo_snprintf(line, sizeof line,
+                           "I think a cloud is practicing %s up there.",
+                           doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+            ui_say(a, line);
+        }
         return;
     }
     kind = rel_kind(a, b);
+    r = town_res(a);
     if (kind == REL_RIVAL || kind == REL_NEMESIS) {
-        ui_say(a, "Please stop looking at the same cloud as me.");
-        ui_say(b, "I saw it first.");
+        doomo_snprintf(line, sizeof line,
+                       "I came to %s to relax. Then you arrived!",
+                       I.mloc ? I.mloc->name : "town");
+        ui_say(a, line);
+        ui_say(b, "I was relaxing first!");
     } else if (kind == REL_FRIEND || kind == REL_BEST_FRIEND ||
                kind == REL_FAMILY || kind == REL_DATING || kind == REL_MARRIED) {
-        ui_say(a, "I found a pebble that looks like our town.");
-        ui_say(b, "It's a very good pebble.");
+        doomo_snprintf(line, sizeof line,
+                       "I want to start a club for %s. Will you join?",
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Only if we get a tiny flag.");
     } else if (act == ACT_CAFE) {
-        ui_say(a, "Is this chair reserved for soup?");
-        ui_say(b, "I don't know. I'm waiting in it.");
+        doomo_snprintf(line, sizeof line,
+                       "Does %s need its own little chair?",
+                       doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Maybe. Ask the waiter.");
     } else {
-        ui_say(a, "Is there a line for watching clouds?");
-        ui_say(b, "I think we're already in it.");
+        doomo_snprintf(line, sizeof line,
+                       "If %s was a sport, would you watch?",
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Only if the clouds are on our team.");
     }
 }
 
