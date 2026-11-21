@@ -281,16 +281,21 @@ static void setup_fade(int amb, const DoomoMapDef *def)
      * a little dim light in the farthest distance so silhouettes stay
      * legible. The shared 128-byte LUT does all the work on map changes:
      * no extra ray steps, per-pixel instructions, or framebuffer RAM. */
-    const int bone = def == doomo_maps[MAPID_BONE_CATHEDRAL] ||
-                     def == doomo_maps[MAPID_BONE_CAPITAL];
+    const int cathedral = def == doomo_maps[MAPID_BONE_CATHEDRAL];
+    const int capital = def == doomo_maps[MAPID_BONE_CAPITAL];
     /* Distance fade (reference semantics): one light level per 128 world
-     * units. One bucket = 32 units. */
+     * units. One bucket = 32 units. The Cathedral's dark, narrow aisles
+     * need two additional retained light levels at far range to expose
+     * the arches against the roofline. Near/mid lighting (fade <= 5)
+     * stays unchanged. Capital keeps its previously verified curve.
+     * This is a 128-entry setup LUT, not a new per-texel effect. */
     int b;
     for (b = 0; b < R3D_FADE_N; b++) {
         int f = b >> 2;
-        if (bone && f > 5) {
+        if ((cathedral || capital) && f > 5) {
+            int far_cap = cathedral ? 7 : 9;
             f = 5 + ((f - 5) >> 1);
-            if (f > 9) f = 9; /* keep distant arches above near-black */
+            if (f > far_cap) f = far_cap;
         }
         r3d_fade[b] = (uint8_t)(f > 15 ? 15 : f);
     }
