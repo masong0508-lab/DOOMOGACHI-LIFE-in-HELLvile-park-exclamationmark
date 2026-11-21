@@ -338,6 +338,32 @@ TEST(talk_scene_history_only_recalls_real_events_and_favors)
                                 strstr(box.text, "present") != NULL));
 }
 
+TEST(talk_scene_history_topic_is_a_real_followup_question)
+{
+    TalkSceneDebug d;
+    uint16_t concept = 0, wf = 0;
+    uint32_t tags[4] = {0, 0, 0, 0};
+    int row;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("pie", &concept, &wf, tags) >= 0 && concept != TC_NONE);
+    talk_mem_note_topic(ID_NANA, concept);
+    go_to(find_row("more", -1, -1));
+    press(BTN_A);
+    row = find_row("history", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    row = find_row("historytopic", 0, concept);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "pie") != NULL); /* asks the resident, not a fake transcript */
+}
+
 TEST(talk_scene_offer_and_give_are_real_actions)
 {
     TalkSceneDebug d;
