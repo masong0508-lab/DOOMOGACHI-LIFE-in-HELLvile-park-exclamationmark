@@ -34,6 +34,12 @@ static int open_language(const char *code)
 }
 void ps2_talk_disc_init(void)
 {
+    /* A failed reinitialization must not advertise the previous disc's
+     * language file or leave a cached sector available to a new disc. */
+    english_present=0;
+    bank_size=0;
+    cached_sector=-1;
+    active_code[0]=0;
     cd_ready=(sceCdInit(0)!=0);
     if(!cd_ready){
         printf("PS2 Talk: CDVD init failed; disc conversations unavailable\n");
