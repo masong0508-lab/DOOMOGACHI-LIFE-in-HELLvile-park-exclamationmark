@@ -571,6 +571,20 @@ test-life: harness
 	exit $$rc
 # --- end M0 ---
 
+# P-SCROLL: isolated GBA resident-card performance probe. Report-only;
+# the existing life_speed.txt timeline and historical floors are untouched.
+ROSTER_SCROLL_LOG ?= $(BUILD)/roster_scroll.log
+profile-roster-scroll: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/roster
+	@rc=0; \
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/roster_scroll.txt \
+	    --shots $(SHOTS)/roster --nm $(BUILD)/doomogachi.nm --no-fps-gates --quiet > $(ROSTER_SCROLL_LOG) 2>&1 || rc=1; \
+	grep -E 'harness: (fps|latency)|expected|HANG|FAIL' $(ROSTER_SCROLL_LOG) || true; \
+	echo "profile-roster-scroll: log $(ROSTER_SCROLL_LOG), shots $(SHOTS)/roster"; \
+	exit $$rc
+
+
 sizes: $(ELF)
 	$(SIZE) -A $(ELF)
 

@@ -12,7 +12,11 @@
  * residents in the same 32 ticks every 15 game minutes but one resident after another over the whole
  * interval (sim_tick, test_sim_pass.c). Every resident is still updated once per interval at the same rates;
  * only the order of the updates, and so the seeded random path of the sim, is another one. X4's own
- * equivalence (the cheaper inputs change nothing) was proved at its landing against the old tree. */
+ * equivalence (the cheaper inputs change nothing) was proved at its landing against the old tree.
+ * 2026-11-21: main's live friend/rival destination selection (215868f,
+ * 707a060) intentionally changes the seeded path. Identical new hashes
+ * were observed on untouched main and on the Talk feature branch; the
+ * dedicated social-venue tests still check the causal behavior. */
 #include "test.h"
 #include "../src/sim_int.h"
 
@@ -61,7 +65,7 @@ TEST(sim_x4_same_town_as_before)
     opt_set(OPT_POSSESSION_RATE, 1);
     CHECK_MSG(possessed > 0, "the story run possessed nobody: it does not exercise the cap");
     if (DOOMO_RES_SLOTS) return;        /* LIVE=500: the goldens are of the 1000-resident town */
-    CHECK_MSG(a == 0x7c7a4fd5u && b == 0xf7510243u && c == 0x5d2fad80u,
+    CHECK_MSG(a == 0x68908d53u && b == 0xcb96d7c6u && c == 0x5a902f3bu,
               "freeplay 0x%08x, story possession 0x%08x, fast-forward 0x%08x", (unsigned)a, (unsigned)b,
               (unsigned)c);
 }

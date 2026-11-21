@@ -96,3 +96,65 @@ Not yet tried on hardware.
 | `tests/overworld/` | DC7: `run_flycast.sh` (the overworld scripts on Flycast, the native runner and the host's software PVR), `compare3d.py`, `sheet.py`, the Hellvile walks |
 | `tests/house/` | DC8: `run_flycast.sh` (room_ref's golden frames drawn by the game on Flycast; the house scripts on Flycast, the host's software PVR and the native runner), `compare_house.py`; the host test is `tests/gfx2d/test_dc_room.c` |
 | `tests/audio/` | DC5: `test_audio.c` (host: the mixer's units), `sndtee.c` + `run_compare.sh` (the mixer against musrender on runner scripts), `compare.py`, the Flycast scripts and `run_flycast.sh` |
+
+### Dreamcast texture-cache safety and PR verification
+
+The 2D PAL8 texture cache now uses a reusable vacant-slot cursor instead
+of walking all 2,048 dynamic entries from the beginning for every new
+resident portrait, view texture or remapped copy. Evictions return their
+slots to the cursor, so the cache still observes the same frame safety,
+VRAM ceiling and texture identity rules. There are no new per-frame scans
+or framebuffers. Malformed source dimensions and null buffers are rejected
+**before** calculating their checksum or twiddling a static texture.
+The host PVR regression suite exercises this path.
+
+The pinned KallistiOS build, host parity tests, Flycast boot, input,
+3D/bone scenes, Talk, story and Free Play journeys are now also triggered
+by pull requests touching the Dreamcast or shared core, rather than
+exclusively by a post-merge main commit. Final performance and gameplay
+claims still require the resulting CI report.
+
+### Idle-slice Talk disc safety
+
+The streaming `TALK_EN.BIN` prefetch is still sector-sized and yields to
+the game's 30 Hz frame. Disc reads that complete too quickly to measure,
+including cached or emulated reads, now charge at least 5 ms against the
+frame's idle allowance instead of potentially initiating the entire bank
+in one frame. The host test simulates a zero-duration clock and confirms
+that only a bounded number of sectors are read. Actual KOS/Flycast
+validation remains required; this is not a claim of improved measured FPS.
+
+### Texture eviction for crowded scenes
+
+The PAL8 cache now deletes one hash entry and repairs only its local
+collision chain when video RAM is pressured. Previously even one texture
+eviction rebuilt the entire table of 2,048 candidate textures, leading to
+unnecessary SH4 CPU cost when portraits or 3D textures changed. The
+eviction safety rules still protect the active and preceding frames;
+there are no new buffers or save-format changes. Host texture-pressure
+tests and full Flycast integration must pass before merging.
+
+### Stable 3D crowd sort
+
+Billboards with 16 or fewer visible actors use the original in-place
+insertion pass. Larger crowds use an iterative, stable merge sort to
+avoid worst-case O(n squared) shifting on the 256-sprite cap.
+Equal-depth ordering is preserved, so rendering remains deterministic
+across runs and the PVR continues to see far-to-near alpha sprites.
+The implementation uses 1.5 KiB of fixed additional Dreamcast BSS,
+not heap allocations, extra textures or a framebuffer. Host tests cover
+sizes 0 through 256, equal-depth stability, and reversed depth; the
+existing raycaster screenshot parity and Flycast tests remain the gate.
+
+### Shared console view stamp memory pass
+
+Both the PS1 and Dreamcast 3D views now use 8-bit rather than 16-bit
+generation stamps for visited map cells and the view-local texture
+lookup table. Only equality within the current view is required;
+generation wrap explicitly clears the arrays before reuse, including
+when the PS1's borrowed overlay memory is reclaimed. PS1 saves
+4,096 bytes from the 64x64 visibility table and another 64 bytes
+from texture stamps, without sacrificing the 16-bit visible-cell
+index list. Dreamcast gains the corresponding 4 KiB and texture
+stamp savings. More frequent wraps mean a rare table clear; tests
+should verify memory linker gates and repeated 3D screenshots.

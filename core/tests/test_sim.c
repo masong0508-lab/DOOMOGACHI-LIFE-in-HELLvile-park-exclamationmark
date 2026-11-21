@@ -306,6 +306,39 @@ TEST(sim_care_reactions_depend_on_taste)
     CHECK(sim_talk(12)[0] == '"' || sim_talk(12)[0] == '*');
 }
 
+/* The compact presence filter may have cross-ID false positives,
+ * but must never hide a real pending problem after insertion, removal
+ * or replacement. No relationship or save semantics change. */
+TEST(sim_problem_presence_filter_never_loses_a_thought_bubble)
+{
+    int a = 32, b = 63, c = 33, old;
+    town_new(TOWN_FREEPLAY, 307, TOWN_POP_PREMADE);
+    sim_init();
+    town_res(a)->status = RES_ALIVE;
+    town_res(b)->status = RES_ALIVE;
+    town_res(c)->status = RES_ALIVE;
+    sim_problem_drop_for(a);
+    sim_problem_drop_for(b);
+    sim_problem_drop_for(c);
+    CHECK_EQ(sim_problem_for(c), -1);
+    CHECK(sim_problem_raise(a, PROB_BORED, -1, 0) >= 0);
+    CHECK(sim_problem_raise(b, PROB_HUNGRY, -1, 0) >= 0);
+    CHECK(sim_problem_for(a) >= 0);
+    CHECK(sim_problem_for(b) >= 0);
+    CHECK_EQ(sim_problem_for(c), -1); /* shares a 32-resident group */
+    old = sim_problem_for(a);
+    CHECK(old >= 0);
+    sim_problem_remove(old);             /* compacts and rebuilds the filter */
+    CHECK_EQ(sim_problem_for(a), -1);
+    CHECK(sim_problem_for(b) >= 0);
+    CHECK(sim_problem_raise(a, PROB_DIRTY, -1, 0) >= 0);
+    CHECK(sim_problem_for(a) >= 0);
+    sim_problem_drop_for(a);
+    sim_problem_drop_for(b);
+    CHECK_EQ(sim_problem_for(a), -1);
+    CHECK_EQ(sim_problem_for(b), -1);
+}
+
 TEST(sim_problems_resolve_and_pay)
 {
     int idx;
@@ -604,7 +637,13 @@ static uint32_t news_stream(uint32_t h, uint32_t seed, int pop, int days, uint32
  * gained hysteresis (the seeded run takes a different, equally valid path: 16,575
  * bytes) and again by S3-1 (the resident pass is spread over the 15 game minutes instead of
  * running all 1,000 residents in 32 ticks: the same rates, another order of the updates and
- * so another seeded path, 16,629 bytes; test_sim_pass.c holds the new behaviour). */
+ * so another seeded path, 16,629 bytes; test_sim_pass.c holds the new behaviour).
+ * The social-destination update on main (215868f through 707a060) chooses
+ * visited venues using actual live friends and rivals; this deliberately
+ * alters some resident schedules and their subsequent seeded news. Both
+ * untouched main CI and the new Talk branch produced 16,761 bytes and
+ * hash 2e97204b. The independent per-event and social-goal tests retain
+ * their invariants. */
 TEST(sim_news_records_print_the_old_headlines)
 {
     uint32_t h = 2166136261u, bytes = 0;
@@ -613,8 +652,8 @@ TEST(sim_news_records_print_the_old_headlines)
     h = news_stream(h, 9, TOWN_POP_RANDOM, 3, &bytes);
     printf("    news stream: %u bytes, hash %08x\n", (unsigned)bytes, (unsigned)h);
     if (DOOMO_RES_SLOTS) return;        /* LIVE=500: another town, other headlines */
-    CHECK_EQ_U(bytes, 16629u);
-    CHECK_EQ_U(h, 0x7bc898aeu);
+    CHECK_EQ_U(bytes, 16761u);
+    CHECK_EQ_U(h, 0x2e97204bu);
 }
 
 TEST(sim_news_records_and_free_lines)

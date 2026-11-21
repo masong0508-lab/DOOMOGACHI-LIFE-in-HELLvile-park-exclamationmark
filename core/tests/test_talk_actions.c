@@ -26,6 +26,15 @@
 #include "doomo/items.h"
 #include "doomo/resident_acc.h"
 #include "doomo/playas.h"
+#include "../src/fp_int.h"
+#include "../src/fp_island.h"
+
+/* Free Play island menu's read-only inspection hooks. */
+int fp_island_select_kind(int kind);
+int fp_island_menu_open(void);
+int fp_island_menu_count(void);
+const char *fp_island_menu_label(int index);
+int fp_island_menu_select(const char *label);
 
 static void premade_town(void)
 {
@@ -469,13 +478,49 @@ static int items_total(void)
     return n;
 }
 
+/* A real invitation can be consulted without giving out a free visit.
+ * A temporarily changed schedule hides the available arrival point, but
+ * the Talk journal may still tell the player where the plan was made. */
+TEST(action_meetup_plan_is_read_only_and_day_scoped)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    uint16_t cafe;
+    int a;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe && talk_act_venue_of(cafe) == ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE); /* inspection never consumes */
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    town_res(a)->activity = ACT_PARK;
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE); /* honest missed-plan cue */
+    town_res(a)->activity = ACT_CAFE;
+    CHECK_EQ(talk_outcome_meet(ACT_CAFE), a);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    doomo_town.day++;
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    talk_db_close();
+}
+
 TEST(action_meetup_requires_a_real_matching_place)
 {
     TalkState s;
     TalkOutcome o;
     TalkSummary sum;
     uint16_t cafe;
-    int a, happy;
+    int a, happy, news_before, news_after;
     premade_town();
     CHECK(open_en());
     people();
@@ -490,15 +535,111 @@ TEST(action_meetup_requires_a_real_matching_place)
     CHECK_EQ(talk_outcome_meet_ready(ACT_PARK), -1);
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
     happy = town_res(a)->stat[STAT_HAPPY];
+    news_before = sim_news_count();
     CHECK_EQ(talk_outcome_meet(ACT_PARK), -1);
     CHECK_EQ(town_res(a)->stat[STAT_HAPPY], happy);
+    CHECK_EQ(sim_news_count(), news_before); /* a false arrival made no news */
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), a);
     CHECK(town_res(a)->stat[STAT_HAPPY] >= happy);
     CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    news_after = sim_news_count();
+    CHECK(news_after > news_before);
+    CHECK(sim_news_record(0) &&
+          sim_news_record(0)->tmpl ==
+          (sim_favourite_venue(a) == ACT_CAFE ? NT_TALK_MEET_FAV : NT_TALK_MEET));
+    CHECK(strstr(sim_news(0), sim_favourite_venue(a) == ACT_CAFE ?
+                 "favorite" : "met") != NULL);
     CHECK_EQ(talk_outcome_meet(ACT_CAFE), -1); /* one visit, not farmable */
+    CHECK_EQ(sim_news_count(), news_after); /* cannot invent repeated headlines */
     doomo_town.day++;                         /* day rollover drops pending plans */
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
     talk_db_close();
+}
+
+/* The actual Free Play City Map, not only the Story-mode door, must let
+ * the player meet a friend at the accepted destination. A real A press
+ * selects the hub's guest, then a real A press chooses free chat. */
+static void meetup_frames(uint32_t buttons, int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        plat_begin_frame();
+        doomo_frame(buttons);
+        plat_end_frame();
+    }
+}
+static void meetup_press(uint32_t b)
+{
+    meetup_frames(b, 1);
+    meetup_frames(0, 1);
+}
+
+TEST(action_meetup_is_reachable_and_one_shot_from_freeplay_hub)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    int a, i, found = 0, tries;
+    uint16_t cafe;
+    char label[64];
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe != 0);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    meetup_frames(0, 5);
+    fp_island_select_kind(LOC_CAFE);
+    for (tries = 0; tries < 3 && !fp_island_menu_open(); tries++) {
+        meetup_press(BTN_A);
+        meetup_frames(0, 3);
+    }
+    CHECK(fp_island_menu_open());
+    label[0] = 0;
+    for (i = 0; i < fp_island_menu_count(); i++) {
+        const char *txt = fp_island_menu_label(i);
+        if (strncmp(txt, "Meet ", 5) == 0) {
+            doomo_snprintf(label, sizeof(label), "%s", txt);
+            found++;
+        }
+    }
+    CHECK_EQ(found, 1);
+    CHECK(fp_island_menu_select(label));
+    meetup_press(BTN_A); /* opens the real modal choice */
+    for (tries = 0; tries < 12 && talk_outcome_meet_ready(ACT_CAFE) == a; tries++) {
+        meetup_frames(0, 15);
+        meetup_press(BTN_A); /* first choice = free catch-up */
+    }
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    talk_db_close();
+}
+
+/* Favorites, moods and identity affect the *same* reaction in the
+ * Story place menu and the Free Play City Map. Reading is non-mutating. */
+TEST(action_meetup_reactions_reflect_real_guest_traits)
+{
+    int a, venue;
+    const char *reply;
+    premade_town();
+    people();
+    CHECK(nadult > 0);
+    a = adults[0];
+    venue = sim_favourite_venue(a);
+    town_res(a)->mood = MOOD_HAPPY;
+    reply = talk_outcome_meet_reply(a, venue, TALK_MEET_ACTIVITY);
+    CHECK(strstr(reply, "favorite place") != NULL);
+    town_res(a)->mood = MOOD_SAD;
+    reply = talk_outcome_meet_reply(a, venue, TALK_MEET_CHAT);
+    CHECK(strstr(reply, "staying with me") != NULL);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
 }
 
 TEST(action_meetup_activity_is_real_and_cannot_be_farmed)
@@ -786,4 +927,40 @@ TEST(action_p2_p3_p7_random)
     printf("      1,500 random sessions (%d with a minor in the room): %d actions, no couple made\n", kid_sessions, nact);
     CHECK(nact >= 100);
     talk_db_close();
+}
+
+/* Planning and applying must agree when a resident is no longer alive.
+ * Otherwise menus can advertise unavailable actions or memory discoveries. */
+TEST(action_inactive_resident_guards)
+{
+    int id;
+    TalkSummary sum;
+    TalkOutcome out;
+    premade_town();
+    people();
+    CHECK(nadult > 0);
+    id = adults[0];
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, id));
+    town_res(id)->status = RES_GHOST;
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, id));
+    CHECK(!talk_outcome_can(TEV_ACT_GIFT, id));
+    CHECK(!talk_outcome_can(TEV_ACT_ASK, id));
+
+    memset(&sum, 0, sizeof sum);
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = 1;
+    sum.id[0] = (int16_t)id;
+    sum.nev = 2;
+    sum.ev[0].kind = TEV_LEARNED;
+    sum.ev[0].a = 0;
+    sum.ev[0].b = 0;
+    sum.ev[1].kind = TEV_ACT_INVITE;
+    sum.ev[1].a = 0;
+    sum.ev[1].b = ACT_PARK;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ((int)out.learned, 0);
+    CHECK_EQ((int)out.invited, 0);
+    CHECK_EQ((int)out.skipped, 1);
+    town_res(id)->status = RES_ALIVE;
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, id));
 }

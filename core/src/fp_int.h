@@ -121,6 +121,7 @@ int  fp_chibi(int id, int x, int y, int dir, int frame, int flags);
 /* Bust portrait in a frame (w = 48*scale + 6). Expression from mood when
  * expr < 0. Throttles new renders like fp_chibi (shows a placeholder). */
 void fp_portrait(int x, int y, int id, int scale, int expr, int style);
+int  fp_portrait_streamed(int x, int y, int id, int scale, int expr, int style);
 /* Full-body figure of a look (hosts, title parade). */
 void fp_figure(int x, int y, const DoomoLook *l, int status, int expr);
 /* Soft shaded ball (placeholders, decorations). */

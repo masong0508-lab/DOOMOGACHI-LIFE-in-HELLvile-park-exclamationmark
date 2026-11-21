@@ -59,23 +59,37 @@ static int pick_act = -1;
 
 /* ====================================================================== */
 /* matching                                                                 */
-static int has_partner(int id)
+/* Filters for couple/single/cross-border used to walk the sorted
+ * relationship graph anew for each of up to 1,000 residents. Build
+ * one 125-byte temporary membership mask from the actual graph on
+ * each filter change / scene return. No long-lived cache, invalidation
+ * hazard, save bytes or allocations. The bitset represents the *full*
+ * graph: a 13th cross-border friend is no longer silently invisible. */
+#define ROSTER_BITS ((DOOMO_MAX_RESIDENTS + 7) / 8)
+static void related_mask(int tag, uint8_t bits[ROSTER_BITS])
 {
-    int p = sim_partner_of(id);
-    return p >= 0;
+    int i;
+    memset(bits, 0, ROSTER_BITS);
+    if (tag != TAG_COUPLE && tag != TAG_SINGLE && tag != TAG_CROSS) return;
+    for (i = 0; i < doomo_town.edge_count; i++) {
+        const DoomoEdge *e = &doomo_town.edges[i];
+        int k = e->kind & REL_KIND_MASK;
+        int marked;
+        if (tag == TAG_CROSS)
+            marked = e->a < DOOMO_MAX_RESIDENTS && e->b < DOOMO_MAX_RESIDENTS &&
+                     RES_DISTRICT(e->a) != RES_DISTRICT(e->b) &&
+                     (k == REL_FRIEND || k == REL_BEST_FRIEND ||
+                      k == REL_DATING || k == REL_MARRIED);
+        else marked = (k == REL_DATING || k == REL_MARRIED);
+        if (!marked) continue;
+        if (e->a < DOOMO_MAX_RESIDENTS) bits[e->a >> 3] |= (uint8_t)(1u << (e->a & 7));
+        if (e->b < DOOMO_MAX_RESIDENTS) bits[e->b >> 3] |= (uint8_t)(1u << (e->b & 7));
+    }
 }
 
-static int has_cross_friend(int id)
+static int marked_related(const uint8_t bits[ROSTER_BITS], int id)
 {
-    uint16_t out[12];
-    int n = rel_list(id, out, 12), i;
-    for (i = 0; i < n; i++) {
-        int k = rel_kind(id, out[i]);
-        if (out[i] < DOOMO_MAX_RESIDENTS && RES_DISTRICT(out[i]) != RES_DISTRICT(id) &&
-            (k == REL_FRIEND || k == REL_BEST_FRIEND || k == REL_DATING || k == REL_MARRIED))
-            return 1;
-    }
-    return 0;
+    return (bits[id >> 3] & (uint8_t)(1u << (id & 7))) != 0;
 }
 
 int fp_pick_match(int kind, int id)
@@ -97,7 +111,7 @@ int fp_pick_match(int kind, int id)
     }
 }
 
-static int match(const RosterState *s, int id)
+static int match(const RosterState *s, int id, const uint8_t related[ROSTER_BITS])
 {
     const DoomoResident *r = TOWN_RES(id);
     if (r->status == RES_EMPTY) return 0;
@@ -113,9 +127,9 @@ static int match(const RosterState *s, int id)
     case TAG_CUSTOM: if (!(r->flags & RF_CUSTOM)) return 0; break;
     case TAG_FAV: if (!(r->flags & RF_FAVORITE)) return 0; break;
     case TAG_PREMADE: if (r->flags & RF_CUSTOM) return 0; break;
-    case TAG_COUPLE: if (!has_partner(id)) return 0; break;
-    case TAG_SINGLE: if (has_partner(id) || !fp_living_status(r->status)) return 0; break;
-    case TAG_CROSS: if (!has_cross_friend(id)) return 0; break;
+    case TAG_COUPLE: if (!marked_related(related, id)) return 0; break;
+    case TAG_SINGLE: if (marked_related(related, id) || !fp_living_status(r->status)) return 0; break;
+    case TAG_CROSS: if (!marked_related(related, id)) return 0; break;
     default: break;
     }
     if (s->search[0] && !fp_strcasestr(r->name, s->search)) return 0;
@@ -147,10 +161,12 @@ static int cmp_res(int a, int b)
 
 static void rebuild(RosterState *s)
 {
+    uint8_t related[ROSTER_BITS];
     int i, keep = s->sel_id;
+    related_mask(s->tag, related); /* one graph pass rather than a pass per resident */
     n_ids = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (match(s, i)) ids[n_ids++] = (uint16_t)i;
+        if (match(s, i, related)) ids[n_ids++] = (uint16_t)i;
     sort_mode = s->sort;
     if (s->sort != SORT_ROOM) fp_sort_u16(ids, n_ids, cmp_res);
     built_for = s;
@@ -159,6 +175,46 @@ static void rebuild(RosterState *s)
         if (ids[i] == keep) { s->sel = (int16_t)i; break; }
     if (n_ids) s->sel_id = (int16_t)ids[s->sel];
     else s->sel_id = -1;
+}
+
+/* Native-only regression access to the exact built membership semantics.
+ * Tests exercise edge changes without needing a menu animation or needing
+ * any extra code in the console / PS2 renderer. */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+int fp_roster_debug_tag_match(int tag, int id)
+{
+    RosterState s;
+    uint8_t related[ROSTER_BITS];
+    if (tag < TAG_ANY || tag >= TAG_COUNT || id < 0 || id >= DOOMO_MAX_RESIDENTS) return 0;
+    memset(&s, 0, sizeof s);
+    s.tag = (uint8_t)tag;
+    related_mask(tag, related);
+    return match(&s, id, related);
+}
+#endif
+
+/* Predict the focused face BEFORE the draw: formerly the roster waited
+ * six stable ticks before even requesting the bust. On a moving cursor
+ * the frame now issues one async slice job immediately, then fills nearby
+ * entries in the idle budget once the selected face is cached/on its way.
+ * The shared portrait cache still owns all pixels and jobs: no new RAM,
+ * texture, asset or per-frame framebuffer. */
+static void warm_card_faces(void)
+{
+    int id, j, k;
+    const DoomoResident *r;
+    if (!n_ids) return;
+    if (rs->stable > 1 && (rs->stable & 3) != 0) return;
+    id = ids[rs->sel];
+    r = fp_res(id);
+    if (!r || !portrait_prefetch(id, fp_mood_expr(r))) return;
+    if (rs->stable < 2) return;
+    for (k = 0; k < 2; k++) {
+        j = rs->sel + (k == 0 ? 1 : -1);
+        if (j >= 0 && j < n_ids && (r = fp_res(ids[j])) != NULL &&
+            !portrait_prefetch(ids[j], fp_mood_expr(r)))
+            break; /* keep the single pending job; don't replace it */
+    }
 }
 
 /* ====================================================================== */
@@ -210,6 +266,7 @@ static void enter_common(RosterState *s)
     s->pop_t = 0;
     s->last_frame = doomo_frame_count();
     rebuild(s);
+    warm_card_faces();
     {
         Layout L;
         layout(&L);
@@ -274,6 +331,10 @@ static void cb_search(int ok)
     use_state();
     rebuild(rs);
     rs->top = 0;
+    rs->stable = 0;
+    /* A search result has a new focused face. Queue it here, rather
+     * than waiting for the next general roster navigation tick. */
+    warm_card_faces();
     if (ok && rs->search[0] && n_ids > 0) fp_achieve(UL_FP_SEARCHER);
 }
 
@@ -332,7 +393,16 @@ static void roster_update(void)
     }
     rs->last_frame = doomo_frame_count();
     rs->pop_t++;
-    if (rs->filter_open) { filter_update(); return; }
+    if (rs->filter_open) {
+        filter_update();
+        if (!rs->filter_open) {
+            /* Returning from the filter sheet can reveal a new selected
+             * citizen. Claim the next idle slice before drawing the card. */
+            rs->stable = 0;
+            warm_card_faces();
+        }
+        return;
+    }
     old = rs->sel;
     if (btn_repeat(BTN_UP) && n_ids) rs->sel = (int16_t)(rs->sel > 0 ? rs->sel - 1 : n_ids - 1);
     if (btn_repeat(BTN_DOWN) && n_ids) rs->sel = (int16_t)(rs->sel < n_ids - 1 ? rs->sel + 1 : 0);
@@ -346,6 +416,9 @@ static void roster_update(void)
     } else if (rs->stable < 1000) {
         rs->stable++;
     }
+    /* Switch the district before scheduling prefetch: the previous
+     * selection might no longer be on this page, and warming it here
+     * would steal the only pending job from the actual selected card. */
     if (btn_pressed(BTN_L | BTN_R)) {
         rs->district = (uint8_t)((rs->district + (btn_pressed(BTN_L) ? 2 : 1)) % 3);
         audio_sfx(SFX_BLIP);
@@ -353,8 +426,12 @@ static void roster_update(void)
         rs->top = (int16_t)DOOMO_MAX(0, rs->sel - L.rows / 2);
         clamp_view(&L);
         rs->stable = 0;
+        warm_card_faces();
         return;
     }
+    /* One focused face per tick; neighboring faces are warmed after the
+     * selection settles, within the existing idle-budget scheduler. */
+    warm_card_faces();
     if (btn_pressed(BTN_START)) {
         audio_sfx(SFX_SELECT);
         rs->filter_open = 1;
@@ -435,19 +512,11 @@ static void draw_card(const Layout *L, int style)
         return;
     }
     px = x + (w - (PORTRAIT_W + 6)) / 2;
-    if (rs->stable >= 6) {
-        int j = rs->sel + 1, k;
-        fp_portrait(px, y + 6, id, 1, -1, WIN_MINT);
-        /* S3-2: the cursor has rested: draw the next and the previous card's face in idle time, so a step lands on a
-         * cached one (nearest first; one request is kept, the next call asks for the other) */
-        for (k = 0; k < 2; k++, j = rs->sel - 1)
-            if (j >= 0 && j < n_ids && fp_res(ids[j]) &&
-                !portrait_prefetch(ids[j], fp_mood_expr(fp_res(ids[j])))) break;
-    } else {
-        fp_portrait(px, y + 6, -1, 1, 0, WIN_MINT);
-        fp_chibi(id, px + 3 + (PORTRAIT_W - BODYSPR_W) / 2, y + 9 + (PORTRAIT_H - BODYSPR_H) / 2,
-                 0, 0, 0);
-    }
+    /* Do not draw a chibi on the same procedural canvas after each
+     * partial bust slice: that reset the canvas's generation and made
+     * the high-resolution portrait repeatedly restart. Instead the
+     * cheap UI silhouette stands in until the focused face is ready. */
+    (void)fp_portrait_streamed(px, y + 6, id, 1, -1, WIN_MINT);
     ty = y + PORTRAIT_H + 13;
     ui_text_center(x + w / 2, ty, r->name, st->text);
     ty += FONT_LINE;

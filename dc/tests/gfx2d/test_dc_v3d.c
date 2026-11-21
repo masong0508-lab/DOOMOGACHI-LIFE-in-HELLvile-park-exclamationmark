@@ -843,6 +843,39 @@ static void test_tintfit(void)
     }
 }
 
+/* Verify the optimized crowded-view sort preserves descending depth,
+ * stable equal-depth order, the 16-sprite fast-path boundary and reversal. */
+void dc2d_v3d_sort_test(int16_t *order, float *depth, int n);
+static void test_sort_billboards(void)
+{
+    int n, i, j;
+    int16_t order[256];
+    float depth[256];
+    static const int sizes[] = { 0, 1, 2, 15, 16, 17, 31, 32, 127, 256 };
+    for (j = 0; j < (int)(sizeof sizes / sizeof sizes[0]); j++) {
+        n = sizes[j];
+        for (i = 0; i < n; i++) {
+            order[i] = (int16_t)i;
+            depth[i] = (float)((i * 11 + 3) % 17);
+        }
+        dc2d_v3d_sort_test(order, depth, n);
+        for (i = 1; i < n; i++) {
+            CHECK(depth[i - 1] >= depth[i],
+                  "sort: %d items not descending at %d", n, i);
+            if (depth[i - 1] == depth[i])
+                CHECK(order[i - 1] < order[i],
+                      "sort: %d items lost original order at %d", n, i);
+        }
+    }
+    for (i = 0; i < 256; i++) {
+        order[i] = (int16_t)i;
+        depth[i] = (float)i;
+    }
+    dc2d_v3d_sort_test(order, depth, 256);
+    for (i = 0; i < 256; i++)
+        CHECK(order[i] == 255 - i, "sort: reverse-sorted crowd at %d", i);
+}
+
 int main(void)
 {
     NatOptions o;
@@ -867,6 +900,7 @@ int main(void)
         }
     }
     dc2d_view3d_remap_budget(100000);
+    test_sort_billboards();
     if (getenv("DC6_GOV_ONLY")) {          /* the governor's tests alone (seconds, not minutes) */
         test_gov_rule(); test_gov_caps(); test_gov_options(); test_gov_feed();
         printf("dc6 view3d governor tests: %d checks, %d failed\n", checks, fails);

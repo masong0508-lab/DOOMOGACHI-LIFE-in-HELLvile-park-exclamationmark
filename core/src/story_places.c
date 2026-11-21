@@ -156,19 +156,8 @@ static const char *meet_activity_label(int venue)
     }
 }
 
-static const char *meet_activity_reply(int venue)
-{
-    switch (venue) {
-    case ACT_CAFE: return "Those snacks hit the spot. Thanks for hanging out with me!";
-    case ACT_CONCERT: return "That concert was something! I needed some music.";
-    case ACT_CHURCH: return "I feel calmer after that quiet moment with you.";
-    case ACT_WORKSHOP: return "Working side by side was fun, even if I'm tired!";
-    case ACT_SHOP: return "Browsing together was more fun than I expected.";
-    case ACT_PARK: return "That walk in the park was just what I needed!";
-    case ACT_BEACH: return "The sea air and your company did me good.";
-    default: return "Thanks for spending time with me here.";
-    }
-}
+/* The original Talk outcome supplies one resident-specific response in
+ * either city view; the Story map doesn't keep a second flavor table. */
 
 /* Explicit place identity: never award a meetup merely because the
  * player opened Talk somewhere on the map. Only an actual place door
@@ -376,12 +365,7 @@ static void meet_pick(int choice)
         return;
     }
     audio_sfx(SFX_SPARKLE);
-    if (kind == TALK_MEET_ACTIVITY)
-        story_say(id, meet_activity_reply(venue));
-    else if (town_res(id)->mood == MOOD_SAD)
-        story_say(id, "Thank you for coming to talk. I really needed that.");
-    else
-        story_say(id, "I'm glad you came! It's good catching up.");
+    story_say(id, talk_outcome_meet_reply(id, venue, kind));
     ui_toast("A shared day to remember!");
 }
 #endif

@@ -4,6 +4,7 @@
 #include "test.h"
 #include "../src/fp_int.h"
 #include "../src/fp_island.h"
+#include "../src/ui_internal.h"
 
 /* fp_island.c test hooks */
 int fp_island_select_kind(int kind);
@@ -11,6 +12,8 @@ int fp_island_menu_open(void);
 int fp_island_menu_count(void);
 const char *fp_island_menu_label(int i);
 int fp_island_menu_select(const char *label);
+int fp_island_crowd_snapshot(int act);
+int fp_roster_debug_tag_match(int tag, int id);
 
 static void frames(uint32_t b, int n)
 {
@@ -64,6 +67,92 @@ TEST(freeplay_new_island_choices)
         fp_new_island(TOWN_POP_RANDOM, 777);
         CHECK_EQ_U(resident_fingerprint(TOWN_RES(123)), fp1);
     }
+}
+
+/* The Free Play map counts *physical occupied slots*. This matters
+ * especially on GBA-500: resident IDs still range to 999 even though
+ * only 500 storage slots exist. A ghost counts as present, but a dead
+ * resident must never be considered a crowd member. */
+TEST(freeplay_crowds_follow_sparse_slot_population)
+{
+    DoomoResident *r;
+    fp_new_island(TOWN_POP_EMPTY, 4243);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    frames(0, 3);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 0);
+    CHECK(town_bind(777) >= 0);
+    r = TOWN_RES(777);
+    resident_default(r);
+    r->status = RES_ALIVE;
+    r->activity = ACT_CAFE;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 1);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_PARK), 0);
+    r->status = RES_GHOST;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 1);
+    r->status = RES_DEAD;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 0);
+    CHECK_EQ(fp_island_crowd_snapshot(-1), -1);
+}
+
+/* A roster card should start prefetching on entry, not wait six
+ * frames before the first portrait request. Drive the real scene
+ * while leaving render slices to the native host test harness. */
+TEST(freeplay_roster_starts_focused_portrait_before_any_scroll)
+{
+    premade_island();
+    portrait_cache_reset();
+    scene_push(&SCENE_ROSTER, 0);
+    CHECK(top_is(&SCENE_ROSTER));
+    CHECK(portrait_idle_next() >= 0);
+    portrait_cache_reset(); /* the next test starts with a clean pool */
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+}
+
+TEST(freeplay_crowds_saturate_instead_of_wrapping_at_256)
+{
+    int i, n = 0;
+    premade_island();
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        DoomoResident *r = &doomo_town.res[i];
+        if (r->status == RES_ALIVE || r->status == RES_GHOST) {
+            r->activity = ACT_CAFE;
+            n++;
+        }
+    }
+    CHECK(n > 255);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 255);
+}
+
+/* The roster's special relationship filters are a single graph snapshot,
+ * not up to 1,000 re-scans per filter change. Keep their exact ordinary
+ * semantics (including cross-side friendships, dating and singles). */
+TEST(freeplay_roster_relationship_filters_follow_the_live_graph)
+{
+    DoomoResident *a, *b;
+    fp_new_island(TOWN_POP_EMPTY, 4244);
+    CHECK(town_bind(23) >= 0 && town_bind(722) >= 0);
+    a = TOWN_RES(23);
+    b = TOWN_RES(722);
+    resident_default(a);
+    resident_default(b);
+    a->status = b->status = RES_ALIVE;
+    CHECK(!fp_roster_debug_tag_match(5, 23)); /* couples */
+    CHECK(fp_roster_debug_tag_match(6, 23));  /* singles */
+    CHECK(!fp_roster_debug_tag_match(7, 23)); /* cross-border */
+    CHECK(rel_get_or_add(23, 722) != NULL);
+    rel_set_kind(23, 722, REL_FRIEND);
+    CHECK(fp_roster_debug_tag_match(7, 23));
+    CHECK(fp_roster_debug_tag_match(7, 722));
+    CHECK(fp_roster_debug_tag_match(6, 23));
+    rel_set_kind(23, 722, REL_DATING);
+    CHECK(fp_roster_debug_tag_match(5, 23));
+    CHECK(fp_roster_debug_tag_match(5, 722));
+    CHECK(!fp_roster_debug_tag_match(6, 23));
+    rel_set_kind(23, 722, REL_ACQUAINTANCE);
+    CHECK(!fp_roster_debug_tag_match(7, 23));
+    CHECK(!fp_roster_debug_tag_match(5, 23));
+    CHECK(fp_roster_debug_tag_match(6, 23));
+    CHECK(!fp_roster_debug_tag_match(7, DOOMO_PLAYER_ID));
 }
 
 TEST(freeplay_new_island_scene_classic)
@@ -484,6 +573,58 @@ TEST(freeplay_island_menus_list_activities)
         CHECK(fp_island_menu_count() >= 1);
         press(BTN_B);
     }
+}
+
+/* This is a real on-site glimpse rather than a random bulletin. Merely
+ * watching does not create a bond or alter either character's stats. */
+TEST(freeplay_moment_observes_live_residents_without_forcing_bonds)
+{
+    int a, b, before;
+    premade_island();
+    a = first_alive(0);
+    b = first_alive(a + 1);
+    CHECK(a >= 0 && b >= 0);
+    town_res(a)->activity = ACT_CAFE;
+    town_res(b)->activity = ACT_CAFE;
+    before = rel_value(a, b);
+    fp_island_select_kind(LOC_CAFE);
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    CHECK(fp_island_menu_select("Catch a little moment"));
+    press(BTN_A);
+    CHECK(top_is(&SCENE_DIALOG));
+    close_dialogs();
+    CHECK_EQ(rel_value(a, b), before);
+    CHECK_EQ(town_res(a)->activity, ACT_CAFE);
+    CHECK_EQ(town_res(b)->activity, ACT_CAFE);
+}
+
+/* A ghost or possessed resident should never become a normal cheerful
+ * stranger in the observation system; it also mustn't restore them to
+ * life or create an imaginary relationship during the scene. */
+TEST(freeplay_moment_respects_a_lone_ghost)
+{
+    UiDialogDebug d;
+    int ghost, i;
+    premade_island();
+    ghost = first_alive(0);
+    CHECK(ghost >= 0);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        DoomoResident *r = town_res(i);
+        if (r && r->activity == ACT_CAFE) r->activity = ACT_HOME;
+    }
+    town_res(ghost)->status = RES_GHOST;
+    town_res(ghost)->activity = ACT_CAFE;
+    fp_island_select_kind(LOC_CAFE);
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    CHECK(fp_island_menu_select("Catch a little moment"));
+    press(BTN_A);
+    CHECK(top_is(&SCENE_DIALOG));
+    ui_dialog_debug(&d);
+    CHECK(d.text && strstr(d.text, "streetlights") != NULL);
+    close_dialogs();
+    CHECK_EQ(town_res(ghost)->status, RES_GHOST);
 }
 
 TEST(freeplay_island_town_hall_rent_once_a_day)

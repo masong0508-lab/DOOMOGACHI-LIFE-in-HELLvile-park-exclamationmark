@@ -26,6 +26,9 @@
 #include "doomo/library.h"
 #include "doomo/portrait.h"
 #include "doomo/street.h"    /* one immutable address for every 1000 house slots */
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 /* ====================================================================== */
 /* locations                                                                */
@@ -107,7 +110,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
        E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP,
-       E_WALK_DISTRICT, E_CITY_ATLAS };
+       E_WALK_DISTRICT, E_CITY_ATLAS, E_MEET, E_MOMENT };
 
 #define MENU_MAX 24
 typedef struct {
@@ -233,6 +236,14 @@ static void add_here(int act)
     e = add(E_HERE, ICON_SMILE, buf, "See who's hanging out here right now.");
     if (e) e->arg = (int16_t)act;
     lock_row(e, I.here[act % ACT_COUNT] == 0, "Nobody is hanging out here right now.");
+    /* Optional, opt-in observation, not another forced player task. The
+     * background roster scan already counted visitors. Only pressing the
+     * option selects real on-site witnesses; there is no draw/tick scan. */
+    if (I.here[act % ACT_COUNT] > 0) {
+        e = add(E_MOMENT, ICON_SPARK, "Catch a little moment",
+                "Listen to residents who are really here.");
+        if (e) e->arg = (int16_t)act;
+    }
 }
 
 /* the activities registered at this location (activities.h): the ones
@@ -315,7 +326,13 @@ static void build_menu(const Loc *L)
         break;
     case LOC_CHURCH: {
         int n = 0, i;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_POSSESSED, i)) n++;
+        /* Sparse GBA towns have 500 physical resident slots, not 1000
+         * active people. Count only occupied slots; the picker still
+         * receives the canonical resident ID. */
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+            int id = town_slot_id(i);
+            if (id >= 0 && fp_pick_match(PICK_POSSESSED, id)) n++;
+        }
         e = add(E_EXORCISE, ICON_CROSS, n ? "Exorcise someone!" : "Exorcise someone",
                 "Father Fuzz's ritual: prayer, holy water, true name.");
         lock_row(e, n == 0, "Nobody is possessed right now. Praise be!");
@@ -326,7 +343,10 @@ static void build_menu(const Loc *L)
         break; }
     case LOC_HOSPITAL: {
         int n = 0, i;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_SICK, i)) n++;
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+            int id = town_slot_id(i);
+            if (id >= 0 && fp_pick_match(PICK_SICK, id)) n++;
+        }
         e = add(E_TREAT, ICON_CROSS, "Treat someone (H$40)", "Dr. Bloom patches up a sick citizen.");
         lock_row(e, n == 0, "Nobody is sick right now. Come back later!");
         add_here(L->act);
@@ -406,6 +426,25 @@ static void build_menu(const Loc *L)
         return;
     default: break;
     }
+#ifdef DOOMO_HAS_TALK
+    /* An accepted invitation now has a clear arrival point even for
+     * Free Play users who never open the 3D Story street/door menu.
+     * Query only on menu construction (and its existing 32-frame refresh),
+     * never during island rendering or in the population scan. */
+    if (L->act != NOLOC && L->act < ACT_COUNT) {
+        int guest = talk_outcome_meet_ready(L->act);
+        if (guest >= 0) {
+            const DoomoResident *friend = town_res(guest);
+            char label[30];
+            if (friend) {
+                doomo_snprintf(label, sizeof label, "Meet %s here!", friend->name);
+                e = add(E_MEET, ICON_HEART, label,
+                        "Your friend arrived! Chat or share an activity.");
+                if (e) e->arg = (int16_t)L->act;
+            }
+        }
+    }
+#endif
     add(E_CLOSE, ICON_X, "Leave", "Back to the map (B does it too).");
 }
 
@@ -487,10 +526,11 @@ static void town_records(void)
     int i, hill = 0, hell = 0, poss = 0, lost = 0, ghosts = 0, couples = 0, cross = 0;
     char buf[160];
     const DoomoSimStats *s = sim_stats();
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = TOWN_RES(i)->status;
-        if (st == RES_EMPTY || st == RES_DEAD) continue;
-        if (RES_DISTRICT(i)) hell++; else hill++;
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int id = town_slot_id(i);
+        int st = doomo_town.res[i].status;
+        if (id < 0 || st == RES_EMPTY || st == RES_DEAD) continue;
+        if (RES_DISTRICT(id)) hell++; else hill++;
         if (st == RES_POSSESSED) poss++;
         if (st == RES_SOUL_LOST) lost++;
         if (st == RES_GHOST) ghosts++;
@@ -525,8 +565,8 @@ static void fuzz_talk(void)
     int speaker = fp_host_in_town(roster_find("Father Fuzz")) ? roster_find("Father Fuzz") : -1;
     char buf[160];
     (void)fuzz;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = TOWN_RES(i);
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        const DoomoResident *r = &doomo_town.res[i];
         if (r->status == RES_POSSESSED) poss++;
         else if (r->status == RES_SOUL_LOST) lost++;
         else if (r->status == RES_ALIVE && r->stat[STAT_CORRUPTION] >= 70) dark++;
@@ -546,8 +586,8 @@ static void peek_wall(void)
 {
     int i, hell = 0, poss = 0, cross = 0;
     char buf[160];
-    for (i = DOOMO_DISTRICT_SIZE; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = TOWN_RES(i)->status;
+    for (i = DOOMO_LIVE_PER_DISTRICT; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int st = doomo_town.res[i].status;
         if (fp_living_status(st)) hell++;
         if (st == RES_POSSESSED) poss++;
     }
@@ -574,8 +614,8 @@ static void picnic(void)
     char buf[80];
     if (doomo_town.money < 120) { audio_sfx(SFX_ERROR); ui_toast("A picnic costs H$120."); return; }
     doomo_town.money -= 120;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = TOWN_RES(i);
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        DoomoResident *r = &doomo_town.res[i];
         if (r->status != RES_ALIVE && r->status != RES_GHOST) continue;
         if (r->activity != ACT_PARK && r->activity != ACT_WANDERING) continue;
         r->stat[STAT_HUNGER] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HUNGER] + 30);
@@ -600,8 +640,10 @@ static void collect_rent_now(void)
 {
     int i, n = 0, amount;
     char buf[64];
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (TOWN_RES(i)->status == RES_ALIVE || TOWN_RES(i)->status == RES_GHOST) n++;
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int st = doomo_town.res[i].status;
+        if (st == RES_ALIVE || st == RES_GHOST) n++;
+    }
 #if DOOMO_RES_SLOTS
     /* GBA-500: half the citizens chip in twice as much, so a full town pays what it pays elsewhere */
     amount = 50 + n * (2 * DOOMO_MAX_RESIDENTS / DOOMO_LIVE_RESIDENTS);
@@ -721,6 +763,180 @@ static void atlas_load(int side)
     map_load(side ? MAPID_HELLVILE : MAPID_HAHALAND);
 }
 
+#ifdef DOOMO_HAS_TALK
+/* The same day-scoped reservation the 3D place door uses. There is
+ * never a separate hub-only date, resident duplicate or phantom meetup. */
+static const char *meet_options[3] = {
+    "Catch up (free)", "Spend time together", "Maybe later"
+};
+
+static const char *meet_activity_name(int venue)
+{
+    switch (venue) {
+    case ACT_CAFE: return "Share snacks (6 H$)";
+    case ACT_PARK: return "Take a walk";
+    case ACT_BEACH: return "Enjoy the sea air";
+    case ACT_CONCERT: return "Hear the concert";
+    case ACT_WORKSHOP: return "Tinker together";
+    case ACT_SHOP: return "Browse the shelves";
+    case ACT_CHURCH: return "Reflect together";
+    default: return "Spend time together";
+    }
+}
+
+/* Shared visit dialogue belongs to Talk outcome, not to this map renderer.
+ * Story doors and the City Map now speak the very same resident language. */
+
+static void meet_pick(int choice)
+{
+    int venue = I.mloc ? I.mloc->act : -1, guest, kind, done;
+    if (choice < 0 || choice >= 2 || venue < 0 || venue >= ACT_COUNT) return;
+    kind = choice == 0 ? TALK_MEET_CHAT : TALK_MEET_ACTIVITY;
+    guest = talk_outcome_meet_ready(venue);
+    if (guest < 0) {
+        ui_toast("Your guest has left. Invite them again another day.");
+        I.menu_dirty = 1;
+        return;
+    }
+    if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE && doomo_town.money < 6u) {
+        ui_say(guest, "We can still talk for free. Two snacks cost 6 H$.");
+        return; /* not charged, not consumed */
+    }
+    done = talk_outcome_meet_kind(venue, kind);
+    if (done < 0) {
+        ui_toast("The planned meetup is no longer available.");
+        I.menu_dirty = 1;
+        return;
+    }
+    I.menu_dirty = 1; /* remove the consumed invite before the next menu draw */
+    audio_sfx(SFX_HAPPY);
+    fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_HEART, 8);
+    ui_say(done, talk_outcome_meet_reply(done, venue, kind));
+}
+
+static void open_meet(int venue)
+{
+    int guest = talk_outcome_meet_ready(venue);
+    if (guest < 0) {
+        ui_toast("Your invited friend isn't here now.");
+        I.menu_dirty = 1;
+        return;
+    }
+    meet_options[1] = meet_activity_name(venue);
+    ui_choice(guest, "What shall we do together?", meet_options, 3, meet_pick);
+}
+#endif
+
+/* Small, occasional comedy emerging from actual co-location.
+ * Listening is read-only: no free relationship, news or item reward.
+ * A second resident is found only on a deliberate button press.
+ * If one or both moved since the menu snapshot, the observation is
+ * revalidated rather than teleporting them back for a scene. */
+/* A tiny rotating *view* into the actual local social graph. The first
+ * two IDs gave every player the same daily vignette forever and sometimes
+ * asked a possessed resident to tell a fluffy joke. Anchor selection at
+ * this game-hour/place, prefer an existing meaningful bond among up to 24
+ * present citizens, and leave the sim completely untouched. This scan
+ * runs only on an explicit menu choice, never on frame/tick/draw. */
+static void moment_people(int act, int *a, int *b, int *unwell)
+{
+    uint32_t start = ((uint32_t)act * 73u + doomo_town.day * 101u +
+                      (uint32_t)town_hour() * 37u) % DOOMO_LIVE_RESIDENTS;
+    int k, i, fallback = -1, considered = 0;
+    *a = *b = *unwell = -1;
+    for (k = 0; k < DOOMO_LIVE_RESIDENTS; k++) {
+        const DoomoResident *r;
+        int kind, slot = (int)((start + (uint32_t)k) % DOOMO_LIVE_RESIDENTS);
+        i = town_slot_id(slot);
+        if (i < 0) continue;
+        r = &doomo_town.res[slot];
+        if (!r || r->activity != act) continue;
+        if (r->status != RES_ALIVE) {
+            if (*unwell < 0 && (r->status == RES_GHOST ||
+                                r->status == RES_SOUL_LOST ||
+                                r->status == RES_POSSESSED))
+                *unwell = i;
+            continue;
+        }
+        if (*a < 0) { *a = i; continue; }
+        if (fallback < 0) fallback = i;
+        kind = rel_kind(*a, i);
+        if (kind == REL_FRIEND || kind == REL_BEST_FRIEND ||
+            kind == REL_RIVAL || kind == REL_NEMESIS ||
+            kind == REL_FAMILY || kind == REL_DATING ||
+            kind == REL_MARRIED) {
+            *b = i; break;
+        }
+        if (++considered >= 24) break; /* bound edge lookups */
+    }
+    if (*b < 0) *b = fallback;
+}
+
+static void observe_moment(int act)
+{
+    int a, b, unwell, kind;
+    const DoomoResident *r;
+    char line[112];
+    if (act < 0 || act >= ACT_COUNT) return;
+    moment_people(act, &a, &b, &unwell);
+    if (a < 0) {
+        if (unwell >= 0) {
+            r = town_res(unwell);
+            ui_say(unwell, r->status == RES_GHOST ?
+                   "I used to come here when the streetlights were brighter." :
+                   r->status == RES_POSSESSED ?
+                   "Something else keeps trying to speak through me." :
+                   "I remember this place, but everything feels far away.");
+        } else {
+            ui_toast("Everyone wandered off. Try again later.");
+            I.menu_dirty = 1;
+        }
+        return;
+    }
+    if (b < 0) {
+        r = town_res(a);
+        if (r && r->mood == MOOD_SAD)
+            ui_say(a, "I came outside to clear my head. It's taking a while.");
+        else if (act == ACT_CONCERT)
+            ui_say(a, "Do you think the floorboards can hear the music?");
+        else {
+            doomo_snprintf(line, sizeof line,
+                           "I think a cloud is practicing %s up there.",
+                           doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+            ui_say(a, line);
+        }
+        return;
+    }
+    kind = rel_kind(a, b);
+    r = town_res(a);
+    if (kind == REL_RIVAL || kind == REL_NEMESIS) {
+        doomo_snprintf(line, sizeof line,
+                       "I came to %s to relax. Then you arrived!",
+                       I.mloc ? I.mloc->name : "town");
+        ui_say(a, line);
+        ui_say(b, "I was relaxing first!");
+    } else if (kind == REL_FRIEND || kind == REL_BEST_FRIEND ||
+               kind == REL_FAMILY || kind == REL_DATING || kind == REL_MARRIED) {
+        doomo_snprintf(line, sizeof line,
+                       "I want to start a club for %s. Will you join?",
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Only if we get a tiny flag.");
+    } else if (act == ACT_CAFE) {
+        doomo_snprintf(line, sizeof line,
+                       "Does %s need its own little chair?",
+                       doomo_food_names[RES_LIKE_FOOD(r) % FOOD_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Maybe. Ask the waiter.");
+    } else {
+        doomo_snprintf(line, sizeof line,
+                       "If %s was a sport, would you watch?",
+                       doomo_hobby_names[RES_LIKE_HOBBY(r) % HOBBY_COUNT]);
+        ui_say(a, line);
+        ui_say(b, "Only if the clouds are on our team.");
+    }
+}
+
 static void run_entry(const Entry *e)
 {
     hold_drop();
@@ -788,6 +1004,10 @@ static void run_entry(const Entry *e)
     case E_ROSTER: scene_push(&SCENE_ROSTER, FP_ROSTER_ARG_BROWSE); break;
     case E_FAMILY: scene_push(&SCENE_FAMILY, 0); break;
     case E_PET: open_pet(); break;
+#ifdef DOOMO_HAS_TALK
+    case E_MEET: open_meet(e->arg); break;
+#endif
+    case E_MOMENT: observe_moment(e->arg); break;
     case E_HERE:
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "%s", fp_activity_name(e->arg));
         fp_pick_act(fp_tmp, e->arg, cb_open);
@@ -824,13 +1044,23 @@ static void count_problems(void)
     }
 }
 
+/* The map needs one fresh crowd snapshot about every eight frames.
+ * Scan the actual resident storage, not all 1000 possible IDs: on
+ * GBA-500 this halves both lookups and slot visits, while consoles with
+ * 1000 live records retain exactly the old 125-per-frame cadence.
+ * Saturation prevents a concert of >255 citizens wrapping back to 0
+ * (which would incorrectly hide the "Catch a little moment" action).
+ * No resident state is changed, no new arrays or frame allocations. */
 static void scan_crowds(void)
 {
     int k;
-    for (k = 0; k < 125; k++) {
-        const DoomoResident *r = TOWN_RES(I.scan);
-        if (fp_living_status(r->status) && r->activity < ACT_COUNT) I.here_acc[r->activity]++;
-        if (++I.scan >= DOOMO_MAX_RESIDENTS) {
+    const int budget = (DOOMO_LIVE_RESIDENTS + 7) / 8;
+    for (k = 0; k < budget; k++) {
+        const DoomoResident *r = &doomo_town.res[I.scan];
+        if (fp_living_status(r->status) && r->activity < ACT_COUNT &&
+            I.here_acc[r->activity] < 255)
+            I.here_acc[r->activity]++;
+        if (++I.scan >= DOOMO_LIVE_RESIDENTS) {
             I.scan = 0;
             memcpy(I.here, I.here_acc, sizeof(I.here));
             memset(I.here_acc, 0, sizeof(I.here_acc));
@@ -1685,6 +1915,17 @@ int fp_island_menu_overflow(char *why, int cap)
 #undef BAD
     return bad;
 }
+/* Native regression hook only: caller can request an exact point-in-time
+ * full crowd snapshot. No runtime code or RAM cost on the handhelds,
+ * PS1, or Dreamcast. */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+int fp_island_crowd_snapshot(int act)
+{
+    if (act < 0 || act >= ACT_COUNT) return -1;
+    full_scan();
+    return I.here[act];
+}
+#endif
 int fp_island_menu_enabled(int i) { return (i >= 0 && i < I.nent) ? isl()->ent[i].enabled : 0; }
 const char *fp_island_menu_help(int i) { return (i >= 0 && i < I.nent) ? entry_help(&isl()->ent[i]) : ""; }
 const char *fp_island_menu_key(int i) { return (i >= 0 && i < I.nent && isl()->ent[i].key) ? isl()->ent[i].key : ""; }

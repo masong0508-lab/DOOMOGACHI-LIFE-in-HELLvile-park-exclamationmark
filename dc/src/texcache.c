@@ -39,6 +39,12 @@ static DcTex    tex[TEX_SLOTS];
 static Ent      ent[TEX_SLOTS];
 static uint16_t hash[HASH_SIZE];             /* slot + 1, 0 = empty           */
 static int      nstatic, ndyn_live;
+/* The next likely vacant dynamic slot. New textures used to scan all
+ * 2048 entries from slot 8 after every miss, even when nearly every
+ * resident/room texture was already resident. A small cursor turns
+ * sequential growth into O(1) and retains correct reuse after eviction.
+ * No additional table, allocation or per-frame work. */
+static int      free_hint = TEX_STATIC;
 static uint32_t cur_frame = 1;
 /* 32-byte aligned: pvr_txr_load copies it with the store queues */
 static uint16_t scratch[SCRATCH_TEXELS / 2] __attribute__((aligned(32)));
@@ -75,7 +81,12 @@ void dc2d_twiddle8(uint16_t *dst, const uint8_t *src, int w, int h, int tw, int 
     uint8_t *d = (uint8_t *)dst;
     uint32_t m = (uint32_t)(tw < th ? tw : th);
     int x, y;
-    memset(dst, 0, (size_t)tw * (size_t)th);
+    /* A full power-of-two image writes every twiddled texel, including
+     * transparent zeroes. Clear only the padding of a partial image.
+     * This removes one entire scratch-buffer sweep on common 16/32/64
+     * and 128-pixel textures without changing the uploaded bytes. */
+    if (w != tw || h != th)
+        memset(dst, 0, (size_t)tw * (size_t)th);
     for (x = 0; x < w; x++)
         tw_col[x] = tw > th ? ((uint32_t)x / m) * m * m + (spread((uint32_t)x % m) << 1) : spread((uint32_t)x) << 1;
     for (y = 0; y < h; y++)
@@ -84,7 +95,7 @@ void dc2d_twiddle8(uint16_t *dst, const uint8_t *src, int w, int h, int tw, int 
         const uint8_t *s = src + (size_t)y * (size_t)w;
         uint8_t *dr = d + tw_row[y];
         for (x = 0; x < w; x++)
-            if (s[x]) dr[tw_col[x]] = s[x];
+            dr[tw_col[x]] = s[x];
     }
     /* the PVR reads texels as little-endian 16-bit pairs: on a big-endian
      * host this would need a swap; the SH4 and the test hosts are LE */
@@ -112,12 +123,22 @@ static void hash_insert(int slot)
     hash[i] = (uint16_t)(slot + 1);
 }
 
-static void hash_rebuild(void)
+/* Evict one open-addressed entry without rebuilding the full table of
+ * 2,048 live textures. Clearing a bucket breaks a probe chain; reinsert
+ * just that contiguous cluster until its next empty bucket. */
+static void hash_remove(int slot)
 {
-    int s;
-    memset(hash, 0, sizeof(hash));
-    for (s = TEX_STATIC; s < TEX_SLOTS; s++)
-        if (ent[s].live) hash_insert(s);
+    uint32_t i = hkey(ent[slot].key, ent[slot].sum, tex[slot].w, tex[slot].h);
+    while (hash[i] && hash[i] != (uint16_t)(slot + 1))
+        i = (i + 1u) & (HASH_SIZE - 1u);
+    if (!hash[i]) return;
+    hash[i] = 0;
+    for (i = (i + 1u) & (HASH_SIZE - 1u); hash[i];
+         i = (i + 1u) & (HASH_SIZE - 1u)) {
+        int s = (int)hash[i] - 1;
+        hash[i] = 0;
+        hash_insert(s);
+    }
 }
 
 static int hash_find(uint32_t key, uint32_t sum, int w, int h, int uid)
@@ -135,8 +156,10 @@ static int hash_find(uint32_t key, uint32_t sum, int w, int h, int uid)
 
 static void free_slot(int s)
 {
+    hash_remove(s);
     dc2d_be_tex_free(tex[s].handle);
     ent[s].live = 0;
+    if (s < free_hint) free_hint = s;  /* oldest hole can be reused first */
     ndyn_live--;
     dc2d_stats.evictions++;
 }
@@ -149,7 +172,6 @@ static int evict(uint32_t age)
     if (age < 1) age = 1;
     for (s = TEX_STATIC; s < TEX_SLOTS; s++)
         if (ent[s].live && ent[s].last + age < cur_frame) { free_slot(s); any = 1; }
-    if (any) hash_rebuild();
     return any;
 }
 
@@ -165,8 +187,12 @@ static int free_dyn_slot(void)
 {
     int s;
     if (ndyn_live >= TEX_DYN && !evict(120) && !evict(1)) return -1;
-    for (s = TEX_STATIC; s < TEX_SLOTS; s++)
-        if (!ent[s].live) return s;
+    /* An allocation can fail after this choice without marking the slot
+     * live, so wrap once to find any previously skipped hole too. */
+    for (s = free_hint; s < TEX_SLOTS; s++)
+        if (!ent[s].live) { free_hint = s + 1; return s; }
+    for (s = TEX_STATIC; s < free_hint; s++)
+        if (!ent[s].live) { free_hint = s + 1; return s; }
     return -1;
 }
 
@@ -187,6 +213,8 @@ void dc2d_tex_init(void)
     memset(hash, 0, sizeof(hash));
     nstatic = 0;
     ndyn_live = 0;
+    free_hint = TEX_STATIC;
+    warned_big = 0;
 }
 
 void dc2d_tex_frame(uint32_t frame) { cur_frame = frame; }
@@ -217,7 +245,10 @@ int dc2d_tex_static(const uint8_t *pix, int w, int h, int tw, int th)
 {
     int s = nstatic;
     uint32_t handle;
-    if (s >= TEX_STATIC || !fits(tw, th) || !dc2d_be_tex_alloc((uint32_t)tw * (uint32_t)th, &handle))
+    if (!pix || w <= 0 || h <= 0 || w > tw || h > th ||
+        tw < 8 || th < 8 || (tw & (tw - 1)) || (th & (th - 1)) ||
+        s >= TEX_STATIC || !fits(tw, th) ||
+        !dc2d_be_tex_alloc((uint32_t)tw * (uint32_t)th, &handle))
         return -1;
     nstatic++;
     tex[s].handle = handle;
@@ -231,7 +262,8 @@ int dc2d_tex_static(const uint8_t *pix, int w, int h, int tw, int th)
 
 void dc2d_tex_restatic(int s, const uint8_t *pix, int w, int h)
 {
-    if (s < 0 || s >= nstatic) return;
+    if (s < 0 || s >= nstatic || !pix || w <= 0 || h <= 0 ||
+        w > tex[s].tw || h > tex[s].th) return;
     dc2d_twiddle8(scratch, pix, w, h, tex[s].tw, tex[s].th);
     dc2d_be_tex_write(tex[s].handle, scratch, (uint32_t)tex[s].tw * (uint32_t)tex[s].th);
 }
@@ -303,8 +335,16 @@ int dc2d_tex_image(const DoomoImage *img) { return dc2d_tex_image_new(img, 1); }
 /* make_new 0: only look for a cached upload (-1 when there is none; DC6's budget of new textures per view) */
 int dc2d_tex_image_new(const DoomoImage *img, int make_new)
 {
-    int w = img->w, h = img->h, uid = img->uid != 0, s;
+    int w, h, uid, s;
     uint32_t key, sum, handle;
+    /* Check BEFORE hashing the pixel memory. In particular a temporary
+     * uid-less portrait with an invalid size would otherwise ask pix_sum
+     * to read past the image, even on a lookup-only (budgeted) view. */
+    if (!img || !img->pix || !fits(img->w, img->h)) {
+        dc2d_stats.tex_fail++;
+        return -1;
+    }
+    w = img->w; h = img->h; uid = img->uid != 0;
     key = uid ? img->uid : (uint32_t)(uintptr_t)img->pix;
     sum = uid ? 0u : pix_sum(img->pix, (uint32_t)w * (uint32_t)h);
     s = hash_find(key, sum, w, h, uid);
@@ -313,7 +353,6 @@ int dc2d_tex_image_new(const DoomoImage *img, int make_new)
         return s;
     }
     if (!make_new) return -1;
-    if (!fits(w, h)) { dc2d_stats.tex_fail++; return -1; }
     s = free_dyn_slot();
     if (s < 0 || !alloc_tex((uint32_t)pow2(w) * (uint32_t)pow2(h), &handle)) {
         dc2d_stats.tex_fail++;

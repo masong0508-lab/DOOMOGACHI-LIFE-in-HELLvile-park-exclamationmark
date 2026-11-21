@@ -63,8 +63,12 @@ static void adapt_sub(void)
 #define NRAYS     36             /* rays per 45 degrees of fan */
 
 static const DoomoMap *s_map;
-static uint16_t s_stamp = 1;
-static uint16_t s_vis[MAXCELLS];          /* == s_stamp: visible this frame */
+/* Visibility and per-draw texture stamp need only a same-frame marker.
+ * An 8-bit generation saves 4,096 B on the PS1 visibility bitmap plus
+ * 64 B from texture stamps (and remains overlay-borrow-safe). Wrap every
+ * 255 views, clearing stamps before reuse. The cell list stays uint16_t. */
+static uint8_t  s_stamp = 1;
+static uint8_t  s_vis[MAXCELLS];          /* == s_stamp: visible this frame */
 static uint16_t s_vlist[MAXCELLS];
 static int      s_nvis;
 static int      s_any_sky;
@@ -72,7 +76,7 @@ static int      s_sky_seen;            /* this map showed sky cells (prefetch) *
 static const DoomoMapDef *s_map_def;
 static uint16_t s_time;
 static const TexRef *s_tref[64];
-static uint16_t s_tstamp[64];
+static uint8_t  s_tstamp[64];
 
 /* ---- helpers ------------------------------------------------------------- */
 static inline int in_map(int cx, int cy)
@@ -461,7 +465,7 @@ void plat_view3d(const DoomoView3D *v)
          * loaded (ovl_plan.py BORROW): take them back, the stamps start over --- */
         static uint32_t s_bgen;
         if (ovl_borrow_take(&s_bgen))
-            s_stamp = 0xFFFF;               /* the wrap below clears s_vis */
+            s_stamp = 0xFF;                 /* the wrap below clears borrowed s_vis */
         /* --- end H3 --- */
     }
     if (++s_stamp == 0) {

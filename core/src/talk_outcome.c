@@ -173,10 +173,12 @@ static int cap_town_max(int kind)
     return kind == TEV_ACT_INVITE ? TALK_CAP_INVITE_TOWN : kind == TEV_ACT_GIFT ? TALK_CAP_GIFT_TOWN : 1000;
 }
 
+/* A dead/missing resident must never appear able to offer a real action.
+ * The apply path has always rejected them; keep the UI/plan gate in sync. */
 int talk_outcome_can(int kind, int id)
 {
     const LedP *lp;
-    if (!cap_flag(kind) || !resident_id(id)) return 0;
+    if (!cap_flag(kind) || !alive_resident(id)) return 0;
     roll();
     lp = led_peek(id);
     return !(lp && (lp->flags & cap_flag(kind))) && cap_town(kind) < cap_town_max(kind);
@@ -186,7 +188,7 @@ int talk_outcome_why_in(const TalkState *s, int kind, int id)
 {
     int k, mine = 0, all = 0;
     const LedP *lp;
-    if (!s || !cap_flag(kind) || !resident_id(id)) return TAW_RULE;
+    if (!s || !cap_flag(kind) || !alive_resident(id)) return TAW_RULE;
     roll();
     lp = led_peek(id);
     for (k = 0; k < s->nev && k < TALK_EVENTS_MAX; k++) {
@@ -253,6 +255,21 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
     }
 }
 
+/* The day-scoped reservation belongs to a real person and real location.
+ * Unlike meet_ready, this reports a missed/pending appointment too, so the
+ * Talk journal can explain why no guest appeared at the expected place.
+ * No sim tick, heap, or new save data. */
+int talk_outcome_meet_plan(int guest_id)
+{
+    const LedP *p;
+    if (!resident_id(guest_id) || !alive_resident(guest_id)) return -1;
+    roll();
+    p = led_peek(guest_id);
+    if (!p || !(p->flags & LPF_INVITE) ||
+        p->pad == 0 || p->pad > ACT_COUNT) return -1;
+    return (int)p->pad - 1;
+}
+
 int talk_outcome_meet_ready(int venue)
 {
     int i;
@@ -306,6 +323,35 @@ static void meet_local_activity(DoomoResident *who, int venue)
     }
 }
 
+/* The same little human(ish) voice in both world modes. A quiet person,
+ * a lover of the place, and a spontaneous visitor shouldn't all sound the
+ * same. This is read-only and doesn't touch the deterministic sim RNG. */
+const char *talk_outcome_meet_reply(int guest_id, int venue, int kind)
+{
+    const DoomoResident *r =
+        guest_id >= 0 && guest_id < DOOMO_MAX_RESIDENTS ? town_res(guest_id) : NULL;
+    if (!r || r->status != RES_ALIVE || venue < 0 || venue >= ACT_COUNT)
+        return "Thanks for spending a little time together.";
+    if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
+        return "Thanks for staying with me. I didn't have many words today.";
+    if (sim_favourite_venue(guest_id) == venue)
+        return "You remembered my favorite place? That means a lot!";
+    if (kind == TALK_MEET_CHAT)
+        return ((RES_CATCHPHRASE(r) + guest_id) & 1) ?
+               "I saved you the good seat. It's a very important seat." :
+               "I like talking to you. Even when we run out of words.";
+    switch (venue) {
+    case ACT_CAFE: return "This snack deserves its own tiny parade.";
+    case ACT_CONCERT: return "That music made the whole town sound different.";
+    case ACT_CHURCH: return "The quiet did me good. So did your company.";
+    case ACT_WORKSHOP: return "Two minds, one project, several suspicious sparks.";
+    case ACT_SHOP: return "We didn't buy everything. A historic achievement.";
+    case ACT_PARK: return "The wind almost stole my thoughts. Nice walk!";
+    case ACT_BEACH: return "The sea kept all its secrets. I told you one.";
+    default: return "Thanks for spending time together!";
+    }
+}
+
 int talk_outcome_meet_kind(int venue, int kind)
 {
     int id, i, avatar;
@@ -350,6 +396,15 @@ int talk_outcome_meet_kind(int venue, int kind)
     /* Shared memory is recorded only after the actual meetup happened,
      * never when the NPC merely accepted the original invitation. */
     talk_mem_note_shared(id, TALK_SHARED_PLAYED);
+    /* Tomodachi-style public-life continuity: a named event in the
+     * existing 8-byte Town News ring, only after the player arrived,
+     * paid any required cost and shared an actual activity. Since the
+     * appointment was consumed above, revisiting the menu cannot
+     * fabricate another headline. */
+#ifdef DOOMO_HAS_TALK
+    sim_news_rec(sim_favourite_venue(id) == venue ? NT_TALK_MEET_FAV : NT_TALK_MEET,
+                 venue, NEWS_IDS(id, avatar, NEWS_NONE));
+#endif
     return id;
 }
 
@@ -457,7 +512,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
             break;
         case TEV_ROMANCE_YES:                                /* Talk only asks: the sim rolls and owns the result */
             if (ia >= 0 && (e->b == TA_CONFESS || e->b == TA_ASK_OUT) && resident_id(ia) && sum->avatar >= 0 &&
-                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar) &&
+                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar) && alive_resident(ia) &&
                 !minor_id(sum->avatar) && !minor_id(ia)) {   /* defence in depth: the DM and the sim gate it too */
                 LedQ *q = led_q(sum->avatar, ia);
                 if (!(q->flags & LQF_ASKED)) {
@@ -471,7 +526,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
             if (ia >= 0 && news_walk < 0) news_walk = ev;
             break;
         case TEV_LEARNED:                                    /* TM2d: a secret told: the player now knows that like, fear or hated food */
-            if (ia >= 0 && resident_id(ia) && e->b < 5) {
+            if (ia >= 0 && alive_resident(ia) && e->b < 5) {
                 talk_mem_know_like(ia, e->b);
                 out->learned++;
             }

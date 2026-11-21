@@ -110,6 +110,30 @@ static void test_twiddle(void)
             }
         CHECK(err == 0, "twiddle8 round trip: %d texels wrong", err);
     }
+    {   /* The no-clear fast path must overwrite stale opaque AND zero
+         * texels; switching back to a padded texture must clear its edge. */
+        static uint8_t src[32 * 16];
+        static uint16_t dst[32 * 16 / 2];
+        int x, y, bad = 0;
+        memset(dst, 0xA5, sizeof dst);
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++)
+                src[y * 32 + x] = ((x + y) % 5 == 0) ? 0 : (uint8_t)(x + 7 * y + 1);
+        dc2d_twiddle8(dst, src, 32, 16, 32, 16);
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++)
+                bad += ((uint8_t *)dst)[dc2d_twiddle_index((uint32_t)x, (uint32_t)y, 32, 16)] != src[y * 32 + x];
+        CHECK(bad == 0, "twiddle8 full-size transparent overwrite: %d mismatches", bad);
+        dc2d_twiddle8(dst, src, 24, 13, 32, 16);
+        bad = 0;
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++) {
+                uint8_t got = ((uint8_t *)dst)[dc2d_twiddle_index((uint32_t)x, (uint32_t)y, 32, 16)];
+                uint8_t want = (x < 24 && y < 13) ? src[y * 24 + x] : 0;
+                bad += got != want;
+            }
+        CHECK(bad == 0, "twiddle8 padded-after-full clear: %d mismatches", bad);
+    }
 }
 
 static void test_uv16(void)
@@ -425,14 +449,42 @@ static void test_shade_exact(void)
 }
 
 /* ---- texture cache -------------------------------------------------------------------------------- */
+/* Reproduce the cache's 12-bit open-addressed hash to create deliberate
+ * collision chains. The test verifies that removing middle entries under
+ * pressure cannot hide a still-live texture behind the new hole. */
+static uint32_t test_tex_home(uint32_t uid)
+{
+    uint32_t k = uid * 2654435761u ^
+                 (0x9E3779B9u * 0x85EBCA6Bu) ^
+                 ((uint32_t)32 << 16 | 32u);
+    k ^= k >> 15;
+    return k & 4095u;
+}
+
 static void test_texcache(void)
 {
     static uint8_t px[32 * 32];
     static uint8_t big[16][256 * 128];
     DoomoImage a = { 32, 32, px, 0x01000AAAu }, b = { 32, 32, px, 0 };
-    DoomoImage bigimg[16];
-    uint32_t up;
-    int i, f;
+    DoomoImage bigimg[16], colliders[10];
+    uint32_t up, failed, uid, home;
+    int i, f, nc = 0;
+    /* A malformed uid-less picture must be rejected before pix_sum()
+     * reads beyond its buffer; a static font update must not overwrite
+     * neighboring texture memory. Both paths run in KOS and on the host. */
+    {
+        DoomoImage missing = { 32, 32, NULL, 0 };
+        DoomoImage invalid_w = { 0, 32, px, 0 };
+        DoomoImage oversized = { 1025, 32, px, 0 };
+        failed = dc2d_stats.tex_fail;
+        CHECK(dc2d_tex_image_new(NULL, 0) == -1, "NULL image accepted");
+        CHECK(dc2d_tex_image_new(&missing, 1) == -1, "image without pixels accepted");
+        CHECK(dc2d_tex_image_new(&invalid_w, 0) == -1, "zero-width image hashed");
+        CHECK(dc2d_tex_image_new(&oversized, 0) == -1, "oversized image hashed");
+        CHECK(dc2d_stats.tex_fail >= failed + 4, "invalid textures did not report failure");
+        CHECK(dc2d_tex_static(px, 16, 16, 8, 8) == -1, "invalid static source bounds accepted");
+        CHECK(dc2d_tex_static(NULL, 8, 8, 8, 8) == -1, "NULL static accepted");
+    }
     memset(px, 5, sizeof(px));
     frame_begin(); plat_image(0, 0, &a, 1, 0, 0); frame_end();
     up = dc2d_stats.uploads;
@@ -453,6 +505,23 @@ static void test_texcache(void)
     frame_end();
     /* (the native frame holds both pictures as drawn) */
     CHECK(frame_diff(NULL) == 0, "buffer reused within a frame: wrong picture");
+    /* Chain deliberately colliding UIDs before VRAM pressure; no asset
+     * changes or host hooks required. Each is a real drawn 32x32 image. */
+    home = test_tex_home(1);
+    frame_begin();
+    for (uid = 1; uid < 300000u && nc < 10; uid++) {
+        if (test_tex_home(uid) != home) continue;
+        colliders[nc].w = 32; colliders[nc].h = 32;
+        colliders[nc].pix = px; colliders[nc].uid = uid;
+        plat_image((nc % 5) * 45, (nc / 5) * 45, &colliders[nc], 1, 0, 0);
+        nc++;
+    }
+    frame_end();
+    CHECK(nc == 10, "could not produce hash collisions");
+    CHECK(frame_diff(NULL) == 0, "colliding UID images lost parity");
+    for (i = 0; i < nc; i++)
+        CHECK(dc2d_tex_find(colliders[i].uid, 32, 32) >= 0,
+              "colliding UID texture %d is missing", i);
     /* pressure: 16 images of 256x128 (32 KB each as 256x128 textures) every frame
      * for many frames with new uids, so video RAM (4 MB) fills and evicts */
     for (i = 0; i < 16; i++) {
@@ -461,12 +530,31 @@ static void test_texcache(void)
     }
     for (f = 0; f < 40; f++) {
         frame_begin();
+        /* A survivor in the same collision chain is still needed in
+         * this frame, so eviction must not remove or hide it. */
+        if (nc) plat_image(280, 205, &colliders[0], 1, 0, 0);
         for (i = 0; i < 16; i++) {
             bigimg[i].uid = 0x02000000u + (uint32_t)(f * 16 + i);
             plat_image((i % 4) * 70, (i / 4) * 50, &bigimg[i], 1, 0, 0);
         }
         frame_end();
         if (frame_diff(NULL) != 0) { CHECK(0, "pressure frame %d differs", f); break; }
+        if (nc) CHECK(dc2d_tex_find(colliders[0].uid, 32, 32) >= 0,
+                      "pressure: live colliding UID lost on frame %d", f);
+    }
+    if (nc >= 2) {
+        /* Recreate an old colliding picture after its middle chain entries
+         * were evicted. Both that image and the protected survivor must
+         * resolve through the exact same UID hash. */
+        frame_begin();
+        plat_image(10, 12, &colliders[1], 1, 0, 0);
+        plat_image(60, 12, &colliders[0], 1, 0, 0);
+        frame_end();
+        CHECK(frame_diff(NULL) == 0, "collision-chain reinsert differs from native");
+        CHECK(dc2d_tex_find(colliders[1].uid, 32, 32) >= 0,
+              "evicted collision could not be recreated");
+        CHECK(dc2d_tex_find(colliders[0].uid, 32, 32) >= 0,
+              "collision survivor was hidden after reinsertion");
     }
     CHECK(dc2d_stats.evictions > 0, "pressure: nothing evicted");
     CHECK(swpvr_tex_used() <= 4u * 1024u * 1024u, "pressure: over the video RAM budget");

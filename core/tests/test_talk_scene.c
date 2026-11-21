@@ -15,6 +15,7 @@
 #include "doomo/town.h"
 #include "doomo/ui.h"
 #include "doomo/items.h"
+#include "doomo/sim.h"
 #include "../src/ui_internal.h"     /* UiDialogDebug */
 
 #define ID_NANA 1
@@ -104,6 +105,103 @@ TEST(talk_scene_the_debug_view_describes_the_page)
     CHECK_EQ(talk_scene_act_cat(TA_HUG), 6);               /* Gestures */
     CHECK_EQ(talk_scene_act_cat(TA_FLIRT), 7);             /* Romance */
     CHECK_EQ(talk_scene_act_cat(TA_REFUSE_SEXUAL), -1);    /* never a row */
+}
+
+/* Asking about a day is a spoken view of the live ACT_* schedule.
+ * Reading it should neither award anything nor change the actual activity.
+ * The activity deliberately changes after Talk opens, proving this is not
+ * a stale menu-entry snapshot. */
+TEST(talk_scene_day_plan_tracks_actual_activity_without_reward)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    DoomoResident *r;
+    int row, cash, problems, memories;
+    town();
+    CHECK(open_talk(ID_NANA));
+    r = town_res(ID_NANA);
+    CHECK(r != NULL);
+    row = find_row("dayplan", -1, -1);
+    CHECK(row > find_row("help", -1, -1));
+    r->activity = ACT_CAFE;
+    cash = (int)doomo_town.money;
+    problems = sim_problem_count();
+    memories = talk_mem_count();
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    memset(&box, 0, sizeof box);
+    ui_dialog_debug(&box);
+    CHECK(box.text != NULL && strstr(box.text, doomo_activity_names[ACT_CAFE]) != NULL);
+    CHECK_EQ(r->activity, ACT_CAFE);
+    CHECK_EQ((int)doomo_town.money, cash);
+    CHECK_EQ(sim_problem_count(), problems);
+    CHECK_EQ(talk_mem_count(), memories);
+}
+
+/* The thought bubble is backed by the simulation's real problem queue, not
+ * arbitrary Talk text. Reading the thought does not solve it; choosing the
+ * corresponding care action does, and refreshes the main page afterwards. */
+TEST(talk_scene_thought_bubble_leads_to_real_care)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    int row, k;
+    town();
+    r = town_res(ID_NANA);
+    CHECK(r != NULL);
+    r->stat[STAT_HYGIENE] = 20;
+    CHECK(sim_problem_raise(ID_NANA, PROB_DIRTY, -1, 0) >= 0);
+    CHECK(open_talk(ID_NANA));
+    row = find_row("concern", PROB_DIRTY, -1);
+    CHECK(row > find_row("help", -1, -1));
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "concern");
+    row = find_row("concerninfo", PROB_DIRTY, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(sim_problem_for(ID_NANA) >= 0); /* listening is not free problem resolution */
+    for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) {
+        frames(0, 60); press(BTN_A);
+    }
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    row = find_row("concernact", PROB_DIRTY, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(r->stat[STAT_HYGIENE] >= 95);
+    CHECK_EQ(sim_problem_for(ID_NANA), -1);
+    CHECK(talk_scene_debug(&d) && d.busy);
+}
+
+/* A requested item must really be held, can be delivered only once, and
+ * must not pay out simply because a thought bubble was inspected. */
+TEST(talk_scene_thought_item_requires_inventory_and_delivers_once)
+{
+    TalkSceneDebug d;
+    int row, item = ITEM_PLUSHIE, cash;
+    town();
+    while (inv_count(item) > 0) CHECK(inv_take(item, 1));
+    CHECK(sim_problem_raise(ID_NANA, PROB_WANTS_ITEM, -1, item) >= 0);
+    CHECK(open_talk(ID_NANA));
+    cash = (int)doomo_town.money;
+    row = find_row("concern", PROB_WANTS_ITEM, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "concern");
+    row = find_row("concernact", PROB_WANTS_ITEM, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(sim_problem_for(ID_NANA) >= 0);
+    CHECK_EQ((int)doomo_town.money, cash);
+    CHECK_EQ(inv_count(item), 0);
+    CHECK(inv_add(item, 1) >= 1);
+    press(BTN_A); /* the same live row now has the missing item */
+    CHECK_EQ(inv_count(item), 0);
+    CHECK_EQ(sim_problem_for(ID_NANA), -1);
+    CHECK(talk_scene_debug(&d) && d.busy);
 }
 
 TEST(talk_scene_needs_help_changes_real_sim_stats)
@@ -440,6 +538,42 @@ TEST(talk_scene_open_favor_is_accessible_from_main)
     CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
     CHECK(strstr(label, "Favor ready") != NULL);
     CHECK_EQ(inv_count(item), 1);
+}
+
+/* Each little oddity teaches one true preference; history can display it.
+ * The introductory row does not replace the one-press quick response. */
+TEST(talk_scene_little_oddities_reveal_real_known_preferences)
+{
+    TalkSceneDebug d;
+    int before = 0, after = 0, i, row, seen = 0;
+    town();
+    CHECK(open_talk(ID_NANA));
+    for (i = 0; i < 3; i++) before += talk_mem_like_known(ID_NANA, i);
+    row = find_row("quirk", -1, -1);
+    CHECK(row >= 0);
+    CHECK(find_row("quick", 0, -1) == 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    for (i = 0; i < 3; i++) after += talk_mem_like_known(ID_NANA, i);
+    CHECK_EQ(after, before + (before < 3));
+    for (i = 0; i < 40 && talk_scene_debug(&d) && d.busy; i++) {
+        frames(0, 60); press(BTN_A);
+    }
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    row = find_row("more", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    row = find_row("history", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        if (talk_scene_row_debug(i, &kind, NULL, NULL, NULL) &&
+            strcmp(kind, "historylike") == 0) seen++;
+    }
+    CHECK_EQ(seen, after);
 }
 
 TEST(talk_scene_hands_in_a_real_favor_without_leaving_chat)

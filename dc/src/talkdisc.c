@@ -34,6 +34,9 @@
 #ifndef TALK_PREFETCH_TICKS
 #define TALK_PREFETCH_TICKS 90u           /* ticks after boot (3 s) before the pump starts the English bank */
 #endif
+#ifndef TALK_SLICE_MIN_US
+#define TALK_SLICE_MIN_US 5000u           /* a cached/emulated zero-time read must not exhaust the whole bank in one tick */
+#endif
 
 static uint8_t *s_bank;                   /* the file (malloc): whole once s_fd < 0, else s_got bytes are in */
 static uint32_t s_size;                   /* its size in bytes (0: nothing started) */
@@ -104,6 +107,12 @@ void dc_talk_pump(uint32_t us_left)
         uint32_t t0 = dc_us(), used;
         talk_step();
         used = dc_us() - t0;
+        /* The SH4 timer may report a near-zero slice from a cache hit or
+         * a Flycast host clock. That is NOT evidence that the next GD-ROM
+         * seek is free: reserve a 5ms minimum against the current tick's
+         * slot, even when the measured read is instant. This also bounds
+         * how much of the bank can be pumped in one idle interval. */
+        if (used < TALK_SLICE_MIN_US) used = TALK_SLICE_MIN_US;
         s_slice_us = used;
         if (used > s_slice_max) s_slice_max = used;
         us_left = used < us_left ? us_left - used : 0;

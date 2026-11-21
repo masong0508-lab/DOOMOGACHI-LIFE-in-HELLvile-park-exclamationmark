@@ -26,10 +26,36 @@ const char *sim_last_reaction(void) { return g_reaction; }
 
 /* ---------------------------------------------------------------------- */
 /* problems                                                                 */
+/* An 8-byte two-level presence filter. The simulation asks "does this
+ * resident have a thought bubble?" during each citizen visit and Talk
+ * refresh. Only 24 of up to 1,000 residents can have one at once, so
+ * walking the entire queue for every citizen is wasteful.
+ *
+ * Both bit positions are exact components of a 10-bit resident ID.
+ * Reject when either component is missing. A cross-resident collision
+ * may produce a false positive (then we do the regular safe scan), but
+ * never a false negative. Rebuild only when a problem is removed; adds
+ * set their bits. No changed save representation or heap allocations. */
+static uint32_t prob_lo, prob_hi;
+
+static void prob_note(int id)
+{
+    prob_lo |= 1u << ((unsigned)id & 31u);
+    prob_hi |= 1u << (((unsigned)id >> 5) & 31u);
+}
+
+static void prob_rebuild(void)
+{
+    int i;
+    prob_lo = prob_hi = 0;
+    for (i = 0; i < sim_s.nprob; i++) prob_note(sim_s.prob[i].resident);
+}
+
 void sim_events_reset(void)
 {
     int i;
     sim_s.nprob = 0;                     /* (the news feed persists: LS1) */
+    prob_lo = prob_hi = 0;
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
         if (TOWN_RES(i)->status == RES_POSSESSED)
             sim_problem_raise(i, PROB_POSSESSED, sim_possessor_of(i), 0);
@@ -50,6 +76,10 @@ const DoomoProblem *sim_problem(int index)
 int sim_problem_find(int id, int kind)
 {
     int i;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || !sim_s.nprob ||
+        !(prob_lo & (1u << ((unsigned)id & 31u))) ||
+        !(prob_hi & (1u << (((unsigned)id >> 5) & 31u))))
+        return -1;
     for (i = 0; i < sim_s.nprob; i++)
         if (sim_s.prob[i].resident == id && (kind < 0 || sim_s.prob[i].kind == kind)) return i;
     return -1;
@@ -67,6 +97,7 @@ void sim_problem_remove(int index)
     memmove(&sim_s.prob[index], &sim_s.prob[index + 1],
             (size_t)(sim_s.nprob - index - 1) * sizeof(DoomoProblem));
     sim_s.nprob--;
+    prob_rebuild();
 }
 
 void sim_problem_drop_for(int id)
@@ -102,6 +133,7 @@ int sim_problem_raise(int resident, int kind, int other, int item)
     p->item = (uint8_t)item;
     p->age = 0;
     sim_s.stats.problems++;
+    prob_note(resident);
     return sim_s.nprob++;
 }
 
@@ -397,6 +429,8 @@ static const NewsTmpl news_tmpl[NT_COUNT] = {
     [NT_TALK_WALKOUT]    = { "%s walked out of a chat at yours. Bold.", "a" },
 #ifdef DOOMO_HAS_TALK
     [NT_TALK_QUEST]      = { "%s says you are a lifesaver. Small favours, big town.", "a" },
+    [NT_TALK_MEET]       = { "%s met %s at %s today. Good company!", "abV" },
+    [NT_TALK_MEET_FAV]   = { "%s showed %s their favorite spot at %s!", "abV" },
 #endif
 };
 

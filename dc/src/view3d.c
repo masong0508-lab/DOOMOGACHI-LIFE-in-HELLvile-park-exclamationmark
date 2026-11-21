@@ -197,11 +197,14 @@ static Col      s_tmul, s_tadd;
 static int      s_any_sky;
 static int      s_backdrop = 1;
 
-static uint16_t s_vis[MAXCELLS], s_stamp;
+/* The visibility bitmap and one-view texture stamps only need equality
+ * within the current view, not an ever-increasing 16-bit epoch. An
+ * 8-bit epoch halves both tables, clearing once per 255 views. */
+static uint8_t  s_vis[MAXCELLS], s_stamp;
 static uint16_t s_vlist[MAXCELLS];
 static int      s_nvis;
 static int16_t  s_tslot[TEX_COUNT][DOOMO_LIGHT_LEVELS];   /* a texture at a light level */
-static uint16_t s_tstamp[TEX_COUNT][DOOMO_LIGHT_LEVELS];
+static uint8_t  s_tstamp[TEX_COUNT][DOOMO_LIGHT_LEVELS];
 
 static int in_map(int cx, int cy) { return cx >= 0 && cy >= 0 && cx < M->w && cy < M->h; }
 static int is_sky(const DoomoCell *c) { return c->ceil_tex == DOOMO_TEX_SKY; }
@@ -517,7 +520,9 @@ static const DoomoMapDef *s_built_def;                /* (doomo_map is one struc
  * tick sets how far the rays go; the fog stays at the draw distance, the cut is only where the
  * light is out. The distance never goes under DC_V3D_DIST_MIN, and never over the draw distance. */
 #define V3D_TICK_US   33333
-#define V3D_COST_EXP  1.0f
+/* A unit exponent in the view-cost model means distance is directly
+ * proportional to available microseconds. A powf(x, 1.0f) call would
+ * do unnecessary libm work on SH4 during every 3D view. */
 #define V3D_COST_K0   350.0f   /* us per cell before any view has been timed (Flycast: 290-330) */
 #define V3D_COST_SAFE 1.3f     /* the estimate is a peak of the last views, a busier one costs more */
 static int view_left(void)
@@ -540,7 +545,7 @@ static int view_budget(void)
     int left = view_left();
     float d;
     if (s_cost_k <= 0.0f) return s_view_dist;
-    d = left > 0 ? powf((float)left / (s_cost_k * V3D_COST_SAFE), 1.0f / V3D_COST_EXP) : 0.0f;
+    d = left > 0 ? (float)left / (s_cost_k * V3D_COST_SAFE) : 0.0f;
     return d >= (float)s_view_dist ? s_view_dist : d < (float)DC_V3D_DIST_MIN ? DC_V3D_DIST_MIN : (int)d;
 }
 
@@ -715,6 +720,57 @@ static void sky(int angle, float plane, int vh)
 static int16_t s_order[V3D_MAX_SPRITES];
 static float   s_depth[V3D_MAX_SPRITES];
 
+/* Small sprite groups keep cheap stable insertion sorting. At 256 sprites,
+ * the old insertion into the output list could shift 32,640 elements per
+ * view; stable bottom-up merge sorting bounds crowded views to n log n.
+ * Two fixed 256-entry arrays cost 1.5 KiB on Dreamcast, no heap, DMA or
+ * additional frame buffers. Equal depth retains the source draw order. */
+static void sort_billboard_depth(int16_t *order, float *depth, int n)
+{
+    static int16_t tmp_order[V3D_MAX_SPRITES];
+    static float tmp_depth[V3D_MAX_SPRITES];
+    int i, j, width, left;
+    if (n < 2 || n > V3D_MAX_SPRITES) return;
+    if (n <= 16) {
+        for (i = 1; i < n; i++) {
+            float d = depth[i];
+            int16_t v = order[i];
+            for (j = i; j > 0 && depth[j - 1] < d; j--) {
+                depth[j] = depth[j - 1];
+                order[j] = order[j - 1];
+            }
+            depth[j] = d;
+            order[j] = v;
+        }
+        return;
+    }
+    for (width = 1; width < n; width *= 2) {
+        for (left = 0; left < n; left += 2 * width) {
+            int mid = DOOMO_MIN(left + width, n);
+            int end = DOOMO_MIN(left + 2 * width, n);
+            int a = left, b = mid, at;
+            for (at = left; at < end; at++) {
+                if (a < mid && (b >= end || depth[a] >= depth[b])) {
+                    tmp_depth[at] = depth[a];
+                    tmp_order[at] = order[a++];
+                } else {
+                    tmp_depth[at] = depth[b];
+                    tmp_order[at] = order[b++];
+                }
+            }
+        }
+        memcpy(depth, tmp_depth, (size_t)n * sizeof(*depth));
+        memcpy(order, tmp_order, (size_t)n * sizeof(*order));
+    }
+}
+
+#ifdef DC2D_HOST
+void dc2d_v3d_sort_test(int16_t *order, float *depth, int n)
+{
+    sort_billboard_depth(order, depth, n);
+}
+#endif
+
 static void shadow(float x, float y, float z, float rad)
 {
     Dc3dIn q[4];
@@ -816,20 +872,16 @@ static void billboards(const DoomoView3D *view)
     for (i = 0; i < count; i++) {
         const DoomoBillboard *b = &view->sprites[i];
         float d, x, y;
-        int j;
         if (!b->img || !b->img->pix || !b->img->w || !b->img->h) continue;
         x = (float)b->x / 65536.0f;
         y = (float)b->y / 65536.0f;
         d = depth_of(x, y);
         if (d < V3D_ZNEAR || d > maxd) continue;
-        for (j = n; j > 0 && s_depth[j - 1] < d; j--) {      /* far to near, ties in call order */
-            s_depth[j] = s_depth[j - 1];
-            s_order[j] = s_order[j - 1];
-        }
-        s_depth[j] = d;
-        s_order[j] = (int16_t)i;
+        s_depth[n] = d;
+        s_order[n] = (int16_t)i;
         n++;
     }
+    sort_billboard_depth(s_order, s_depth, n);
     for (i = 0; i < n; i++) billboard(view, s_order[i], s_depth[i]);
 }
 
@@ -970,7 +1022,7 @@ void plat_view3d(const DoomoView3D *v)
         uint32_t us = dc3d_be_us() - t0;
         dc3d_stats.us_last = us;
         if (us > 0) {                                    /* the cost model: us = K * dist, K a decaying peak */
-            float k = (float)us / powf((float)s_cast_dist, V3D_COST_EXP);
+            float k = (float)us / (float)s_cast_dist;
             s_cost_k = k > s_cost_k * 0.97f ? k : s_cost_k * 0.97f;
         }
         dc3d_stats.cast_dist = (uint16_t)s_cast_dist;

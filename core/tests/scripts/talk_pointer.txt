@@ -55,6 +55,10 @@ expect-ptr-page topics
 shot talk_ptr_5_topics
 mouse 100 -85 click
 expect-ptr-page replies
+# The shared-life, needs and oddity rows lengthened the real Talk menu.
+# Four page-down pointer clicks (not the old three) reach the Options row
+# after returning from the Topics sheet on both native resolutions.
+mouse -10 -20 click
 mouse -10 -20 click
 mouse -10 -20 click
 mouse -10 -20 click

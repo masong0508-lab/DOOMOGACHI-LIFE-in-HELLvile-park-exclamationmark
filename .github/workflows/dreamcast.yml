@@ -12,6 +12,15 @@ on:
       - "core/**"
       - ".github/actions/setup-kos/**"
       - ".github/workflows/dreamcast.yml"
+  # PRs need a real KOS/Flycast gate before their Talk or rendering
+  # changes reach main. Previously this workflow ran only after merging.
+  pull_request:
+    branches: [main]
+    paths:
+      - "dc/**"
+      - "core/**"
+      - ".github/actions/setup-kos/**"
+      - ".github/workflows/dreamcast.yml"
 
 permissions:
   contents: read

@@ -1,0 +1,51 @@
+# roster_scroll.txt: separate, seed-locked GBA portrait latency/FPS probe.
+# Deliberately not appended to life_speed.txt: its later scene tick parity
+# and historical FPS gates must remain comparable with older ROMs.
+wait 40
+expect-log doomo: init
+sync on 61
+seed 1
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+press R
+wait 1
+expect-scene ROSTER
+
+# Cold card: selected portrait is requested on scene entry, and should
+# progress in idle slices without delaying cursor response.
+fps start
+wait 45
+fps portrait_cold_card
+shot portrait_cold
+
+# Moving through 1000 logical ids (500 physical GBA slots), the card
+# may show a chibi until its exact bust is cached, but scrolling must
+# never block on a whole high-quality redraw.
+down DOWN
+wait 130
+release
+fps roster_scroll
+shot portrait_scroll
+
+# Same citizen at rest: renderer can use idle slices to finish its face.
+wait 110
+fps portrait_settled
+shot portrait_settled
+expect-scene ROSTER
+
+# First resident screen is one focused portrait; it should not wait on
+# the general multi-thumbnail admission throttle.
+latency A 120 roster -> resident (A)
+wait 80
+expect-scene RESIDENT
+fps start
+wait 90
+fps resident_face
+shot resident_face

@@ -18,6 +18,8 @@ talk-read
 expect-talk on
 expect-talk-page main
 expect-talk-row "Type your own line..."
+# The resident's original little oddities must also be selectable with a Dreamcast pad.
+expect-talk-row "Tell me one little oddity"
 wait 4
 shot pad_1_ready
 # a quick reply: the top row, one press
