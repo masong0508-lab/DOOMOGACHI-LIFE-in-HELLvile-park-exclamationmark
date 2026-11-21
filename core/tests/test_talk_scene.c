@@ -338,6 +338,67 @@ TEST(talk_scene_history_only_recalls_real_events_and_favors)
                                 strstr(box.text, "present") != NULL));
 }
 
+TEST(talk_scene_history_reports_real_favor_progress)
+{
+    TalkSceneDebug d;
+    TalkQuest q;
+    const char *kind;
+    char label[64];
+    int row, i, saw_goal = 0, saw_ready = 0, money0;
+
+    town();
+    CHECK(open_talk(ID_NANA));
+    /* Shared play is a remembered event, not an unfinished obligation. */
+    talk_mem_note_shared(ID_NANA, TALK_SHARED_PLAYED);
+    CHECK_EQ(talk_quest_open_count(), 0);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "history") == 0);
+    row = find_row("historyinfo", -1, -1);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, &kind, NULL, NULL, label));
+    CHECK(strstr(label, "0 open") != NULL);
+
+    /* An actual open fetch request reports its specific goal when picked. */
+    CHECK(talk_quest_derive(ID_NANA, TQK_FETCH, NULL, 0, 0, &q));
+    CHECK(q.item > ITEM_NONE);
+    while (inv_count(q.item) > 0) CHECK(inv_take(q.item, 1));
+    CHECK(talk_mem_quest_set(ID_NANA, TQK_FETCH, TQS_ACTIVE, 3, 0));
+    money0 = (int)doomo_town.money;
+    press(BTN_B);  /* Our History -> Options */
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "history") == 0);
+    row = find_row("historyinfo", -1, -1);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "1 open") != NULL);
+    row = find_row("historyquest", TQK_FETCH, -1);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "active") != NULL);
+    go_to(row); press(BTN_A);
+    for (i = 0; ui_toast_text(i); i++)
+        if (strstr(ui_toast_text(i), "Bring") != NULL) saw_goal = 1;
+    CHECK(saw_goal);
+    CHECK_EQ((int)doomo_town.money, money0);
+
+    /* Receiving the requested item while chatting updates the journal.
+     * Simply inspecting it must neither consume it nor grant a reward. */
+    CHECK(inv_add(q.item, 1) >= 1);
+    press(BTN_B);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    row = find_row("historyquest", TQK_FETCH, -1);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "ready") != NULL);
+    go_to(row); press(BTN_A);
+    for (i = 0; ui_toast_text(i); i++)
+        if (strstr(ui_toast_text(i), "Ready!") != NULL) saw_ready = 1;
+    CHECK(saw_ready);
+    CHECK_EQ(inv_count(q.item), 1);
+    CHECK_EQ((int)doomo_town.money, money0);
+}
+
 TEST(talk_scene_history_topic_is_a_real_followup_question)
 {
     TalkSceneDebug d;
