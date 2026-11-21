@@ -49,13 +49,23 @@ def check_iso(iso):
         ["xorriso", "-indev", str(iso), "-find", "/", "-type", "f"],
         text=True, capture_output=True, check=True
     )
-    names = {
-        PurePosixPath(line.strip()).name.split(";", 1)[0].upper()
-        for line in listing.stdout.splitlines() if line.strip().startswith("/")
-    }
+    # xorriso sends its result channel to stderr on some installations
+    # and may quote ISO paths (e.g. '/DOOMOG.ELF'). Parse only complete
+    # absolute result paths, never diagnostics mentioning filenames.
+    names = set()
+    for line in (listing.stdout + "\n" + listing.stderr).splitlines():
+        entry = line.strip()
+        if len(entry) >= 2 and entry[0] == entry[-1] and entry[0] in "'\"":
+            entry = entry[1:-1]
+        if entry.startswith("/"):
+            names.add(PurePosixPath(entry).name.split(";", 1)[0].upper())
     missing = sorted(REQUIRED - names)
     if missing:
-        raise ValueError("PS2 boot/data files missing from ISO: " + ", ".join(missing))
+        raise ValueError(
+            "PS2 boot/data files missing from ISO: " + ", ".join(missing)
+            + "; files seen: " + ", ".join(sorted(names))
+            + "; xorriso result: " + repr((listing.stdout + listing.stderr)[-350:])
+        )
     return sorted(names)
 
 
