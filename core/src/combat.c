@@ -1900,6 +1900,24 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
          * No state, scratch storage, or asset changes on any port. */
         if (rx > (fix16)BB_CULL_R || rx < -(fix16)BB_CULL_R || ry > (fix16)BB_CULL_R || ry < -(fix16)BB_CULL_R)
             continue;
+#if defined(DOOMO_PLATFORM_GBA)
+        /* A conservative octagonal rejection for the far corners of the
+         * 30-cell visibility square. For nonnegative ax, ay:
+         * max(ax,ay) + min(ax,ay)/2 <= sqrt(5)/2 * hypot(ax,ay).
+         * Anything within 1920 fixed-point world units therefore has
+         * this value < 2147 units, including the one-LSB cull slack.
+         * Keep the original exact squared-distance test for everyone
+         * else, so no billboard, tie order, or visible pixel changes.
+         * The inner test is impossible when both axes are <=1431. */
+        if (rx > INT2FIX(1431) || rx < -INT2FIX(1431) ||
+            ry > INT2FIX(1431) || ry < -INT2FIX(1431)) {
+            uint32_t ax = rx < 0 ? 0u - (uint32_t)rx : (uint32_t)rx;
+            uint32_t ay = ry < 0 ? 0u - (uint32_t)ry : (uint32_t)ry;
+            uint32_t big = ax > ay ? ax : ay;
+            uint32_t small = ax > ay ? ay : ax;
+            if (big + (small >> 1) > (uint32_t)INT2FIX(2147)) continue;
+        }
+#endif
         depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
         if (depth < -INT2FIX(48)) continue;
         s = bb_sq(rx, ry);
