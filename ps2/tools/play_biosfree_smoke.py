@@ -26,6 +26,8 @@ def main():
                    help="Use --elf to isolate emulator/GS bring-up from ISO files")
     p.add_argument("--out", type=Path, default=Path("ps2/build/play-smoke"))
     p.add_argument("--seconds", type=int, default=35)
+    p.add_argument("--software-gl", action="store_true",
+                   help="Force Mesa llvmpipe within Flatpak for headless Xvfb")
     args = p.parse_args()
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
@@ -43,8 +45,18 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     logs = out / "emulator.log"
     shots = []
+    flatpak_flags = []
+    if args.software_gl:
+        # The hosted runner's Xvfb session may expose no hardware DRI
+        # device. Force a real llvmpipe OpenGL context rather than silently
+        # producing a black application surface.
+        flatpak_flags = [
+            "--env=LIBGL_ALWAYS_SOFTWARE=1",
+            "--env=GALLIUM_DRIVER=llvmpipe",
+            "--env=MESA_LOADER_DRIVER_OVERRIDE=llvmpipe",
+        ]
     cmd = [
-        "flatpak", "run", "--user",
+        "flatpak", "run", "--user", *flatpak_flags,
         f"--filesystem={iso.parent}:ro", "org.purei.Play",
         "--disc" if args.launch == "disc" else "--elf", str(iso),
     ]
@@ -76,6 +88,7 @@ def main():
                 "ee_console_telemetry": telemetry,
                 "visual_capture": visual,
                 "boot_media_type": args.launch,
+                "forced_mesa_software_gl": args.software_gl,
                 "boot_image": iso.name,
                 "boot_image_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                 "seconds_observed": args.seconds,
