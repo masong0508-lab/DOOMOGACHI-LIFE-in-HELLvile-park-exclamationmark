@@ -469,6 +469,42 @@ static int items_total(void)
     return n;
 }
 
+/* A real invitation can be consulted without giving out a free visit.
+ * A temporarily changed schedule hides the available arrival point, but
+ * the Talk journal may still tell the player where the plan was made. */
+TEST(action_meetup_plan_is_read_only_and_day_scoped)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    uint16_t cafe;
+    int a;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe && talk_act_venue_of(cafe) == ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE); /* inspection never consumes */
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    town_res(a)->activity = ACT_PARK;
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE); /* honest missed-plan cue */
+    town_res(a)->activity = ACT_CAFE;
+    CHECK_EQ(talk_outcome_meet(ACT_CAFE), a);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    doomo_town.day++;
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+    talk_db_close();
+}
+
 TEST(action_meetup_requires_a_real_matching_place)
 {
     TalkState s;
