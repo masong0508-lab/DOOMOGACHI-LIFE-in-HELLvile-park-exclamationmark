@@ -140,18 +140,20 @@ int ps2_game2d_init(GSGLOBAL *gs)
     gsKit_set_clamp(gs,GS_CMODE_CLAMP);
     return 1;
 }
-void ps2_game2d_present(GSGLOBAL *gs)
+void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
 {
     unsigned y,x;
     u64 tint=GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0);
-    for(y=0;y<H;y++){
-        uint32_t *dst=upload+y*TEX_W;
-        const uint8_t *src=fb+y*W;
-        for(x=0;x<W;x++)dst[x]=colors[src[x]];
-        for(;x<TEX_W;x++)dst[x]=0;
+    if(upload_frame){
+        for(y=0;y<H;y++){
+            uint32_t *dst=upload+y*TEX_W;
+            const uint8_t *src=fb+y*W;
+            for(x=0;x<W;x++)dst[x]=colors[src[x]];
+            for(;x<TEX_W;x++)dst[x]=0;
+        }
+        for(;y<TEX_H;y++)memset(upload+y*TEX_W,0,TEX_W*sizeof(uint32_t));
+        gsKit_texture_upload(gs,&picture);
     }
-    for(;y<TEX_H;y++)memset(upload+y*TEX_W,0,TEX_W*sizeof(uint32_t));
-    gsKit_texture_upload(gs,&picture);
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
     gsKit_prim_sprite_texture(gs,&picture,22.0f,0.0f,0.0f,0.0f,
                               618.0f,448.0f,(float)W,(float)H,1,tint);

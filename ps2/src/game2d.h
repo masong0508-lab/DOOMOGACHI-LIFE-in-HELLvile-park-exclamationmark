@@ -3,5 +3,5 @@
 #define DOOMO_PS2_GAME2D_H
 #include <gsKit.h>
 int ps2_game2d_init(GSGLOBAL *gs);
-void ps2_game2d_present(GSGLOBAL *gs);
+void ps2_game2d_present(GSGLOBAL *gs, int upload_frame);
 #endif

@@ -68,11 +68,11 @@ int main(void)
             plat_begin_frame();
             doomo_frame(buttons);
             plat_end_frame();
-            ps2_game2d_present(gs);
+            ps2_game2d_present(gs,1);
         }else{
-            /* Current frame pixels remain in GS memory. This is a GS
-             * redraw, never a second simulation update or a DMA upload. */
-            gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
+            /* Draw the same completed image from GS VRAM: no simulation
+             * tick or upload on alternate fields, and no black flicker. */
+            ps2_game2d_present(gs,0);
         }
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
