@@ -287,6 +287,57 @@ TEST(talk_scene_only_remembers_actual_shared_events)
     CHECK(strstr(d.you, "Remember") != NULL);
 }
 
+TEST(talk_scene_history_only_recalls_real_events_and_favors)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    const char *kind = "";
+    char label[64];
+    int row;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1));
+    press(BTN_A);
+    row = find_row("history", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    CHECK(find_row("historyinfo", -1, -1) >= 0);
+    CHECK_EQ(find_row("historyquest", -1, -1), -1);
+    CHECK_EQ(find_row("historyevent", -1, -1), -1); /* no invented past */
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "more"); /* B goes to Options, not goodbye */
+
+    talk_mem_note_shared(ID_NANA, TALK_SHARED_PLAYED | TALK_SHARED_GIFTED);
+    CHECK(talk_mem_quest_set(ID_NANA, TQK_FETCH, TQS_ACTIVE, 3, 0));
+    CHECK_EQ(talk_mem_pinned_count(), 1);
+    row = find_row("history", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    row = find_row("historyinfo", -1, -1);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, &kind, NULL, NULL, label));
+    CHECK(strstr(label, "1 open") != NULL);
+    CHECK(find_row("historyquest", TQK_FETCH, -1) >= 0);
+    CHECK(find_row("historyevent", TALK_SHARED_PLAYED, -1) >= 0);
+    CHECK(find_row("historyevent", TALK_SHARED_GIFTED, -1) >= 0);
+    CHECK_EQ(find_row("historyevent", TALK_SHARED_INVITED, -1), -1);
+    row = find_row("historyevent", TALK_SHARED_GIFTED, -1);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    memset(&box, 0, sizeof box);
+    ui_dialog_debug(&box);
+    CHECK(box.text != NULL && (strstr(box.text, "gift") != NULL ||
+                                strstr(box.text, "present") != NULL));
+}
+
 TEST(talk_scene_offer_and_give_are_real_actions)
 {
     TalkSceneDebug d;
