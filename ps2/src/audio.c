@@ -59,9 +59,17 @@ void plat_tone(int ch,uint16_t hz,uint8_t vol,uint8_t wave)
 {
     ps2_synth_tone(&synth,ch,hz,vol,wave);
 }
-void plat_sample(int sfx,uint8_t vol)
+void plat_tone_pan(int ch,int pan)
+{
+    ps2_synth_tone_pan(&synth,ch,pan);
+}
+void plat_sample_ex(int sfx,uint8_t vol,int8_t pan,uint8_t priority,int8_t semis)
 {
     uint32_t n=0,rate=0;
     const int8_t *p=audio_sfx_pcm(sfx,&n,&rate);
-    if(p)ps2_synth_sample(&synth,p,n,rate,vol);
+    if(p)ps2_synth_sample_ex(&synth,p,n,rate,vol,pan,priority,semis);
+}
+void plat_sample(int sfx,uint8_t vol)
+{
+    plat_sample_ex(sfx,vol,0,0,0);
 }
