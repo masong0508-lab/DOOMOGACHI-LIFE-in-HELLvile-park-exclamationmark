@@ -16,7 +16,8 @@
 #include "doomo/palette.h"
 
 enum { W=320, H=240, TEX_W=512, TEX_H=256 };
-static uint8_t fb[W*H];
+uint8_t ps2_indexed_fb[W*H];
+#define fb ps2_indexed_fb
 static u32 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
 static u32 colors[256];
 static GSTEXTURE picture;
@@ -159,31 +160,8 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
                               618.0f,448.0f,(float)W,(float)H,1,tint);
 }
 
-/* Deliberate bring-up limitations: the core still advances the *real*
- * map and player state, but 3D/world geometry needs a proper GS backend.
- * The reference room renderer in core/src/room_ref.c is linked and draws
- * through plat_rect/line/image with correct game positions. */
-void plat_view3d(const DoomoView3D *v)
-{
-    int i;
-    if(!v)return;
-    plat_rect(v->vx,v->vy,v->vw,v->vh/2,PAL_RAMP(RAMP_SKY,5));
-    plat_rect(v->vx,v->vy+v->vh/2,v->vw,v->vh-v->vh/2,PAL_RAMP(RAMP_STONE,4));
-    for(i=0;i<v->vw;i+=16)
-        plat_line(v->vx+i,v->vy+v->vh/2,v->vx+v->vw/2+(i-v->vw/2)*2,
-                  v->vy+v->vh,PAL_RAMP(RAMP_STONE,3));
-    plat_text(v->vx+5,v->vy+5,"PS2 3D ADAPTER IN PROGRESS",PAL_WHITE);
-}
-void plat_overworld(const DoomoOverworldView *v)
-{
-    int x,y;
-    if(!v)return;
-    plat_rect(v->vx,v->vy,v->vw,v->vh,PAL_RAMP(RAMP_GRASS,5));
-    for(y=v->vy;y<v->vy+v->vh;y+=24)
-        for(x=v->vx;x<v->vx+v->vw;x+=24)
-            plat_rect(x,y,23,23,((x+y)&24)?PAL_RAMP(RAMP_GRASS,4):PAL_RAMP(RAMP_GRASS,6));
-    plat_text(v->vx+5,v->vy+5,"PS2 WORLD ADAPTER IN PROGRESS",PAL_BLACK);
-}
+/* Real map/first-person geometry is rendered in ref_overworld.c and
+ * ref_view3d.c, using the same pixel buffer. */
 void plat_tone(int ch,uint16_t hz,uint8_t vol,uint8_t wave)
 {(void)ch;(void)hz;(void)vol;(void)wave;}
 void plat_sample(int sfx,uint8_t vol){(void)sfx;(void)vol;}

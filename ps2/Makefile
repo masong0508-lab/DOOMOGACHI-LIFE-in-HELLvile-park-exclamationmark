@@ -37,7 +37,7 @@ clean:
 DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
-GAME_OBJS := build/game_main.o build/game2d.o build/padmap.o $(GAME_CORE_OBJS)
+GAME_OBJS := build/game_main.o build/game2d.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
 GAME_BIN := build/doomogachi_ps2_game.elf
 
 .PHONY: game
@@ -56,4 +56,12 @@ build/game2d.o: src/game2d.c src/game2d.h
 
 build/core/%.o: $(DOOMO_CORE)/%.c
 	@mkdir -p $(@D)
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+# Portable reference geometry backed by the same GS staging surface.
+build/ref_overworld.o: src/ref_overworld.c src/frame_ref.h src/game2d.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+build/ref_view3d.o: src/ref_view3d.c src/frame_ref.h src/game2d.h
+	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
