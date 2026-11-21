@@ -1,8 +1,8 @@
 /* PS2-1: first playable shared-core 2D framebuffer.
  * The core's authoritative 256-colour palette, 5x8 font, portraits and
- * user interface draw here at 320x240. A single 512x256 RGBA GS texture
- * is refreshed at 30Hz; NTSC fields display the most recent image at
- * 60Hz. The reference 3D/overworld renderers share this indexed surface;
+ * user interface draw here at 320x240. A single 512x256 GS RGB5551
+ * texture (256KiB, previously 512KiB RGBA) is refreshed at 30Hz;
+ * NTSC fields display the most recent image at 60Hz. The reference 3D/overworld renderers share this indexed surface;
  * native GS polygon acceleration is still an unimplemented milestone.
  * No new per-resident portrait cache, heap allocation or save fields.
  */
@@ -19,8 +19,8 @@
 enum { W=320, H=240, TEX_W=512, TEX_H=256 };
 uint8_t ps2_indexed_fb[W*H];
 #define fb ps2_indexed_fb
-static u32 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
-static u32 colors[256];
+static u16 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
+static u16 colors[256];
 static GSTEXTURE picture;
 static uint32_t frame_ticks;
 static uint8_t drawing;
@@ -126,29 +126,27 @@ void plat_checker(int x,int y,int w,int h,uint8_t c)
     for(j=0;j<h;j++)for(i=0;i<w;i++)if(((x+i+y+j)&1)==0)pix(x+i,y+j,c);
 }
 
-/* No frame-time allocation. Palette BGR555 -> GS RGBA32 once at boot;
- * the 512x256 DMA surface reserves 512KiB and 512KiB of GS eDRAM. */
+/* No frame-time allocation. The core's RGB555 palette maps directly to
+ * GS RGB5A1: DMA and VRAM usage are 256KiB, half of old RGBA32. */
 int ps2_game2d_init(GSGLOBAL *gs)
 {
     unsigned i;
     memset(&picture,0,sizeof picture);
     /* GS sampling covers 320x240; the larger power-of-two texture edge
      * is always transparent. The edge is never touched by game drawing,
-     * so clear it once at boot instead of 212KiB every 30Hz upload. */
+     * so clear it once at boot instead of 106KiB every 30Hz upload. */
     memset(upload,0,sizeof upload);
     picture.Width=TEX_W;picture.Height=TEX_H;
-    picture.PSM=GS_PSM_CT32;
+    picture.PSM=GS_PSM_CT16;
     picture.Filter=GS_FILTER_NEAREST;
     picture.Mem=upload;
     picture.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(TEX_W,TEX_H,picture.PSM),
                                   GSKIT_ALLOC_USERBUFFER);
     if(picture.Vram==GSKIT_ALLOC_ERROR)return 0;
     for(i=0;i<256;i++){
-        uint16_t v=doomo_palette[i];
-        uint32_t r=(v&31u)*255u/31u;
-        uint32_t g=((v>>5)&31u)*255u/31u;
-        uint32_t b=((v>>10)&31u)*255u/31u;
-        colors[i]=r|(g<<8)|(b<<16)|0x80000000u;
+        /* The source is RGB555, which is the GS CT16 bit layout:
+         * R bits 0-4, G 5-9, B 10-14, 1-bit opaque alpha at 15. */
+        colors[i]=(u16)(doomo_palette[i]|0x8000u);
     }
     gsKit_set_clamp(gs,GS_CMODE_CLAMP);
     return 1;
@@ -159,7 +157,7 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
     u64 tint=GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0);
     if(upload_frame){
         for(y=0;y<H;y++){
-            u32 *dst=upload+y*TEX_W;
+            u16 *dst=upload+y*TEX_W;
             const uint8_t *src=fb+y*W;
             for(x=0;x<W;x++)dst[x]=colors[src[x]];
         }
