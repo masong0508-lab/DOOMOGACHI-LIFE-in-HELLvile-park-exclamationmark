@@ -126,8 +126,10 @@ extra framebuffer. No auto-format or deletion of unrelated card content.
 The game does **not yet** include a PS2 Browser icon, an in-game card-slot
 selector, or a verified resume test after process restart/power loss.
 The host `save_journal_test` checks CRC, torn-write fallback, bounds and
-generation rollover, but is not a substitute for actual libmc integration
-on PCSX2 or hardware. Treat the feature as **experimental until tested**.
+generation rollover. PS2-6 also tracks a formatted MCMAN card across
+successive `mcGetInfo` polls (where `fmt` remains zero) and resets the
+state on removal, as covered by the mocked-libmc tests. These are not a
+substitute for actual memory-card integration on PCSX2 or hardware. Treat the feature as **experimental until tested**.
 
 ## PS2-3/4/5: SPU2, live Talk disc and GS throughput
 
@@ -135,7 +137,9 @@ The **shared-game** target, `make -C ps2 game`, now builds and links
 `audio.c`, `synth.c` and `talkdisc.c`. The audio path generates exactly
 735 16-bit stereo PCM frames per 30 Hz game tick at 22050 Hz through
 PS2SDK audsrv, with four procedural tone channels and three overlapping
-SFX voices. The audio renderer advances even when SPU2 is behind, so
+SFX voices. PS2-6 adds actual left/center/right tone routing, -64..64
+sample stereo panning, semitone pitch adjustment and priority-aware
+replacement of overlapping SFX, without expanding the PCM buffer. The audio renderer advances even when SPU2 is behind, so
 skipped audio cannot accelerate or delay the simulation. If the IOP
 module is unavailable it logs and mutes instead of pretending audio
 works. Its audsrv.irx must come from the installed SDK.
@@ -231,3 +235,19 @@ installed and may not have outbound network access. In that situation,
 the GitHub Actions job is the repeatable remote environment; the
 absence of a completed run must be reported rather than presenting
 queued actions as tests that already passed.
+
+## PS2-6 portable follow-up checks
+
+The new CDVD host test executes the actual `ps2/src/talkdisc.c` against
+an isolated PS2SDK CD mock. It verifies cached sectors, cross-sector
+reads, bounds checking, failed DMA reads, missing media, and resets after
+disc initialization failure. The full test is in
+`ps2/tests/talkdisc_mock_test.c`. The SPU2 mixer test now exercises
+six waveforms, stereo routing, pitched samples, priority stealing and
+voice-state bounds. No new audio heap allocations or expanded buffers.
+
+The branch's PS2 build/test jobs may be queued while shared hosted runners
+are busy; the workflow cancels superseded PS2 runs for the same branch.
+A successful host mixer/CDVD mock test **does not** prove SPU2 output or
+optical-disc reads in Play! / PCSX2. Keep the PR draft until the real
+EE build and emulator captures pass.
