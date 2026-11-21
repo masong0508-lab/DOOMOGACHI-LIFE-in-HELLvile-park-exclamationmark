@@ -30,6 +30,27 @@ GATE = 97.0
 TOL = 24
 
 
+def failure_regions(error, tile=64, limit=4):
+    """Rank screen rectangles by mismatched pixels; diagnostics never affect the gate."""
+    bad = error > TOL
+    height, width = bad.shape
+    blocks = []
+    for y in range(0, height, tile):
+        for x in range(0, width, tile):
+            count = int(bad[y:min(y + tile, height), x:min(x + tile, width)].sum())
+            if count:
+                blocks.append((count, x, y, min(x + tile, width), min(y + tile, height)))
+    blocks.sort(key=lambda b: (-b[0], b[2], b[1]))
+    return blocks[:limit]
+
+
+def save_failure_mask(directory, name, error):
+    """White: outside 24/255 tolerance; black: matches (RGB565 comparison)."""
+    os.makedirs(directory, exist_ok=True)
+    image = np.where(error > TOL, 255, 0).astype(np.uint8)
+    Image.fromarray(image).save(os.path.join(directory, name + '_mask.png'))
+
+
 def views(report):
     out = {}
     if not report or not os.path.exists(report):
@@ -50,6 +71,8 @@ def main():
     ap.add_argument('hostdir')
     ap.add_argument('--report', default=None)
     ap.add_argument('--min-gated', type=int, default=0)
+    ap.add_argument('--diff-dir', default=None,
+                    help='save white-on-black error masks for failed 3D screenshots')
     a = ap.parse_args()
     v = views(a.report or os.path.join(a.hostdir, 'report.txt'))
     names = sorted(f[:-4] for f in os.listdir(a.dcdir) if f.endswith('.png'))
@@ -83,6 +106,12 @@ def main():
                 worst = (close, n)
             if tag == 'FAIL':
                 fails += 1
+                if a.diff_dir:
+                    save_failure_mask(a.diff_dir, n, e)
+                blocks = failure_regions(e)
+                detail = ', '.join('%d,%d..%d,%d (%d px)' % (x, y, x1, y1, count)
+                                   for count, x, y, x1, y1 in blocks)
+                print('       mismatched regions (64px tiles): ' + detail)
         print('%-6s %-28s close %7.3f%% exact %7.3f%% (3D views %d)' % (tag, n, close, exact, v.get(n, 0)))
     few = gated < a.min_gated
     print('compare3d: %d shots with a 3D view gated, %d failed; worst %.3f%% (%s)%s' %
