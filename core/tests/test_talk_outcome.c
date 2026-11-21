@@ -390,6 +390,47 @@ static void play(TalkState *s, int act, uint16_t topic, int target)
     while (talk_dm_step(s, NULL)) {}
 }
 
+/* With meaningful long-term social bias, the saved "last time" needs to
+ * belong to the person it really happened to. An individual compliment
+ * cannot make every bystander remember being complimented. */
+TEST(talk_outcome_social_memory_is_personal_not_room_wide)
+{
+    static const int ids[2] = { ID_NANA, ID_RIVET };
+    TalkState s;
+    TalkOutcome o;
+    const TalkMem *m;
+    premade_town();
+    CHECK(open_db());
+
+    talk_outcome_begin(&s, HERO, ids, 2, 7031u);
+    play(&s, TA_COMPLIMENT, TC_NONE, 0);
+    CHECK(s.mem_to[0] & TMF_COMPLIMENTED);
+    CHECK_EQ(s.mem_to[1], 0);
+    talk_outcome_end(&s, &o, NULL);
+    m = talk_mem_find(ID_NANA);
+    CHECK(m != NULL && (m->flags & TMF_COMPLIMENTED));
+    m = talk_mem_find(ID_RIVET);
+    CHECK(m == NULL || !(m->flags & TMF_COMPLIMENTED));
+
+    talk_outcome_begin(&s, HERO, ids, 2, 7032u);
+    play(&s, TA_INSULT, TC_NONE, 1);
+    CHECK_EQ(s.mem_to[0], 0);
+    CHECK(s.mem_to[1] & TMF_INSULTED);
+    talk_outcome_end(&s, &o, NULL);
+    m = talk_mem_find(ID_RIVET);
+    CHECK(m != NULL && (m->flags & TMF_INSULTED));
+
+    /* Speaking to everyone is different from addressing one listener. */
+    talk_outcome_begin(&s, HERO, ids, 2, 7033u);
+    play(&s, TA_PROMISE, TC_NONE, -1);
+    CHECK(s.mem_to[0] & TMF_PROMISED);
+    CHECK(s.mem_to[1] & TMF_PROMISED);
+    talk_outcome_end(&s, &o, NULL);
+    CHECK(talk_mem_find(ID_NANA)->flags & TMF_PROMISED);
+    CHECK(talk_mem_find(ID_RIVET)->flags & TMF_PROMISED);
+    talk_db_close();
+}
+
 /* the greedy player: every warm act on a liked topic, 14 turns, and a mediation / praise on top */
 TEST(talk_outcome_no_farming_100_sessions)
 {
