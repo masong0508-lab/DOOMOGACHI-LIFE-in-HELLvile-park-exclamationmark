@@ -230,3 +230,21 @@ gba_lmul:                           @ named for the profiler
     umull   r0, r3, r2, r0          @ a_lo * b_lo, 64 bits
     add     r1, r1, r3
     bx      lr
+
+
+@ ---------------------------------------------------------------------------
+@ Exact two-dimensional 16.16 actor-distance square on ARM7TDMI.
+@ r0 = dx, r1 = dy (signed 32-bit); output r1:r0 = dx*dx + dy*dy.
+@ Called by the GBA billboard distance sort (core/src/combat.c).
+@ Two native SMULLs and a 64-bit add replace THUMB's split-half squares
+@ and libgcc helper calls. No approximate distance, sprite culling or
+@ additional RAM, and only caller-saved registers are modified.
+    .global gba_bb_sq
+    .type   gba_bb_sq, %function
+gba_bb_sq:
+    smull   r2, r3, r0, r0
+    smull   r0, r12, r1, r1
+    adds    r0, r0, r2
+    adc     r1, r12, r3
+    bx      lr
+    .size   gba_bb_sq, . - gba_bb_sq
