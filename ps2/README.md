@@ -377,3 +377,40 @@ python3 ps2/tools/check_play_frames.py \\
 Only a successful newly built disc and a visible gameplay screenshot
 may clear the visual boot gate; an actual playable release also requires
 controller, Talk, sound, memory-card persistence and scene traversal.
+
+
+## PS2-11 graphics-first startup and PCSX2 visual verification
+
+The PS2 shared game's startup now creates the GS video context and
+presents a four-color loading/progress screen *before* initiating SIF RPC,
+memory card, disc, audio, and controller services. Graphics setup and
+gameplay use 16-bit CT16 GS display buffers to preserve VRAM alongside
+the existing RGB5551 texture. The progress bar advances between optional
+IOP init stages, making a frozen dependency easier to locate in a real
+emulator. This is not a fake main-menu replacement and the real shared
+core still supplies all gameplay and scenes. The host
+`ps2/tests/test_boot_order.py` guards the startup ordering.
+
+The previous BIOS-free Play! builds opened but displayed black
+screens in both the game and hardware diagnostics. Its hosted runner
+now records `glxinfo -B` and forces llvmpipe/Mesa software OpenGL in
+the Flatpak emulator, to distinguish software-GL/Xvfb rendering trouble
+from a bug in the EE game. The capture gate still **fails** on a black
+viewport, preserving its images and error log.
+
+For the more accurate PS2 compatibility target, on **Linux** with
+an official PCSX2 installation, a locally configured BIOS dumped from
+your own PS2, ImageMagick and X11/Xvfb:
+
+```sh
+python3 ps2/tools/pcsx2_visual_check.py \
+  ps2/build/doomogachi_ps2_game.iso --seconds 45
+```
+
+The runner captures two frames, records the source ISO SHA-256,
+the console log, image brightness diagnostics and a JSON report under
+`ps2/build/pcsx2-smoke/`. It does not bundle/download any BIOS.
+A non-black screenshot only verifies that pixels appeared, and can
+still be the BIOS/settings UI. **It is not permission to declare the game
+playable:** finish the actual PCSX2 playthrough checklist for controls,
+Talk, SPU2 audio, saves surviving an emulator restart, menus, and 3D.
