@@ -257,10 +257,51 @@ static int q_add(QCtx *q, const int8_t *act_to, int act, uint32_t h, TalkSugg *o
     return 1;
 }
 
-/* the first of a list (from a salted start) that can be offered */
-static int q_from(QCtx *q, const uint8_t *list, int n, uint32_t h, TalkSugg *out)
+/* Small deliberative reply policy: predict how the *actual* resident would
+ * receive each eligible act, using the DM's existing personality/relationship/
+ * mood/trait/topic model, then discount acts the player just repeated. It
+ * never invents lines, outcomes or feelings: every option still passes q_text
+ * and the normal dialogue/safety gate. This runs on a menu refresh, not each
+ * frame; <= 7 candidates, <= 6 history entries and zero allocations. */
+static int q_candidate_score(const QCtx *q, int slot, int act, uint32_t h)
 {
-    int i;
+    const TalkState *s = q->s;
+    int i, reception, score;
+    reception = talk_dm_expect(s, slot, act, q_tone(act), q_topic_of(q, act));
+    /* Negative reactions should matter: don't recommend a jab to somebody
+     * who has repeatedly taken it badly just because it changes the text. */
+    score = reception * 2 + (reception < 0 ? reception : 0);
+    for (i = 0; i < s->nhist && i < 6; i++) {
+        const TalkHist *old = &s->hist[i];
+        if (!(old->flags & THF_PLAYER)) continue;
+        if (old->act == act) score -= i < 2 ? 24 : i < 4 ? 13 : 5;
+    }
+    if (act == s->last_act) score -= 8;
+    /* A related follow-up is preferable to abruptly abandoning an active
+     * thread; the memory bridge below is the deliberate exception. */
+    if (q->topic && q->topic == s->topic_stack[0] &&
+        (act == TA_ASK_ABOUT || act == TA_ASK_OPINION ||
+         act == TA_TELL || act == TA_CONTINUE))
+        score += 4;
+    /* Salt resolves close scores; it does not override a bad social read. */
+    score += (int)(doomo_hash32(h ^ (uint32_t)act * 0x9E3779B1u) & 3u);
+    return score;
+}
+
+/* First acceptable act on a cold opening; after two real turns, rank a tiny
+ * allowed candidate set by the ongoing relationship and short-term memory. */
+static int q_from(QCtx *q, const uint8_t *list, int n, int slot, uint32_t h, TalkSugg *out)
+{
+    int i, best = -1, value = -10000;
+    if (q->s->turn >= 2 && q->s->nhist > 0) {
+        for (i = 0; i < n; i++) {
+            int act = list[i], score;
+            if (!q_text(q, act, h)) continue;
+            score = q_candidate_score(q, slot, act, h);
+            if (score > value) { value = score; best = act; }
+        }
+        if (best >= 0) return q_add(q, NULL, best, h, out);
+    }
     for (i = 0; i < n; i++)
         if (q_add(q, NULL, list[(h % (uint32_t)n + (uint32_t)i) % (uint32_t)n], h, out)) return 1;
     return 0;
@@ -435,7 +476,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     TalkSugg tmp[TALK_QUICK_MAX];
     const TalkLine *th;
     const uint8_t *fl = NULL, *sl = NULL;
-    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue;
+    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, bridge = 0;
     uint32_t h;
     if (!s || !out || (s->flags & TDF_OVER)) return 0;
     if (s->q_kind && (s->q_st & TQ_ST_ASKED)) return talk_quest_quick(s, out);   /* TQ: a request is on the table: accept, decline, haggle, ask more */
@@ -464,6 +505,18 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     q.fresh = fresh && !q.sincere && q_linked(q.topic, fresh) &&
               talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
               ? fresh : TC_NONE;
+    /* An associative callback must be earned: a remembered *person's*
+     * subject linked in the lexicon to today's actual thread, not a random
+     * nearby word. It is optional, kept separate from the ongoing replies. */
+    if (!q.sincere && th && th->topic && q.topic == th->topic &&
+        s->turn >= 3 && slot >= 0 && slot < s->nparts &&
+        s->conv.mem_topic[slot] != TC_NONE &&
+        q_linked(q.topic, s->conv.mem_topic[slot]) &&
+        talk_gen_concept_ok(s->conv.mem_topic[slot], &s->conv.aud) &&
+        !q_grief(s->conv.mem_topic[slot])) {
+        q.fresh = s->conv.mem_topic[slot];
+        bridge = 1;
+    }
     h = doomo_hash32(salt * 0x9E3779B1u + (uint32_t)act * 0x85EBCA6Bu + 0x7A1Bu);
 
     /* the reply that suits them is reserved first (the first of its list that can be said), so the thread's
@@ -484,26 +537,31 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         if (!th) { fl = ql_start; fn = (int)sizeof ql_start; }
         else if (q.sincere) { fl = ql_sinc; fn = (int)sizeof ql_sinc; }
         else fn = q_follow(act, &fl);
-        q_from(&q, fl, fn, h >> 2, tmp);                           /* 1: the thread */
+        q_from(&q, fl, fn, slot, h >> 2, tmp);                           /* 1: the thread */
     }
     if (b >= 0) {                                                  /* 2: the one that suits them */
         q.used[b >> 3] &= (uint8_t)~(1u << (b & 7));
         q_add(&q, NULL, b, h >> 4, tmp);
     }
     if (q.sincere) {                                               /* more of the same kindness */
-        q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 9, tmp);
-        q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 11, tmp);
+        q_from(&q, ql_sinc, (int)sizeof ql_sinc, slot, h >> 9, tmp);
+        q_from(&q, ql_sinc, (int)sizeof ql_sinc, slot, h >> 11, tmp);
     } else {
         if (q.topic && th) {
             /* Continue an existing thought first; changing subjects is a
              * visible, deliberate choice only for a linked candidate. */
-            q_from(&q, ql_dive, (int)sizeof ql_dive, h >> 9, tmp);
-            q_from(&q, ql_dive, (int)sizeof ql_dive, h >> 11, tmp);
+            q_from(&q, ql_dive, (int)sizeof ql_dive, slot, h >> 9, tmp);
+            /* Reserve the final option for a personal semantic bridge
+             * only after the conversation has earned it. Never keep
+             * pushing a new subject right after a topic change. */
+            if (!(bridge && s->last_act != TA_CHANGE_TOPIC &&
+                  q_add(&q, NULL, TA_CHANGE_TOPIC, h >> 11, tmp)))
+                q_from(&q, ql_dive, (int)sizeof ql_dive, slot, h >> 11, tmp);
         } else {
-            q_from(&q, ql_chg, (int)sizeof ql_chg, h >> 9, tmp);
-            q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 11, tmp);
+            q_from(&q, ql_chg, (int)sizeof ql_chg, slot, h >> 9, tmp);
+            q_from(&q, ql_wild, (int)sizeof ql_wild, slot, h >> 11, tmp);
         }
-        q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 13, tmp);
+        q_from(&q, ql_wild, (int)sizeof ql_wild, slot, h >> 13, tmp);
     }
     for (i = 0; i < q.n; i++) out[i] = tmp[i];
     return q.n;
