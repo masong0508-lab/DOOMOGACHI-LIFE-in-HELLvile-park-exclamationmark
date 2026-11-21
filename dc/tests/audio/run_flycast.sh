@@ -33,6 +33,9 @@
 set -u
 [ $# -eq 6 ] || [ $# -eq 7 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE RUNNER OUTDIR [IRQ_RUNNER]" >&2; exit 2; }
 FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6 IRQR=${7:-}
+# Flycast records from power-on. The shipped CDI fixtures add about
+# eleven seconds of boot time before the native and console audio align.
+startup_lag=15
 here=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
@@ -62,7 +65,7 @@ for name in title invasion combat; do
         DCSND_WAV="$d/ref.wav" "$IRQR" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
             --w 320 --h 240 > "$d/runner_irq.log" 2>&1
         [ $? -eq 0 ] || nr=1
-        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
+        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag "$startup_lag" \
               --drop-gaps 256 2>&1 | sed 's/^[A-Za-z]* //')
         vsb="; vs bridge (not gated): $vsb"
     fi
@@ -72,7 +75,7 @@ for name in title invasion combat; do
     # (sync stops) are not the game's sound (compare.py, DC8)
     gaps="--drop-gaps 256"; bar=
     [ -n "$IRQR" ] && { gaps=; [ $name = combat ] && bar="--min-corr 0.8"; }
-    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag 5 \
+    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag "$startup_lag" \
         $gaps $bar $clip --plot "$d/envelope.png" 2>&1)
     cr=$?
     stats=$(grep '^dcrun: sound' "$d/dcrun.log" | sed 's/^dcrun: //')
