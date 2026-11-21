@@ -43,14 +43,21 @@ talk-quick 0
 expect-talk-reply-sincere 1
 talk-read
 expect-talk on
-# the next kind lines, an offer and a compliment: still sincere, and the window is open
-talk-say offer
+# the next kind lines, encouragement and a compliment: still sincere, and the window is open
+talk-say encourage
 expect-talk-reply-sincere 1
 talk-read
 talk-say compliment
 expect-talk-reply-sincere 1
 talk-read
 expect-talk-care 1
+# Offer Help is a *real menu* rather than a canned utterance. Select the
+# actual Comfort action and verify that a response is generated on both
+# native and Dreamcast; the previous test accidentally asserted a stale reply.
+talk-care comfort
+expect-talk-you "I'm here for you."
+talk-read
+expect-talk on
 talk-leave
 expect-talk off
 wait 60
