@@ -820,21 +820,64 @@ static void open_meet(int venue)
  * A second resident is found only on a deliberate button press.
  * If one or both moved since the menu snapshot, the observation is
  * revalidated rather than teleporting them back for a scene. */
+/* A tiny rotating *view* into the actual local social graph. The first
+ * two IDs gave every player the same daily vignette forever and sometimes
+ * asked a possessed resident to tell a fluffy joke. Anchor selection at
+ * this game-hour/place, prefer an existing meaningful bond among up to 24
+ * present citizens, and leave the sim completely untouched. This scan
+ * runs only on an explicit menu choice, never on frame/tick/draw. */
+static void moment_people(int act, int *a, int *b, int *unwell)
+{
+    uint32_t start = ((uint32_t)act * 73u + doomo_town.day * 101u +
+                      (uint32_t)town_hour() * 37u) % DOOMO_MAX_RESIDENTS;
+    int k, i, fallback = -1, considered = 0;
+    *a = *b = *unwell = -1;
+    for (k = 0; k < DOOMO_MAX_RESIDENTS; k++) {
+        const DoomoResident *r;
+        int kind;
+        i = (int)((start + (uint32_t)k) % DOOMO_MAX_RESIDENTS);
+        r = town_res(i);
+        if (!r || r->activity != act) continue;
+        if (r->status != RES_ALIVE) {
+            if (*unwell < 0 && (r->status == RES_GHOST ||
+                                r->status == RES_SOUL_LOST ||
+                                r->status == RES_POSSESSED))
+                *unwell = i;
+            continue;
+        }
+        if (*a < 0) { *a = i; continue; }
+        if (fallback < 0) fallback = i;
+        kind = rel_kind(*a, i);
+        if (kind == REL_FRIEND || kind == REL_BEST_FRIEND ||
+            kind == REL_RIVAL || kind == REL_NEMESIS ||
+            kind == REL_FAMILY || kind == REL_DATING ||
+            kind == REL_MARRIED) {
+            *b = i; break;
+        }
+        if (++considered >= 24) break; /* bound edge lookups */
+    }
+    if (*b < 0) *b = fallback;
+}
+
 static void observe_moment(int act)
 {
-    int i, a = -1, b = -1, kind;
+    int a, b, unwell, kind;
     const DoomoResident *r;
     char line[112];
     if (act < 0 || act >= ACT_COUNT) return;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        r = town_res(i);
-        if (!r || !fp_living_status(r->status) || r->activity != act) continue;
-        if (a < 0) a = i;
-        else { b = i; break; }
-    }
+    moment_people(act, &a, &b, &unwell);
     if (a < 0) {
-        ui_toast("Everyone wandered off. Try again later.");
-        I.menu_dirty = 1;
+        if (unwell >= 0) {
+            r = town_res(unwell);
+            ui_say(unwell, r->status == RES_GHOST ?
+                   "I used to come here when the streetlights were brighter." :
+                   r->status == RES_POSSESSED ?
+                   "Something else keeps trying to speak through me." :
+                   "I remember this place, but everything feels far away.");
+        } else {
+            ui_toast("Everyone wandered off. Try again later.");
+            I.menu_dirty = 1;
+        }
         return;
     }
     if (b < 0) {
