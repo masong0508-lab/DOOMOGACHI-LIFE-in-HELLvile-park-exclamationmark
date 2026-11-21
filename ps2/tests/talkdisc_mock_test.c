@@ -92,6 +92,12 @@ int main(void)
     CHECK(plat_talk_read(0,dst,16)==0);
     CHECK(plat_talk_load("en")==NBYTES);
     verify_read(0,16);
+    /* Disc removed after a successful session: stale file metadata and
+     * the old loaded sector must never survive a failed re-init. */
+    init_ok=0;
+    ps2_talk_disc_init();
+    CHECK((plat_features()&PLATF_TALK)==0);
+    CHECK(plat_talk_read(0,dst,16)==0);
     printf("PS2 Talk CDVD transport: %d checks, %d failed\n",checks,failures);
     return failures?1:0;
 }
