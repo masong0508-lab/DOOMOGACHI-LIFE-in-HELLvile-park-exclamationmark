@@ -7,6 +7,75 @@ on bare metal: no devkitPro, no libgba, no BIOS calls besides
 mapping, the memory map, the renderers, saves, audio, the test harness and
 the performance work.
 
+## Current GBA performance status (November 20, 2026; measured builds)
+
+This section supersedes the **historical** FPS figures elsewhere in this long
+engineering diary. **Drawn FPS** (presented frames) and **logic TPS** (game
+simulation ticks) are different metrics; the emulator's two-vblank presentation
+cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
+3D level renders at 30 FPS.
+
+- **All-screen speed tour:** 16 `gba/harness/scripts/speed2_*.txt` groups
+  define **277** distinct scripted FPS windows. Codex's complete local run
+  reported **246/277** near 30 FPS (previously 232/277) on commit
+  [`49ca800f`](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/commit/49ca800f766f).
+  This complete count was reported by the local optimization run; the GitHub
+  GBA CI runs **four groups / 94 windows** with `SPEED2_GATES=1`.
+  The passing CI for `49ca800f` independently measured **79/94 at >=29.5
+  drawn FPS**. Do not confuse 246/277 with the CI subset or with 3D combat.
+- **3D combat census:** `make -C gba test-3d-census` measures **24 camera
+  windows** covering mapped Breach levels and arena in both cameras, and
+  separately gates >=29 logic TPS. On the GBA-tested
+  [`6af86e2b`](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/commit/6af86e2b699b)
+  build, **7/24** reached >=22 drawn FPS; **0/24** reached >=29.5.
+  These are harder 3D scenarios than most of the speed-tour screens.
+- **Bone map comparison (Balanced mode; headless mGBA; both cameras):**
+
+  | map / camera | `49ca800f` drawn FPS | `6af86e2b` drawn FPS | later-stage target |
+  |---|---:|---:|---:|
+  | Bone Cathedral / first person | 14.5 | **15.4** | >=24 |
+  | Bone Cathedral / third person | 14.4 | **15.5** | >=24 |
+  | Bone Capital / first person | 15.6 | **18.1** | >=24 |
+  | Bone Capital / third person | 15.9 | **18.7** | >=24 |
+
+  On `6af86e2b`, logic remains about **29.8-30.0 TPS** in all four.
+  Mean frame work is **55.2 / 53.1 ms** (Cathedral first / third) and
+  **47.5 / 45.4 ms** (Capital first / third). The interim **24 drawn
+  FPS** goal is **not achieved** on any of the four measured windows.
+  Repeat the same movement and camera scripts before claiming an improvement:
+  `gba/harness/scripts/3d_census.txt`, and inspect p95/p99 frame work,
+  late VBlanks, spikes and captured screenshots, not just an FPS average.
+- **Visual constraints:** retain original Bone map geometry, the long
+  view-distance setting, texture/light identity, readable distant
+  silhouettes, the full-resolution 240x160 HUD and the third-person
+  character. Balanced uses a specialized **80x54** intermediate fallback
+  (scaled to screen) rather than relying on the blockier 60x40 emergency
+  tier on these two levels. A later LUT-only distant-fade adjustment and
+  ray-direction SMULL patch landed in `4ae9a5af`/`4543d33d`;
+  neither has a **completed comparable emulator FPS result at the time of
+  this status entry**. The clarity change still needs screenshot review;
+  do not assume pixel parity with the earlier, darker distance fade.
+- **Validation:** The full GBA CI at `6af86e2b` passed; the Bone GBA
+  census and actor-collision regression checks also passed. Build/engine,
+  ROM RAM/overlay limits, logic ticks, map exit playthroughs, and both
+  camera views remain hard constraints. A future patch should not silently
+  weaken a floor or cut the authored draw distance to buy FPS.
+
+Useful commands:
+
+```sh
+make -C gba test-speed2 SPEED2=\"action creator library story\" SPEED2_GATES=1
+make -C gba test-3d-census
+make -C gba test-3d
+```
+
+The current roadmap is **24 drawn FPS in both Bone levels and both cameras
+while keeping the visible scenery recognizable**, with ~30 drawn FPS as the
+longer-term goal. Measure >=24 separately from the existing ~22 / ~30
+whole-census reporting; do not label a 30-TPS simulation as 30 FPS.
+
+---------------------------------------------------------------------------
+
 Quick start:
 
 ```sh
@@ -3182,6 +3251,13 @@ the first window includes the harness's town setup):
   narrow rects and shading, or a plate of OBJs (a G-area pass).
 
 ### Combat detail (SP8; G7's "3D: Faster / Better")
+
+> **Historical implementation notes:** the G-C1 governor description and
+> measurements below record the original SP8 design, not the latest
+> Balanced mode. For current Bone-specific 80x54 fallbacks, revised pace
+> handling, benchmark commits and 24 FPS target, see the status section
+> at the top of this document.
+
 
 `OPT_3D_FAST` (`town.h`, option 63) is the Options row **"Combat
 detail"** on the Performance page, shown on every platform (DECISIONS
