@@ -42,9 +42,10 @@ jobs:
           else
             TC="$PS2SDK/ps2dev.cmake"
           fi
-          # ps2dev/ps2dev:latest includes the EE compiler and PS2SDK
-          # sample Make rules but does not include cmake by default.
-          # Use the SDK-native GNU Make target; CMake remains optional locally.
+          # The upstream image's final stage is Alpine and deliberately
+          # includes only runtimes + cross tools (neither make nor cmake).
+          # Install a tiny native build driver, not a second EE toolchain.
+          apk add --no-cache make
           make -C ps2 -j2
           test -s ps2/build/doomogachi_ps2.elf
           mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
