@@ -140,6 +140,7 @@ enum {
     NT_TALK_ROW, NT_TALK_MADE_UP, NT_TALK_GREAT_NIGHT, NT_TALK_WALKOUT,
 #ifdef DOOMO_HAS_TALK
     NT_TALK_QUEST,                  /* TQ-QUESTS: a request handed in (an adult giver; never a child) */
+    NT_TALK_MEET,                   /* confirmed on-site meetup, never an accepted invite alone */
 #endif
     NT_COUNT
 };
