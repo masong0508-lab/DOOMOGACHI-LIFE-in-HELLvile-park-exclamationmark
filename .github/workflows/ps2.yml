@@ -31,6 +31,11 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
             ps2/tests/save_journal_test.c -o /tmp/ps2-save-journal-test
           /tmp/ps2-save-journal-test
+      - name: Emulate PS2 libmc card saves, rollback, and removal
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/tests/mock -Ips2/src -Icore/include \
+            ps2/src/memcard.c ps2/tests/memcard_mock_test.c -o /tmp/ps2-memcard-test
+          /tmp/ps2-memcard-test
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
