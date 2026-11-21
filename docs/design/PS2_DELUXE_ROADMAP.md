@@ -139,3 +139,22 @@ allocation assumption.
 Status: optimization code committed to the open PR, **final multi-port
 verification still pending at the time of this entry**. PS2-0 has not
 started.
+
+### Pre-PS2 cross-port optimization: Free Play population scans
+
+The island map, church/hospital menu gates, town records, Father Fuzz's
+status speech, Hellvile wall, picnic and rent now visit **occupied physical
+resident slots** rather than all 1,000 possible resident IDs. This retains
+the full 1,000-person population on PS1/Dreamcast/native, but avoids roughly
+half the population iterations and repeated ID-to-slot lookups on the
+GBA-500 port (500 resident slots, each resident still keeps a stable ID).
+There is no new array, texture, heap allocation, save field or per-frame
+rendering pass.
+
+The island crowd snapshot still completes every ~8 frames, and counts
+at most 255 per location instead of rolling over to zero at 256 (which
+used to hide local-observation actions in busy concerts). The optional
+social-vignette picker also visits physical slots and never creates bonds.
+A native regression explicitly verifies an isolated high resident ID,
+living/ghost/dead status transitions, and the 255+ crowd saturation.
+The PS2 port must preserve this slot-index/roster-ID separation.

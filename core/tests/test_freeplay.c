@@ -12,6 +12,7 @@ int fp_island_menu_open(void);
 int fp_island_menu_count(void);
 const char *fp_island_menu_label(int i);
 int fp_island_menu_select(const char *label);
+int fp_island_crowd_snapshot(int act);
 
 static void frames(uint32_t b, int n)
 {
@@ -65,6 +66,46 @@ TEST(freeplay_new_island_choices)
         fp_new_island(TOWN_POP_RANDOM, 777);
         CHECK_EQ_U(resident_fingerprint(TOWN_RES(123)), fp1);
     }
+}
+
+/* The Free Play map counts *physical occupied slots*. This matters
+ * especially on GBA-500: resident IDs still range to 999 even though
+ * only 500 storage slots exist. A ghost counts as present, but a dead
+ * resident must never be considered a crowd member. */
+TEST(freeplay_crowds_follow_sparse_slot_population)
+{
+    DoomoResident *r;
+    fp_new_island(TOWN_POP_EMPTY, 4243);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    frames(0, 3);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 0);
+    CHECK(town_bind(777) >= 0);
+    r = TOWN_RES(777);
+    resident_default(r);
+    r->status = RES_ALIVE;
+    r->activity = ACT_CAFE;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 1);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_PARK), 0);
+    r->status = RES_GHOST;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 1);
+    r->status = RES_DEAD;
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 0);
+    CHECK_EQ(fp_island_crowd_snapshot(-1), -1);
+}
+
+TEST(freeplay_crowds_saturate_instead_of_wrapping_at_256)
+{
+    int i, n = 0;
+    premade_island();
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        DoomoResident *r = &doomo_town.res[i];
+        if (r->status == RES_ALIVE || r->status == RES_GHOST) {
+            r->activity = ACT_CAFE;
+            n++;
+        }
+    }
+    CHECK(n > 255);
+    CHECK_EQ(fp_island_crowd_snapshot(ACT_CAFE), 255);
 }
 
 TEST(freeplay_new_island_scene_classic)

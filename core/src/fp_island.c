@@ -326,7 +326,13 @@ static void build_menu(const Loc *L)
         break;
     case LOC_CHURCH: {
         int n = 0, i;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_POSSESSED, i)) n++;
+        /* Sparse GBA towns have 500 physical resident slots, not 1000
+         * active people. Count only occupied slots; the picker still
+         * receives the canonical resident ID. */
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+            int id = town_slot_id(i);
+            if (id >= 0 && fp_pick_match(PICK_POSSESSED, id)) n++;
+        }
         e = add(E_EXORCISE, ICON_CROSS, n ? "Exorcise someone!" : "Exorcise someone",
                 "Father Fuzz's ritual: prayer, holy water, true name.");
         lock_row(e, n == 0, "Nobody is possessed right now. Praise be!");
@@ -337,7 +343,10 @@ static void build_menu(const Loc *L)
         break; }
     case LOC_HOSPITAL: {
         int n = 0, i;
-        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) if (fp_pick_match(PICK_SICK, i)) n++;
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+            int id = town_slot_id(i);
+            if (id >= 0 && fp_pick_match(PICK_SICK, id)) n++;
+        }
         e = add(E_TREAT, ICON_CROSS, "Treat someone (H$40)", "Dr. Bloom patches up a sick citizen.");
         lock_row(e, n == 0, "Nobody is sick right now. Come back later!");
         add_here(L->act);
@@ -517,10 +526,11 @@ static void town_records(void)
     int i, hill = 0, hell = 0, poss = 0, lost = 0, ghosts = 0, couples = 0, cross = 0;
     char buf[160];
     const DoomoSimStats *s = sim_stats();
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = TOWN_RES(i)->status;
-        if (st == RES_EMPTY || st == RES_DEAD) continue;
-        if (RES_DISTRICT(i)) hell++; else hill++;
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int id = town_slot_id(i);
+        int st = doomo_town.res[i].status;
+        if (id < 0 || st == RES_EMPTY || st == RES_DEAD) continue;
+        if (RES_DISTRICT(id)) hell++; else hill++;
         if (st == RES_POSSESSED) poss++;
         if (st == RES_SOUL_LOST) lost++;
         if (st == RES_GHOST) ghosts++;
@@ -555,8 +565,8 @@ static void fuzz_talk(void)
     int speaker = fp_host_in_town(roster_find("Father Fuzz")) ? roster_find("Father Fuzz") : -1;
     char buf[160];
     (void)fuzz;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        const DoomoResident *r = TOWN_RES(i);
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        const DoomoResident *r = &doomo_town.res[i];
         if (r->status == RES_POSSESSED) poss++;
         else if (r->status == RES_SOUL_LOST) lost++;
         else if (r->status == RES_ALIVE && r->stat[STAT_CORRUPTION] >= 70) dark++;
@@ -576,8 +586,8 @@ static void peek_wall(void)
 {
     int i, hell = 0, poss = 0, cross = 0;
     char buf[160];
-    for (i = DOOMO_DISTRICT_SIZE; i < DOOMO_MAX_RESIDENTS; i++) {
-        int st = TOWN_RES(i)->status;
+    for (i = DOOMO_LIVE_PER_DISTRICT; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int st = doomo_town.res[i].status;
         if (fp_living_status(st)) hell++;
         if (st == RES_POSSESSED) poss++;
     }
@@ -604,8 +614,8 @@ static void picnic(void)
     char buf[80];
     if (doomo_town.money < 120) { audio_sfx(SFX_ERROR); ui_toast("A picnic costs H$120."); return; }
     doomo_town.money -= 120;
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-        DoomoResident *r = TOWN_RES(i);
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        DoomoResident *r = &doomo_town.res[i];
         if (r->status != RES_ALIVE && r->status != RES_GHOST) continue;
         if (r->activity != ACT_PARK && r->activity != ACT_WANDERING) continue;
         r->stat[STAT_HUNGER] = (uint8_t)DOOMO_MIN(100, r->stat[STAT_HUNGER] + 30);
@@ -630,8 +640,10 @@ static void collect_rent_now(void)
 {
     int i, n = 0, amount;
     char buf[64];
-    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++)
-        if (TOWN_RES(i)->status == RES_ALIVE || TOWN_RES(i)->status == RES_GHOST) n++;
+    for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {
+        int st = doomo_town.res[i].status;
+        if (st == RES_ALIVE || st == RES_GHOST) n++;
+    }
 #if DOOMO_RES_SLOTS
     /* GBA-500: half the citizens chip in twice as much, so a full town pays what it pays elsewhere */
     amount = 50 + n * (2 * DOOMO_MAX_RESIDENTS / DOOMO_LIVE_RESIDENTS);
@@ -829,14 +841,15 @@ static void open_meet(int venue)
 static void moment_people(int act, int *a, int *b, int *unwell)
 {
     uint32_t start = ((uint32_t)act * 73u + doomo_town.day * 101u +
-                      (uint32_t)town_hour() * 37u) % DOOMO_MAX_RESIDENTS;
+                      (uint32_t)town_hour() * 37u) % DOOMO_LIVE_RESIDENTS;
     int k, i, fallback = -1, considered = 0;
     *a = *b = *unwell = -1;
-    for (k = 0; k < DOOMO_MAX_RESIDENTS; k++) {
+    for (k = 0; k < DOOMO_LIVE_RESIDENTS; k++) {
         const DoomoResident *r;
-        int kind;
-        i = (int)((start + (uint32_t)k) % DOOMO_MAX_RESIDENTS);
-        r = town_res(i);
+        int kind, slot = (int)((start + (uint32_t)k) % DOOMO_LIVE_RESIDENTS);
+        i = town_slot_id(slot);
+        if (i < 0) continue;
+        r = &doomo_town.res[slot];
         if (!r || r->activity != act) continue;
         if (r->status != RES_ALIVE) {
             if (*unwell < 0 && (r->status == RES_GHOST ||
@@ -1031,13 +1044,23 @@ static void count_problems(void)
     }
 }
 
+/* The map needs one fresh crowd snapshot about every eight frames.
+ * Scan the actual resident storage, not all 1000 possible IDs: on
+ * GBA-500 this halves both lookups and slot visits, while consoles with
+ * 1000 live records retain exactly the old 125-per-frame cadence.
+ * Saturation prevents a concert of >255 citizens wrapping back to 0
+ * (which would incorrectly hide the "Catch a little moment" action).
+ * No resident state is changed, no new arrays or frame allocations. */
 static void scan_crowds(void)
 {
     int k;
-    for (k = 0; k < 125; k++) {
-        const DoomoResident *r = TOWN_RES(I.scan);
-        if (fp_living_status(r->status) && r->activity < ACT_COUNT) I.here_acc[r->activity]++;
-        if (++I.scan >= DOOMO_MAX_RESIDENTS) {
+    const int budget = (DOOMO_LIVE_RESIDENTS + 7) / 8;
+    for (k = 0; k < budget; k++) {
+        const DoomoResident *r = &doomo_town.res[I.scan];
+        if (fp_living_status(r->status) && r->activity < ACT_COUNT &&
+            I.here_acc[r->activity] < 255)
+            I.here_acc[r->activity]++;
+        if (++I.scan >= DOOMO_LIVE_RESIDENTS) {
             I.scan = 0;
             memcpy(I.here, I.here_acc, sizeof(I.here));
             memset(I.here_acc, 0, sizeof(I.here_acc));
@@ -1892,6 +1915,17 @@ int fp_island_menu_overflow(char *why, int cap)
 #undef BAD
     return bad;
 }
+/* Native regression hook only: caller can request an exact point-in-time
+ * full crowd snapshot. No runtime code or RAM cost on the handhelds,
+ * PS1, or Dreamcast. */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_DC)
+int fp_island_crowd_snapshot(int act)
+{
+    if (act < 0 || act >= ACT_COUNT) return -1;
+    full_scan();
+    return I.here[act];
+}
+#endif
 int fp_island_menu_enabled(int i) { return (i >= 0 && i < I.nent) ? isl()->ent[i].enabled : 0; }
 const char *fp_island_menu_help(int i) { return (i >= 0 && i < I.nent) ? entry_help(&isl()->ent[i]) : ""; }
 const char *fp_island_menu_key(int i) { return (i >= 0 && i < I.nent && isl()->ent[i].key) ? isl()->ent[i].key : ""; }
