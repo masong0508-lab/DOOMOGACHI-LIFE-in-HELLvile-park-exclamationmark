@@ -45,14 +45,21 @@ talk-quick 0
 expect-talk-reply-sincere 1
 talk-read
 expect-talk on
-# the next kind lines, an offer and a compliment: still sincere, and the window is open
-talk-say offer
+# Next two spoken lines remain sincere. Offer Help, however, now opens
+# a real care menu; exercise its Comfort action separately below.
+talk-say encourage
 expect-talk-reply-sincere 1
 talk-read
 talk-say compliment
 expect-talk-reply-sincere 1
 talk-read
 expect-talk-care 1
+# Selecting Comfort produces a real care response (and simulation effect),
+# not the stale last spoken reply that the old script inadvertently tested.
+talk-care comfort
+expect-talk-you "I'm here for you."
+talk-read
+expect-talk on
 talk-leave
 expect-talk off
 wait 60
