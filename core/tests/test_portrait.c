@@ -422,6 +422,61 @@ TEST(portrait_cache_holds_several_portraits)
     for (i = 1; i < 6; i++) CHECK(uid[i] != uid[i - 1]);
 }
 
+/* Selected face completion must not depend on the GBA having idle
+ * cycles. One already-started prefetch slice must be promoted in place
+ * and finish without any more portrait_idle_run calls. */
+TEST(portrait_focused_preview_finishes_without_idle_pumping)
+{
+    DoomoResident *r;
+    int id = town_alloc(DISTRICT_HILLVILE), t, ready = -1;
+    const DoomoImage *img;
+    CHECK(id >= 0);
+    r = town_res(id);
+    resident_generate(r, 34913u);
+    r->status = RES_ALIVE;
+    portrait_cache_reset();
+    portrait_cache_clock(0, 1);
+    CHECK(!portrait_prefetch(id, EXPR_HAPPY));
+    CHECK(portrait_idle_next() >= 0);
+    portrait_idle_run();
+    img = portrait_image_focused(id, EXPR_HAPPY);
+    CHECK(img == NULL);
+    for (t = 1; t <= 12; t++) {
+        portrait_cache_clock((uint32_t)t, 1);
+        img = portrait_image_focused(id, EXPR_HAPPY);
+        if (img) { ready = t; break; }
+    }
+    CHECK_MSG(ready >= 0 && ready <= 12, "focused face not ready after 12 ticks: %d", ready);
+    CHECK(img && img->w == PORTRAIT_W && img->h == PORTRAIT_H);
+    portrait_cache_reset();
+    town_free(id);
+}
+
+TEST(portrait_focused_latest_scroll_selection_wins)
+{
+    DoomoResident *a, *b;
+    int a_id = town_alloc(DISTRICT_HILLVILE);
+    int b_id = town_alloc(DISTRICT_HILLVILE), t, ready = 0;
+    CHECK(a_id >= 0 && b_id >= 0);
+    a = town_res(a_id);
+    b = town_res(b_id);
+    resident_generate(a, 27348u);
+    resident_generate(b, 27349u);
+    a->status = b->status = RES_ALIVE;
+    portrait_cache_reset();
+    portrait_cache_clock(0, 1);
+    CHECK(portrait_image_focused(a_id, EXPR_NEUTRAL) == NULL);
+    CHECK(portrait_image_focused(b_id, EXPR_NEUTRAL) == NULL);
+    for (t = 1; t <= 12; t++) {
+        portrait_cache_clock((uint32_t)t, 1);
+        if (portrait_image_focused(b_id, EXPR_NEUTRAL)) { ready = 1; break; }
+    }
+    CHECK(ready);
+    portrait_cache_reset();
+    town_free(b_id);
+    town_free(a_id);
+}
+
 TEST(portrait_render_cost_is_bounded)
 {
     static uint8_t buf[FIGURE_W * FIGURE_H];
