@@ -103,3 +103,13 @@ disc: $(GAME_BIN) $(TALK_BIN) $(AUDSRV_IRX)
 	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
 	xorriso -as mkisofs -iso-level 1 -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
 	@echo "PS2 disc image ready: $(DISC_ISO)"
+
+# BIOS-free Play! emulator smoke; runs on a desktop Linux host with
+# Flatpak, Xvfb and ImageMagick import installed. DOES NOT certify the
+# game is playable; the two screenshots and log are review evidence.
+.PHONY: play-smoke
+play-smoke: disc
+	@command -v xvfb-run >/dev/null || (echo 'Install xvfb-run/xauth' && false)
+	xvfb-run -a -s '-screen 0 1280x720x24' \
+		python3 tools/play_biosfree_smoke.py $(DISC_ISO) \
+		--out build/play-smoke --seconds 35
