@@ -142,7 +142,13 @@ static TalkMem *touch(int id)
     if (i < 0) {
         if (mem.count == TALK_MEM_MAX) {                     /* LRU: the last one goes, unless it holds a request (TQ) */
             int v = mem.count - 1;
-            while (v > 0 && TQB_KIND(mem.e[v].spare) && TQB_STATE(mem.e[v].spare) != TQS_SETTLED) v--;
+            while (v >= 0 && TQB_KIND(mem.e[v].spare) &&
+                   (TQB_STATE(mem.e[v].spare) == TQS_ACTIVE ||
+                    TQB_STATE(mem.e[v].spare) == TQS_READY)) v--;
+            /* A promise still in progress must never disappear merely
+             * because somebody else starts a conversation. If all 24
+             * slots are committed, keep the existing records intact. */
+            if (v < 0) return NULL;
             drop(v);
         }
         i = mem.count++;
