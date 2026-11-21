@@ -13,7 +13,7 @@ EE_OBJS := build/main.o build/padmap.o
 EE_INCS += -I../core/include -Isrc -I$(GSKIT)/include
 EE_CFLAGS += -std=c99 -ffunction-sections -fdata-sections
 EE_LDFLAGS += -L$(GSKIT)/lib -Wl,--gc-sections
-EE_LIBS := -lgskit_toolkit -lgskit -ldmakit -lpad -lm
+EE_LIBS := -lgskit_toolkit -lgskit -ldmakit -lmc -lpad -lm
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
 
@@ -37,7 +37,7 @@ clean:
 DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
-GAME_OBJS := build/game_main.o build/game2d.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
+GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
 GAME_BIN := build/doomogachi_ps2_game.elf
 
 .PHONY: game
@@ -51,6 +51,10 @@ build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
 build/game2d.o: src/game2d.c src/game2d.h src/indexed_blit.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/memcard.o: src/memcard.c src/save_journal.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
