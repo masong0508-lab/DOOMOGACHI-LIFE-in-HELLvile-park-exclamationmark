@@ -991,8 +991,10 @@ void sim_advance_minutes(int minutes)
         for (i = 0; i < chunk; i++) minute_step();
         sim_s.job_budget = 32;
 #if DOOMO_RES_SLOTS
-        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++)          /* GBA-500: by slot */
-            if (town_slot_id(i) >= 0) update_resident_ex(town_slot_id(i), SIM_MIN_ELAPSED);
+        for (i = 0; i < DOOMO_LIVE_RESIDENTS; i++) {        /* GBA-500: by slot */
+            int id = town_slot_id(i);
+            if (id >= 0) update_resident_ex(id, SIM_MIN_ELAPSED);
+        }
 #else
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) update_resident_ex(i, SIM_MIN_ELAPSED);
 #endif

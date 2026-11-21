@@ -306,6 +306,39 @@ TEST(sim_care_reactions_depend_on_taste)
     CHECK(sim_talk(12)[0] == '"' || sim_talk(12)[0] == '*');
 }
 
+/* The compact presence filter may have cross-ID false positives,
+ * but must never hide a real pending problem after insertion, removal
+ * or replacement. No relationship or save semantics change. */
+TEST(sim_problem_presence_filter_never_loses_a_thought_bubble)
+{
+    int a = 32, b = 63, c = 33, old;
+    town_new(TOWN_FREEPLAY, 307, TOWN_POP_PREMADE);
+    sim_init();
+    town_res(a)->status = RES_ALIVE;
+    town_res(b)->status = RES_ALIVE;
+    town_res(c)->status = RES_ALIVE;
+    sim_problem_drop_for(a);
+    sim_problem_drop_for(b);
+    sim_problem_drop_for(c);
+    CHECK_EQ(sim_problem_for(c), -1);
+    CHECK(sim_problem_raise(a, PROB_BORED, -1, 0) >= 0);
+    CHECK(sim_problem_raise(b, PROB_HUNGRY, -1, 0) >= 0);
+    CHECK(sim_problem_for(a) >= 0);
+    CHECK(sim_problem_for(b) >= 0);
+    CHECK_EQ(sim_problem_for(c), -1); /* shares a 32-resident group */
+    old = sim_problem_for(a);
+    CHECK(old >= 0);
+    sim_problem_remove(old);             /* compacts and rebuilds the filter */
+    CHECK_EQ(sim_problem_for(a), -1);
+    CHECK(sim_problem_for(b) >= 0);
+    CHECK(sim_problem_raise(a, PROB_DIRTY, -1, 0) >= 0);
+    CHECK(sim_problem_for(a) >= 0);
+    sim_problem_drop_for(a);
+    sim_problem_drop_for(b);
+    CHECK_EQ(sim_problem_for(a), -1);
+    CHECK_EQ(sim_problem_for(b), -1);
+}
+
 TEST(sim_problems_resolve_and_pay)
 {
     int idx;
