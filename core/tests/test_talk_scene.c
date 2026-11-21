@@ -107,6 +107,38 @@ TEST(talk_scene_the_debug_view_describes_the_page)
     CHECK_EQ(talk_scene_act_cat(TA_REFUSE_SEXUAL), -1);    /* never a row */
 }
 
+/* Asking about a day is a spoken view of the live ACT_* schedule.
+ * Reading it should neither award anything nor change the actual activity.
+ * The activity deliberately changes after Talk opens, proving this is not
+ * a stale menu-entry snapshot. */
+TEST(talk_scene_day_plan_tracks_actual_activity_without_reward)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    DoomoResident *r;
+    int row, cash, problems, memories;
+    town();
+    CHECK(open_talk(ID_NANA));
+    r = town_res(ID_NANA);
+    CHECK(r != NULL);
+    row = find_row("dayplan", -1, -1);
+    CHECK(row > find_row("help", -1, -1));
+    r->activity = ACT_CAFE;
+    cash = (int)doomo_town.money;
+    problems = sim_problem_count();
+    memories = talk_mem_count();
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    memset(&box, 0, sizeof box);
+    ui_dialog_debug(&box);
+    CHECK(box.text != NULL && strstr(box.text, doomo_activity_names[ACT_CAFE]) != NULL);
+    CHECK_EQ(r->activity, ACT_CAFE);
+    CHECK_EQ((int)doomo_town.money, cash);
+    CHECK_EQ(sim_problem_count(), problems);
+    CHECK_EQ(talk_mem_count(), memories);
+}
+
 /* The thought bubble is backed by the simulation's real problem queue, not
  * arbitrary Talk text. Reading the thought does not solve it; choosing the
  * corresponding care action does, and refreshes the main page afterwards. */
