@@ -76,12 +76,14 @@
  * 102.25 KB) so saves never stream on the PS1. A frame has needed at most
  * ~36 KB; a packed sky's first upload needs 2 x 24 KB + 4 KB at the start
  * of a 3D view (vram.c). */
-/* RAM pass (game disc was 10,608 B into the 64 KB stack reserve): 56 -> 53 KB
- * per frame, -6,144 B. 2 x 53 KB = 106,496 B still holds the 104,704 B save
- * scratch, the 52 KB sky upload still fits at the start of a view (vram.c
- * falls back when it does not), and the busiest list (concert, 48 KB) keeps
- * 5 KB of headroom. */
-#define PRIM_BYTES    (53 * 1024)
+/* RAM pass: 56 -> 53 KB originally, with a further 256 B trimmed
+ * per frame when the PS1 executable reached the stack safety floor.
+ * Both halves still provide 108,032 B for the 104,704 B save scratch.
+ * A 52 KB sky upload still fits (768 B spare; vram.c also has a fallback),
+ * and the busiest measured concert list (48 KB) retains 4.75 KB.
+ * Never reduce this without confirming the sky/scene display lists and
+ * the scratch_fits compile-time check in gfx.c. */
+#define PRIM_BYTES    (53 * 1024 - 256)
 
 typedef struct GfxPerf {
     uint32_t cpu_us;              /* begin_frame .. end_frame (CPU)       */
