@@ -85,11 +85,15 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
             ps2/tests/scripted_story_test.c -o /tmp/ps2-scripted-story-test
           /tmp/ps2-scripted-story-test
+          cc -std=c99 -O2 -Wall -Wextra -Werror -DPS2_STORY_IDLE_CONTROL=1 -Icore/include -Ips2/src \
+            ps2/tests/scripted_story_test.c -o /tmp/ps2-story-idle-test
+          /tmp/ps2-story-idle-test
       - name: Prevent redundant DMA buffer swap after gsKit's automatic queue reset
         run: python3 ps2/tests/test_gs_queue_recycle.py
       - name: Verify Play! game-tick telemetry and emulator harness
         run: |
-          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py ps2/tools/check_story_progress.py
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py ps2/tools/check_story_progress.py ps2/tools/check_story_causality.py
+          python3 -m unittest discover -s ps2/tests -p test_story_causality.py -v
           python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
           python3 ps2/tools/pcsx2_visual_check.py --help >/dev/null
           python3 ps2/tests/probe_log_test.py
@@ -149,7 +153,7 @@ jobs:
         # REQUIRED regression gate for scene progression; never shipped and
         # never interpreted as proof of a physical DualShock controller.
         run: |
-          make -C ps2 story-probe -j2
+          make -C ps2 story-probe story-idle -j2
       - name: Package PS2 gameplay ISO with real Talk bank and audsrv
         run: |
           set -eu
@@ -193,6 +197,13 @@ jobs:
           path: ps2/build/doomogachi_ps2_story_probe.elf
           retention-days: 3
           if-no-files-found: warn
+      - name: Upload non-shipping Story no-input control ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-story-idle-elf
+          path: ps2/build/doomogachi_ps2_story_idle.elf
+          retention-days: 3
+          if-no-files-found: error
       - name: Upload PS2 ELF for PCSX2 and homebrew launchers
         uses: actions/upload-artifact@v4
         with:
@@ -318,6 +329,22 @@ jobs:
         with:
           name: doomogachi-ps2-story-probe-elf
           path: ps2/build
+      - name: Retrieve no-input Story comparison ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-story-idle-elf
+          path: ps2/build
+      - name: Capture idle title as zero-button causal control
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_story_idle.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_story_idle.elf --launch elf \
+              --out ps2/build/play-story-idle --seconds 22 --early-capture 3 --software-gl
       - name: Capture and prove shared-core Story transition with scripted input
         if: always()
         timeout-minutes: 4
@@ -333,6 +360,10 @@ jobs:
             ps2/build/play-story-probe/boot-2.png \
             ps2/build/play-story-probe/boot-3.png \
             --output ps2/build/play-story-probe/story-progress.json
+          python3 ps2/tools/check_story_causality.py \
+            --scripted ps2/build/play-story-probe/boot-1.png ps2/build/play-story-probe/boot-2.png ps2/build/play-story-probe/boot-3.png \
+            --idle ps2/build/play-story-idle/boot-1.png ps2/build/play-story-idle/boot-2.png ps2/build/play-story-idle/boot-3.png \
+            --output ps2/build/play-story-probe/story-causality.json
       - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
         if: always()
         timeout-minutes: 4
@@ -402,4 +433,5 @@ jobs:
             ps2/build/play-gs-texture/
             ps2/build/play-game-elf/
             ps2/build/play-story-probe/
+            ps2/build/play-story-idle/
           if-no-files-found: warn

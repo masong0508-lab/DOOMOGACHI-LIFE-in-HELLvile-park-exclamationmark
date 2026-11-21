@@ -14,8 +14,16 @@
  */
 static inline uint32_t ps2_scripted_story_buttons(uint32_t tick)
 {
+#if defined(PS2_STORY_IDLE_CONTROL)
+    /* Same startup, renderer, core and IOP calls as the scripted probe,
+     * but NEVER inject a button. The difference in captured scenes must
+     * therefore be caused by the synthetic input, not title animation. */
+    (void)tick;
+    return 0;
+#else
     if(tick==120u) return BTN_START;
     if(tick==150u || tick==180u) return BTN_A;
     return 0;
+#endif
 }
 #endif

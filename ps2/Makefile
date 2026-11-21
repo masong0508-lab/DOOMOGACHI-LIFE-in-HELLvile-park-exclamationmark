@@ -86,14 +86,24 @@ GAME_BIN := build/doomogachi_ps2_game.elf
 # deterministic button pulses at the game-input boundary. Never ship.
 STORY_PROBE_BIN := build/doomogachi_ps2_story_probe.elf
 STORY_PROBE_OBJS := $(filter-out build/game_main.o,$(GAME_OBJS)) build/game_main_story_probe.o
-.PHONY: story-probe
+STORY_IDLE_BIN := build/doomogachi_ps2_story_idle.elf
+STORY_IDLE_OBJS := $(filter-out build/game_main.o,$(GAME_OBJS)) build/game_main_story_idle.o
+.PHONY: story-probe story-idle
 story-probe: $(STORY_PROBE_BIN)
+story-idle: $(STORY_IDLE_BIN)
 $(STORY_PROBE_BIN): $(STORY_PROBE_OBJS)
 	@mkdir -p $(@D)
 	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(STORY_PROBE_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(GAME_LIBS)
 build/game_main_story_probe.o: src/game_main.c src/padmap.h src/game2d.h src/scripted_story.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_SCRIPTED_STORY_PROBE=1 -c $< -o $@
+# Build the identical diagnostic, except it sends zero synthetic buttons.
+$(STORY_IDLE_BIN): $(STORY_IDLE_OBJS)
+	@mkdir -p $(@D)
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(STORY_IDLE_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(GAME_LIBS)
+build/game_main_story_idle.o: src/game_main.c src/padmap.h src/game2d.h src/scripted_story.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_SCRIPTED_STORY_PROBE=1 -DPS2_STORY_IDLE_CONTROL=1 -c $< -o $@
 # Preserve GAME_BIN (DWARF) for source-level debugging, but put a
 # separately verified no-DWARF image on the disc to save storage.
 GAME_DISC_BIN := build/doomogachi_ps2_disc.elf
