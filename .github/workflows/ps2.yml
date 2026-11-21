@@ -36,6 +36,25 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/tests/mock -Ips2/src -Icore/include \
             ps2/src/memcard.c ps2/tests/memcard_mock_test.c -o /tmp/ps2-memcard-test
           /tmp/ps2-memcard-test
+      - name: Test real 30Hz SPU2 mixer and safe Talk CD paths
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
+            ps2/src/synth.c ps2/tests/synth_test.c -o /tmp/ps2-synth-test
+          /tmp/ps2-synth-test
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/talk_path_test.c -o /tmp/ps2-talk-path-test
+          /tmp/ps2-talk-path-test
+      - name: Build genuine English Talk bank for disc
+        run: |
+          make -C core talk
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          bank = Path('core/build/talk/TALK_en.BIN').read_bytes()
+          assert len(bank)>1000 and bank[:4]==b'TALK'
+          assert struct.unpack_from('<I',bank,16)[0]==len(bank)
+          print('PS2 Talk bank valid:',len(bank),'bytes')
+          PY
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
@@ -62,16 +81,15 @@ jobs:
           # The upstream image's final stage is Alpine and deliberately
           # includes only runtimes + cross tools (neither make nor cmake).
           # Install a tiny native build driver, not a second EE toolchain.
-          apk add --no-cache make
+          apk add --no-cache make python3 xorriso
           make -C ps2 -j2
           test -s ps2/build/doomogachi_ps2.elf
           mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
           printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" > ps2/build/BUILD_SOURCE.txt
-      - name: Experimental PS2-1 linked shared-game ELF
-        # Keep PS2-0 release gate separate from this newly ported backend.
-        # A failure appears visibly in this step and the run summary.
-        continue-on-error: true
+      - name: Linked shared-game ELF is required for the PS2 port
+        # PS2-0 diagnostics alone are no longer a green game-build verdict.
+        # Fail this job when the actual shared-core gameplay ELF fails.
         run: |
           set -eu
           if make -C ps2 game -j2 > /tmp/ps2-game-link.log 2>&1; then
@@ -82,6 +100,22 @@ jobs:
             tail -n 45 /tmp/ps2-game-link.log | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+      - name: Package PS2 gameplay ISO with real Talk bank and audsrv
+        run: |
+          set -eu
+          make -C ps2 disc
+          test -s ps2/build/doomogachi_ps2_game.iso
+          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f -print | \
+            tee /tmp/ps2-iso-manifest.txt
+          grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
+          grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
+          grep -q '/DOOMOG.ELF' /tmp/ps2-iso-manifest.txt
+      - name: Upload gameplay ISO for PCSX2 walkthrough
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build/doomogachi_ps2_game.iso
+          if-no-files-found: error
       - name: Upload experimental game ELF only if linked
         if: always()
         uses: actions/upload-artifact@v4
