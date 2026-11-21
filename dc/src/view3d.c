@@ -1022,7 +1022,7 @@ void plat_view3d(const DoomoView3D *v)
         uint32_t us = dc3d_be_us() - t0;
         dc3d_stats.us_last = us;
         if (us > 0) {                                    /* the cost model: us = K * dist, K a decaying peak */
-            float k = (float)us / powf((float)s_cast_dist, V3D_COST_EXP);
+            float k = (float)us / (float)s_cast_dist;
             s_cost_k = k > s_cost_k * 0.97f ? k : s_cost_k * 0.97f;
         }
         dc3d_stats.cast_dist = (uint16_t)s_cast_dist;
