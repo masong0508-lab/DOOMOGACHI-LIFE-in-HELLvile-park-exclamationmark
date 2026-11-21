@@ -1,0 +1,58 @@
+name: PS2 EE bootstrap
+on:
+  push:
+    paths:
+      - 'ps2/**'
+      - '.github/workflows/ps2.yml'
+  pull_request:
+    paths:
+      - 'ps2/**'
+      - '.github/workflows/ps2.yml'
+  workflow_dispatch:
+
+jobs:
+  padmap-host:
+    name: PS2 pad semantics (host, 16 buttons)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and execute all pad mapping cases
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
+            ps2/src/padmap.c ps2/tests/padmap_test.c -o /tmp/ps2-padmap-test
+          /tmp/ps2-padmap-test
+
+  ps2-elf:
+    name: PS2 ELF (EE/gsKit/PADMAN)
+    runs-on: ubuntu-24.04
+    container:
+      image: ps2dev/ps2dev:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report toolchain and build a real PS2 EE ELF
+        run: |
+          set -eu
+          : "${PS2DEV:?PS2DEV is required}"
+          : "${PS2SDK:?PS2SDK is required}"
+          : "${GSKIT:?GSKIT is required}"
+          command -v mips64r5900el-ps2-elf-gcc
+          test -f "$PS2DEV/share/ps2dev.cmake" || test -f "$PS2SDK/ps2dev.cmake"
+          if test -f "$PS2DEV/share/ps2dev.cmake"; then
+            TC="$PS2DEV/share/ps2dev.cmake"
+          else
+            TC="$PS2SDK/ps2dev.cmake"
+          fi
+          cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$TC" -DCMAKE_BUILD_TYPE=Release
+          cmake --build ps2/build --parallel 2
+          test -s ps2/build/doomogachi_ps2.elf
+          mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
+          printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" > ps2/build/BUILD_SOURCE.txt
+      - name: Upload PS2 ELF for PCSX2 and homebrew launchers
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-bootstrap-elf
+          path: |
+            ps2/build/doomogachi_ps2.elf
+            ps2/build/BUILD_SOURCE.txt
+          if-no-files-found: error

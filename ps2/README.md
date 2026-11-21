@@ -1,0 +1,60 @@
+# DOOMOGACHI PlayStation 2 Deluxe — PS2-0
+
+**Current state: hardware bootstrap, not yet a playable game.** This is
+a true PS2 EE/GS/PADMAN homebrew ELF, not a PS1 executable. It does
+not yet run the shared simulation or preserve saves. PS2-1 is
+the next requirement before any claims of actual content parity.
+
+## Build
+
+Install the [ps2dev toolchain](https://github.com/ps2dev/ps2dev)
+with PS2SDK and gsKit. Environment:
+
+```sh
+export PS2DEV=/usr/local/ps2dev
+export PS2SDK="$PS2DEV/ps2sdk"
+export GSKIT="$PS2DEV/gsKit"
+export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2SDK/bin"
+cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
+cmake --build ps2/build --parallel
+```
+
+ELF: `ps2/build/doomogachi_ps2.elf` (launch on PCSX2 or on homebrew-enabled
+PS2 with ps2link/ps2client). The PS2 GitHub workflow compiles that ELF in
+the upstream `ps2dev/ps2dev` container and uploads it on success.
+
+## Verified functionality to aim for
+
+- GS: NTSC 640x448 interlaced field mode, double-buffered 2D screen.
+- PADMAN: DualShock 2 D-pad; Cross=A, Circle=B, Square=X,
+  Triangle=Y, L/R shoulders, triggers, stick clicks, Start/Select;
+  clean disconnection handling. The map is validated by a native test
+  for every button and all-buttons pressed.
+- 60 field presentation cadence; **30 logic ticks per 60 field flips**,
+  avoiding the accelerated gameplay problem of per-vblank core ticks.
+- Developer diagnostic UI (NOT a substitute for the actual game's
+  title/Free Play/Story screens). Press D-pad to change a row,
+  Cross or Start to toggle details, Circle to hide, Start+Select to exit.
+- Explicit build provenance in artifact; no binaries are claimed until CI
+  successfully produces the ELF.
+
+## Work to finish before calling this a port
+
+1. Link `core/sources.mk` objects directly; call
+   `doomo_init()` once and `doomo_frame(buttons)` at 30Hz.
+2. Convert indexed master palette, fonts, procedural bust portraits,
+   shading and image transforms to GS sprites (or an upload-managed
+   cached software surface). Do not allocate a new portrait pool for PS2.
+3. Implement the shared 3D/overworld/room contract with correct map
+   geometry, sorting and occlusion, not placeholder vistas.
+4. PS2 audio (IOP RPC/mixer), disc-side Talk banks and game assets.
+5. Memory-card save serialization: atomic replacement/CRC/readback;
+   no writes until failure handling exists.
+6. PCSX2 boot and full menu/scene walkthrough, then real console tests.
+7. Update on-device pad labels to the PS1-like PS2 scheme and add
+   PAL/NTSC/widescreen options. Never advertise true 60Hz game logic
+   until all scene timing has been measured.
+
+This branch is **stacked on top of** the existing cross-port optimization
+PR #5; keep the PS2 PR separate until its prerequisite is merged. It
+does not alter the GBA/PS1/Dreamcast builds.

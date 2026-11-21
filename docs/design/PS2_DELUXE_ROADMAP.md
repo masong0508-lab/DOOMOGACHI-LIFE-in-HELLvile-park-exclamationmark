@@ -1,6 +1,6 @@
 # PlayStation 2 Deluxe Edition — implementation roadmap
 
-Status: **proposed; not a built PS2 port**. Owner: cross-platform. Canonical branch: `main`.
+Status: **PS2-0 bootstrap source started; build/boot validation pending**. Owner: cross-platform. Canonical branch: `main`.
 Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in HELLvile PARK that keeps the existing game's systems, personalities, and story intact while using PS2 capabilities for presentation and simulation.
 
 ## Hardware and toolchain baseline
@@ -213,3 +213,15 @@ It does **not** alter the existing `life_speed.txt` scene timings or
 pre-existing FPS regression thresholds. CI reports these measured
 numbers without setting an unverified speed floor. The PS2 import
 should use the same fixed-seed navigation test before raising limits.
+
+## PS2-0 implementation checkpoint (Nov 21, 2026)
+
+The standalone `ps2/` tree now has a PS2SDK/gsKit EE project, an
+actual GS scene, double buffer/field presentation, PADMAN-backed
+DualShock 2 input and a 30Hz logic divider. The host padmap unit
+test exercises all 16 buttons and combinations. PS2-only GitHub CI
+uses the official ps2dev container to build and upload a homebrew ELF;
+it remains an unverified boot prototype until the job succeeds and
+PCSX2 runs it. The current debug screen is deliberately *not* a
+claimed substitute for the shared-core gameplay. Cross-port PR #5
+stays separate and must clear its console gates first.
