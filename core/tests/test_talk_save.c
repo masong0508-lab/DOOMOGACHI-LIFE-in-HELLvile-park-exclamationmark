@@ -217,6 +217,8 @@ TEST(talk_mem_lru_evicts_the_oldest)
 
 TEST(talk_mem_expanded_capacity_is_real)
 {
+    uint8_t bytes[TALK_SAVE_WORST];
+    uint32_t n;
     int i;
     premade_town();
     CHECK_EQ(talk_mem_capacity(), TALK_MEM_MAX);
@@ -229,6 +231,14 @@ TEST(talk_mem_expanded_capacity_is_real)
     CHECK(talk_mem_find(alive(0)) != NULL);
     CHECK(talk_mem_find(alive(24)) != NULL);
     CHECK_EQ(ext()->size(), TALK_MEM_HDR + 25 * TALK_MEM_ENTRY);
+    n = ext()->write(bytes, sizeof bytes);
+    CHECK_EQ(n, TALK_MEM_HDR + 25 * TALK_MEM_ENTRY);
+    talk_mem_reset();
+    CHECK_EQ(talk_mem_count(), 0);
+    CHECK(ext()->read(bytes, n, TALK_MEM_VERSION));
+    CHECK_EQ(talk_mem_count(), 25);
+    CHECK(talk_mem_find(alive(0)) != NULL);
+    CHECK(talk_mem_find(alive(24)) != NULL);
     talk_mem_reset();
 }
 
