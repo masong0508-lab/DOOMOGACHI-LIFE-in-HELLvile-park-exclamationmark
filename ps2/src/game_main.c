@@ -1,7 +1,9 @@
 /* PS2-1 experimental game entry, separate from PS2-0 hardware test.
  * Runs the actual shared doomo_init()/doomo_frame(), not a debug menu.
  * First implementation has real 2D UI + portraits and a GS upload;
- * audio, 3D, world and memory-card backends remain tracked blockers.
+ * geometry and UI come from the shared core; PS2-3/4 add SPU2 audio,
+ * real disc-side Talk and journaled card saving. Hardware validation,
+ * performance, and complete audio/visual parity remain outstanding.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -16,6 +18,9 @@
 #include "padmap.h"
 #include "game2d.h"
 int ps2_memcard_init(void);
+int ps2_audio_init(void);
+void ps2_audio_frame(void);
+void ps2_talk_disc_init(void);
 
 static unsigned char pad_dma[256] __attribute__((aligned(64)));
 static int pad_open;
@@ -68,6 +73,8 @@ int main(void)
      * shared save UI sees real media errors, not a fake in-RAM success. */
     if(!ps2_memcard_init())
         printf("PS2: no ready formatted memory card in slot 1; saves unavailable\n");
+    ps2_talk_disc_init();
+    (void)ps2_audio_init();
     pad_open=init_pad();
     gs=gsKit_init_global();
     if(!gs)return 1;
@@ -97,6 +104,7 @@ int main(void)
             plat_begin_frame();
             doomo_frame(buttons);
             plat_end_frame();
+            ps2_audio_frame();
             ps2_game2d_present(gs,1);
         }else{
             /* Draw the same completed image from GS VRAM: no simulation
