@@ -159,7 +159,9 @@ enum {
     DC_TQ_WHO,                           /* name (a number, "everyone", a first or full name) -> id + 2 (everyone 1), 0 nobody */
     DC_TQ_PARTY,                         /* name: one more person for the next talk; bit 8 starts the list over */
     DC_TQ_TOAST,                         /* TD3: some queued or shown toast says name: 2, none: 1 */
-    DC_TQ_READY                          /* TD3: Talk's bank is read in (it comes in slices after boot): 2, still loading: 1 */
+    DC_TQ_READY,                         /* TD3: Talk bank loaded: 2, still loading: 1 */
+    DC_TQ_PAGE                           /* full page enum + 1: unlike STATE's legacy 3-bit page field,
+                                           also distinguishes care, outing, give and history from main */
 };
 
 #endif
