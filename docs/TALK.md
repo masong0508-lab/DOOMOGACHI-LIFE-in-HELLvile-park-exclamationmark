@@ -9,6 +9,17 @@ the same resident's saved `TMF_*` bits loaded into TalkConv at session
 start; this reuses the original 12-byte resident memory record. There is
 no new neural model, learned weight file, or per-frame reasoning pass.
 
+**Group conversations remember individual recipients.** The drama
+manager now records compliment/insult/promise memory per target (or all
+listeners for a true group-addressed line), and only after the audience
+gate has accepted the remark. Residents who walk out still retain events
+they actually heard. Previously the summary's single aggregate memory
+bit made innocent bystanders remember someone else's insult. This fix
+adds just four short-lived bytes to `TalkState` (one per possible
+participant), without changing `TalkPart`, the save payload, any
+persistent resident data, or per-frame costs. Native regression tests
+exercise targeted remarks, broadcasts, and walkouts.
+
 An accepted resident favor appears as **Your favor: check goal >** on
 the main Talk screen; when it is truly ready, that becomes **Favor ready:
 check request >**. The shortcut selects the genuine request in **Our
