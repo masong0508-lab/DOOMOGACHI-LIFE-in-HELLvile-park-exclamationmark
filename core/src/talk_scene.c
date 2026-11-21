@@ -35,7 +35,7 @@
 
 /* The typed line needs a keyboard and the free-text parser (talk_lex / talk_parse: native and
  * the Dreamcast). The GBA has neither: it plays Talk from the quick replies and the topic list. */
-#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1)
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS1) && !defined(DOOMO_PLATFORM_PS2)
 #define TALK_TYPING 1
 #endif
 
