@@ -33,6 +33,11 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
             ps2/tests/indexed_blit_test.c -o /tmp/ps2-blit-test
           /tmp/ps2-blit-test
+      - name: Check exact GS texture upload suppression and guard bytes
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
+            ps2/tests/indexed_present_test.c -o /tmp/ps2-indexed-present-test
+          /tmp/ps2-indexed-present-test
       - name: Check dual-bank memory-card save journal and rollback
         run: |
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
