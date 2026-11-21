@@ -508,6 +508,42 @@ TEST(talk_scene_open_favor_is_accessible_from_main)
     CHECK_EQ(inv_count(item), 1);
 }
 
+/* Each little oddity teaches one true preference; history can display it.
+ * The introductory row does not replace the one-press quick response. */
+TEST(talk_scene_little_oddities_reveal_real_known_preferences)
+{
+    TalkSceneDebug d;
+    int before = 0, after = 0, i, row, seen = 0;
+    town();
+    CHECK(open_talk(ID_NANA));
+    for (i = 0; i < 3; i++) before += talk_mem_like_known(ID_NANA, i);
+    row = find_row("quirk", -1, -1);
+    CHECK(row >= 0);
+    CHECK(find_row("quick", 0, -1) == 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    for (i = 0; i < 3; i++) after += talk_mem_like_known(ID_NANA, i);
+    CHECK_EQ(after, before + (before < 3));
+    for (i = 0; i < 40 && talk_scene_debug(&d) && d.busy; i++) {
+        frames(0, 60); press(BTN_A);
+    }
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    row = find_row("more", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    row = find_row("history", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        if (talk_scene_row_debug(i, &kind, NULL, NULL, NULL) &&
+            strcmp(kind, "historylike") == 0) seen++;
+    }
+    CHECK_EQ(seen, after);
+}
+
 TEST(talk_scene_hands_in_a_real_favor_without_leaving_chat)
 {
     TalkSceneDebug d;

@@ -104,3 +104,33 @@ save format and verify every port's save budget before adding bytes.
 
 No per-frame crowd scan, new sprite, dynamic allocation, full-screen texture,
 or new simulation scheduler is introduced.
+
+## The Tomodachi-feel pass: resident quirks with real follow-ups
+
+Nintendo's *Ask the Developer* Vol. 21, Parts 2-3, describes two useful
+principles: the funny details are **independent of broad personality types**,
+and even players who do nothing but observe should enjoy the evolving
+community. This project adopts those principles, not the original assets.
+
+- The new **Tell me one little oddity** option lets a living, willing
+  resident make an original surreal remark about their *actual* favorite
+  food, hobby, or music. Stable identity/catchphrase determines delivery;
+  the player learns one previously unknown real preference when possible.
+- **Our History** displays known food, hobby, and music details as
+  conversational follow-up choices. These are backed by existing TalkMem
+  known-preference bits, not a new save format. The original quick reply
+  order and goodbye placement are unchanged.
+- Residents who are visibly sad, scared, angry, or having a heated/grief
+  conversation are not forced into throwaway jokes. Care first.
+- The public town headline now distinguishes a *verified favorite-venue*
+  meetup from an ordinary visit. A cross-port guard excludes the headline
+  from configurations that compile Talk outcome code but not the Talk
+  news templates.
+- Original flavor should remain warm, grounded in actual state, with
+  Hellvile's oddness as contrast. No copied Mii dialogue or image assets.
+
+Next: more visit-specific behavior tied to actual favorite activities,
+and low-cost observational moments; verify all handheld budgets first.
+
+Sources: https://www.nintendo.com/us/whatsnew/ask-the-developer-vol-21-tomodachi-life-living-the-dream-part-3/
+https://www.nintendo.com/us/whatsnew/ask-the-developer-vol-21-tomodachi-life-living-the-dream-part-2/

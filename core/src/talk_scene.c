@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -715,6 +715,8 @@ static void build_main(void)
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
     add_row(K_HELP, 0, 0);
+    if (T.to >= 0 && T.to < T.n && T.ids[T.to] < DOOMO_MAX_RESIDENTS)
+        add_row(K_QUIRK, 0, 0);
     /* A genuine sim thought bubble, not random chatter. Keep it below
      * quick replies so the one-press response budget stays unchanged.
      * It is refreshed on page entry/target switch, never each frame. */
@@ -804,6 +806,11 @@ static void build_history(void)
         if (venue >= 0) add_row(K_MEET_PLAN, 1, venue);
     }
     if (m) {
+        /* Knowledge is revealed only by a real earlier conversation.
+         * These are saved bits in TalkMem, not a menu-visit reward. */
+        for (kind = 0; kind < 3; kind++)
+            if (talk_mem_like_known(id, kind))
+                add_row(K_HISTORY_LIKE, kind, talk_gen_like(id, kind));
         if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
             !q_grief(m->topic_a))
             add_row(K_HISTORY_TOPIC, 0, m->topic_a);
@@ -1205,6 +1212,21 @@ static const char *row_text(int index, char *buf)
                        r->arg == TALK_SHARED_GIFTED ? "Give another gift >" :
                        "Invite them out again >");
         break;
+    case K_QUIRK: doomo_snprintf(buf, 48, "Tell me one little oddity"); break;
+    case K_HISTORY_LIKE: {
+        int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+        const DoomoResident *who = id >= 0 ? town_res(id) : NULL;
+        if (!who) { doomo_snprintf(buf, 48, "A remembered preference"); break; }
+        switch (r->arg) {
+        case 0: doomo_snprintf(buf, 48, "Favorite food: %s >",
+                                doomo_food_names[RES_LIKE_FOOD(who) % FOOD_COUNT]); break;
+        case 1: doomo_snprintf(buf, 48, "Hobby: %s >",
+                                doomo_hobby_names[RES_LIKE_HOBBY(who) % HOBBY_COUNT]); break;
+        default: doomo_snprintf(buf, 48, "Music: %s >",
+                                doomo_music_names[RES_LIKE_MUSIC(who) % MUSIC_COUNT]); break;
+        }
+        break;
+    }
     case K_MEET_PLAN:
         doomo_snprintf(buf, 48, "Meet today: %s >", r->v < ACT_COUNT ?
                        doomo_activity_names[r->v] : "unknown place");
@@ -1497,6 +1519,78 @@ static void give_item(int item)
 /* A Tomodachi-style thought bubble is actionable because it delegates to
  * the *existing* care/problem machinery. No free hunger/medicine rewards;
  * romance advice still goes through sim's age, consent and partner gates. */
+/* An odd but honest admission rooted in one resident's actual tastes.
+ * It is deliberately separate from the broad persona archetypes: a shy
+ * resident can love rowdy music, and a demon can adore baking. No RNG,
+ * assets, heap, new save fields, or per-frame processing. */
+static void tell_oddity(void)
+{
+    static const char *const food[4] = {
+        "I'd name a tiny moon after %s. That seems reasonable.",
+        "My emergency plan has three steps. Step one: %s.",
+        "I once wrote a thank-you note to %s. I never sent it.",
+        "Some people collect stamps. I think about %s."
+    };
+    static const char *const hobby[4] = {
+        "I practice %s in my head while waiting for the bus.",
+        "I have a secret notebook about %s. It has a title page.",
+        "I take %s seriously. The universe may disagree.",
+        "In my dreams I'm the world's politest expert at %s."
+    };
+    static const char *const music[4] = {
+        "When %s plays, I imagine the streetlights dancing.",
+        "I think %s deserves its own weather forecast.",
+        "My brain plays %s when I find a lost sock.",
+        "I once tried to hum %s to a houseplant. No review yet."
+    };
+    char line[144];
+    int id, which, start, i, flavor;
+    const DoomoResident *who;
+    if (T.to < 0 || T.to >= T.n) { ui_toast("Choose a resident first."); return; }
+    id = T.ids[T.to];
+    who = id >= 0 && id < DOOMO_MAX_RESIDENTS ? town_res(id) : NULL;
+    if (!who || who->status != RES_ALIVE) {
+        ui_toast("They can't discuss their habits right now.");
+        return;
+    }
+    if (T.s.tension >= TALK_TENSION_ARGUE || q_grief(T.topic) ||
+        who->mood == MOOD_SAD || who->mood == MOOD_SCARED ||
+        who->mood == MOOD_ANGRY) {
+        ui_toast("Not the moment for jokes. Try listening or comforting.");
+        return;
+    }
+    start = (int)((((uint32_t)id * 11u) + doomo_town.day) % 3u);
+    which = start;
+    for (i = 0; i < 3; i++) {
+        which = (start + i) % 3;
+        if (!talk_mem_like_known(id, which)) break;
+    }
+    flavor = ((int)RES_CATCHPHRASE(who) + id) & 3;
+    switch (which) {
+    case 0:
+        doomo_snprintf(line, sizeof line, food[flavor],
+                       doomo_food_names[RES_LIKE_FOOD(who) % FOOD_COUNT]);
+        break;
+    case 1:
+        doomo_snprintf(line, sizeof line, hobby[flavor],
+                       doomo_hobby_names[RES_LIKE_HOBBY(who) % HOBBY_COUNT]);
+        break;
+    default:
+        doomo_snprintf(line, sizeof line, music[flavor],
+                       doomo_music_names[RES_LIKE_MUSIC(who) % MUSIC_COUNT]);
+        break;
+    }
+    /* A spoken preference is real knowledge and becomes a History row
+     * and a follow-up subject in the existing Talk topic picker. */
+    talk_mem_know_like(id, which);
+    doomo_snprintf(T.you, sizeof T.you, "What's one odd little thing about you?");
+    ui_say(id, line);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+    build_main();
+}
+
 static void concern_reply(int id, const char *reply, const char *you)
 {
     doomo_snprintf(T.you, sizeof T.you, "%s", you);
@@ -1849,6 +1943,15 @@ static void activate(int i)
         if (r->arg == TALK_SHARED_PLAYED) play_together();
         else if (r->arg == TALK_SHARED_GIFTED) build_give_items();
         else if (r->arg == TALK_SHARED_INVITED) build_outings();
+        break;
+    case K_QUIRK: tell_oddity(); break;
+    case K_HISTORY_LIKE:
+        if (T.to >= 0 && T.to < T.n &&
+            talk_mem_like_known(T.ids[T.to], r->arg) && r->v &&
+            talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v)) {
+            T.topic = r->v;
+            say_act(TA_ASK_ABOUT); /* actually converse about the discovery */
+        } else ui_toast("Ask about this preference another time.");
         break;
     case K_MEET_PLAN: {
         char hint[80];
@@ -2219,7 +2322,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
