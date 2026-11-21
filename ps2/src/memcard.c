@@ -23,6 +23,9 @@
 
 static uint8_t io[IO_SIZE] __attribute__((aligned(64)));
 static uint8_t mc_ready;
+/* Old MCMAN/MCSERV always reports fmt=0, even on formatted cards.
+ * Retain the last confirmed formatted-card state across r=0 polls. */
+static uint8_t mc_formatted;
 static const char *const bank_name[2][2] = {
     { MC_DIR "/STORYA", MC_DIR "/STORYB" },
     { MC_DIR "/ISLANDA", MC_DIR "/ISLANDB" }
@@ -40,10 +43,17 @@ static int card_ready(void)
     if(!mc_ready || mcGetInfo(MC_PORT,MC_SLOT,&type,&free_space,&fmt)<0)
         return 0;
     r=sync_result();
-    /* MCSERV returns -1 when a *formatted* card has just changed;
-     * -2 is unformatted and must never be accepted for writing. On
-     * XMCSERV the format flag is explicit. Do not format automatically. */
-    return type==2 && r>=-1 && (r==-1 || fmt!=0);
+    /* MCMAN/MCSERV always sets fmt=0, even on a formatted card.
+     * -1 confirms a newly inserted formatted card; 0 is unchanged,
+     * so preserve the last known status rather than rejecting every
+     * subsequent save. XMCSERV may additionally provide fmt!=0.
+     * Removal/unformatted/error invalidates the remembered status. */
+    if(type!=2 || r < -1) {
+        mc_formatted=0;
+        return 0;
+    }
+    if(r==-1 || fmt!=0) mc_formatted=1;
+    return mc_formatted!=0;
 }
 int ps2_memcard_init(void)
 {
@@ -56,6 +66,7 @@ int ps2_memcard_init(void)
      * the service is usable, not the module loader's status alone. */
     (void)SifLoadModule("rom0:MCMAN",0,NULL);
     (void)SifLoadModule("rom0:MCSERV",0,NULL);
+    mc_formatted=0;
     mc_ready=(uint8_t)(mcInit(MC_TYPE_MC)>=0);
     return mc_ready && card_ready();
 }
