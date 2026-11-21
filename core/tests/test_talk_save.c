@@ -230,6 +230,28 @@ TEST(talk_mem_expanded_capacity_is_real)
     talk_mem_reset();
 }
 
+TEST(talk_mem_prefers_shared_experiences_over_smalltalk)
+{
+    int i, first, second;
+    premade_town();
+    first = alive(0);
+    second = alive(1);
+    /* A real shared experience with the oldest resident should survive
+     * a newcomer while a newer casual chat can be forgotten. */
+    CHECK(talk_mem_touch(first));
+    talk_mem_note_shared(first, TALK_SHARED_PLAYED);
+    for (i = 1; i < TALK_MEM_MAX; i++)
+        CHECK(talk_mem_touch(alive(i)));
+    CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK(talk_mem_touch(alive(TALK_MEM_MAX)));
+    CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK(talk_mem_shared(first, TALK_SHARED_PLAYED));
+    CHECK(talk_mem_find(second) == NULL);
+    /* Eventually a meaningful memory may be evicted if every candidate
+     * is meaningful; the cap is bounded and does not grow at runtime. */
+    talk_mem_reset();
+}
+
 TEST(talk_mem_full_preserves_pending_promises)
 {
     int i;
