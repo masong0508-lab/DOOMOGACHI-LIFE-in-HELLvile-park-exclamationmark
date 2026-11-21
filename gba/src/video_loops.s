@@ -559,8 +559,13 @@ r3d_up5x2:
     orr     r12, r12, r12, lsl #16 @ dddd
     stmdb   r3!, {r8-r12}
     stmdb   r4!, {r8-r12}
+    /* GNU as ARM7TDMI does not accept the STMDBNE mnemonic here.
+     * Branch around the optional third row instead; the 96x64 image
+     * repeats even rows twice and odd rows three times. */
     tst     r1, #1
-    stmdbne r5!, {r8-r12}
+    beq     .Lup5_skip_third
+    stmdb   r5!, {r8-r12}
+.Lup5_skip_third:
     subs    lr, lr, #1
     bne     .Lup5_pair
     subs    r1, r1, #1

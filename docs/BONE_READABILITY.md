@@ -165,3 +165,16 @@ the Cathedral entrance and interior aisle and Capital gate, market,
 lift and skybridge. If the shortened horizon hides important threats or
 landmarks, raise that area's limit; do not silently remove encounters.
 No FPS or ROM success claim until GBA CI and emulator runs complete.
+
+## Critical GBA assembler correction
+
+The first CI build after adding the 96x64 ARM Mode-4 scaler failed to
+assemble `stmdbne r5!, {r8-r12}` in `gba/src/video_loops.s` (GNU as,
+ARM7TDMI; `bad instruction`). This is a **build blocker**, not a
+measured FPS result. The optional third source-row copy now uses a
+normal conditional branch around unconditional `stmdb`, avoiding this
+assembler-incompatible mnemonic while preserving 2/3 vertical row
+repetition. The replacement was separately accepted by an ARMv4T
+assembler before pushing. GBA CI still must build and run the ROM;
+validate that the compiled scaler produces correct pixels, no memory
+corruption, and retains the 96x64 readability benefit.
