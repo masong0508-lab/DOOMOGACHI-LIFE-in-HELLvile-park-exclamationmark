@@ -244,10 +244,28 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
             ps2/build/doomogachi_ps2_game.iso --seconds 35
-      - name: Preserve emulator log and two boot screenshots
+      - name: Retrieve independent PS2-0 hardware diagnostic ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-bootstrap-elf
+          path: ps2/build
+      - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2.elf --launch elf \
+              --out ps2/build/play-bootstrap --seconds 20
+      - name: Preserve game and independent diagnostic boot evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: doomogachi-ps2-play-biosfree-capture
-          path: ps2/build/play-smoke/
+          path: |
+            ps2/build/play-smoke/
+            ps2/build/play-bootstrap/
           if-no-files-found: warn
