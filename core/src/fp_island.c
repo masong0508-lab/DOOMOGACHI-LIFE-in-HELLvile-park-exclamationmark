@@ -110,7 +110,7 @@ enum { E_APTS, E_MOVE_IN, E_SHOP, E_CAFE_SHOP, E_BLACK_MARKET, E_EXORCISE, E_PRA
        E_VISIT_HELL, E_PEEK_WALL, E_CREATE_HILL, E_CREATE_HELL, E_RENT, E_AVATAR,
        E_NAME_ISLAND, E_SAVELOAD, E_OPTIONS, E_UNLOCKS, E_RECORDS, E_TITLE,
        E_NEWS, E_ROSTER, E_FAMILY, E_PET, E_HERE, E_ACTIVITY, E_SOON, E_GENRE, E_CLOSE, E_HELP,
-       E_WALK_DISTRICT, E_CITY_ATLAS, E_MEET };
+       E_WALK_DISTRICT, E_CITY_ATLAS, E_MEET, E_MOMENT };
 
 #define MENU_MAX 24
 typedef struct {
@@ -236,6 +236,14 @@ static void add_here(int act)
     e = add(E_HERE, ICON_SMILE, buf, "See who's hanging out here right now.");
     if (e) e->arg = (int16_t)act;
     lock_row(e, I.here[act % ACT_COUNT] == 0, "Nobody is hanging out here right now.");
+    /* Optional, opt-in observation, not another forced player task. The
+     * background roster scan already counted visitors. Only pressing the
+     * option selects real on-site witnesses; there is no draw/tick scan. */
+    if (I.here[act % ACT_COUNT] > 0) {
+        e = add(E_MOMENT, ICON_SPARK, "Catch a little moment",
+                "Listen to residents who are really here.");
+        if (e) e->arg = (int16_t)act;
+    }
 }
 
 /* the activities registered at this location (activities.h): the ones
@@ -807,6 +815,54 @@ static void open_meet(int venue)
 }
 #endif
 
+/* Small, occasional comedy emerging from actual co-location.
+ * Listening is read-only: no free relationship, news or item reward.
+ * A second resident is found only on a deliberate button press.
+ * If one or both moved since the menu snapshot, the observation is
+ * revalidated rather than teleporting them back for a scene. */
+static void observe_moment(int act)
+{
+    int i, a = -1, b = -1, kind;
+    const DoomoResident *r;
+    if (act < 0 || act >= ACT_COUNT) return;
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        r = town_res(i);
+        if (!r || !fp_living_status(r->status) || r->activity != act) continue;
+        if (a < 0) a = i;
+        else { b = i; break; }
+    }
+    if (a < 0) {
+        ui_toast("Everyone wandered off. Try again later.");
+        I.menu_dirty = 1;
+        return;
+    }
+    if (b < 0) {
+        r = town_res(a);
+        if (r && r->mood == MOOD_SAD)
+            ui_say(a, "I came outside to clear my head. It's taking a while.");
+        else if (act == ACT_CONCERT)
+            ui_say(a, "Do you think the floorboards can hear the music?");
+        else
+            ui_say(a, "I wonder where the shadows go when the lights turn on.");
+        return;
+    }
+    kind = rel_kind(a, b);
+    if (kind == REL_RIVAL || kind == REL_NEMESIS) {
+        ui_say(a, "Please stop looking at the same cloud as me.");
+        ui_say(b, "I saw it first.");
+    } else if (kind == REL_FRIEND || kind == REL_BEST_FRIEND ||
+               kind == REL_FAMILY || kind == REL_DATING || kind == REL_MARRIED) {
+        ui_say(a, "I found a pebble that looks like our town.");
+        ui_say(b, "It's a very good pebble.");
+    } else if (act == ACT_CAFE) {
+        ui_say(a, "Is this chair reserved for soup?");
+        ui_say(b, "I don't know. I'm waiting in it.");
+    } else {
+        ui_say(a, "Is there a line for watching clouds?");
+        ui_say(b, "I think we're already in it.");
+    }
+}
+
 static void run_entry(const Entry *e)
 {
     hold_drop();
@@ -877,6 +933,7 @@ static void run_entry(const Entry *e)
 #ifdef DOOMO_HAS_TALK
     case E_MEET: open_meet(e->arg); break;
 #endif
+    case E_MOMENT: observe_moment(e->arg); break;
     case E_HERE:
         doomo_snprintf(fp_tmp, sizeof(fp_tmp), "%s", fp_activity_name(e->arg));
         fp_pick_act(fp_tmp, e->arg, cb_open);

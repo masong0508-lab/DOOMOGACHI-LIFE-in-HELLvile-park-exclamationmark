@@ -134,3 +134,19 @@ and low-cost observational moments; verify all handheld budgets first.
 
 Sources: https://www.nintendo.com/us/whatsnew/ask-the-developer-vol-21-tomodachi-life-living-the-dream-part-3/
 https://www.nintendo.com/us/whatsnew/ask-the-developer-vol-21-tomodachi-life-living-the-dream-part-2/
+
+## Implemented: opt-in local vignettes
+
+On the Free Play City Map, places with residents present offer
+**Catch a little moment**. The existing crowd count gates the row; pressing
+it samples up to two residents who are *still actually there*. Friendly
+pairs, rivals and strangers get different small two-line situations.
+Solitary characters may simply daydream, with a subdued response when
+sad. The selection and relationship check happen only on deliberate
+input, never during per-frame rendering.
+
+Observing doesn't raise relationship values, mint news, consume goods,
+force romances, or add another hidden quest. It is deliberately quiet,
+warm and slightly uncanny: the player can enjoy the world without
+treating every scene as a task to complete. An integration test confirms
+co-location and no forced bond update.

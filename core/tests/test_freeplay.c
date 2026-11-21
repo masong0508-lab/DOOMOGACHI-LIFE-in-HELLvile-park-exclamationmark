@@ -486,6 +486,30 @@ TEST(freeplay_island_menus_list_activities)
     }
 }
 
+/* This is a real on-site glimpse rather than a random bulletin. Merely
+ * watching does not create a bond or alter either character's stats. */
+TEST(freeplay_moment_observes_live_residents_without_forcing_bonds)
+{
+    int a, b, before;
+    premade_island();
+    a = first_alive(0);
+    b = first_alive(a + 1);
+    CHECK(a >= 0 && b >= 0);
+    town_res(a)->activity = ACT_CAFE;
+    town_res(b)->activity = ACT_CAFE;
+    before = rel_value(a, b);
+    fp_island_select_kind(LOC_CAFE);
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    CHECK(fp_island_menu_select("Catch a little moment"));
+    press(BTN_A);
+    CHECK(top_is(&SCENE_DIALOG));
+    close_dialogs();
+    CHECK_EQ(rel_value(a, b), before);
+    CHECK_EQ(town_res(a)->activity, ACT_CAFE);
+    CHECK_EQ(town_res(b)->activity, ACT_CAFE);
+}
+
 TEST(freeplay_island_town_hall_rent_once_a_day)
 {
     uint32_t m0;
