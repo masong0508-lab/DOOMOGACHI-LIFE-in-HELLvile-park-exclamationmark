@@ -1,9 +1,9 @@
 /* talk_save.c - talk memory and its save chunk 'TALK' (owner: TK, T6;
  * docs/TALK.md 6e; design 6.8, 5.5 "Talk memory", 3.6 "Memory").
  *
- * The table: at most TALK_MEM_MAX (24) entries of 12 B, the most recently
- * used first, so the last one is the one a 25th person evicts (LRU). With
- * its 4 B header that is the whole state: 292 B of .bss (TALK_MEM_WORST),
+ * The table: at most TALK_MEM_MAX platform-sized entries of 12 B, the most
+ * recently used first. Older completed entries are evicted before open
+ * commitments. Its 4-byte header and entries occupy TALK_MEM_WORST bytes,
  * and the chunk is the same bytes written little endian:
  *   [u8 version = 1][u8 count][u16 day_of_last] then count x
  *   {u16 id; u16 day; u16 topic_a; u16 topic_b; u8 flags; u8 likes_known;
