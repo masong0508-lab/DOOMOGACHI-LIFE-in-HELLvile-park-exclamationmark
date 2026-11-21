@@ -90,3 +90,33 @@ scenarios. This is a **future milestone**, not a claim about current output.
   GBA Bone levels independently.
 * Never let fluent responses bypass relationship/consent gates, story
   quests, calendar, inventory or unlock checks.
+
+## Actionable Talk UI: invitations and shared play
+
+The playable Talk screen now distinguishes **Add someone to chat** from
+**Ask to go somewhere**. The latter opens a real destination menu with
+known language-bank concepts and simulation venue IDs; choices are
+filtered for the chosen citizen's live condition, venue opening rules,
+and minor/room restrictions. Selecting a destination sends TA_INVITE to
+the existing drama manager. An accepted invitation emits TEV_ACT_INVITE,
+then automatically closes the chat after the NPC's answer and applies
+`sim_nudge_activity` through `talk_outcome_end`. The NPC's activity
+actually changes, and the player sees the destination in the toast.
+A refusal remains a refusal, with no fake change. A quick reply proposing
+a general outing opens the same picker, rather than choosing a random
+venue. **The player is not automatically teleported**, nor is a new
+navigation path invented; true joint traversal is a later milestone.
+
+**Play together** now invokes `sim_play` using the selected resident and
+immediately updates their actual Joy, Energy, Social and relationship
+state, showing their actual simulation response. An unavailable resident
+is refused by the normal care rules. These UI actions are in the shared
+Talk scene; ports without Talk compiled do not magically gain it.
+
+Test through `test_talk_scene.c` using real UI input: the outing picker
+must contain an allowed park at noon, and the play choice must change
+resident stats. Keep scripted invitation outcome tests and all minor,
+status and per-day action caps in `test_talk_actions.c`. Further work:
+showing a specific inventory item, giving it with confirmation, moving
+the player's avatar with the guest, and recording the outing as an
+episodic memory. Do not label these unimplemented behaviors complete.

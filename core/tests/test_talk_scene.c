@@ -105,6 +105,48 @@ TEST(talk_scene_the_debug_view_describes_the_page)
     CHECK_EQ(talk_scene_act_cat(TA_REFUSE_SEXUAL), -1);    /* never a row */
 }
 
+TEST(talk_scene_real_outing_menu_and_play_action)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    int row, i, has_real_venue = 0, happy, energy;
+    town();
+    doomo_town.minute = 12 * 60;  /* park and outdoor venues open */
+    r = town_res(ID_NANA);
+    r->activity = ACT_HOME;
+    r->stat[STAT_HUNGER] = 80;
+    r->stat[STAT_ENERGY] = 80;
+    r->stat[STAT_HEALTH] = 85;
+    r->stat[STAT_HAPPY] = 50;
+    r->stat[STAT_SOCIAL] = 50;
+    CHECK(open_talk(ID_NANA));
+    row = find_row("out", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "outing") == 0);
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        int arg, value;
+        talk_scene_row_debug(i, &kind, &arg, &value, NULL);
+        if (strcmp(kind, "outing") == 0 && value > 0 &&
+            talk_act_venue_of((uint16_t)value) == ACT_PARK)
+            has_real_venue = 1;
+    }
+    CHECK(has_real_venue);          /* only valid world destinations are shown */
+    press(BTN_B);                   /* back without promising an outing */
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "main") == 0);
+    row = find_row("play", -1, -1);
+    CHECK(row >= 0);
+    happy = r->stat[STAT_HAPPY];
+    energy = r->stat[STAT_ENERGY];
+    go_to(row);
+    press(BTN_A);
+    CHECK(r->stat[STAT_HAPPY] > happy);
+    CHECK(r->stat[STAT_ENERGY] < energy);
+    CHECK(talk_scene_debug(&d) && d.busy);
+}
+
 TEST(talk_scene_a_quick_reply_is_one_press)
 {
     TalkSceneDebug d;

@@ -36,8 +36,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -114,6 +114,20 @@ static const char *const stock_key[] = {
     "pie", "music", "weather", "food", "work", "ghosts", "monsters", "sleep", "friends", "pets", "games",
     "dinner", "dreams", "hellvile", "hillvile", "school", "money", "books", "coffee", "dancing", "stars",
     "family", "the park", "cake"
+};
+
+/* Real places with a real simulation action, never a random conversation
+ * topic. Resolve the bank IDs on entry to the page; no per-frame reads,
+ * extra resident state or venue-specific allocations. */
+static const struct { const char *key; const char *label; uint8_t venue; } outing[] = {
+    { "park", "the park", ACT_PARK },
+    { "Brimstone Bites", "Brimstone Bites", ACT_CAFE },
+    { "shop", "the shop", ACT_SHOP },
+    { "St. Cuddles", "St. Cuddles", ACT_CHURCH },
+    { "workshop", "the workshop", ACT_WORKSHOP },
+    { "beach", "the beach", ACT_BEACH },
+    { "concert hall", "the concert hall", ACT_CONCERT },
+    { "Cloud Nine Vapor", "Cloud Nine Vapor", ACT_VAPE_SHOP }
 };
 
 /* ---- quick replies (T6b): what to say to what was just said ------------------------------------
@@ -576,6 +590,10 @@ static void build_main(void)
         if (c == C_ROMANCE && !romance_open()) continue;
         add_row(K_CAT, c, 0);
     }
+    /* Deliberate shared-life actions are below the old categories so the
+     * classic quick-reply and four-press compliment budgets stay intact. */
+    add_row(K_OUT, 0, 0);
+    add_row(K_PLAY, 0, 0);
 #ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
 #endif
@@ -603,6 +621,41 @@ static void build_acts(int c)
     T.nrows = 0;
     for (i = 0; i < cats[c].n; i++)
         if (act_listed(cats[c].acts[i])) add_row(K_ACT, cats[c].acts[i], 0);
+    list_reset();
+}
+
+/* Outings require a specific, available destination and one selected person.
+ * "Invite someone" on the Options page is a distinct room-membership action.
+ * The underlying DM accepts/refuses this invitation by character personality
+ * and applies an accepted change to the person's real activity. */
+static void build_outings(void)
+{
+    int i, target, minor;
+    if (T.to < 0 || T.to >= T.n) {
+        ui_toast("Choose one person first.");
+        build_main();
+        return;
+    }
+    target = T.ids[T.to];
+    minor = T.s.conv.aud.any_minor || talk_safe_minor(target);
+    T.page = PG_OUTING;
+    T.nrows = 0;
+    for (i = 0; i < (int)(sizeof outing / sizeof outing[0]); i++) {
+        uint16_t concept = TC_NONE, wf = 0;
+        uint32_t tags[4];
+        if (!talk_act_invite_ok(TA_INVITE, outing[i].venue, minor, town_hour()) ||
+            !sim_nudge_ok(target, outing[i].venue))
+            continue;
+        if (talk_lex_find(outing[i].key, &concept, &wf, tags) < 0 || !concept ||
+            talk_act_venue_of(concept) != outing[i].venue)
+            continue;
+        add_row(K_OUTING, i, concept);
+    }
+    if (!T.nrows) {
+        ui_toast("No outings available right now.");
+        build_main();
+        return;
+    }
     list_reset();
 }
 
@@ -667,7 +720,12 @@ static const char *row_text(int index, char *buf)
     case K_TO:
         doomo_snprintf(buf, 48, "To: %s <>", T.to < 0 ? "everyone" : res_name(T.ids[T.to]));
         break;
-    case K_INVITE: doomo_snprintf(buf, 48, "Invite someone >"); break;
+    case K_INVITE: doomo_snprintf(buf, 48, "Add someone to chat >"); break;
+    case K_OUT: doomo_snprintf(buf, 48, "Ask to go somewhere >"); break;
+    case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
+    case K_OUTING:
+        doomo_snprintf(buf, 48, "Visit %s", outing[r->arg].label);
+        break;
     case K_MORE:                         /* the live settings ride on the row: "Options (Nana, pie) >" */
         topic_name(T.topic, tn, (int)sizeof tn);
         if (T.n > 1 && T.topic != TC_NONE)
@@ -714,7 +772,15 @@ static void finish(void)
     for (i = 0; i < T.s.nparts; i++) bond += o.rel[i];
     /* the game's snprintf has no "%+d": the sign goes in by hand (T8: the toast showed "Bond %+d") */
     doomo_snprintf(sgn, sizeof sgn, "%s%d", bond > 0 ? "+" : "", bond);
-    if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %s", sgn);
+    if (o.invited) {
+        int v = -1, k;
+        for (k = 0; k < sum.nev; k++)
+            if (sum.ev[k].kind == TEV_ACT_INVITE) { v = sum.ev[k].b; break; }
+        if (v >= 0 && v < ACT_COUNT)
+            doomo_snprintf(msg, sizeof msg, "Outing accepted: %s", doomo_activity_names[v]);
+        else doomo_snprintf(msg, sizeof msg, "Outing accepted!");
+    }
+    else if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %s", sgn);
     else if (o.dating) doomo_snprintf(msg, sizeof msg, "A new couple! Bond %s", sgn);
     else if (sum.flags & TDF_K7) doomo_snprintf(msg, sizeof msg, "The chat ended.");
     else doomo_snprintf(msg, sizeof msg, "Chat over. Bond %s", sgn);
@@ -745,7 +811,14 @@ void talk_scene_slice(int on) { slice_on = (uint8_t)(on != 0); }
 
 static void gen_done(void)
 {
+    int k;
     if (T.gen == 1 && (T.s.flags & TDF_FAREWELL)) T.leaving = 1;
+    /* Once an outing has been *accepted* and the answer generated, close
+     * the encounter after its dialogue box: talk_outcome_end commits the
+     * promised venue change. A refusal keeps the conversation open. */
+    if (T.gen == 1 && T.s.in.act[0] == TA_INVITE)
+        for (k = 0; k < T.s.nev; k++)
+            if (T.s.ev[k].kind == TEV_ACT_INVITE) { T.leaving = 1; break; }
     T.gen = 0;
     show_lines();
 }
@@ -786,12 +859,33 @@ static void say_act(int act)
     build_main();
 }
 
+static void play_together(void)
+{
+    int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    const char *reply;
+    if (target < 0 || target >= DOOMO_MAX_RESIDENTS || !town_alive(target)) {
+        ui_toast("Choose a living resident first.");
+        return;
+    }
+    /* sim_play applies Energy, Joy, Social and care/relationship changes.
+     * Unlike a generic Talk utterance this really plays the activity. */
+    reply = sim_play(target);
+    doomo_snprintf(T.you, sizeof T.you, "Let's play together!");
+    ui_say(target, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+}
+
 static void say_quick(int i)
 {
     TalkUtter u;
     const TalkSugg *g;
     if (i < 0 || i >= T.nquick) return;
     g = &T.quick[i];
+    /* A suggested invitation with no specified real venue must open the
+     * destination picker. Never promise an arbitrary nearby activity. */
+    if (g->act == TA_INVITE) { build_outings(); return; }
     memset(&u, 0, sizeof u);
     u.act[0] = g->act;
     u.topic[0] = g->topic;
@@ -886,10 +980,18 @@ static void activate(int i)
     switch (r->kind) {
     case K_CAT: build_acts(r->arg); break;
     case K_ACT:
-        if (wants_topic(r->arg) && T.topic == TC_NONE && r->arg != TA_INVITE) { T.pending = r->arg; build_topics(); }
+        if (r->arg == TA_INVITE) { build_outings(); break; }
+        if (wants_topic(r->arg) && T.topic == TC_NONE) { T.pending = r->arg; build_topics(); }
         else say_act(r->arg);
         break;
     case K_QUICK: say_quick(r->arg); break;
+    case K_OUT: build_outings(); break;
+    case K_PLAY: play_together(); break;
+    case K_OUTING:
+        T.to = T.to < 0 ? 0 : T.to;
+        T.topic = r->v;
+        say_act(TA_INVITE);
+        break;
     case K_MORE: build_more(); break;
     case K_TOPIC: T.pending = 0; build_topics(); break;
     case K_NOTOPIC: pick_topic(TC_NONE); break;
@@ -1088,6 +1190,7 @@ static const char *panel_title(char *buf, int cap)
     switch (T.page) {
     case PG_TOPIC:  t = "Talk about..."; break;
     case PG_INVITE: t = "Who joins in?"; break;
+    case PG_OUTING: t = "Where shall we go?"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1189,14 +1292,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 5 ? T.page : 0];
+    o->page = pages[T.page < 6 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -1215,7 +1318,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
