@@ -21,13 +21,17 @@ from check_play_frames import inspect
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("iso", type=Path)
+    p.add_argument("iso", type=Path, help="Game ISO or diagnostic EE ELF")
+    p.add_argument("--launch", choices=("disc", "elf"), default="disc",
+                   help="Use --elf to isolate emulator/GS bring-up from ISO files")
     p.add_argument("--out", type=Path, default=Path("ps2/build/play-smoke"))
     p.add_argument("--seconds", type=int, default=35)
     args = p.parse_args()
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
-        raise SystemExit("Missing or unusually small PS2 gameplay ISO")
+        raise SystemExit("Missing or unusually small PS2 boot image")
+    if args.launch == "elf" and iso.open("rb").read(4) != b"\\x7fELF":
+        raise SystemExit("--launch elf requires a native PS2 EE executable")
     if args.seconds < 15:
         raise SystemExit("At least 15 seconds needed for a meaningful boot probe")
     if not os.environ.get("DISPLAY"):
@@ -42,7 +46,7 @@ def main():
     cmd = [
         "flatpak", "run", "--user",
         f"--filesystem={iso.parent}:ro", "org.purei.Play",
-        "--disc", str(iso),
+        "--disc" if args.launch == "disc" else "--elf", str(iso),
     ]
     with logs.open("wb") as logfile:
         proc = subprocess.Popen(cmd, stdout=logfile, stderr=subprocess.STDOUT)
@@ -71,8 +75,9 @@ def main():
                 "emulator": "Play! built-in HLE BIOS",
                 "ee_console_telemetry": telemetry,
                 "visual_capture": visual,
-                "iso_name": iso.name,
-                "iso_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
+                "boot_media_type": args.launch,
+                "boot_image": iso.name,
+                "boot_image_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                 "seconds_observed": args.seconds,
                 "pngs": [s.name for s in shots],
                 "result": "emulator process and two screenshots captured",
