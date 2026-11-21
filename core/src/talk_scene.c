@@ -29,6 +29,7 @@
 #include "doomo/rng.h"
 #include "doomo/sim.h"
 #include "doomo/items.h"
+#include "doomo/talk_traits.h"
 
 #ifdef DOOMO_HAS_TALK
 
@@ -363,6 +364,33 @@ static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **lis
     if (mood == MOOD_SLEEPY || (r && r->stat[STAT_ENERGY] < 15)) return QSET(tired);
     if (mood == MOOD_LONELY || (r && r->stat[STAT_SOCIAL] < 20)) return QSET(lonely);
     if (mood == MOOD_SCARED) return QSET(scared);
+    /* Explicit creator traits must have visible consequences beyond a
+     * different voice. Keep the five saved persona sliders as the default
+     * and let a custom trait steer only the second, suggested response.
+     * Urgent needs and genuine distress above always take precedence.
+     * Filter edgy traits by stage and the whole room before using them. */
+    if (r && talk_trait_is_custom(id)) {
+        TalkTraitSet ts;
+        if (talk_trait_get(id, &ts)) {
+            talk_trait_room(&ts, RES_STAGE(r), s->conv.aud.any_minor ||
+                            (s->flags & TDF_KIDSAFE));
+            if (talk_traitset_has(&ts, TT_SHY) || talk_traitset_has(&ts, TT_KIND))
+                return QSET(polite);
+            if (talk_traitset_has(&ts, TT_GOOFBALL) ||
+                talk_traitset_has(&ts, TT_CHEERFUL) ||
+                talk_traitset_has(&ts, TT_OUTGOING))
+                return QSET(easy);
+            if (talk_traitset_has(&ts, TT_BOOKWORM) ||
+                talk_traitset_has(&ts, TT_CURIOUS) ||
+                talk_traitset_has(&ts, TT_AMBITIOUS))
+                return QSET(serious);
+            if (talk_traitset_has(&ts, TT_MEAN) ||
+                talk_traitset_has(&ts, TT_HOTHEADED))
+                return QSET(blunt);
+            if (talk_traitset_has(&ts, TT_CREATIVE))
+                return QSET(expr);
+        }
+    }
     if (at >= 10 || qk >= 12) return QSET(easy);
     if (at <= 5) return QSET(serious);
     if (ex >= 10) return QSET(expr);

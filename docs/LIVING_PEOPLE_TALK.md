@@ -256,3 +256,24 @@ script expects the renamed control. The care-menu test now bounds
 dialogue-dismissal presses at 40 and asserts the box actually closes.
 These are test contract changes, not a claim that full console
 integration has passed; retest with `make -C core unit scripts`.
+
+## Creator-selected traits alter follow-up actions
+
+The Talk quick-reply selector now checks a resident's **explicitly
+creator-selected** trait set when they have one. With the five sliders
+held constant, Goofball/Cheerful/Outgoing invite joking and laughter;
+Shy/Kind invite polite, thoughtful engagement; Bookworm/Curious/
+Ambitious invite questions and serious topics; Creative invites
+expressive replies; and Mean/Hotheaded can prompt blunt disagreement
+**only** in an eligible adult room. The shared `talk_trait_room` gate
+removes edgy traits for minors, and urgent distress, hunger, sickness,
+fatigue and fear override the trait-based suggestions. Without custom
+traits the pre-existing slider-based choice remains unchanged.
+
+The rule runs only when building player choices; it does not add to
+resident records, allocate a language model, load bank-sized data into
+RAM or add per-frame rendering work. A native regression asserts two
+residents with identical sliders but Goofball versus Shy traits
+produce different follow-up actions, and illness still supersedes
+humor. Actual per-console creator persistence remains a separate
+verification requirement.

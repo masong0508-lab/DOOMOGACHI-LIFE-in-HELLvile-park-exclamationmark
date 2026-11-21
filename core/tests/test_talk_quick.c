@@ -19,6 +19,7 @@
 #include "doomo/sim.h"
 #include "doomo/town.h"
 #include "doomo/resident_acc.h"
+#include "doomo/talk_traits.h"
 
 #define ID_NANA  1
 #define ID_RIVET 13
@@ -288,6 +289,45 @@ TEST(talk_quick_replies_suit_the_resident)
         CHECK(n >= 2);
         CHECK_MSG(g[1].act == TA_SYMPATHIZE, "sad: second reply act %d", g[1].act);
     }
+    talk_db_close();
+}
+
+/* Two created citizens with identical persona sliders but distinct
+ * explicitly chosen traits should invite visibly different responses.
+ * The room's emotional state still overrides the trait choice. */
+TEST(talk_quick_creator_traits_steer_the_followup_without_overriding_needs)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    TalkTraitSet ts;
+    int n;
+    premade_town();
+    CHECK(open_db());
+    set_persona(ID_NANA, 8, 6, 6, 6, 6);
+    set_persona(ID_RIVET, 8, 6, 6, 6, 6);
+    town_res(ID_NANA)->mood = MOOD_OK;
+    town_res(ID_RIVET)->mood = MOOD_OK;
+    talk_traitset_clear(&ts);
+    CHECK_EQ(talk_traitset_add(&ts, TT_GOOFBALL), TTE_OK);
+    CHECK_EQ(talk_trait_set(ID_NANA, &ts), TTE_OK);
+    talk_traitset_clear(&ts);
+    CHECK_EQ(talk_traitset_add(&ts, TT_SHY), TTE_OK);
+    CHECK_EQ(talk_trait_set(ID_RIVET, &ts), TTE_OK);
+    begin2(&s, ID_NANA, ID_RIVET, 64u);
+    put_line(&s, 0, -1, TA_ASK_FEELING, TC_NONE, 0);
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 1u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_JOKE);
+    put_line(&s, 1, -1, TA_ASK_FEELING, TC_NONE, 0);
+    n = talk_quick_replies(&s, 1, TC_NONE, TC_NONE, 1u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_THANK);
+    /* An actual illness remains more important than a funny trait. */
+    town_res(ID_NANA)->mood = MOOD_SICK;
+    put_line(&s, 0, -1, TA_ASK_FEELING, TC_NONE, 0);
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 1u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_OFFER);
     talk_db_close();
 }
 
