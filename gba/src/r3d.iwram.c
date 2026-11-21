@@ -44,6 +44,17 @@ int64_t r3d_smull(int32_t a, int32_t b)
 {
     return (int64_t)a * b;
 }
+
+/* Combined signed projection. THUMB sprite setup otherwise crosses into
+ * the ARM overlay four times per billboard for two paired 64-bit products.
+ * One ARM call computes each dot using two SMULLs plus a carry-aware sum;
+ * the single >>16 after the addition is deliberately retained so neither
+ * negative rounding nor sprite depth/occlusion changes. */
+int32_t r3d_dot16(int32_t ax, int32_t bx, int32_t ay, int32_t by)
+{
+    int64_t sum = (int64_t)ax * bx + (int64_t)ay * by;
+    return (int32_t)(sum >> 16);
+}
 uint8_t  r3d_avgc[R3D_MAXTEX];
 
 /* big per-frame buffers live in EWRAM */
