@@ -81,7 +81,12 @@ void dc2d_twiddle8(uint16_t *dst, const uint8_t *src, int w, int h, int tw, int 
     uint8_t *d = (uint8_t *)dst;
     uint32_t m = (uint32_t)(tw < th ? tw : th);
     int x, y;
-    memset(dst, 0, (size_t)tw * (size_t)th);
+    /* A full power-of-two image writes every twiddled texel, including
+     * transparent zeroes. Clear only the padding of a partial image.
+     * This removes one entire scratch-buffer sweep on common 16/32/64
+     * and 128-pixel textures without changing the uploaded bytes. */
+    if (w != tw || h != th)
+        memset(dst, 0, (size_t)tw * (size_t)th);
     for (x = 0; x < w; x++)
         tw_col[x] = tw > th ? ((uint32_t)x / m) * m * m + (spread((uint32_t)x % m) << 1) : spread((uint32_t)x) << 1;
     for (y = 0; y < h; y++)
@@ -90,7 +95,7 @@ void dc2d_twiddle8(uint16_t *dst, const uint8_t *src, int w, int h, int tw, int 
         const uint8_t *s = src + (size_t)y * (size_t)w;
         uint8_t *dr = d + tw_row[y];
         for (x = 0; x < w; x++)
-            if (s[x]) dr[tw_col[x]] = s[x];
+            dr[tw_col[x]] = s[x];
     }
     /* the PVR reads texels as little-endian 16-bit pairs: on a big-endian
      * host this would need a swap; the SH4 and the test hosts are LE */
