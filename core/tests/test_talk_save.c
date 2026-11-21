@@ -215,6 +215,21 @@ TEST(talk_mem_lru_evicts_the_oldest)
     talk_mem_reset();
 }
 
+TEST(talk_mem_expanded_capacity_is_real)
+{
+    int i;
+    premade_town();
+    CHECK(TALK_MEM_MAX > 24);
+    /* The old limit must not cause eviction on a newly supported port. */
+    for (i = 0; i < 25; i++)
+        CHECK(talk_mem_touch(alive(i)));
+    CHECK_EQ(talk_mem_count(), 25);
+    CHECK(talk_mem_find(alive(0)) != NULL);
+    CHECK(talk_mem_find(alive(24)) != NULL);
+    CHECK_EQ(ext()->size(), TALK_MEM_HDR + 25 * TALK_MEM_ENTRY);
+    talk_mem_reset();
+}
+
 TEST(talk_mem_full_preserves_pending_promises)
 {
     int i;
