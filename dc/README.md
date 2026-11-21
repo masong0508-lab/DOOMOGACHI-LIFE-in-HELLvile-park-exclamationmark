@@ -133,3 +133,15 @@ unnecessary SH4 CPU cost when portraits or 3D textures changed. The
 eviction safety rules still protect the active and preceding frames;
 there are no new buffers or save-format changes. Host texture-pressure
 tests and full Flycast integration must pass before merging.
+
+### Stable 3D crowd sort
+
+Billboards with 16 or fewer visible actors use the original in-place
+insertion pass. Larger crowds use an iterative, stable merge sort to
+avoid worst-case O(n squared) shifting on the 256-sprite cap.
+Equal-depth ordering is preserved, so rendering remains deterministic
+across runs and the PVR continues to see far-to-near alpha sprites.
+The implementation uses 1.5 KiB of fixed additional Dreamcast BSS,
+not heap allocations, extra textures or a framebuffer. Host tests cover
+sizes 0 through 256, equal-depth stability, and reversed depth; the
+existing raycaster screenshot parity and Flycast tests remain the gate.
