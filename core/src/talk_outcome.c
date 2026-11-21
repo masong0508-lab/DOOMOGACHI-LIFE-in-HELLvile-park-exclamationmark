@@ -551,7 +551,11 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
     for (k = 0; k < s->nparts; k++) {                        /* what the player earned: those who stayed in the room */
         int id = s->part[k].id;
         if (is_pet_id(id) || (s->part[k].flags & TPF_LEFT)) continue;
-        if (s->mem_earned) talk_mem_set_flags(id, s->mem_earned);
+        /* Each resident only remembers actions they were addressed with.
+         * The summary's old aggregate is not a per-person memory: using
+         * it here previously made innocent bystanders remember being
+         * insulted or promised something. */
+        if (s->mem_to[k]) talk_mem_set_flags(id, s->mem_to[k]);
         if (s->topic_stack[0] && (s->part[k].flags & TPF_SPOKE)) talk_mem_note_topic(id, s->topic_stack[0]);
     }
     talk_mem_end(&s->conv);
