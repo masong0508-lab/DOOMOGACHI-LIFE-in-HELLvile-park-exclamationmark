@@ -40,12 +40,23 @@ GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
 GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
 GAME_LIBS := $(EE_LIBS) -laudsrv -lcdvd
 GAME_BIN := build/doomogachi_ps2_game.elf
+# Preserve GAME_BIN (DWARF) for source-level debugging, but put a
+# separately verified no-DWARF image on the disc to save storage.
+GAME_DISC_BIN := build/doomogachi_ps2_disc.elf
+PS2_EE_STRIP ?= mips64r5900el-ps2-elf-strip
 
 .PHONY: game
 game: $(GAME_BIN)
 $(GAME_BIN): $(GAME_OBJS)
 	@mkdir -p $(@D)
 	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(GAME_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(GAME_LIBS)
+
+# Strip debugging symbols only, never the program's loaded sections.
+# check_disc_elf.py compares the *actual bytes* and entry point that the
+# PS2 EE loader sees. Any discrepancy fails the ISO build closed.
+$(GAME_DISC_BIN): $(GAME_BIN) tools/check_disc_elf.py
+	$(PS2_EE_STRIP) --strip-debug -o $@ $<
+	python3 tools/check_disc_elf.py $< $@
 
 build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
 	@mkdir -p build
@@ -99,11 +110,11 @@ PS2_ZSTD_LEVEL ?= 15
 $(TALK_BIN):
 	$(MAKE) -C ../core talk
 .PHONY: disc
-disc: $(GAME_BIN) $(TALK_BIN) $(AUDSRV_IRX)
+disc: $(GAME_DISC_BIN) $(TALK_BIN) $(AUDSRV_IRX)
 	@command -v xorriso >/dev/null || (echo 'Install xorriso to build the PS2 ISO' && false)
 	@rm -rf $(DISC_ROOT)
 	@mkdir -p $(DISC_ROOT)
-	cp $(GAME_BIN) $(DISC_ROOT)/DOOMOG.ELF
+	cp $(GAME_DISC_BIN) $(DISC_ROOT)/DOOMOG.ELF
 	cp $(TALK_BIN) $(DISC_ROOT)/TALK_EN.BIN
 	cp $(AUDSRV_IRX) $(DISC_ROOT)/AUDSRV.IRX
 	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
