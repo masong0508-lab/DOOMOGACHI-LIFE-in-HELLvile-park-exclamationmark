@@ -18,11 +18,13 @@
 
 static unsigned char pad_dma[256] __attribute__((aligned(64)));
 static int pad_open;
+static int pad_ready;  /* library loaded; the physical pad port can be retried */
 static int init_pad(void)
 {
     SifLoadModule("rom0:SIO2MAN",0,NULL);
     SifLoadModule("rom0:PADMAN",0,NULL);
     if(padInit(0)<0)return 0;
+    pad_ready=1;
     return padPortOpen(0,0,pad_dma)!=0;
 }
 static uint32_t read_pad(void)
@@ -30,10 +32,18 @@ static uint32_t read_pad(void)
     struct padButtonStatus st;
     int state,lx,ly,rx,ry;
     uint32_t stick;
+    static unsigned retry_tick;
     /* A disconnected or resynchronizing DualShock must also release
      * its previous analog vector. Otherwise a scene can keep walking
      * after unplugging the controller, despite zero digital buttons. */
-    if(!pad_open)goto absent;
+    if(!pad_open){
+        /* A disconnected pad at first boot must not permanently lock the
+         * real game out of its menus. Retry opening the port once per
+         * second of 30Hz game ticks; never reload PADMAN each frame. */
+        if(pad_ready && (++retry_tick%30u)==0u)
+            pad_open=padPortOpen(0,0,pad_dma)!=0;
+        goto absent;
+    }
     state=padGetState(0,0);
     if(state!=PAD_STATE_STABLE && state!=PAD_STATE_FINDCTP1)goto absent;
     if(!padRead(0,0,&st))goto absent;
