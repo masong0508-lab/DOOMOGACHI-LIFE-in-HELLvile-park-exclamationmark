@@ -129,7 +129,7 @@ jobs:
           set -eu
           make -C ps2 disc
           test -s ps2/build/doomogachi_ps2_game.iso
-          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f -print | \
+          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f | \
             tee /tmp/ps2-iso-manifest.txt
           grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
           grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
