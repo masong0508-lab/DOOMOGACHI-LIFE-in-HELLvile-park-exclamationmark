@@ -149,6 +149,46 @@ TEST(talk_quick_mood_and_bond_change_the_reaction)
     talk_db_close();
 }
 
+/* A number-only friendship meter is not enough: the resident remembers
+ * whether the previous exchange was hurtful, kind, or left a promise open.
+ * The game already serializes these bits. No new save field is required.
+ * The SAME reaction estimator powers both reply suggestions and outcomes. */
+TEST(talk_quick_past_experience_changes_reception)
+{
+    TalkState s, reopened;
+    int apology, tease, greet, promise;
+    premade_town();
+    CHECK(open_db());
+    set_persona(ID_NANA, 7, 7, 7, 7, 7);
+    town_res(ID_NANA)->mood = MOOD_OK;
+    begin2(&s, ID_NANA, -1, 311u);
+    apology = talk_dm_expect(&s, 0, TA_APOLOGIZE, TONE_PLAIN, TC_NONE);
+    tease = talk_dm_expect(&s, 0, TA_TEASE, TONE_PLAIN, TC_NONE);
+    greet = talk_dm_expect(&s, 0, TA_GREET, TONE_PLAIN, TC_NONE);
+    promise = talk_dm_expect(&s, 0, TA_PROMISE, TONE_PLAIN, TC_NONE);
+
+    s.conv.mem_flags[0] = TMF_INSULTED;
+    CHECK(talk_dm_expect(&s, 0, TA_APOLOGIZE, TONE_PLAIN, TC_NONE) > apology);
+    CHECK(talk_dm_expect(&s, 0, TA_TEASE, TONE_PLAIN, TC_NONE) < tease);
+
+    s.conv.mem_flags[0] = TMF_COMPLIMENTED;
+    CHECK(talk_dm_expect(&s, 0, TA_GREET, TONE_PLAIN, TC_NONE) > greet);
+
+    s.conv.mem_flags[0] = TMF_PROMISED;
+    CHECK(talk_dm_expect(&s, 0, TA_PROMISE, TONE_PLAIN, TC_NONE) < promise);
+
+    /* Save a *real* previous insult through the current 12-byte memory
+     * table, then resume with the normal Talk memory-loading entrypoint. */
+    talk_mem_set_flags(ID_NANA, TMF_INSULTED);
+    talk_mem_end(&s.conv);
+    begin2(&reopened, ID_NANA, -1, 312u);
+    talk_mem_begin(&reopened.conv);
+    CHECK(reopened.conv.mem_flags[0] & TMF_INSULTED);
+    CHECK(talk_dm_expect(&reopened, 0, TA_APOLOGIZE, TONE_PLAIN, TC_NONE) > apology);
+    CHECK(talk_dm_expect(&reopened, 0, TA_TEASE, TONE_PLAIN, TC_NONE) < tease);
+    talk_db_close();
+}
+
 /* the same words said to two people leave different bonds behind */
 TEST(talk_quick_persona_changes_the_bond)
 {
