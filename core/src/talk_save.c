@@ -172,6 +172,19 @@ static TalkMem *touch(int id)
 }
 
 int talk_mem_count(void) { return mem.count; }
+int talk_mem_capacity(void) { return TALK_MEM_MAX; }
+int talk_mem_pinned_count(void)
+{
+    int i, count = 0;
+    roll();
+    for (i = 0; i < mem.count; i++) {
+        unsigned sp = mem.e[i].spare;
+        if (TQB_KIND(sp) &&
+            (TQB_STATE(sp) == TQS_ACTIVE || TQB_STATE(sp) == TQS_READY))
+            count++;
+    }
+    return count;
+}
 
 const TalkMem *talk_mem_at(int i) { return i >= 0 && i < mem.count ? &mem.e[i] : NULL; }
 
