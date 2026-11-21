@@ -1320,6 +1320,11 @@ int talk_outcome_meet_plan(int resident_id);
 #define TALK_MEET_ACTIVITY 1
 int talk_outcome_meet_kind(int venue, int kind);
 int talk_outcome_meet(int venue);      /* legacy/default: a free chat */
+/* A stable, factual, venue-specific response for both Free Play and Story
+ * menus. Queried only after a successful meeting, not each frame.
+ * Drawn from the resident's actual mood, favorite hobby venue and
+ * catchphrase seed. No RNG, save bytes, assets or duplicated scene lines. */
+const char *talk_outcome_meet_reply(int guest_id, int venue, int kind);
 
 /* ---- TM2e: sim actions a reply can carry (core/src/talk_act.c, talk_outcome.c; docs/TALK.md 6o; design 6) ----
  * A reply carries at most one action. The rule, in code and tested: a line says it only if the sim will do it

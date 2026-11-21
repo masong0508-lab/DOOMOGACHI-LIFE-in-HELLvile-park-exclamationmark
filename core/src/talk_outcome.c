@@ -321,6 +321,35 @@ static void meet_local_activity(DoomoResident *who, int venue)
     }
 }
 
+/* The same little human(ish) voice in both world modes. A quiet person,
+ * a lover of the place, and a spontaneous visitor shouldn't all sound the
+ * same. This is read-only and doesn't touch the deterministic sim RNG. */
+const char *talk_outcome_meet_reply(int guest_id, int venue, int kind)
+{
+    const DoomoResident *r =
+        guest_id >= 0 && guest_id < DOOMO_MAX_RESIDENTS ? town_res(guest_id) : NULL;
+    if (!r || r->status != RES_ALIVE || venue < 0 || venue >= ACT_COUNT)
+        return "Thanks for spending a little time together.";
+    if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
+        return "Thanks for staying with me. I didn't have many words today.";
+    if (sim_favourite_venue(guest_id) == venue)
+        return "You remembered my favorite place? That means a lot!";
+    if (kind == TALK_MEET_CHAT)
+        return ((RES_CATCHPHRASE(r) + guest_id) & 1) ?
+               "I saved you the good seat. It's a very important seat." :
+               "I like talking to you. Even when we run out of words.";
+    switch (venue) {
+    case ACT_CAFE: return "This snack deserves its own tiny parade.";
+    case ACT_CONCERT: return "That music made the whole town sound different.";
+    case ACT_CHURCH: return "The quiet did me good. So did your company.";
+    case ACT_WORKSHOP: return "Two minds, one project, several suspicious sparks.";
+    case ACT_SHOP: return "We didn't buy everything. A historic achievement.";
+    case ACT_PARK: return "The wind almost stole my thoughts. Nice walk!";
+    case ACT_BEACH: return "The sea kept all its secrets. I told you one.";
+    default: return "Thanks for spending time together!";
+    }
+}
+
 int talk_outcome_meet_kind(int venue, int kind)
 {
     int id, i, avatar;

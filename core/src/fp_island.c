@@ -764,20 +764,8 @@ static const char *meet_activity_name(int venue)
     }
 }
 
-static const char *meet_reply(int venue, int kind)
-{
-    if (kind == TALK_MEET_CHAT) return "I'm glad you came! It's nice to catch up.";
-    switch (venue) {
-    case ACT_CAFE: return "A snack with a friend is better than eating alone!";
-    case ACT_PARK: return "That walk cleared my head. Let's do it again!";
-    case ACT_BEACH: return "The sea looks different when you're here.";
-    case ACT_CONCERT: return "That music will stay with me for a while.";
-    case ACT_WORKSHOP: return "We made a mess and some good memories!";
-    case ACT_SHOP: return "Window-shopping together was surprisingly fun.";
-    case ACT_CHURCH: return "Thanks for the quiet company. I needed it.";
-    default: return "Thanks for making time for me today!";
-    }
-}
+/* Shared visit dialogue belongs to Talk outcome, not to this map renderer.
+ * Story doors and the City Map now speak the very same resident language. */
 
 static void meet_pick(int choice)
 {
@@ -803,7 +791,7 @@ static void meet_pick(int choice)
     I.menu_dirty = 1; /* remove the consumed invite before the next menu draw */
     audio_sfx(SFX_HAPPY);
     fp_fx_burst(fp_sw() / 2, fp_sh() / 2, FX_HEART, 8);
-    ui_say(done, meet_reply(venue, kind));
+    ui_say(done, talk_outcome_meet_reply(done, venue, kind));
 }
 
 static void open_meet(int venue)

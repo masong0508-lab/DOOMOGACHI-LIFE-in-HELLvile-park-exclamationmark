@@ -622,6 +622,26 @@ TEST(action_meetup_is_reachable_and_one_shot_from_freeplay_hub)
     talk_db_close();
 }
 
+/* Favorites, moods and identity affect the *same* reaction in the
+ * Story place menu and the Free Play City Map. Reading is non-mutating. */
+TEST(action_meetup_reactions_reflect_real_guest_traits)
+{
+    int a, venue;
+    const char *reply;
+    premade_town();
+    people();
+    CHECK(nadult > 0);
+    a = adults[0];
+    venue = sim_favourite_venue(a);
+    town_res(a)->mood = MOOD_HAPPY;
+    reply = talk_outcome_meet_reply(a, venue, TALK_MEET_ACTIVITY);
+    CHECK(strstr(reply, "favorite place") != NULL);
+    town_res(a)->mood = MOOD_SAD;
+    reply = talk_outcome_meet_reply(a, venue, TALK_MEET_CHAT);
+    CHECK(strstr(reply, "staying with me") != NULL);
+    CHECK_EQ(talk_outcome_meet_plan(a), -1);
+}
+
 TEST(action_meetup_activity_is_real_and_cannot_be_farmed)
 {
     TalkState s;
