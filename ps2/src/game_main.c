@@ -81,8 +81,6 @@ static void show_boot_stage(GSGLOBAL *gs,int stage)
     gsKit_prim_sprite(gs,72,191,72+((stage+1)*496)/5,256,3,done);
     gsKit_queue_exec(gs);
     gsKit_sync_flip(gs);
-    /* One-shot DMA commands must not survive into the next screen. */
-    gsKit_queue_reset(gs->Os_Queue);
     printf("PS2_BOOT_STAGE stage=%d\n",stage);
 }
 int main(void)
@@ -157,8 +155,6 @@ int main(void)
         }
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
-        /* Never carry last frame's sprite/GIF commands forward. */
-        gsKit_queue_reset(gs->Os_Queue);
         field++;
     }
     return 0;
