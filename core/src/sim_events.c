@@ -397,6 +397,7 @@ static const NewsTmpl news_tmpl[NT_COUNT] = {
     [NT_TALK_WALKOUT]    = { "%s walked out of a chat at yours. Bold.", "a" },
 #ifdef DOOMO_HAS_TALK
     [NT_TALK_QUEST]      = { "%s says you are a lifesaver. Small favours, big town.", "a" },
+    [NT_TALK_MEET]       = { "%s met %s at %s today. Good company!", "abV" },
 #endif
 };
 
