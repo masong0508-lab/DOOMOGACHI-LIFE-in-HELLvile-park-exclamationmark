@@ -1,5 +1,21 @@
 # Talk: the live house conversation
 
+**Playable social history (2026-11-20):** On a one-person-targeted Talk screen,
+open **Options > Our history**. The screen shows the town's remembered-resident
+usage and count of active/ready commitments, this person's open favor (if any),
+up to two previously discussed safe topics, and distinct shared events that
+actually occurred (play, gift, invitation). Selecting an earlier topic asks the
+person about that topic via the regular Talk drama manager; selecting an event
+lets you recall that *specific* experience instead of always the first one.
+B or the back header returns to Options without saying goodbye. The familiar
+one-tap "Remember when we...?" row stays available on the main page. The
+history screen snapshots counts on entry to avoid per-frame scans, rechecks
+event flags and topic safety before use, and adds **no new save fields, heap
+allocations, or extra per-frame model generation**. PS1 Talk stays gated by
+its experimental port preset until separately verified; this is shared-core
+functionality, not proof that the shipping PS1 disc exposes Talk.
+
+
 **Follow-up memory retention pass:** memory eviction is now consequence-aware: unfinished favors remain pinned; completed shared play/gifts/invitations and remembered compliments/insults/promises are prioritized over older casual chats. At a full table, the oldest eligible routine record goes first. The memory status API (`talk_mem_capacity()`, `talk_mem_pinned_count()`) makes the live limit and number of protected requests inspectable without allocations. Native regression tests cover retaining the 25th resident, serializing/reloading more than the old 24-record cap, protecting the entire pinned table, and retaining shared experiences under pressure. These are committed changes, **not yet console/emulator-verified**.
 
 
