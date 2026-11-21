@@ -197,11 +197,14 @@ static Col      s_tmul, s_tadd;
 static int      s_any_sky;
 static int      s_backdrop = 1;
 
-static uint16_t s_vis[MAXCELLS], s_stamp;
+/* The visibility bitmap and one-view texture stamps only need equality
+ * within the current view, not an ever-increasing 16-bit epoch. An
+ * 8-bit epoch halves both tables, clearing once per 255 views. */
+static uint8_t  s_vis[MAXCELLS], s_stamp;
 static uint16_t s_vlist[MAXCELLS];
 static int      s_nvis;
 static int16_t  s_tslot[TEX_COUNT][DOOMO_LIGHT_LEVELS];   /* a texture at a light level */
-static uint16_t s_tstamp[TEX_COUNT][DOOMO_LIGHT_LEVELS];
+static uint8_t  s_tstamp[TEX_COUNT][DOOMO_LIGHT_LEVELS];
 
 static int in_map(int cx, int cy) { return cx >= 0 && cy >= 0 && cx < M->w && cy < M->h; }
 static int is_sky(const DoomoCell *c) { return c->ceil_tex == DOOMO_TEX_SKY; }

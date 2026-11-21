@@ -145,3 +145,16 @@ The implementation uses 1.5 KiB of fixed additional Dreamcast BSS,
 not heap allocations, extra textures or a framebuffer. Host tests cover
 sizes 0 through 256, equal-depth stability, and reversed depth; the
 existing raycaster screenshot parity and Flycast tests remain the gate.
+
+### Shared console view stamp memory pass
+
+Both the PS1 and Dreamcast 3D views now use 8-bit rather than 16-bit
+generation stamps for visited map cells and the view-local texture
+lookup table. Only equality within the current view is required;
+generation wrap explicitly clears the arrays before reuse, including
+when the PS1's borrowed overlay memory is reclaimed. PS1 saves
+4,096 bytes from the 64x64 visibility table and another 64 bytes
+from texture stamps, without sacrificing the 16-bit visible-cell
+index list. Dreamcast gains the corresponding 4 KiB and texture
+stamp savings. More frequent wraps mean a rare table clear; tests
+should verify memory linker gates and repeated 3D screenshots.
