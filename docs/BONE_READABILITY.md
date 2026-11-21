@@ -103,3 +103,29 @@ an mGBA run. Verify with `make -C gba test-3d-census`, profile
 equal-tick screenshots using `gba/tools/visual_clarity.py`. The key
 regression criteria are clear landmarks, stable movement, correct HUD,
 safe VRAM upscaling, and no catastrophic FPS loss.
+
+## Screenshot ray-resolution audit (report-only)
+
+The GBA census now classifies likely 3D scaling modes from **real PNG
+pixels**, using aligned horizontal colour-change boundaries in the center
+of the game view. The signatures are 4 pixels per source ray for 120x80,
+5 for the new 96x64 middle tier, 6 for 80x54 emergency, and 8 for
+60x40 quarter detail. A 240x160 full-resolution ray has a 2-pixel
+signature. This does not rely on a claim about how the governor *should*
+behave. The reporter also retains the uniform 4x4 block statistic.
+
+Comparing equal-tick archived captures from `3a27b6be` and `528be3d5`
+shows nearly all their Bone images have the **six-pixel boundary
+signature**, meaning the older actual views were overwhelmingly the
+80x54 fallback. In the `528be3d5` screenshots the percentage of
+edge transitions on six-pixel boundaries is 88.2% (Cathedral first),
+86.6% (Cathedral third), 99.4% (Capital first) and 99.5% (Capital
+third) when sampled in the same central viewport region. These
+numbers characterize captured pixel spacing, **not** final quality.
+
+Once a new 96x64 build produces screenshots, its Bone census should
+report a five-pixel ray signature where the middle tier was reached.
+If six-pixel signature still dominates, inspect frame work, cooldown
+and the governor; do not claim the new tier fixed blur without
+evidence. Keep FPS, ROM integrity and exact-tick scenery inspection
+as independent acceptance checks.

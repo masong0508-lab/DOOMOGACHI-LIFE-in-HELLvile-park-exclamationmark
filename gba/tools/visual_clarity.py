@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Measure uniform 4x4 blocks in GBA census PNG screenshots (report-only).
+"""Identify GBA 3D image resolution from pixel-aligned emulator screenshots.
 
-No dependencies outside the Python standard library, no ROM runtime costs.
-A high ratio is consistent with quarter-resolution 60x40 image magnification,
-but this metric alone cannot establish artistic or geometric fidelity.
+Report only: no ROM runtime costs or third-party dependencies. Uniform 4x4
+blocks are an approximate blockiness indicator; horizontal colour-transition
+alignment also distinguishes the Bone-only 96x64 and 80x54 modes. Neither
+metric alone certifies artistic quality, view stability or actual drawn FPS.
 """
 import argparse
 from pathlib import Path
@@ -86,6 +87,50 @@ def count_uniform_blocks(path):
     return uniform, total
 
 
+# Source view has two identical pixels per ray column. The upscalers
+# produce aligned 2, 4, 5, 6 or 8 pixel ray runs in the final 240x160
+# screenshot. Study colour-change *boundaries*, not average colour or
+# texture uniformity; repeated wall patterns can fool block counts.
+# Only the central game view is sampled (not the unscaled HUD at the bottom).
+_RAY_TIERS = (
+    (8, "60x40 quarter"),
+    (6, "80x54 emergency"),
+    (5, "96x64 middle"),
+    (4, "120x80 half"),
+    (2, "240x160 full"),
+)
+
+
+def ray_tier(path):
+    """Return (likely tier, alignment, transition count), not an FPS gate."""
+    w, h, bpp, rows = read_rgb(path)
+    if (w, h) != (240, 160):
+        raise ValueError("expected native 240x160 screenshot")
+    aligned = {width: 0 for width, _ in _RAY_TIERS}
+    changes = 0
+    # Avoid HUD, scene caption, ammo widget, and the screen's left margin.
+    for y in range(32, 100, 2):
+        row = rows[y]
+        for x in range(61, 225):
+            at = x * bpp
+            if row[at:at + 3] == row[at - bpp:at - bpp + 3]:
+                continue
+            changes += 1
+            for width in aligned:
+                if x % width == 0:
+                    aligned[width] += 1
+    if changes < 64:
+        return "indeterminate", 0.0, changes
+    # Larger multiples also align at smaller divisors: inspect widest
+    # qualifying ray pitch first so an 8-pixel fallback is not mistaken
+    # for a 4-pixel image.
+    for width, name in _RAY_TIERS:
+        ratio = aligned[width] / changes
+        if ratio >= 0.82:
+            return name, ratio, changes
+    return "mixed/unclassified", max(aligned.values()) / changes, changes
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("shots", type=Path, help="directory containing census_*.png")
@@ -98,11 +143,19 @@ def main():
         "### GBA screenshot blockiness census (report only)", "",
         "Fraction of uniform 4x4 blocks in top 108 rows; lower usually means finer detail.",
         "Compare identical scenes and ticks. This is not an artistic quality score.", "",
-        "| Scene | Uniform blocks | Ratio |", "|---|---:|---:|",
+        "Ray-tier inference uses horizontally aligned colour transitions in the",
+        "center of the 3D viewport. It is a heuristic, not a runtime flag.",
+        "",
+        "| Scene | Uniform 4x4 blocks | Ratio | Likely source tier | Edge alignment |",
+        "|---|---:|---:|---|---:|",
     ]
     for p in images:
         n, total = count_uniform_blocks(p)
-        out.append(f"| {p.stem.removeprefix('census_')} | {n}/{total} | {n / total:.1%} |")
+        tier, alignment, changes = ray_tier(p)
+        out.append(
+            f"| {p.stem.removeprefix('census_')} | {n}/{total} | "
+            f"{n / total:.1%} | {tier} | {alignment:.1%} ({changes} edges) |"
+        )
     result = "\n".join(out) + "\n"
     print(result, end="")
     if args.out:
