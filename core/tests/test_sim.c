@@ -517,8 +517,8 @@ TEST(sim_world_social_goals_follow_real_bonds_and_presence)
     me->mood = MOOD_LONELY;
 
     ix = SIM_RING - 2;
-    sim_s.ring[ACT_CAFE][ix] = 13; /* the same person twice isn't two friends */
-    CHECK(sim_venue_social_bias(1, ACT_CAFE) >= -20);
+    sim_s.ring[ACT_CAFE][ix] = 13; /* the same person twice isn't two rivals */
+    CHECK_EQ(sim_venue_social_bias(1, ACT_CAFE), -17);
     CHECK_EQ(sim_venue_social_bias(1, ACT_SLEEPING), 0);
     CHECK_EQ(sim_venue_social_bias(-1, ACT_CAFE), 0);
 }
