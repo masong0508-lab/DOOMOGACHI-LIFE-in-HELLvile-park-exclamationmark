@@ -78,7 +78,7 @@ class CompactImageTests(unittest.TestCase):
     def test_reject_double_slash_boot_path(self):
         with tempfile.TemporaryDirectory() as work:
             tmp = Path(work)
-            bad_path = r"cdrom0:\\" + r"\DOOMOG.ELF;1"
+            bad_path = "cdrom0:" + chr(92) * 2 + "DOOMOG.ELF;1"
             iso = sample_iso(tmp, boot_path=bad_path)
             out = tmp / "compact"
             result = subprocess.run(
