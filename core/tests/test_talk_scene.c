@@ -399,6 +399,49 @@ TEST(talk_scene_history_reports_real_favor_progress)
     CHECK_EQ((int)doomo_town.money, money0);
 }
 
+TEST(talk_scene_open_favor_is_accessible_from_main)
+{
+    TalkSceneDebug d;
+    char label[64];
+    int row, item;
+    TalkQuest request;
+
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK_EQ(find_row("history", 1, -1), -1);  /* no fake goals */
+    CHECK(talk_quest_derive(ID_NANA, TQK_FETCH, NULL, 0, 0, &request));
+    item = request.item;
+    CHECK(item > ITEM_NONE);
+    while (inv_count(item) > 0) CHECK(inv_take(item, 1));
+    CHECK(talk_mem_quest_set(ID_NANA, TQK_FETCH, TQS_ACTIVE, 3, 0));
+
+    /* The main page is built on returning from Options; check that
+     * it now exposes THIS person's actual ongoing favor. */
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "main") == 0);
+    row = find_row("history", 1, TQS_ACTIVE);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Your favor") != NULL);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "history") == 0);
+    CHECK_EQ(d.sel, find_row("historyquest", TQK_FETCH, -1));
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "more") == 0);
+
+    /* The player picks up the real requested item: next main-page
+     * refresh immediately advertises readiness, without spending it. */
+    CHECK(inv_add(item, 1) >= 1);
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "main") == 0);
+    row = find_row("history", 1, TQS_READY);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Favor ready") != NULL);
+    CHECK_EQ(inv_count(item), 1);
+}
+
 TEST(talk_scene_history_topic_is_a_real_followup_question)
 {
     TalkSceneDebug d;
