@@ -672,9 +672,15 @@ static void build_history(void)
     m = talk_mem_find(id);
     T.page = PG_HISTORY;
     T.nrows = 0;
-    add_row(K_HISTORY_INFO, talk_mem_pinned_count(), talk_mem_count());
-    if (talk_mem_quest_get(id, &kind, &st, &days, NULL))
-        add_row(K_HISTORY_QUEST, kind, (st << 8) | days);
+    /* Count real unfinished favors, not memory pins: a shared experience
+     * can keep a resident in memory without creating a request. */
+    add_row(K_HISTORY_INFO, talk_quest_open_count(), talk_mem_count());
+    if (talk_mem_quest_get(id, &kind, &st, &days, NULL)) {
+        /* Fetch and toy requests become ready as soon as the player has
+         * the real item. Do not wait for a save or another day's tick. */
+        int shown = talk_quest_ready(id) ? TQS_READY : st;
+        add_row(K_HISTORY_QUEST, kind, (shown << 8) | days);
+    }
     if (m) {
         if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
             !q_grief(m->topic_a))
@@ -1430,10 +1436,42 @@ static void activate(int i)
         ui_toast("Open favors are protected from eviction.");
         break;
     case K_HISTORY_QUEST: {
-        int state = r->v >> 8;
-        if (state == TQS_READY) ui_toast("This favor can be handed in.");
-        else if (state == TQS_ACTIVE) ui_toast("This favor is still in progress.");
-        else ui_toast("This request has been settled.");
+        int id, kind, state, days, i;
+        TalkQuestRow q;
+        if (T.to < 0 || T.to >= T.n) { build_more(); break; }
+        id = T.ids[T.to];
+        /* A saved row can be stale after inventory changes, expiration, or
+         * another Talk. Re-check live state only when the player selects it. */
+        if (!talk_quest_state(id, &kind, &state, &days, NULL)) {
+            ui_toast("There is no outstanding request.");
+            build_history();
+            break;
+        }
+        if (talk_quest_ready(id)) {
+            int queued = 0;
+            /* Hand-in rewards flow through talk_outcome_end, where they
+             * correctly apply the relationship and news ledger. Never
+             * award money merely for inspecting the journal. */
+            for (i = 0; i < T.s.nev; i++)
+                if (T.s.ev[i].kind == TEV_QUEST_DONE &&
+                    T.s.ev[i].a == T.to) queued = 1;
+            ui_toast(queued ? "Finish this chat to hand in the favor." :
+                              "Ready! Talk again to hand in the favor.");
+        } else if (state == TQS_ACTIVE) {
+            /* The same specific instruction shown in the Side quest log,
+             * including the target or required item. No fake task text. */
+            int found = 0;
+            for (i = 0; i < talk_quest_log_count(); i++)
+                if (talk_quest_log_row(i, &q) && q.giver == id) {
+                    ui_toast(q.goal);
+                    found = 1;
+                    break;
+                }
+            if (!found) ui_toast("Check the Side quest log for details.");
+        } else {
+            ui_toast(days ? "This request has been settled." :
+                            "That request expired.");
+        }
         break;
     }
     case K_TOPIC_LINK:
