@@ -254,6 +254,34 @@ TEST(talk_mem_day_rollover_clears_refused_today_only)
     talk_mem_reset();
 }
 
+TEST(talk_mem_shared_experiences_keep_the_save_budget)
+{
+    uint8_t bytes[TALK_SAVE_WORST];
+    uint32_t size;
+    premade_town();
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED));
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_GIFTED));
+    talk_mem_note_shared(ID_NANA, 0);         /* no spurious entry */
+    CHECK_EQ(talk_mem_count(), 0);
+    talk_mem_know_like(ID_NANA, 1);
+    talk_mem_note_shared(ID_NANA, TALK_SHARED_PLAYED | TALK_SHARED_GIFTED);
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED));
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_GIFTED));
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_INVITED));
+    CHECK(talk_mem_like_known(ID_NANA, 1));   /* likes unaffected */
+    CHECK_EQ(sizeof(TalkMem), TALK_MEM_ENTRY);
+    size = ext()->write(bytes, sizeof bytes);
+    CHECK(size > 0 && size <= TALK_SAVE_WORST);
+    talk_mem_reset();
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_GIFTED));
+    CHECK(ext()->read(bytes, size, TALK_MEM_VERSION));
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED | TALK_SHARED_GIFTED));
+    CHECK(talk_mem_like_known(ID_NANA, 1));
+    doomo_town.day++;
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED));
+    talk_mem_reset();
+}
+
 TEST(talk_mem_likes_known)
 {
     int w;

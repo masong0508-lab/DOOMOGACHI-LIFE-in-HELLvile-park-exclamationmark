@@ -222,6 +222,9 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
             lp->flags |= LPF_INVITE;
             led.invn++;
             out->invited++;
+            /* An acceptance is a remembered *invitation*, not a
+             * fabricated claim that the player already travelled. */
+            talk_mem_note_shared(ia, TALK_SHARED_INVITED);
         } else out->skipped++;
         break;
     case TEV_ACT_GIFT: {

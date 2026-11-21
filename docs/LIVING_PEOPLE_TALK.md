@@ -146,3 +146,24 @@ This differs intentionally from **Show an item**, which never consumes
 or duplicates inventory. Controller-driven tests check both pathways.
 The separate care action's normal cooldowns/progression rules apply;
 manual gift spam is not a neural conversation substitute.
+
+## Memory-first shared experiences (no save-size expansion)
+
+Three otherwise-unused high bits of the existing `TalkMem.likes_known`
+byte now record **completed shared play**, **an actual gift given by the
+player**, and **an accepted invitation**. They survive the existing
+versioned Talk save-chunk round trip and do not enlarge any of the 24
+12-byte recent-resident records. The low five known-like bits are
+unmodified. A room action only records an event after it was processed;
+refused invitations must not produce a memory. The distinction matters:
+an accepted invitation is **not** proof of having met at the venue.
+A citizen with a recorded interaction gains the **Remember when we...?**
+response, with a small personality-dependent callback. No shared
+memory option appears for a stranger or a resident whose LRU memory has
+been evicted. The event markers are summaries, not a transcript or a
+neural language model; longer episodic journaling remains a milestone.
+
+Acceptance tests check zero-byte empty saves, unchanged memory-entry
+size, remembered play/gift flags across a versioned save reload, and the
+Talk UI exposing the memory option only after an event. The same
+feature must be separately verified on each port that enables Talk.

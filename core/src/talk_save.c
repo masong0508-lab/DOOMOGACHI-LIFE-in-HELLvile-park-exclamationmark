@@ -48,6 +48,7 @@ DOOMO_STATIC_ASSERT(sizeof(TalkMem) == TALK_MEM_ENTRY, talk_mem_entry_is_12_byte
 #define TMF_SAVED   (TMF_LAST | TMF_REFUSED_TODAY)
 #define PEND_SHIFT  4                       /* the running conversation's TMF_LAST bits */
 #define LIKES_MASK  0x1Fu
+#define MEMORY_MASK (LIKES_MASK | TALK_SHARED_ALL)
 #define TOPIC_MASK  0x0FFFu
 
 static struct {
@@ -189,6 +190,24 @@ void talk_mem_clear_flags(int id, unsigned flags)
     if (!(e = lookup(id))) return;
     flags &= TMF_SAVED;
     e->flags = (uint8_t)(e->flags & ~(flags | ((flags & TMF_LAST) << PEND_SHIFT)));
+}
+
+void talk_mem_note_shared(int id, unsigned event_flags)
+{
+    TalkMem *e;
+    /* Only concrete completed player actions call this. Zero or unknown
+     * flags do not waste an LRU entry or disturb existing likes. */
+    event_flags &= TALK_SHARED_ALL;
+    if (!event_flags || !(e = touch(id))) return;
+    e->likes_known = (uint8_t)(e->likes_known | event_flags);
+}
+
+int talk_mem_shared(int id, unsigned event_flags)
+{
+    const TalkMem *e;
+    if (!event_flags || (event_flags & ~TALK_SHARED_ALL)) return 0;
+    e = talk_mem_find(id);
+    return e && (e->likes_known & event_flags) == event_flags;
 }
 
 void talk_mem_know_like(int id, int which)
@@ -356,7 +375,7 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         e->topic_a = (uint16_t)(get16(p + 4) & TOPIC_MASK);
         e->topic_b = (uint16_t)(get16(p + 6) & TOPIC_MASK);
         e->flags = (uint8_t)(p[8] & TMF_SAVED);
-        e->likes_known = (uint8_t)(p[9] & LIKES_MASK);
+        e->likes_known = (uint8_t)(p[9] & MEMORY_MASK);
         e->spare = (uint16_t)(get16(p + 10) & TMEM_SPARE);
         if (TQB_KIND(e->spare) >= TQK_COUNT || (TQB_KIND(e->spare) == 0 && (e->spare & TMEM_QUEST)) ||
             (TQB_KIND(e->spare) && TQB_STATE(e->spare) == TQS_NONE))

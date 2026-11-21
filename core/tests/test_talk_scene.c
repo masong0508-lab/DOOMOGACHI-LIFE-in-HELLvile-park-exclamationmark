@@ -215,6 +215,28 @@ TEST(talk_scene_give_a_real_item_and_apply_care)
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
+TEST(talk_scene_only_remembers_actual_shared_events)
+{
+    TalkSceneDebug d;
+    int row;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK_EQ(find_row("remember", -1, -1), -1);
+    talk_mem_note_shared(ID_NANA, TALK_SHARED_GIFTED);
+    /* Rebuild the main menu when the player returns from Options. */
+    row = find_row("more", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    press(BTN_B);
+    row = find_row("remember", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "Remember") != NULL);
+}
+
 TEST(talk_scene_a_quick_reply_is_one_press)
 {
     TalkSceneDebug d;

@@ -726,7 +726,7 @@ typedef struct TalkMem {
     uint16_t day;                 /* the town day (low 16 bits) of the last talk  */
     uint16_t topic_a, topic_b;    /* the last topic and the one before (12 bits)  */
     uint8_t  flags;               /* TMF_* (the high nibble is the running conversation's, never saved) */
-    uint8_t  likes_known;         /* bit `which` of talk_gen_like(): 0 food, 1 hobby, 2 music, 3 fear, 4 hated food */
+    uint8_t  likes_known;         /* bits 0..4: known likes; bits 5..7: shared-event memories */
     uint16_t spare;               /* 0                                            */
 } TalkMem;                        /* TALK_MEM_ENTRY = 12 B                        */
 /* Entries held, and entry i (0 the most recent), NULL past the end. */
@@ -747,6 +747,16 @@ void talk_mem_set_flags(int id, unsigned flags);
 void talk_mem_clear_flags(int id, unsigned flags);
 /* The player learned id's like `which` (0..4, as talk_gen_like; touches);
  * and the query (1 known). */
+/* Three compact, persistent, factual shared-event markers in the high
+ * unused bits of TalkMem.likes_known. These describe what truly happened,
+ * NOT a transcript, invited destination, or completed travel.
+ * Existing saves and the 12-byte entry size are unchanged. */
+#define TALK_SHARED_PLAYED  0x20u
+#define TALK_SHARED_GIFTED  0x40u
+#define TALK_SHARED_INVITED 0x80u
+#define TALK_SHARED_ALL     0xE0u
+void talk_mem_note_shared(int id, unsigned event_flags);
+int  talk_mem_shared(int id, unsigned event_flags);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte
