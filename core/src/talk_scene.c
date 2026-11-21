@@ -39,8 +39,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -650,6 +650,45 @@ static void build_more(void)
     add_row(K_TOPIC, 0, 0);
     if (T.n > 1) add_row(K_TO, 0, 0);
     if (T.n < TALK_PARTS_MAX && T.s.nparts < TALK_PARTS_MAX) add_row(K_INVITE, 0, 0);
+    /* The history is deliberately below Topic and Invite: existing
+     * conversation shortcuts and journey button budgets remain intact. */
+    if (T.to >= 0 && T.to < T.n) add_row(K_HISTORY, 0, 0);
+    list_reset();
+}
+
+/* No new save bytes or heap allocations: this page presents the recorded
+ * per-person facts already in TALK. Counts are snapshotted on entering,
+ * not recomputed each video frame. Nothing here invents an outing. */
+static void build_history(void)
+{
+    const TalkMem *m;
+    int id, kind, st, days;
+    if (T.to < 0 || T.to >= T.n) {
+        ui_toast("Choose one person first.");
+        build_more();
+        return;
+    }
+    id = T.ids[T.to];
+    m = talk_mem_find(id);
+    T.page = PG_HISTORY;
+    T.nrows = 0;
+    add_row(K_HISTORY_INFO, talk_mem_pinned_count(), talk_mem_count());
+    if (talk_mem_quest_get(id, &kind, &st, &days, NULL))
+        add_row(K_HISTORY_QUEST, kind, (st << 8) | days);
+    if (m) {
+        if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
+            !q_grief(m->topic_a))
+            add_row(K_HISTORY_TOPIC, 0, m->topic_a);
+        if (m->topic_b && m->topic_b != m->topic_a &&
+            talk_gen_concept_ok(m->topic_b, &T.s.conv.aud) && !q_grief(m->topic_b))
+            add_row(K_HISTORY_TOPIC, 1, m->topic_b);
+        if (m->likes_known & TALK_SHARED_PLAYED)
+            add_row(K_HISTORY_EVENT, TALK_SHARED_PLAYED, 0);
+        if (m->likes_known & TALK_SHARED_GIFTED)
+            add_row(K_HISTORY_EVENT, TALK_SHARED_GIFTED, 0);
+        if (m->likes_known & TALK_SHARED_INVITED)
+            add_row(K_HISTORY_EVENT, TALK_SHARED_INVITED, 0);
+    }
     list_reset();
 }
 
@@ -964,6 +1003,29 @@ static const char *row_text(int index, char *buf)
     case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
+    case K_HISTORY: doomo_snprintf(buf, 48, "Our history >"); break;
+    case K_HISTORY_INFO:
+        doomo_snprintf(buf, 48, "Town memory: %d/%d, %d open",
+                       (int)r->v, talk_mem_capacity(), (int)r->arg);
+        break;
+    case K_HISTORY_QUEST: {
+        int st = r->v >> 8, days = r->v & 0xff;
+        const char *phase = st == TQS_READY ? "ready" :
+                            st == TQS_ACTIVE ? "active" : "settled";
+        doomo_snprintf(buf, 48, "Favor: %s (%s, %dd)",
+                       talk_quest_kind_name(r->arg), phase, days);
+        break;
+    }
+    case K_HISTORY_TOPIC:
+        topic_name(r->v, tn, (int)sizeof tn);
+        doomo_snprintf(buf, 48, "%s: %s >", r->arg ? "Earlier topic" : "Last topic", tn);
+        break;
+    case K_HISTORY_EVENT:
+        doomo_snprintf(buf, 48, "%s",
+                       r->arg == TALK_SHARED_PLAYED ? "Recall playing together" :
+                       r->arg == TALK_SHARED_GIFTED ? "Recall their gift" :
+                       "Recall an invitation");
+        break;
     case K_HELP: doomo_snprintf(buf, 48, "Help with their needs >"); break;
     case K_COMFORT: doomo_snprintf(buf, 48, "Comfort them"); break;
     case K_CLEAN: doomo_snprintf(buf, 48, "Help them wash"); break;
@@ -1185,7 +1247,7 @@ static void give_item(int item)
     build_main();
 }
 
-static void reminisce(void)
+static void reminisce(unsigned selected)
 {
     int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
     const DoomoResident *r;
@@ -1193,15 +1255,22 @@ static void reminisce(void)
     if (target < 0 || target >= DOOMO_MAX_RESIDENTS || !town_alive(target))
         return;
     r = town_res(target);
-    if (talk_mem_shared(target, TALK_SHARED_PLAYED))
+    /* Existing one-tap callback chooses the first known memory; History
+     * supplies a specific event, which is rechecked at activation time. */
+    if (!selected) {
+        if (talk_mem_shared(target, TALK_SHARED_PLAYED)) selected = TALK_SHARED_PLAYED;
+        else if (talk_mem_shared(target, TALK_SHARED_GIFTED)) selected = TALK_SHARED_GIFTED;
+        else if (talk_mem_shared(target, TALK_SHARED_INVITED)) selected = TALK_SHARED_INVITED;
+    }
+    if (selected == TALK_SHARED_PLAYED && talk_mem_shared(target, selected))
         reply = RES_PERSONA(r, PERS_SPEECH) >= 10
             ? "That day we played together? I still remember the fun!"
             : "I remember playing together. That was nice.";
-    else if (talk_mem_shared(target, TALK_SHARED_GIFTED))
+    else if (selected == TALK_SHARED_GIFTED && talk_mem_shared(target, selected))
         reply = RES_PERSONA(r, PERS_EXPRESSION) >= 9
             ? "That gift you gave me! I remember it so clearly!"
             : "I remember your present. Thanks for thinking of me.";
-    else if (talk_mem_shared(target, TALK_SHARED_INVITED))
+    else if (selected == TALK_SHARED_INVITED && talk_mem_shared(target, selected))
         reply = RES_PERSONA(r, PERS_SPEECH) >= 10
             ? "You invited me out once. That caught me by surprise!"
             : "I remember you inviting me somewhere.";
@@ -1338,7 +1407,25 @@ static void activate(int i)
     case K_SHOWITEM: show_item(r->arg); break;
     case K_GIVE: build_give_items(); break;
     case K_GIVEITEM: give_item(r->arg); break;
-    case K_REMEMBER: reminisce(); break;
+    case K_REMEMBER: reminisce(0); break;
+    case K_HISTORY: build_history(); break;
+    case K_HISTORY_INFO:
+        ui_toast("Open favors are protected from eviction.");
+        break;
+    case K_HISTORY_QUEST: {
+        int state = r->v >> 8;
+        if (state == TQS_READY) ui_toast("This favor can be handed in.");
+        else if (state == TQS_ACTIVE) ui_toast("This favor is still in progress.");
+        else ui_toast("This request has been settled.");
+        break;
+    }
+    case K_HISTORY_TOPIC:
+        if (talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v)) {
+            T.topic = r->v;
+            say_act(TA_ASK_ABOUT); /* A genuine Talk question, not just a label. */
+        }
+        break;
+    case K_HISTORY_EVENT: reminisce(r->arg); break;
     case K_HELP: build_care(); break;
     case K_COMFORT: case K_CLEAN: perform_care(r->kind, 0); break;
     case K_FEED: build_care_items(0); break;
@@ -1426,6 +1513,7 @@ static void change_to(int to)
 {
     T.to = (int8_t)to;
     if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
+    else if (T.page == PG_HISTORY) build_history();
     else if (T.page == PG_MAIN) {
         int c;
         build_main();
@@ -1466,7 +1554,7 @@ static int pointer_click(int x, int y)
     }
     if (y < py) return 0;
     if (y < py + 17) {
-        if (T.page != PG_MAIN) { T.idle = 0; T.pending = 0; build_main(); }
+        if (T.page != PG_MAIN) { T.idle = 0; T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
         return 1;
     }
     if (ui_list_click(&T.list, 6, py + 17, sw - 12, x, y) == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
@@ -1524,7 +1612,7 @@ static void talk_update(void)
     if (r == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
     else if (r == UI_CANCEL) {
         T.idle = 0;
-        if (T.page != PG_MAIN) { T.pending = 0; build_main(); }
+        if (T.page != PG_MAIN) { T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
         else bye();
     }
 }
@@ -1553,6 +1641,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_CARE: t = "How can you help?"; break;
     case PG_FEED: t = "Offer what food?"; break;
     case PG_HEAL: t = "Choose a treatment"; break;
+    case PG_HISTORY: t = "Our history"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1660,14 +1749,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 11 ? T.page : 0];
+    o->page = pages[T.page < 12 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -1686,7 +1775,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
