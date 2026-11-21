@@ -90,18 +90,24 @@ TALK_BIN := ../core/build/talk/TALK_en.BIN
 AUDSRV_IRX := $(PS2SDK)/iop/irx/audsrv.irx
 DISC_ROOT := build/disc
 DISC_ISO := build/doomogachi_ps2_game.iso
+# Default: compact DVD ISO with no unnecessary mkisofs 300 KiB tail pad.
+# Set PS2_ISO_PAD=1 when making an image specifically for physical burning.
+PS2_ISO_PAD ?= 0
+ISO_PAD_OPT := $(if $(filter 1,$(PS2_ISO_PAD)),-pad,-no-pad)
+PS2_ZSTD_LEVEL ?= 15
 
 $(TALK_BIN):
 	$(MAKE) -C ../core talk
 .PHONY: disc
 disc: $(GAME_BIN) $(TALK_BIN) $(AUDSRV_IRX)
 	@command -v xorriso >/dev/null || (echo 'Install xorriso to build the PS2 ISO' && false)
+	@rm -rf $(DISC_ROOT)
 	@mkdir -p $(DISC_ROOT)
 	cp $(GAME_BIN) $(DISC_ROOT)/DOOMOG.ELF
 	cp $(TALK_BIN) $(DISC_ROOT)/TALK_EN.BIN
 	cp $(AUDSRV_IRX) $(DISC_ROOT)/AUDSRV.IRX
 	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
-	xorriso -as mkisofs -iso-level 1 -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
+	xorriso -as mkisofs -iso-level 1 $(ISO_PAD_OPT) -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
 	@echo "PS2 disc image ready: $(DISC_ISO)"
 
 # BIOS-free Play! emulator smoke; runs on a desktop Linux host with
@@ -113,3 +119,13 @@ play-smoke: disc
 	xvfb-run -a -s '-screen 0 1280x720x24' \
 		python3 tools/play_biosfree_smoke.py $(DISC_ISO) \
 		--out build/play-smoke --seconds 35
+
+# Compact storage pipeline, independent of the game's memory/runtime:
+#   make -C ps2 compact
+# Keep the native ISO, plus byte-exact checked DVD CHD (PCSX2) and
+# ISO.ZST archival file. No separate game assets or dummy filler.
+.PHONY: compact
+compact: disc
+	@command -v chdman >/dev/null || (echo 'Install mame-tools (chdman)' && false)
+	@command -v zstd >/dev/null || (echo 'Install zstd' && false)
+	python3 tools/compact_iso.py --iso $(DISC_ISO) --out-dir build/compact --zstd-level $(PS2_ZSTD_LEVEL)
