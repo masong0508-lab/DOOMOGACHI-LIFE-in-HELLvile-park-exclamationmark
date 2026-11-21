@@ -38,8 +38,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -597,6 +597,7 @@ static void build_main(void)
     add_row(K_OUT, 0, 0);
     add_row(K_PLAY, 0, 0);
     add_row(K_SHOW, 0, 0);
+    add_row(K_GIVE, 0, 0);
 #ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
 #endif
@@ -691,6 +692,36 @@ static void build_show_items(void)
     list_reset();
 }
 
+/* Giving and showing are intentionally separate inventory actions.
+ * Only legitimate gifts owned at the time are selectable; the full
+ * gift logic will recheck and consume one item at activation. */
+static void build_give_items(void)
+{
+    int item, minor, target;
+    if (T.to < 0 || T.to >= T.n || T.ids[T.to] < 0 ||
+        T.ids[T.to] >= DOOMO_MAX_RESIDENTS || !town_alive(T.ids[T.to])) {
+        ui_toast("Choose a living resident first.");
+        build_main();
+        return;
+    }
+    target = T.ids[T.to];
+    minor = T.s.conv.aud.any_minor || talk_safe_minor(target) ||
+            talk_safe_minor(T.avatar);
+    T.page = PG_GIVE;
+    T.nrows = 0;
+    for (item = ITEM_NONE + 1; item < ITEM_COUNT && T.nrows < TROWS; item++) {
+        if (inv_count(item) &&
+            talk_act_gift_ok(item, talk_safe_minor(T.avatar), minor))
+            add_row(K_GIVEITEM, item, 0);
+    }
+    if (!T.nrows) {
+        ui_toast("No suitable gifts in your bag.");
+        build_main();
+        return;
+    }
+    list_reset();
+}
+
 static void topic_add(uint16_t c)
 {
     int i;
@@ -757,6 +788,8 @@ static const char *row_text(int index, char *buf)
     case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
     case K_SHOW: doomo_snprintf(buf, 48, "Show an item >"); break;
     case K_SHOWITEM: doomo_snprintf(buf, 48, "Show %s", doomo_items[r->arg].name); break;
+    case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
+    case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_OUTING:
         doomo_snprintf(buf, 48, "Visit %s", outing[r->arg].label);
         break;
@@ -932,6 +965,36 @@ static void show_item(int item)
     build_main();
 }
 
+static void give_item(int item)
+{
+    int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    const char *reply;
+    int minor;
+    if (target < 0 || target >= DOOMO_MAX_RESIDENTS || !town_alive(target)) {
+        ui_toast("Choose a living resident first.");
+        build_main();
+        return;
+    }
+    minor = T.s.conv.aud.any_minor || talk_safe_minor(target) ||
+            talk_safe_minor(T.avatar);
+    if (item <= ITEM_NONE || item >= ITEM_COUNT || !inv_count(item) ||
+        !talk_act_gift_ok(item, talk_safe_minor(T.avatar), minor)) {
+        ui_toast("This gift isn't available.");
+        build_main();
+        return;
+    }
+    /* Unlike sim_show, sim_gift consumes one real item and applies the
+     * resident's actual preferences, needs, friendship and progression.
+     * There is no imaginary item and no duplicated inventory. */
+    reply = sim_gift(target, item);
+    doomo_snprintf(T.you, sizeof T.you, "This %s is for you!", doomo_items[item].name);
+    ui_say(target, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+    build_main();
+}
+
 static void say_quick(int i)
 {
     TalkUtter u;
@@ -1044,6 +1107,8 @@ static void activate(int i)
     case K_PLAY: play_together(); break;
     case K_SHOW: build_show_items(); break;
     case K_SHOWITEM: show_item(r->arg); break;
+    case K_GIVE: build_give_items(); break;
+    case K_GIVEITEM: give_item(r->arg); break;
     case K_OUTING:
         T.to = T.to < 0 ? 0 : T.to;
         T.topic = r->v;
@@ -1249,6 +1314,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_INVITE: t = "Who joins in?"; break;
     case PG_OUTING: t = "Where shall we go?"; break;
     case PG_SHOW: t = "Show something..."; break;
+    case PG_GIVE: t = "Choose a gift..."; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1350,14 +1416,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 7 ? T.page : 0];
+    o->page = pages[T.page < 8 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -1376,7 +1442,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

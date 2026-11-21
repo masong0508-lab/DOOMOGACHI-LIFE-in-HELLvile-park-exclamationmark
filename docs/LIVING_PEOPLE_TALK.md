@@ -134,3 +134,15 @@ scene remains active and keeps the resident's original conversation.
 A UI regression test verifies an owned Plushie is offered and remains in
 the inventory after showcasing. Explicit real item gifting, as opposed
 to showing, is a separate future confirmation/consumption action.
+
+## Inventory gifting through Talk (implemented shared core)
+
+**Give a gift** presents the actual inventory, filtered using the existing
+`talk_act_gift_ok` age/item rules. Selection rechecks eligibility and
+invokes `sim_gift`, which consumes exactly one held item (unless the
+explicit infinite-inventory cheat is on), updates the recipient's needs,
+preferences, care and friendship, and displays the real reaction.
+This differs intentionally from **Show an item**, which never consumes
+or duplicates inventory. Controller-driven tests check both pathways.
+The separate care action's normal cooldowns/progression rules apply;
+manual gift spam is not a neural conversation substitute.
