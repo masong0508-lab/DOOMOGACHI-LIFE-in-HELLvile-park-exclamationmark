@@ -1864,8 +1864,18 @@ DOOMO_STATIC_ASSERT(((uint64_t)(BB_KEY_SURE - 1u) << BB_KEY_SHIFT) == ((uint64_t
 DOOMO_STATIC_ASSERT((((uint64_t)INT2FIX(3 * CELLU) * (uint64_t)INT2FIX(3 * CELLU)) &
                      (((uint64_t)1 << BB_KEY_SHIFT) - 1u)) == 0, bb_key_near_is_exact);
 
-/* v^2, exactly. The GBA's THUMB code has no 32x32->64 multiply (it would call __aeabi_lmul twice per actor), so
- * there it is built from 32-bit multiplies of the 16-bit halves; elsewhere the CPU's own multiply is smaller. */
+/* Exact dx^2 + dy^2. The hardware GBA uses two native signed 32x32->64
+ * SMULLs in resident IWRAM rather than THUMB's split-half arithmetic and
+ * multiple ROM/helper calls for each actor in the busy Cathedral rooms.
+ * Keep the same 64-bit distance key, sorting ties, culling, and pixels.
+ * Host-side GBA harness and other console ports retain the old C path. */
+#if defined(DOOMO_PLATFORM_GBA) && defined(__arm__)
+extern uint64_t gba_bb_sq(fix16 rx, fix16 ry);
+static uint64_t bb_sq(fix16 rx, fix16 ry)
+{
+    return gba_bb_sq(rx, ry);
+}
+#else
 static uint64_t bb_sq1(fix16 v)
 {
 #if defined(DOOMO_PLATFORM_GBA)
@@ -1880,6 +1890,7 @@ static uint64_t bb_sq(fix16 rx, fix16 ry)
 {
     return bb_sq1(rx) + bb_sq1(ry);
 }
+#endif
 
 int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key)
 {
