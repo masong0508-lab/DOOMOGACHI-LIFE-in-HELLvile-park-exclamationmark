@@ -17,8 +17,8 @@
 
 enum { W=320, H=240, TEX_W=512, TEX_H=256 };
 static uint8_t fb[W*H];
-static uint32_t upload[TEX_W*TEX_H] __attribute__((aligned(64)));
-static uint32_t colors[256];
+static u32 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
+static u32 colors[256];
 static GSTEXTURE picture;
 static uint32_t frame_ticks;
 static uint8_t drawing;
@@ -146,12 +146,12 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
     u64 tint=GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0);
     if(upload_frame){
         for(y=0;y<H;y++){
-            uint32_t *dst=upload+y*TEX_W;
+            u32 *dst=upload+y*TEX_W;
             const uint8_t *src=fb+y*W;
             for(x=0;x<W;x++)dst[x]=colors[src[x]];
             for(;x<TEX_W;x++)dst[x]=0;
         }
-        for(;y<TEX_H;y++)memset(upload+y*TEX_W,0,TEX_W*sizeof(uint32_t));
+        for(;y<TEX_H;y++)memset(upload+y*TEX_W,0,TEX_W*sizeof(u32));
         gsKit_texture_upload(gs,&picture);
     }
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
