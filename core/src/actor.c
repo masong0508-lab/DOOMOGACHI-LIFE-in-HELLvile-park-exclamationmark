@@ -212,12 +212,22 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
                fix16 maxd, fix16 *hx, fix16 *hy, fix16 *hz)
 {
     int cx = FIX2INT(x0) / CELLU, cy = FIX2INT(y0) / CELLU;
+    /* The map is fixed for the duration of a trace. Keep its dimensions
+     * and a linear cell index across the DDA walk so normal in-map steps
+     * need neither a cross-file map_cell_safe() call nor cy*w multiply.
+     * Outside cells still use exactly the original solid sentinel. */
+    const DoomoMap *const trace_map = &doomo_map;
+    const int trace_w = trace_map->w, trace_h = trace_map->h;
+    int trace_index = cy * trace_w + cx;
     int stepx = dx < 0 ? -1 : 1, stepy = dy < 0 ? -1 : 1, i;
     int64_t adx = dx < 0 ? -(int64_t)dx : dx, ady = dy < 0 ? -(int64_t)dy : dy;
     int64_t ddx = adx ? (((int64_t)CELLU << 32) / adx) : ((int64_t)1 << 40);  /* fix16 dist per cell */
     int64_t ddy = ady ? (((int64_t)CELLU << 32) / ady) : ((int64_t)1 << 40);
     int64_t sx, sy, d = 0, dhit = maxd;
-    const DoomoCell *cell = map_cell_safe(&doomo_map, cx, cy);
+    const DoomoCell *cell = ((unsigned)cx < (unsigned)trace_w &&
+                             (unsigned)cy < (unsigned)trace_h)
+                                ? &trace_map->cells[trace_index]
+                                : map_cell_safe(trace_map, cx, cy);
     int fl = cell_floor(cell, cx, cy), ce = cell_ceil(cell, cx, cy);
     /* Many Hell Breach sight rays travel across dozens of equal-height
      * tiles. A 64-bit division for every one of those tiles is especially
@@ -261,8 +271,19 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
         }
         if (dnext >= maxd) { dhit = maxd; break; }
         d = dnext;
-        if (sx < sy) { sx += ddx; cx += stepx; } else { sy += ddy; cy += stepy; }
-        cell = map_cell_safe(&doomo_map, cx, cy);
+        if (sx < sy) {
+            sx += ddx;
+            cx += stepx;
+            trace_index += stepx;
+        } else {
+            sy += ddy;
+            cy += stepy;
+            trace_index += stepy * trace_w;
+        }
+        cell = ((unsigned)cx < (unsigned)trace_w &&
+                (unsigned)cy < (unsigned)trace_h)
+                   ? &trace_map->cells[trace_index]
+                   : map_cell_safe(trace_map, cx, cy);
         if (cell->wall) { dhit = d; break; }
         fl = cell_floor(cell, cx, cy);
         ce = cell_ceil(cell, cx, cy);
