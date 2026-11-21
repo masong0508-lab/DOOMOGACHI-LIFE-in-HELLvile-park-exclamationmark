@@ -794,6 +794,10 @@ static void build_care_items(int is_med)
     list_reset();
 }
 
+/* The care menu appears earlier than the shared dialogue callback below.
+ * Declare it here for strict C99 and the ARM/Dreamcast compilers. */
+static void cb_after(void);
+
 static void perform_care(int kind, int item)
 {
     int target = care_target_id();
