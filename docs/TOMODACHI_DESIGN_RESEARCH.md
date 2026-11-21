@@ -72,3 +72,35 @@ platforms without that scene keep their existing interaction UX.
 **Do not import Nintendo UI, Mii assets, music, exact dialogue, or character designs.**
 Reuse the *principles* of legibility, emergent community and meaningful care,
 while keeping Hellvile's original tone.
+
+## Implemented: a promised visit now has a playable destination
+
+The previous Talk integration already had day-scoped accepted invitations and a
+real two-choice meetup at a Story Mode place door. This pass extends that
+same event to **the illustrated Free Play City Map**, including the park,
+beach, café, concert hall, workshop, church, and shop.
+
+- After a resident accepts an invitation, their Talk menu and **Our history**
+  show the actual venue. A button gives a route hint. Reading it does not
+  spend the appointment.
+- Opening the matching location on the Free Play City Map now reveals
+  **Meet [name] here!** only if the invited resident is still physically
+  doing that activity. Choose a free conversation, a local experience,
+  or leave without accepting.
+- Paid café snacks cost 6 H$ (no payment or consumption if funds are missing).
+  Local venue actions reuse `talk_outcome_meet_kind`: actual stats and
+  relationship changes, real visit memory, and a one-shot consumed appointment.
+- The same reservation is accessible from Story Mode and Free Play: using
+  either one consumes it on both. A missed visit can be distinguished
+  from a still-valid plan; it never teleports an absent citizen.
+- Tests cover venue inspection, changed schedules, day rollover, one-time
+  attendance and the actual Free Play controller/menu interaction.
+
+**Limitations:** pending invitations still use the existing non-saved,
+day-scoped Talk outcome ledger. They do not survive application restart.
+A completed experience is remembered in the existing saved shared-memory
+flags. Future work on persisted next-day plans must explicitly version the
+save format and verify every port's save budget before adding bytes.
+
+No per-frame crowd scan, new sprite, dynamic allocation, full-screen texture,
+or new simulation scheduler is introduced.
