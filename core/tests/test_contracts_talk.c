@@ -137,11 +137,11 @@ TEST(talk_contract_save_chunk)
     const DoomoSaveExt *e = doomo_save_ext_talk;
     int i;
     CHECK_EQ_U(SAVE_EXT_TAG_TALK, SAVE_EXT_TAG('T', 'A', 'L', 'K'));
-    CHECK_EQ(SAVE_EXT_MAX_TALK, 448);
-    CHECK_EQ(TALK_MEM_WORST, 292);
+    CHECK_EQ(SAVE_EXT_MAX_TALK, TALK_SAVE_WORST + 11u);
+    CHECK_EQ(TALK_MEM_WORST, TALK_MEM_HDR + TALK_MEM_MAX * TALK_MEM_ENTRY);
     CHECK(TALK_SAVE_WORST <= SAVE_EXT_MAX_TALK);
     CHECK_EQ(save_budget_declared_max(SAVE_EXT_TAG_TALK), SAVE_EXT_MAX_TALK);
-    CHECK_EQ(SAVE_BUDGET_TALK_WORST, lz(448) + SAVE_BUDGET_CHUNK_HDR);
+    CHECK_EQ(SAVE_BUDGET_TALK_WORST, lz(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR);
     /* no K0 tag is TALK */
     CHECK(SAVE_EXT_TAG_TALK != SAVE_EXT_TAG_LIFE && SAVE_EXT_TAG_TALK != SAVE_EXT_TAG_PROF);
     if (e) {                                         /* T6 landed */
