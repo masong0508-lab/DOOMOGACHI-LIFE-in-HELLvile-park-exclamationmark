@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -715,6 +715,11 @@ static void build_main(void)
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
     add_row(K_HELP, 0, 0);
+    /* Read-only schedule dialogue; the current ACT_* is the source, not
+     * a made-up meeting promise. No per-frame activity scan or reward. */
+    if (T.to >= 0 && T.to < T.n && T.ids[T.to] >= 0 &&
+        T.ids[T.to] < DOOMO_MAX_RESIDENTS && town_alive(T.ids[T.to]))
+        add_row(K_DAY_PLAN, 0, 0);
     if (T.to >= 0 && T.to < T.n && T.ids[T.to] < DOOMO_MAX_RESIDENTS)
         add_row(K_QUIRK, 0, 0);
     /* A genuine sim thought bubble, not random chatter. Keep it below
@@ -1213,6 +1218,7 @@ static const char *row_text(int index, char *buf)
                        "Invite them out again >");
         break;
     case K_QUIRK: doomo_snprintf(buf, 48, "Tell me one little oddity"); break;
+    case K_DAY_PLAN: doomo_snprintf(buf, 48, "Ask about their day"); break;
     case K_HISTORY_LIKE: {
         int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
         const DoomoResident *who = id >= 0 ? town_res(id) : NULL;
@@ -1591,6 +1597,50 @@ static void tell_oddity(void)
     build_main();
 }
 
+/* A lived-in, real-time response to a simple question, not a quest.
+ * The activity is sampled when the player actually asks. Querying it
+ * changes no sim, friendship, money, memory or news. */
+static void tell_day_plan(void)
+{
+    int id, act;
+    const DoomoResident *r;
+    char line[128];
+    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    id = T.ids[T.to];
+    r = id >= 0 && id < DOOMO_MAX_RESIDENTS ? town_res(id) : NULL;
+    if (!r || r->status != RES_ALIVE) {
+        ui_toast("They can't talk about their day right now.");
+        build_main();
+        return;
+    }
+    act = r->activity;
+    if (act < 0 || act >= ACT_COUNT) {
+        ui_toast("Their plans aren't clear right now.");
+        return;
+    }
+    if (act == ACT_SLEEPING)
+        doomo_snprintf(line, sizeof line, "I'm trying to get some rest. Could we talk later?");
+    else if (act == ACT_HOME)
+        doomo_snprintf(line, sizeof line, "I'm at home right now. It's good to have a familiar place.");
+    else if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
+        doomo_snprintf(line, sizeof line, "I'm at %s for now. It's been a difficult day.",
+                       doomo_activity_names[act]);
+    else if (r->mood == MOOD_ANGRY)
+        doomo_snprintf(line, sizeof line, "I'm at %s. I need a little space today.",
+                       doomo_activity_names[act]);
+    else if (sim_favourite_venue(id) == act)
+        doomo_snprintf(line, sizeof line, "I'm at %s! You know it's one of my favorite places.",
+                       doomo_activity_names[act]);
+    else
+        doomo_snprintf(line, sizeof line, "I'm spending some time at %s. I might go elsewhere later.",
+                       doomo_activity_names[act]);
+    doomo_snprintf(T.you, sizeof T.you, "How's your day going?");
+    ui_say(id, line);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+}
+
 static void concern_reply(int id, const char *reply, const char *you)
 {
     doomo_snprintf(T.you, sizeof T.you, "%s", you);
@@ -1945,6 +1995,7 @@ static void activate(int i)
         else if (r->arg == TALK_SHARED_INVITED) build_outings();
         break;
     case K_QUIRK: tell_oddity(); break;
+    case K_DAY_PLAN: tell_day_plan(); break;
     case K_HISTORY_LIKE:
         if (T.to >= 0 && T.to < T.n &&
             talk_mem_like_known(T.ids[T.to], r->arg) && r->v &&
@@ -2322,7 +2373,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
