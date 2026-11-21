@@ -11,6 +11,7 @@
 #include <string.h>
 #include <gsKit.h>
 #include "game2d.h"
+#include "indexed_blit.h"
 #include "doomo/doomo.h"
 #include "doomo/font.h"
 #include "doomo/palette.h"
@@ -94,6 +95,13 @@ void plat_image(int x,int y,const DoomoImage *img,int scale,int flags,uint8_t co
     int iy,ix,dx,dy;
     if(!img||!img->pix||!img->w||!img->h)return;
     if(scale<1)scale=1;if(scale>4)scale=4;
+    /* A fully visible 1x image is the common UI/portrait path.
+     * Composition is clipped-safe but avoids one screen-bound check per
+     * opaque texel, leaving clipped/shadowed/scaled cases unchanged. */
+    if(scale==1 && !(flags&IMG_SHADOW) &&
+       ps2_blit_visible_1x(fb,W,H,x,y,img->pix,img->w,img->h,
+                            (flags&IMG_FLIPX)!=0,(flags&IMG_SILHOUETTE)!=0,color))
+        return;
     if(flags&IMG_SHADOW){
         for(iy=0;iy<img->h;iy++)for(ix=0;ix<img->w;ix++){
             int sx=(flags&IMG_FLIPX)?img->w-1-ix:ix;
@@ -124,6 +132,10 @@ int ps2_game2d_init(GSGLOBAL *gs)
 {
     unsigned i;
     memset(&picture,0,sizeof picture);
+    /* GS sampling covers 320x240; the larger power-of-two texture edge
+     * is always transparent. The edge is never touched by game drawing,
+     * so clear it once at boot instead of ~57KB every 30Hz upload. */
+    memset(upload,0,sizeof upload);
     picture.Width=TEX_W;picture.Height=TEX_H;
     picture.PSM=GS_PSM_CT32;
     picture.Filter=GS_FILTER_NEAREST;
@@ -150,9 +162,7 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
             u32 *dst=upload+y*TEX_W;
             const uint8_t *src=fb+y*W;
             for(x=0;x<W;x++)dst[x]=colors[src[x]];
-            for(;x<TEX_W;x++)dst[x]=0;
         }
-        for(;y<TEX_H;y++)memset(upload+y*TEX_W,0,TEX_W*sizeof(u32));
         gsKit_texture_upload(gs,&picture);
     }
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
