@@ -100,6 +100,7 @@ int  sim_alive_ok(const DoomoResident *r); /* ALIVE or GHOST (can socialise) */
 void sim_set_transient(int id, int kind, int hours);
 int  sim_transient(int id);              /* TR_* or TR_NONE                */
 int  sim_is_venue(int act);              /* social venue (not home/sleep)  */
+int  sim_venue_social_bias(int id, int venue); /* bounded live relationship influence on routine choice */
 int  bit_get(const uint8_t *b, int i);
 void bit_set(uint8_t *b, int i, int on);
 void sim_ensure_init(void);
