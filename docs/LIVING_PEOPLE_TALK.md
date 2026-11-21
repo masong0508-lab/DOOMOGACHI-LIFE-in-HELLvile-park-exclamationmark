@@ -344,3 +344,17 @@ pass both linker RAM/overlay budget gates and an emulator Talk
 playthrough before this can be called a fully supported port. When
 disc swapping/moving between Talk and gameplay, check CD reads never
 interrupt a running FMV or music stream.
+
+## Dreamcast functionality checks extended
+
+Dreamcast's Flycast-vs-native Talk script now expects the current
+**Add someone to chat** label and asserts that **Ask to go somewhere**,
+**Play together**, **Show an item**, **Give a gift**, and **Help with
+their needs** are reachable with the controller. The repo's existing
+`bone-test` has been made mandatory in `dreamcast.yml`: it boots
+the shipped CDI, enters Bone Cathedral and Bone Capital, switches
+first-/third-person cameras, and captures true emulator screenshots.
+It supplements the existing VMU, audio, disc, Talk, story and family
+tests rather than replacing them. Passing is required before calling
+the Dreamcast package playable; a successful ELF/CDI link alone is
+not sufficient.

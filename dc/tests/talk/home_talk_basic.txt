@@ -24,6 +24,13 @@ expect-talk-row "Say goodbye"
 expect-talk-row "Be nice >"
 expect-talk-row "Type your own line..."
 expect-talk-row "Options"
+# These actions must be reachable with the same pad in Dreamcast and the
+# host runner. They open real sim/inventory/venue menus, not empty promises.
+expect-talk-row "Ask to go somewhere >"
+expect-talk-row "Play together"
+expect-talk-row "Show an item >"
+expect-talk-row "Give a gift >"
+expect-talk-row "Help with their needs >"
 wait 4
 shot talk_1_ready
 # a quick reply: the top row, one press
@@ -52,7 +59,7 @@ talk-read
 talk-page more
 expect-talk-page more
 expect-talk-row "Topic:"
-expect-talk-row "Invite someone"
+expect-talk-row "Add someone to chat"
 expect-talk-row "To:" 0
 wait 4
 shot talk_6_options

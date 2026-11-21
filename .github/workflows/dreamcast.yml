@@ -78,6 +78,10 @@ jobs:
           set -euo pipefail
           make -C dc harness-test
           make -C dc talk-test
+          # Boot the shipped CDI in Flycast, enter both Bone levels,
+          # switch cameras and capture screenshots. Not just file-size
+          # checks: startup, scene input and rendering must actually work.
+          make -C dc bone-test
 
       # End-to-end scripted journeys include story/free-play and minigames.
       # Both test targets must pass; no silent "no emulator" fallback.
