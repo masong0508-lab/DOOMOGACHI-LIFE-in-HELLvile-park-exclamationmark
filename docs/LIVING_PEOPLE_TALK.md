@@ -277,3 +277,31 @@ residents with identical sliders but Goofball versus Shy traits
 produce different follow-up actions, and illness still supersedes
 humor. Actual per-console creator persistence remains a separate
 verification requirement.
+
+## Shared venue activities after a real meetup
+
+Selecting **Meet up with [resident]** at a physical destination now opens
+three options: **Catch up and chat**, a named local activity (e.g.
+**Share snacks (6 H$)**, **Listen to the music**, **Walk together**), or
+**Not now**. Cancelling does not consume the accepted invitation.
+
+A plain chat retains the earlier Social/Happy/relationship benefit.
+A local activity modifies additional real resident/player needs by
+location: café snacks restore Hunger and Energy while costing **6 H$**;
+concerts raise Happy and cost Energy; church visits restore Sanity;
+workshop tinkering costs Energy and lifts Happy; walking in parks or
+on beaches boosts Happy but uses Energy; browsing at shops improves
+Happy without silently granting inventory. The existing venue
+restrictions and single-use, same-day appointment gate still apply.
+The action is committed only once **at the physical location**,
+not at invitation time or while the options are merely visible.
+
+The extra work runs only on a menu selection. It allocates no per-
+resident data, does not change the save format, and adds no 3D render
+overhead. The new story choice uses callback 131 and the menu reserves
+its final slot for **Leave** even on crowded screens. Native action
+tests check insufficient café funds, real Hunger and money changes,
+retained pending invitations after refusal, and no duplicate rewards.
+
+This is a concrete venue-aware activity simulation, not yet a full
+walk-together animation or PS1/Dreamcast neural language model.

@@ -500,6 +500,43 @@ TEST(action_meetup_requires_a_real_matching_place)
     talk_db_close();
 }
 
+TEST(action_meetup_activity_is_real_and_cannot_be_farmed)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    uint16_t cafe;
+    int a, initial, before, av;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe && talk_act_venue_of(cafe) == ACT_CAFE);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    av = playas_slot();
+    town_res(a)->stat[STAT_HUNGER] = 24;
+    if (town_res(av)) town_res(av)->stat[STAT_HUNGER] = 40;
+    doomo_town.money = 0;
+    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a); /* no money spent, still invited */
+    doomo_town.money = 20;
+    initial = doomo_town.money;
+    before = town_res(a)->stat[STAT_HUNGER];
+    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), a);
+    CHECK_EQ(doomo_town.money, initial - 6);
+    CHECK(town_res(a)->stat[STAT_HUNGER] > before);
+    CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), -1);
+    CHECK_EQ(doomo_town.money, initial - 6);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, 99), -1);
+    talk_db_close();
+}
+
 TEST(action_sim_effects)
 {
     TalkState s;

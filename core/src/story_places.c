@@ -136,6 +136,39 @@ static char menu_q[64];
 static char talk_label[32];
 #ifdef DOOMO_HAS_TALK
 static char meet_label[48];
+/* Three bounded menu choices; the player can always leave without
+ * consuming the invitation, and the free chat never costs H$. */
+static const char *meet_choices[3] = {
+    "Catch up and chat", "Spend time together", "Not now"
+};
+
+static const char *meet_activity_label(int venue)
+{
+    switch (venue) {
+    case ACT_CAFE: return "Share snacks (6 H$)";
+    case ACT_CONCERT: return "Listen to the music";
+    case ACT_CHURCH: return "Reflect together";
+    case ACT_WORKSHOP: return "Tinker together";
+    case ACT_SHOP: return "Browse together";
+    case ACT_PARK: return "Walk together";
+    case ACT_BEACH: return "Enjoy the beach";
+    default: return "Spend time together";
+    }
+}
+
+static const char *meet_activity_reply(int venue)
+{
+    switch (venue) {
+    case ACT_CAFE: return "Those snacks hit the spot. Thanks for hanging out with me!";
+    case ACT_CONCERT: return "That concert was something! I needed some music.";
+    case ACT_CHURCH: return "I feel calmer after that quiet moment with you.";
+    case ACT_WORKSHOP: return "Working side by side was fun, even if I'm tired!";
+    case ACT_SHOP: return "Browsing together was more fun than I expected.";
+    case ACT_PARK: return "That walk in the park was just what I needed!";
+    case ACT_BEACH: return "The sea air and your company did me good.";
+    default: return "Thanks for spending time with me here.";
+    }
+}
 
 /* Explicit place identity: never award a meetup merely because the
  * player opened Talk somewhere on the map. Only an actual place door
@@ -308,14 +341,17 @@ static void menu_pick(int c)
         break;
 #ifdef DOOMO_HAS_TALK
     case OPT_MEET: {
-        int id = talk_outcome_meet(meeting_venue(menu_place));
-        if (id >= 0) {
-            audio_sfx(SFX_SPARKLE);
-            story_say(id, "You came! I'm happy we got to spend time together.");
-            ui_toast("A shared day to remember!");
-        } else {
-            story_say(-1, "You missed each other. Try inviting them again!");
+        int venue = meeting_venue(menu_place);
+        int id = venue < 0 ? -1 : talk_outcome_meet_ready(venue);
+        if (id < 0) {
+            story_say(-1, "Your friend isn't here right now.");
+            break;
         }
+        meet_choices[1] = meet_activity_label(venue);
+        /* No effects until the player chooses an actual shared action.
+         * Callback 131 validates the meeting again and commits it once. */
+        story_choice_id(id, "What should we do together?", meet_choices, 3,
+                        131 /* meet_pick */);
         break;
     }
 #endif
@@ -323,8 +359,38 @@ static void menu_pick(int c)
     }
 }
 
+#ifdef DOOMO_HAS_TALK
+static void meet_pick(int choice)
+{
+    int venue = meeting_venue(menu_place), id, kind;
+    if (choice == 2 || choice < 0 || choice > 2 || venue < 0) return;
+    kind = choice == 1 ? TALK_MEET_ACTIVITY : TALK_MEET_CHAT;
+    if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE &&
+        doomo_town.money < 6u) {
+        story_say(-1, "A shared snack costs 6 H$. You can still chat for free!");
+        return;  /* the invitation is not consumed */
+    }
+    id = talk_outcome_meet_kind(venue, kind);
+    if (id < 0) {
+        story_say(-1, "Your friend isn't available for that activity now.");
+        return;
+    }
+    audio_sfx(SFX_SPARKLE);
+    if (kind == TALK_MEET_ACTIVITY)
+        story_say(id, meet_activity_reply(venue));
+    else if (town_res(id)->mood == MOOD_SAD)
+        story_say(id, "Thank you for coming to talk. I really needed that.");
+    else
+        story_say(id, "I'm glad you came! It's good catching up.");
+    ui_toast("A shared day to remember!");
+}
+#endif
+
 static void add_opt(const char *t, int op)
 {
+    /* Never let an oversized place menu drop its only exit. All other
+     * rows reserve the final hardware dialogue choice for Leave. */
+    if (op != OPT_LEAVE && menu_n >= MENU_MAX - 1) return;
     if (menu_n < MENU_MAX) { menu_txt[menu_n] = t; menu_op[menu_n] = (uint8_t)op; menu_n++; }
 }
 
@@ -527,6 +593,9 @@ void place_callback(int cb, int choice)
     case 128: act_pick(choice); break;
     case 129: buy_pick(choice); break;
     case 130: menu_pick(choice); break;
+#ifdef DOOMO_HAS_TALK
+    case 131: meet_pick(choice); break;
+#endif
     default: break;
     }
 }

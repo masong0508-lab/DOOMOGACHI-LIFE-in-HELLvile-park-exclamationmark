@@ -270,19 +270,66 @@ int talk_outcome_meet_ready(int venue)
     return -1;
 }
 
-int talk_outcome_meet(int venue)
+/* Spending time at a real place should feel different to merely chatting.
+ * This work is performed once, after the player reaches the accepted venue:
+ * no per-frame updates, scene allocations, or new resident/save fields. */
+static void meet_local_activity(DoomoResident *who, int venue)
 {
-    int id = talk_outcome_meet_ready(venue), i, avatar;
+    if (!who || who->status != RES_ALIVE) return;
+    switch (venue) {
+    case ACT_CAFE:       /* a purchased snack restores hunger */
+        sim_stat_add(who, STAT_HUNGER, 18);
+        sim_stat_add(who, STAT_ENERGY, 2);
+        break;
+    case ACT_CHURCH:     /* a reflective visit */
+        sim_stat_add(who, STAT_SANITY, 12);
+        break;
+    case ACT_CONCERT:    /* music is exciting, but a little tiring */
+        sim_stat_add(who, STAT_HAPPY, 12);
+        sim_stat_add(who, STAT_ENERGY, -4);
+        break;
+    case ACT_WORKSHOP:   /* tinkering has an energy cost */
+        sim_stat_add(who, STAT_HAPPY, 7);
+        sim_stat_add(who, STAT_ENERGY, -7);
+        break;
+    case ACT_PARK:
+    case ACT_BEACH:      /* pleasant outdoor time, no free inventory */
+        sim_stat_add(who, STAT_HAPPY, 8);
+        sim_stat_add(who, STAT_ENERGY, -3);
+        break;
+    case ACT_SHOP:       /* browsing does not purchase an object */
+        sim_stat_add(who, STAT_HAPPY, 5);
+        break;
+    default:
+        sim_stat_add(who, STAT_SOCIAL, 3);
+        break;
+    }
+}
+
+int talk_outcome_meet_kind(int venue, int kind)
+{
+    int id, i, avatar;
     DoomoResident *r, *player;
+    if (kind != TALK_MEET_CHAT && kind != TALK_MEET_ACTIVITY) return -1;
+    id = talk_outcome_meet_ready(venue);
     if (id < 0) return -1;
-    /* The player reached a REAL place menu. A stale or redirected NPC
-     * cannot be met, and consuming the rendezvous is exactly once. */
+    /* The café charges the player for two small snacks. Check before
+     * consuming the appointment; the free conversation remains available.
+     * No free item or money is created by simply selecting the menu. */
+    if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE &&
+        doomo_town.money < 6u)
+        return -1;
+
+    /* This is a real meeting at an actual door or outdoor arrival point.
+     * Consume the pending reservation once, before applying its effects. */
     for (i = 0; i < led.np; i++) {
         if (led.p[i].id == id) {
             led.p[i].pad = 0;
             break;
         }
     }
+    if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE)
+        doomo_town.money -= 6u;
     r = town_res(id);
     avatar = playas_slot();
     player = town_res(avatar);
@@ -292,14 +339,23 @@ int talk_outcome_meet(int venue)
         sim_stat_add(player, STAT_SOCIAL, 10);
         sim_stat_add(player, STAT_HAPPY, 8);
     }
+    if (kind == TALK_MEET_ACTIVITY) {
+        meet_local_activity(r, venue);
+        if (player && player != r) meet_local_activity(player, venue);
+    }
     rel_adjust(id, avatar, 4);
     sim_mood_of(id);
     if (player && player != r && player->status == RES_ALIVE)
         sim_mood_of(avatar);
-    /* This is the moment the invited person actually spends time with
-     * the player, not the earlier moment they said they would. */
+    /* Shared memory is recorded only after the actual meetup happened,
+     * never when the NPC merely accepted the original invitation. */
     talk_mem_note_shared(id, TALK_SHARED_PLAYED);
     return id;
+}
+
+int talk_outcome_meet(int venue)
+{
+    return talk_outcome_meet_kind(venue, TALK_MEET_CHAT);
 }
 
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
