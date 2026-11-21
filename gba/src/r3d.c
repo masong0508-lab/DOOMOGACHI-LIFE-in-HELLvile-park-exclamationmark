@@ -287,13 +287,14 @@ static void setup_fade(int amb, const DoomoMapDef *def)
      * units. One bucket = 32 units. The Cathedral's dark, narrow aisles
      * need two additional retained light levels at far range to expose
      * the arches against the roofline. Near/mid lighting (fade <= 5)
-     * stays unchanged. Capital keeps its previously verified curve.
+     * stays unchanged. Capital now retains three extra levels at far
+     * range so its skyline and street gateways stay distinguishable.
      * This is a 128-entry setup LUT, not a new per-texel effect. */
     int b;
     for (b = 0; b < R3D_FADE_N; b++) {
         int f = b >> 2;
         if ((cathedral || capital) && f > 5) {
-            int far_cap = cathedral ? 5 : 9; /* cathedral stone stays readable across the nave */
+            int far_cap = cathedral ? 5 : 6; /* Capital far facades stay distinguishable too; LUT only */
             f = 5 + ((f - 5) >> 1);
             if (f > far_cap) f = far_cap;
         }

@@ -36,17 +36,17 @@ cell y floor=HELL_ROCK ceil=sky fh=0 light=11
 cell g floor=GORE_FLOOR ceil=sky fh=0 light=11
 cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava           # the font of the damned
 cell z floor=INFECTED_GRASS ceil=sky fh=1 light=13 flags=secret # hidden nook
-cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=12  # the great arch (open)
-cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=11
+cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=14  # the great arch (open)
+cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=13
 cell s floor=BONE_WALL ceil=SKULL_MOSAIC fh=1 ch=22 light=10   # spiral steps (overlay)
-cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=10
-cell c floor=CARPET ceil=SKULL_MOSAIC fh=0 ch=40 light=11      # the aisle
-cell q floor=WOOD_FLOOR ceil=SKULL_MOSAIC fh=1 ch=40 light=10  # pews
+cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=11
+cell c floor=CARPET ceil=SKULL_MOSAIC fh=0 ch=40 light=14      # the aisle
+cell q floor=WOOD_FLOOR ceil=SKULL_MOSAIC fh=1 ch=40 light=9  # pews
 cell G floor=BONE_WALL ceil=SKULL_MOSAIC fh=12 ch=40 light=10  # galleries
 cell x floor=TILE_FLOOR ceil=sky fh=0 light=12                 # the crossing (open sky)
 cell X floor=BONE_WALL ceil=sky fh=12 light=12                 # gallery under the sky
 cell l floor=LAVA ceil=sky fh=-3 light=15 flags=lava
-cell a floor=CARPET ceil=SKULL_MOSAIC fh=2 ch=40 light=12      # apse stairs (overlay)
+cell a floor=CARPET ceil=SKULL_MOSAIC fh=2 ch=40 light=13      # apse stairs (overlay)
 cell U floor=CARPET ceil=DOOR_HELL fh=6 ch=16 light=12 flags=door tag=2 # blue door
 cell t floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=12 ch=26 light=11
 cell L floor=PENTAGRAM_FLOOR ceil=sky fh=12 light=14 flags=lift tag=24 # bell tower lift
@@ -56,9 +56,9 @@ cell T wall=BONE_WALL ch=31                                    # bell tower wall
 cell A floor=BONE_WALL ceil=SKULL_MOSAIC fh=13 ch=26 light=13  # bone altar
 cell e floor=TILE_FLOOR ceil=BONE_WALL fh=12 ch=21 light=11 flags=door # secret door behind the altar
 cell r floor=CARPET ceil=STAINED_GLASS fh=12 ch=21 light=15 flags=secret # the reliquary
-cell p floor=GORE_FLOOR ceil=sky fh=6 light=11
-cell k floor=WOOD_FLOOR ceil=sky fh=8 light=13                 # organ console
-cell j floor=GORE_FLOOR ceil=sky fh=6 light=11 flags=trigger tag=21
+cell p floor=GORE_FLOOR ceil=sky fh=6 light=12
+cell k floor=WOOD_FLOOR ceil=sky fh=8 light=14                 # organ console
+cell j floor=GORE_FLOOR ceil=sky fh=6 light=14 flags=trigger tag=21
 cell O floor=GORE_FLOOR ceil=RUST_METAL fh=6 ch=15 light=13 flags=door tag=20 # the centre pipes open
 cell E floor=CLOUD_PUFF ceil=CLOUD_PUFF fh=6 ch=15 light=15 flags=exit
 
@@ -83,7 +83,7 @@ FFFFFFFFFFFFoppppppppjjjppppppppoFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFFFFFFFFFUUUFFFFFFFFFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFGGGGvvvvaaavvvvGGGGFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFGGGGvqqqaaaqqqvGGGGFFFFFFFFFFFFFFFF
-FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFSGGGIvvvvcccvvvvIGGGSFFFFFFFFFFFFFFF
 FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSFFFFFFFFFFFFFFF
 FFFTTTTTTFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
 FFFTBBbbTtttFGGGGvvvvcccvvvvGGGGFttttttttFFFFFFF
@@ -96,20 +96,20 @@ FFFFtttttttttXXXXxxlllllllxxXXXXttttttAAtFrrFFFF
 FFFFtttttttttXXXIxxxxxxxxxxxIXXXtttttttttFFFFFFF
 FFFFttttttttFGGGGvvvvVVVvvvvGGGGFttttttttFFFFFFF
 FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFFFFFFXXXXMFFFF
-FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFFFFXXXXXBMFF
+FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSFFFFFFXXXXXBMFF
 FFFFFFFFFFFFSGGGGvvvvcccvvvvGGGGSFFFFFWXXXbbbbNF
 FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFNFSFXYXXbbbbFF
 FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFFWFFFXXXXbbbbFF
 FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFFFFMFXXXXXLXFNF
 FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFXXXXXXXXSXXXFFF
 FFFFFFFFFFFFFGGGGvqqqQQQqqqvGGGGFXXXXXXXPXXXXWFF
-FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFXXXPXXXXXXXXFNF
+FFFFFFFFFFFFSGGGIvvvvcccvvvvIGGGSXXXPXXXXXXXXFNF
 FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSXXXXXXXXXXXXMFF
 FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFXXXXPXXFYFFFFFF
-FFFFFFFFFFFFFGGGGvqqqcccqqqvGGGGFXMXXXXXFFFFFFFF
+FFFFFFFFFFFFSGGGGvqqqcccqqqvGGGGSXMXXXXXFFFFFFFF
 FFFFFFFFFFFFFGGGIvvvvcccvvvvIGGGFXXXYXXXMFFFFNFF
 FFFFFFFFFFFFFGGGGvqqqRRRqqqvGGGGFFFFNFFFFFFFFFFF
-FFFFFFFFFFFFFGGGGvvvvcccvvvvGGGGFFFFFFFFFFFFFFFF
+FFFFFFFFFFFFKGGGGvvvvcccvvvvGGGGKFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIInnnnnnnnnnnIIIsFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIsnnnnnnnnnnnsIIsFFFFFFFFFFFFFFFF
