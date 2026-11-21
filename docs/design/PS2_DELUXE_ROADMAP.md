@@ -174,3 +174,19 @@ The temporary mask is stack-local, never saved or stored between
 frames. A native regression checks that friends, partners and
 singles enter/leave the relevant filters when the real graph changes.
 The console builds exclude the test-only inspection helper.
+
+### Pre-PS2 portrait response: focused roster loading
+
+The scrollable resident directory used to keep its card blank for **six
+stable ticks before asking for a full bust portrait**. Its selected
+portrait now requests a background prefetch as soon as the roster
+opens or selection changes. A cached real face is drawn on the very
+first selected frame; on a miss the existing 16x24 chibi stands in
+during sliced composition instead of a blank bust and then upgrades
+automatically. With the cursor stationary, the next and previous
+citizens are opportunistically warmed. The old admission throttle
+remains on all other portrait grids; only the single focused directory
+card bypasses it, using `portrait_image_ui` (no synchronous heavy
+portrait render on the constrained ports). No save changes or extra
+portrait framebuffer/cache blocks. A native scene regression checks
+that prefetch starts upon opening the directory, before scrolling.

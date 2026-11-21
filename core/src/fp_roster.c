@@ -193,6 +193,30 @@ int fp_roster_debug_tag_match(int tag, int id)
 }
 #endif
 
+/* Predict the focused face BEFORE the draw: formerly the roster waited
+ * six stable ticks before even requesting the bust. On a moving cursor
+ * the frame now issues one async slice job immediately, then fills nearby
+ * entries in the idle budget once the selected face is cached/on its way.
+ * The shared portrait cache still owns all pixels and jobs: no new RAM,
+ * texture, asset or per-frame framebuffer. */
+static void warm_card_faces(void)
+{
+    int id, j, k;
+    const DoomoResident *r;
+    if (!n_ids) return;
+    if (rs->stable > 1 && (rs->stable & 3) != 0) return;
+    id = ids[rs->sel];
+    r = fp_res(id);
+    if (!r || !portrait_prefetch(id, fp_mood_expr(r))) return;
+    if (rs->stable < 2) return;
+    for (k = 0; k < 2; k++) {
+        j = rs->sel + (k == 0 ? 1 : -1);
+        if (j >= 0 && j < n_ids && (r = fp_res(ids[j])) != NULL &&
+            !portrait_prefetch(ids[j], fp_mood_expr(r)))
+            break; /* keep the single pending job; don't replace it */
+    }
+}
+
 /* ====================================================================== */
 /* layout                                                                   */
 typedef struct { int lx, ly, lw, rows, cx, cy, cw, ch; } Layout;
@@ -242,6 +266,7 @@ static void enter_common(RosterState *s)
     s->pop_t = 0;
     s->last_frame = doomo_frame_count();
     rebuild(s);
+    warm_card_faces();
     {
         Layout L;
         layout(&L);
@@ -378,6 +403,10 @@ static void roster_update(void)
     } else if (rs->stable < 1000) {
         rs->stable++;
     }
+    /* A new selection gets first claim on the next idle render slice.
+     * On a stationary card, the same slot opportunistically prepares
+     * the nearest neighbor without replacing the active job. */
+    warm_card_faces();
     if (btn_pressed(BTN_L | BTN_R)) {
         rs->district = (uint8_t)((rs->district + (btn_pressed(BTN_L) ? 2 : 1)) % 3);
         audio_sfx(SFX_BLIP);
@@ -385,6 +414,7 @@ static void roster_update(void)
         rs->top = (int16_t)DOOMO_MAX(0, rs->sel - L.rows / 2);
         clamp_view(&L);
         rs->stable = 0;
+        warm_card_faces();
         return;
     }
     if (btn_pressed(BTN_START)) {
@@ -467,19 +497,13 @@ static void draw_card(const Layout *L, int style)
         return;
     }
     px = x + (w - (PORTRAIT_W + 6)) / 2;
-    if (rs->stable >= 6) {
-        int j = rs->sel + 1, k;
-        fp_portrait(px, y + 6, id, 1, -1, WIN_MINT);
-        /* S3-2: the cursor has rested: draw the next and the previous card's face in idle time, so a step lands on a
-         * cached one (nearest first; one request is kept, the next call asks for the other) */
-        for (k = 0; k < 2; k++, j = rs->sel - 1)
-            if (j >= 0 && j < n_ids && fp_res(ids[j]) &&
-                !portrait_prefetch(ids[j], fp_mood_expr(fp_res(ids[j])))) break;
-    } else {
-        fp_portrait(px, y + 6, -1, 1, 0, WIN_MINT);
-        fp_chibi(id, px + 3 + (PORTRAIT_W - BODYSPR_W) / 2, y + 9 + (PORTRAIT_H - BODYSPR_H) / 2,
-                 0, 0, 0);
-    }
+    /* Always show a cached face on the FIRST selected frame. If there
+     * isn't one, render the frame and the resident's existing small
+     * chibi while background slices fill the bust; no six-frame blank
+     * period and no synchronous full-bust render on GBA/PS1. */
+    if (!fp_portrait_streamed(px, y + 6, id, 1, -1, WIN_MINT))
+        fp_chibi(id, px + 3 + (PORTRAIT_W - BODYSPR_W) / 2,
+                 y + 9 + (PORTRAIT_H - BODYSPR_H) / 2, 0, 0, 0);
     ty = y + PORTRAIT_H + 13;
     ui_text_center(x + w / 2, ty, r->name, st->text);
     ty += FONT_LINE;

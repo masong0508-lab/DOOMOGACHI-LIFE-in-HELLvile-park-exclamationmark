@@ -778,7 +778,12 @@ int fp_chibi(int id, int x, int y, int dir, int frame, int flags)
     return 0;
 }
 
-void fp_portrait(int x, int y, int id, int scale, int expr, int style)
+/* A roster preview is ONE selected face, not a grid of pictures.
+ * It may bypass the per-frame *admission* throttle because
+ * portrait_image_ui only queues sliced work on a miss: the throttle
+ * otherwise keeps a fully cached face hidden during quick scrolling.
+ * Other screens retain their shared thumbnail budget unchanged. */
+static int fp_portrait_draw(int x, int y, int id, int scale, int expr, int style, int focused)
 {
     const DoomoResident *r = fp_res(id);
     const UiStyle *st = ui_style(style);
@@ -792,15 +797,30 @@ void fp_portrait(int x, int y, int id, int scale, int expr, int style)
     plat_checker(x + 2, y + h * 2 / 3 - 1, w - 4, 1, st->fill);
     ui_heart(x + w - 8, y + 8, 2, st->fill_lo);
     ui_heart(x + 7, y + h / 2, 2, st->fill_lo);
-    if (!r) return;
+    if (!r) return 0;
     key = 0x20000000u | ((uint32_t)id << 8) | (uint32_t)(expr & 0xFF);
-    if (memo_ok(key, res_hash(id, r), 3)) {
+    if (focused || memo_ok(key, res_hash(id, r), 3)) {
         const DoomoImage *img = portrait_image_ui(id, expr);
-        if (img) plat_image(x + 3, y + 3, img, scale, 0, 0);
-        else placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));   /* S3-2: a job is drawing it */
-    } else {
-        placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));
+        if (img) {
+            plat_image(x + 3, y + 3, img, scale, 0, 0);
+            return 1;
+        }
     }
+    placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));
+    return 0;
+}
+
+void fp_portrait(int x, int y, int id, int scale, int expr, int style)
+{
+    (void)fp_portrait_draw(x, y, id, scale, expr, style, 0);
+}
+
+/* 1 if the ready real portrait was drawn; 0 if a background slice job
+ * is still making it and the caller should show a chibi in the interim.
+ * Only the focused roster card uses this path (one image per frame). */
+int fp_portrait_streamed(int x, int y, int id, int scale, int expr, int style)
+{
+    return fp_portrait_draw(x, y, id, scale, expr, style, 1);
 }
 
 void fp_figure(int x, int y, const DoomoLook *l, int status, int expr)

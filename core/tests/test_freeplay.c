@@ -94,6 +94,20 @@ TEST(freeplay_crowds_follow_sparse_slot_population)
     CHECK_EQ(fp_island_crowd_snapshot(-1), -1);
 }
 
+/* A roster card should start prefetching on entry, not wait six
+ * frames before the first portrait request. Drive the real scene
+ * while leaving render slices to the native host test harness. */
+TEST(freeplay_roster_starts_focused_portrait_before_any_scroll)
+{
+    premade_island();
+    portrait_cache_reset();
+    scene_push(&SCENE_ROSTER, 0);
+    CHECK(top_is(&SCENE_ROSTER));
+    CHECK(portrait_idle_next() >= 0);
+    portrait_cache_reset(); /* the next test starts with a clean pool */
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+}
+
 TEST(freeplay_crowds_saturate_instead_of_wrapping_at_256)
 {
     int i, n = 0;
