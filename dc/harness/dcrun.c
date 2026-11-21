@@ -1182,9 +1182,9 @@ static int scene_is(const char *name)
 /* ---- TD2: the Talk screen played through the pad -------------------------------------------------
  * The native runner's T8 commands (core/native/runner_main.c): every one presses real buttons and steps real
  * ticks here, on the host side; the game only answers questions about the screen (DC_HC_TALKQ, talkhc.c). */
-static const char *const tk_kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick" };
+static const char *const tk_kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "comfort" };
 enum { TKS_ON = 1, TKS_BUSY = 2 };
-static const char *const tk_pages[] = { "main", "acts", "topic", "invite", "more" };
+static const char *const tk_pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history" };
 
 static int tk_q(uint32_t arg, const char *name, uint32_t *r) { return mb_cmd(DC_HC_TALKQ, arg, name, r); }
 
@@ -1210,7 +1210,7 @@ static int tk_find(int kind, int arg, int v, const char *text)
 
 static int tk_kind(const char *name)
 {
-    for (int i = 0; i < 11; i++) if (!strcmp(tk_kinds[i], name)) return i;
+    for (size_t i = 0; i < sizeof tk_kinds / sizeof tk_kinds[0]; i++) if (!strcmp(tk_kinds[i], name)) return (int)i;
     return 0;
 }
 
@@ -1279,11 +1279,14 @@ static int tk_settle(void)
 static int tk_main(void)
 {
     for (int k = 0; k < 6; k++) {
-        uint32_t r;
+        uint32_t r, page;
         if (!tk_q(DC_TQ_STATE, NULL, &r)) return -1;
         if (!(r & TKS_ON)) return 0;
         if (r & TKS_BUSY) { if (tk_read(30) < 0) return -1; continue; }
-        if (((r >> 2) & 7) == 0) return 1;
+        /* The legacy STATE maps pages beyond "more" to main. Query the
+         * complete page so care, outings and history back out correctly. */
+        if (!tk_q(DC_TQ_PAGE, NULL, &page)) return -1;
+        if (page == 1u) return 1;
         if (!tk_press("B")) return -1;
     }
     return 0;
@@ -1351,8 +1354,47 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         if ((st >> 2 & 7) == 2) {                     /* the act wants a topic */
             int t = n > 2 ? tk_find(tk_kind("pick"), -1, -1, v[2]) : -1;
             if (t < 0) t = tk_find(tk_kind("notopic"), -1, -1, "");
-            if (!tk_pick(t)) fail("line %d: talk-say %s: no topic row", lineno, a1);
+            if (!tk_pick(t)) { fail("line %d: talk-say %s: no topic row", lineno, a1); return 1; }
+            if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
         }
+        /* Offer, Invite and Give now open actionable menus; they do not
+         * speak a line. Don't silently reuse a prior reply/sincerity flag. */
+        if (!(st & TKS_BUSY)) {
+            uint32_t page;
+            if (!tk_q(DC_TQ_PAGE, NULL, &page)) return 0;
+            fail("line %d: talk-say %s opened %s instead of speaking (choose a real action)",
+                 lineno, a1, page && page <= sizeof tk_pages / sizeof tk_pages[0]
+                 ? tk_pages[page - 1] : "a menu");
+            return 1;
+        }
+        if (!tk_settle()) return 0;
+    } else if (!strcmp(c, "talk-care")) {
+        int act, cat, row, m;
+        if (!ok || strcmp(a1, "comfort")) {
+            fail("line %d: talk-care supports comfort for a resident on the Talk screen", lineno);
+            return 1;
+        }
+        act = tk_act("offer");
+        if (act < 0) return 0;
+        if (!tk_q(DC_TQ_ACT | 0x100u | (uint32_t)act << 16, NULL, &r)) return 0;
+        cat = (int)r - 1;
+        if ((m = tk_main()) <= 0) {
+            if (m < 0) return 0;
+            fail("line %d: talk-care cannot find the main Talk page", lineno);
+            return 1;
+        }
+        if (!tk_pick(tk_find(tk_kind("cat"), cat, -1, "")) ||
+            !tk_pick(tk_find(tk_kind("act"), act, -1, ""))) {
+            fail("line %d: Offer help is not available", lineno);
+            return 1;
+        }
+        if (!tk_q(DC_TQ_PAGE, NULL, &r)) return 0;
+        if (r != 9u) { fail("line %d: Offer help did not open the care page", lineno); return 1; }
+        row = tk_find(tk_kind("comfort"), -1, -1, "");
+        if (row < 0) { fail("line %d: no real Comfort action in care menu", lineno); return 1; }
+        if (!tk_pick(row)) return 0;
+        if (!tk_q(DC_TQ_STATE, NULL, &st)) return 0;
+        if (!(st & TKS_BUSY)) { fail("line %d: Comfort did not produce a response", lineno); return 1; }
         if (!tk_settle()) return 0;
     } else if (!strcmp(c, "talk-type") || !strcmp(c, "talk-key")) {
         /* talk-type: the characters go to the text entry as the native runner feeds them; talk-key: the same
@@ -1410,7 +1452,11 @@ static int talk_cmd(const char *c, int n, char **v, int lineno)
         int want = n > 1 && strcmp(a1, "off") != 0;
         if (ok != want) fail("line %d: %s", lineno, want ? "the Talk screen is not up" : "the Talk screen is still up");
     } else if (!strcmp(c, "expect-talk-page")) {
-        if (!ok || strcmp(tk_pages[st >> 2 & 7], a1)) fail("line %d: expected the Talk page %s, it is %s", lineno, a1, ok ? tk_pages[st >> 2 & 7] : "(no talk)");
+        const char *page;
+        if (!tk_q(DC_TQ_PAGE, NULL, &r)) return 0;
+        page = r && r <= sizeof tk_pages / sizeof tk_pages[0] ? tk_pages[r - 1] : "(no talk)";
+        if (strcmp(page, a1))
+            fail("line %d: expected the Talk page %s, it is %s", lineno, a1, page);
     } else if (!strcmp(c, "expect-talk-row")) {
         int want = n > 2 ? atoi(v[2]) : 1;
         if (!tk_q(DC_TQ_ROWSAY, a1, &r)) return 0;
