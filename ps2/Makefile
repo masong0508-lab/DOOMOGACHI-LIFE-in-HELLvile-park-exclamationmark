@@ -50,7 +50,7 @@ build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
-build/game2d.o: src/game2d.c src/game2d.h
+build/game2d.o: src/game2d.c src/game2d.h src/indexed_blit.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
