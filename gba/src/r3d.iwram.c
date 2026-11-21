@@ -561,7 +561,7 @@ void r3d_draw_sprite(const R3DSprite *s)
     /* The exclusive final sprite column is exactly the first whose
      * centre reaches x1. Clamp once, instead of testing the right edge
      * in every textured column; no sample, UV or clipping differences. */
-    int cend = (int)(((int64_t)x1 + 0xFFF) >> 13);
+    int cend = (x1 >> 13) + (((uint32_t)x1 & 0x1FFFu) > 0x1000u);
     int c, r0, r1;
     int32_t vr0;
     if (c0 < 0) c0 = 0;
