@@ -266,8 +266,10 @@ TEST(talk_mem_full_preserves_pending_promises)
         CHECK(talk_mem_quest_set(alive(i), TQK_FETCH, state, 3, 0));
     }
     CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK_EQ(talk_mem_pinned_count(), TALK_MEM_MAX);
     CHECK(!talk_mem_touch(alive(TALK_MEM_MAX)));
     CHECK_EQ(talk_mem_count(), TALK_MEM_MAX);
+    CHECK_EQ(talk_mem_pinned_count(), TALK_MEM_MAX);
     for (i = 0; i < TALK_MEM_MAX; i++) {
         int kind = 0, state = 0;
         CHECK(talk_mem_quest_get(alive(i), &kind, &state, NULL, NULL));
