@@ -428,6 +428,16 @@ TEST(talk_outcome_social_memory_is_personal_not_room_wide)
     talk_outcome_end(&s, &o, NULL);
     CHECK(talk_mem_find(ID_NANA)->flags & TMF_PROMISED);
     CHECK(talk_mem_find(ID_RIVET)->flags & TMF_PROMISED);
+
+    /* Leaving the room cancels further social benefit, not the fact
+     * that this person heard an insult before walking out. */
+    talk_outcome_begin(&s, HERO, ids, 2, 7034u);
+    play(&s, TA_MOCK, TC_NONE, 0);
+    CHECK(s.mem_to[0] & TMF_INSULTED);
+    s.part[0].flags |= TPF_LEFT;
+    talk_outcome_end(&s, &o, NULL);
+    m = talk_mem_find(ID_NANA);
+    CHECK(m != NULL && (m->flags & TMF_INSULTED));
     talk_db_close();
 }
 
