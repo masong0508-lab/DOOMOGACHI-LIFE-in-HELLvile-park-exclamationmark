@@ -76,6 +76,8 @@ jobs:
           PY
       - name: Prevent boot-order regressions (draw before blocking IOP calls)
         run: python3 ps2/tests/test_boot_order.py
+      - name: Check isolated GS-only diagnostic has no IOP dependency
+        run: python3 ps2/tests/test_gs_only_isolation.py
       - name: Verify Play! game-tick telemetry and emulator harness
         run: |
           python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py
