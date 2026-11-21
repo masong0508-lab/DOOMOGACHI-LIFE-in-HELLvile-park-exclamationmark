@@ -1057,7 +1057,11 @@ static void build_billboards(void)
     int32_t vx0 = ow.camx - 640 * OWQ, vx1 = ow.camx + 640 * OWQ;
     int32_t vy0 = ow.camy - 700 * OWQ, vy1 = ow.camy + 520 * OWQ;
     int i, cx, cy, z, frame;
-    uint32_t t = doomo_frame_count(), t5 = t / 5;
+    /* Keep prop animation on the overworld's simulation clock. A dialogue
+     * pauses story_update(), but doomo_frame_count() continues: using the
+     * global tick here can pick a different sprite frame on the console and
+     * host reference when their dialogue captures land a tick apart. */
+    uint32_t t = ow.t, t5 = t / 5;
     ow_bb_count = 0;
     /* props (V13: their cell, sprite, flags and frame count are in the prop,
      * set when it was loaded; the floor and the frame are still read here) */
@@ -1131,7 +1135,12 @@ void ow_view_fill(DoomoOverworldView *v)
     v->sprites = ow_bb;
     v->sprite_count = ow_bb_count;
     v->daylight = (uint8_t)owfx_daylight();
-    v->time = (uint16_t)doomo_frame_count();
+    /* The map remains static while DIALOG is above STORY. Use the map's
+     * own tick for animated water/lava/slime, not the still-running global
+     * frame count. This makes the terrain phase deterministic across the
+     * Flycast and software-PVR screenshot capture paths without changing
+     * the textures, draw distance, lighting or comparison threshold. */
+    v->time = (uint16_t)ow.t;
     if (ow.map == MAPID_HAHALAND_INVADED) {
         tint = TINT_RED;
         lvl = 2 + (ui_wave((int)doomo_frame_count(), 90, 2) + 2) / 3;
