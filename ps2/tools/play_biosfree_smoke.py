@@ -28,6 +28,8 @@ def main():
     p.add_argument("--seconds", type=int, default=35)
     p.add_argument("--software-gl", action="store_true",
                    help="Force Mesa llvmpipe within Flatpak for headless Xvfb")
+    p.add_argument("--require-motion", action="store_true",
+                   help="For GS animation diagnostics, require changed viewport pixels")
     args = p.parse_args()
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
@@ -105,6 +107,10 @@ def main():
             print(f"Play! process survived {args.seconds} seconds; screenshots: {shots}")
             if visual["status"] == "black_viewport":
                 print("FAIL: screenshots show an effectively black game viewport.",
+                      file=sys.stderr)
+                return 1
+            if args.require_motion and not visual["viewport_changed"]:
+                print("FAIL: GS-only probe has visible but frozen viewport pixels.",
                       file=sys.stderr)
                 return 1
             if telemetry["status"] in (
