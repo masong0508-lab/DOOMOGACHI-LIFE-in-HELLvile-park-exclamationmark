@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import time
+from probe_log import summarize
 
 
 def main():
@@ -62,8 +63,11 @@ def main():
                     print(f"Screenshot {index} failed: {shot.stderr}", file=sys.stderr)
                     return 1
                 shots.append(png)
+            logfile.flush()
+            telemetry = summarize(logs.read_text(encoding="utf-8", errors="replace"))
             evidence = {
                 "emulator": "Play! built-in HLE BIOS",
+                "ee_console_telemetry": telemetry,
                 "iso_name": iso.name,
                 "iso_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                 "seconds_observed": args.seconds,
@@ -78,6 +82,11 @@ def main():
                 json.dumps(evidence, indent=2) + "\n", encoding="utf-8"
             )
             print(f"Play! process survived {args.seconds} seconds; screenshots: {shots}")
+            if telemetry["status"] in (
+                "invalid_upload_count", "no_tick_progress", "non_monotonic"
+            ):
+                print("FAIL: EE console reported invalid or stalled simulation ticks.")
+                return 1
             print("PASS: emulator process/screenshot smoke ONLY, not gameplay fidelity.")
             return 0
         finally:
