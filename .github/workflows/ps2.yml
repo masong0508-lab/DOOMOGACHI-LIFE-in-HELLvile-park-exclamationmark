@@ -225,7 +225,7 @@ jobs:
       - name: Install Xvfb, Flatpak and screenshot tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick
+          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick mesa-utils libgl1-mesa-dri
           dbus-run-session -- bash -ec '
             flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
             flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
@@ -235,15 +235,19 @@ jobs:
         with:
           name: doomogachi-ps2-game-iso
           path: ps2/build
-      - name: Attempt visible gameplay boot in Play! (no external BIOS required)
+      - name: Record Xvfb OpenGL capabilities and attempt game boot
         timeout-minutes: 5
         run: |
           set -eu
           python3 -m unittest discover -s ps2/tests -p test_play_frame_gate.py -v
           test -s ps2/build/doomogachi_ps2_game.iso
+          mkdir -p ps2/build/play-smoke
+          LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
+            xvfb-run -a -s '-screen 0 1280x720x24' glxinfo -B \
+            | tee ps2/build/play-smoke/glxinfo.txt
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
-            ps2/build/doomogachi_ps2_game.iso --seconds 35
+            ps2/build/doomogachi_ps2_game.iso --seconds 35 --software-gl
       - name: Retrieve independent PS2-0 hardware diagnostic ELF
         if: always()
         uses: actions/download-artifact@v4
@@ -259,7 +263,7 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2.elf --launch elf \
-              --out ps2/build/play-bootstrap --seconds 20
+              --out ps2/build/play-bootstrap --seconds 20 --software-gl
       - name: Preserve game and independent diagnostic boot evidence
         if: always()
         uses: actions/upload-artifact@v4
