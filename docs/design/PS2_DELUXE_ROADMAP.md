@@ -12,7 +12,7 @@ Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in H
 
 ## Talk / life simulation — deluxe targets
 
-- **192 remembered residents** on PS2 as a first proposed target (228? no: 4 + 192 x 12 = **2308 bytes** for the existing memory entries), with optional expanded trait overrides and additional event journal stored in a separate *versioned* extension, not packed into the current 12-byte record.
+- **192 remembered residents** on PS2 as a first proposed target (4 + 192 x 12 = **2308 bytes** for the existing memory entries), with optional expanded trait overrides and additional event journal stored in a separate *versioned* extension, not packed into the current 12-byte record.
 - 1000 potential residents remain addressable; only active conversation histories are retained in the fixed LRU. Never confuse number of residents in the world with active-memory table size.
 - Active/ready favors must remain pinned; the UI should display a clear 'memory full / commitments preserved' message instead of pretending a new contact was remembered.
 - End-to-end invitation pipeline: offer -> contextual acceptance/refusal -> scheduled outing -> navigation/scene load -> activity -> relationship/mood effects -> durable event log. All visible choices must yield a verifiable action or a clear reason they cannot.
