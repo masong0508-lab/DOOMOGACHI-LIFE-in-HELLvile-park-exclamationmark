@@ -110,6 +110,11 @@ jobs:
           # Install a tiny native build driver, not a second EE toolchain.
           apk add --no-cache make python3 xorriso
           make -C ps2 -j2
+          # Isolate native GS output from all IOP startup, PADMAN, CD,
+          # audio and memory-card RPCs, for black-screen emulator triage.
+          make -C ps2 gs-only
+          test -s ps2/build/doomogachi_ps2_gs_only.elf
+          mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2_gs_only.elf
           test -s ps2/build/doomogachi_ps2.elf
           mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
           printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
@@ -166,6 +171,7 @@ jobs:
           name: doomogachi-ps2-bootstrap-elf
           path: |
             ps2/build/doomogachi_ps2.elf
+            ps2/build/doomogachi_ps2_gs_only.elf
             ps2/build/BUILD_SOURCE.txt
           if-no-files-found: error
 
@@ -267,6 +273,16 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2.elf --launch elf \
               --out ps2/build/play-bootstrap --seconds 20 --software-gl
+      - name: Try pure GS animation without any IOP services
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_only.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_only.elf --launch elf \
+              --out ps2/build/play-gsonly --seconds 20 --software-gl
       - name: Preserve game and independent diagnostic boot evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -275,4 +291,5 @@ jobs:
           path: |
             ps2/build/play-smoke/
             ps2/build/play-bootstrap/
+            ps2/build/play-gsonly/
           if-no-files-found: warn
