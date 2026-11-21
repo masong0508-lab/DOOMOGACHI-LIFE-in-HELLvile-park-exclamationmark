@@ -102,8 +102,9 @@ Performance: the November 20, 2026 GBA optimization pass reported
 **246/277 scripted screen windows near 30 drawn FPS** (Codex's full local
 tour; up from 232). Its passing GitHub CI independently covered 94 of
 those windows, with **79/94 at >=29.5 FPS**. The separate GBA combat census
-is more demanding: the verified Bone Cathedral reaches **15.4-15.5 FPS**
-and Bone Capital **18.1-18.7 FPS** (both cameras, ~30 simulation TPS).
+is more demanding: the newer verified Bone Cathedral reaches **16.1-16.2 FPS**
+and Bone Capital **18.3 FPS first-person / 18.6 FPS third-person**
+(both cameras, ~30 simulation TPS; GBA job on `4543d33d`).
 The next target is **24 drawn FPS in both Bone levels without sacrificing
 view distance, architecture, texture clarity or readable lighting**;
 30 drawn FPS remains the longer-term 3D goal. See
