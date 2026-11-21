@@ -521,33 +521,47 @@ r3d_up4:
     .global r3d_up3
     .type   r3d_up3, %function
 r3d_up3:
-    push    {r4-r8, lr}
+    push    {r4-r10, lr}
     mov     r1, #53
-    mov     lr, #240
-1:  mla     r2, r1, lr, r0          @ input row
+    mov     r10, #240
+    ldr     r9, =.Lup3_row
+1:  mla     r2, r1, r10, r0         @ input row
     add     r3, r1, r1, lsl #1      @ 3 * row
-    mla     r3, lr, r3, r0          @ first output row
+    mla     r3, r10, r3, r0         @ end of the first output row
     add     r2, r2, #80
     add     r4, r3, #240
     add     r5, r4, #240
+    @ The two clipped rows can repeat their adjacent visible row.
+    cmp     r1, #0
+    moveq   r3, r4
+    cmp     r1, #53
+    moveq   r5, r4
     mov     r12, #20
+    mov     lr, pc
+    bx      r9
+    subs    r1, r1, #1
+    bge     1b
+    pop     {r4-r10, lr}
+    bx      lr
+    .ltorg
+    .size   r3d_up3, . - r3d_up3
+
+@ Just the inner loop uses the 3D overlay. This keeps the hot backwards
+@ branch and the VRAM store groups off the cartridge bus.
+    .section .iwram_3d, "ax", %progbits
+    .align 2
+.Lup3_row:
 2:  ldr     r7, [r2, #-4]!
     mov     r6, r7, lsl #16
     mov     r8, r7, lsr #16
     orr     r6, r6, r6, lsr #16
     orr     r8, r8, r8, lsl #16
-    cmp     r1, #0
-    stmnedb r3!, {r6-r8}
+    stmdb   r3!, {r6-r8}
     stmdb   r4!, {r6-r8}
-    cmp     r1, #53
-    stmnedb r5!, {r6-r8}
+    stmdb   r5!, {r6-r8}
     subs    r12, r12, #1
     bne     2b
-    subs    r1, r1, #1
-    bge     1b
-    pop     {r4-r8, lr}
     bx      lr
-    .size   r3d_up3, . - r3d_up3
 
 @ BLIT_TAIL loop: the pair v (r3) is in hand, p r1, end r2. Zero: skip. Both
 @ pixels set: one halfword store (post-incremented). One pixel: the only read

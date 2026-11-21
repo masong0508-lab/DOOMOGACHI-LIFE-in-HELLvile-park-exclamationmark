@@ -1611,6 +1611,9 @@ int actor_damage(int idx, int dmg, int src, int angle, int knock, int fx, int he
         a->timer = 0;
         a->flags &= (uint8_t)~(AF_SOLID | AF_SHOOTABLE);
         a->vz = INT2FIX(3);
+#if defined(DOOMO_PLATFORM_GBA)
+        solid_dirty = 1;
+#endif
         actor_gore(idx, overkill);
         audio_sfx(SFX_DEMON_DIE);
         combat_on_kill(idx, src == PLAYER_OWNER, headshot);
@@ -1698,11 +1701,6 @@ int actor_kill_group_alive(int arg)
 void actors_tick(void)
 {
     int i;
-#if defined(DOOMO_PLATFORM_GBA)
-    /* Scene scripts can edit actor slots between ticks. Rebuild on the
-     * first collision query, then track moves during this update. */
-    solid_dirty = 1;
-#endif
     while (actor_end && !(doomo_actors[actor_end - 1].flags & AF_USED)) actor_end--;
     /* Reload the bound after each update. A projectile or demon spawned
      * into a later slot still gets its turn in this same tick. */
