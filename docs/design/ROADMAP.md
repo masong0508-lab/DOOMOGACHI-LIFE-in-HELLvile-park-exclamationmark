@@ -1,5 +1,10 @@
 # Roadmap: designed, not yet built
 
+## PS2 Deluxe Edition (new initiative)
+
+See [PS2 Deluxe roadmap](PS2_DELUXE_ROADMAP.md) for the staged native PS2 port, build/boot gates, Deluxe gameplay and presentation, cross-port saves, and meaningful expanded Talk memory. This is a proposed port, not a shipped ROM or disc.
+
+
 Everything in the game today is listed in README.md. This folder holds the
 design work for the next wave, written by the design passes on 2026-10-11
 before implementation started. Work was paused by the weekly session limit.
