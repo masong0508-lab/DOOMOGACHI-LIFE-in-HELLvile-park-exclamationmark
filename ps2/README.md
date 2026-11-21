@@ -1,9 +1,11 @@
 # DOOMOGACHI PlayStation 2 Deluxe — PS2-0
 
-**Current state: hardware bootstrap, not yet a playable game.** This is
-a true PS2 EE/GS/PADMAN homebrew ELF, not a PS1 executable. It does
-not yet run the shared simulation or preserve saves. PS2-1 is
-the next requirement before any claims of actual content parity.
+**Current state: two experimental PS2 outputs, not a verified game release.**
+The original PS2-0 diagnostic ELF remains isolated; the separate PS2-1+
+shared-game ELF now links the portable core and has experimental SPU2,
+disc Talk, double-bank memory-card writes and a 16-bit GS display path.
+None of these constitute a complete PCSX2 playthrough or physical
+console acceptance test.
 
 ## Build
 
@@ -80,9 +82,9 @@ or per-frame texture allocation is introduced.
 
 **Known incomplete:** geometry is real but still CPU-rendered; GS
 native polygons, performance profiling and PCSX2 screenshots are the
-next graphics milestones. Audio is silent and disc-side Talk assets
-are not available. PS2-2 now links a real memory-card transport, but
-its persistence must still be exercised in PCSX2 and on hardware.
+next graphics milestones. PS2-3 connects tones and PCM effects to
+audsrv/SPU2; PS2-4 reads generated Talk resources from the ISO.
+PS2-2 saves still require an emulator power-loss walkthrough.
 Do not use this as the released game or treat a successful ELF link
 as proof of playability.
 The extra experimental ELF is informational CI until PCSX2 testing,
@@ -126,3 +128,51 @@ selector, or a verified resume test after process restart/power loss.
 The host `save_journal_test` checks CRC, torn-write fallback, bounds and
 generation rollover, but is not a substitute for actual libmc integration
 on PCSX2 or hardware. Treat the feature as **experimental until tested**.
+
+## PS2-3/4/5: SPU2, live Talk disc and GS throughput
+
+The **shared-game** target, `make -C ps2 game`, now builds and links
+`audio.c`, `synth.c` and `talkdisc.c`. The audio path generates exactly
+735 16-bit stereo PCM frames per 30 Hz game tick at 22050 Hz through
+PS2SDK audsrv, with four procedural tone channels and three overlapping
+SFX voices. The audio renderer advances even when SPU2 is behind, so
+skipped audio cannot accelerate or delay the simulation. If the IOP
+module is unavailable it logs and mutes instead of pretending audio
+works. Its audsrv.irx must come from the installed SDK.
+
+The disc path exposes the same `TALK_EN.BIN` compiled by
+`make -C core talk`; no new or hand-authored substitute language file
+is introduced. It uses PS2 CDVD calls and one 2048-byte aligned sector
+cache over the core's existing 256-byte window. The actual Talk scene
+is now linked, with controller-accessible quick replies, Ask about
+their day and a real social-memory ledger. On an ELF boot without the
+language disc it does not advertise Talk. Typed entry is off because
+this version has no PS2 keyboard backend.
+
+The GS software surface remains 320x240 indexed and shared with 3D.
+Only the *presentation texture* changed: 512x256 RGB5551, 256KiB in
+both EE upload scratch and GS VRAM instead of 512KiB RGBA32. This
+reduces memory and pixel upload bytes by 50%, but is **not** yet a
+native-GS geometry renderer, and visual/alpha parity still needs
+PCSX2 screenshots.
+
+For a disc image:
+
+```sh
+make -C ps2 disc
+# ps2/build/doomogachi_ps2_game.iso
+```
+
+This stage requires `xorriso`, Python 3, PS2SDK/gsKit, and the SDK's
+`$(PS2SDK)/iop/irx/audsrv.irx`. `SYSTEM.CNF`, the built ELF, the
+real Talk bank and audsrv are copied into the ISO root. The audsrv
+module is supplied by PS2SDK and has its own upstream licensing;
+do not distribute modified binaries without reviewing those terms.
+
+GitHub's PS2 workflow now tests the PS2 host controls, audio mixer,
+Talk filename security, save-journal rollback and mocked libmc I/O.
+The *shared game ELF* is a required step rather than a warning-only
+prototype; an attempted disc build verifies all required root assets.
+The real PCSX2 acceptance route is in
+`ps2/tests/PCSX2_PLAYTHROUGH.md`. No emulator/BIOS is bundled in CI
+and a green compile alone is **not** gameplay verification.
