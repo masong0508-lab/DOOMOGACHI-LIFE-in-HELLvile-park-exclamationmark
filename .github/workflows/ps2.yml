@@ -80,6 +80,11 @@ jobs:
         run: python3 ps2/tests/test_boot_order.py
       - name: Check isolated GS-only diagnostic has no IOP dependency
         run: python3 ps2/tests/test_gs_only_isolation.py
+      - name: Test synthetic Start/Story navigation pulses and isolation
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
+            ps2/tests/scripted_story_test.c -o /tmp/ps2-scripted-story-test
+          /tmp/ps2-scripted-story-test
       - name: Prevent redundant DMA buffer swap after gsKit's automatic queue reset
         run: python3 ps2/tests/test_gs_queue_recycle.py
       - name: Verify Play! game-tick telemetry and emulator harness
@@ -140,6 +145,11 @@ jobs:
             tail -n 45 /tmp/ps2-game-link.log | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+      - name: Build synthetic Story navigation diagnostic without changing game ISO
+        # Optional verification tool; its result cannot certify real pad input.
+        continue-on-error: true
+        run: |
+          make -C ps2 story-probe -j2
       - name: Package PS2 gameplay ISO with real Talk bank and audsrv
         run: |
           set -eu
@@ -175,6 +185,14 @@ jobs:
           name: doomogachi-ps2-game-prototype
           path: ps2/build/doomogachi_ps2_game.elf
           if-no-files-found: ignore
+      - name: Upload optional scripted Story progression ELF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-story-probe-elf
+          path: ps2/build/doomogachi_ps2_story_probe.elf
+          retention-days: 3
+          if-no-files-found: warn
       - name: Upload PS2 ELF for PCSX2 and homebrew launchers
         uses: actions/upload-artifact@v4
         with:
@@ -293,6 +311,23 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_game.elf --launch elf \
               --out ps2/build/play-game-elf --seconds 25 --software-gl
+      - name: Retrieve optional synthetic Story progression ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-story-probe-elf
+          path: ps2/build
+      - name: Capture actual shared-core Story transition with scripted input
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_story_probe.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_story_probe.elf --launch elf \
+              --out ps2/build/play-story-probe --seconds 22 --early-capture 3 --software-gl
       - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
         if: always()
         timeout-minutes: 4
@@ -361,4 +396,5 @@ jobs:
             ps2/build/play-gs-alpha/
             ps2/build/play-gs-texture/
             ps2/build/play-game-elf/
+            ps2/build/play-story-probe/
           if-no-files-found: warn

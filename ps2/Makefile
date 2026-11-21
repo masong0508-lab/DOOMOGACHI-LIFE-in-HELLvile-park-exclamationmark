@@ -81,6 +81,19 @@ GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
 GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
 GAME_LIBS := $(EE_LIBS) -laudsrv -lcdvd
 GAME_BIN := build/doomogachi_ps2_game.elf
+# CI-only synthetic Start -> Story -> New Story acceptance diagnostic.
+# Shared core and subsystem startup are unchanged; just substitute
+# deterministic button pulses at the game-input boundary. Never ship.
+STORY_PROBE_BIN := build/doomogachi_ps2_story_probe.elf
+STORY_PROBE_OBJS := $(filter-out build/game_main.o,$(GAME_OBJS)) build/game_main_story_probe.o
+.PHONY: story-probe
+story-probe: $(STORY_PROBE_BIN)
+$(STORY_PROBE_BIN): $(STORY_PROBE_OBJS)
+	@mkdir -p $(@D)
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(STORY_PROBE_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(GAME_LIBS)
+build/game_main_story_probe.o: src/game_main.c src/padmap.h src/game2d.h src/scripted_story.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_SCRIPTED_STORY_PROBE=1 -c $< -o $@
 # Preserve GAME_BIN (DWARF) for source-level debugging, but put a
 # separately verified no-DWARF image on the disc to save storage.
 GAME_DISC_BIN := build/doomogachi_ps2_disc.elf

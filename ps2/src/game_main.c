@@ -17,6 +17,10 @@
 #include "doomo/doomo.h"
 #include "padmap.h"
 #include "game2d.h"
+#if defined(PS2_SCRIPTED_STORY_PROBE)
+#include "scripted_story.h"
+#include "doomo/scene.h"
+#endif
 int ps2_memcard_init(void);
 int ps2_audio_init(void);
 void ps2_audio_frame(void);
@@ -137,9 +141,25 @@ int main(void)
         /* Input is sampled each game tick; 60Hz GS fields never advance
          * the simulation twice. Present the last complete 8bpp image. */
         if((field&1u)==0){
-            uint32_t buttons=read_pad();
+            uint32_t buttons;
+#if defined(PS2_SCRIPTED_STORY_PROBE)
+            /* This variant exercises the REAL scene/input/update code
+             * with deterministic synthetic button pulses. It is never
+             * packaged as the game ISO; no controller is being tested. */
+            buttons=ps2_scripted_story_buttons(field/2u);
+#else
+            buttons=read_pad();
+#endif
             plat_begin_frame();
             doomo_frame(buttons);
+#if defined(PS2_SCRIPTED_STORY_PROBE)
+            if(buttons){
+                const DoomoScene *s=scene_top();
+                printf("PS2_SCRIPTED_STORY tick=%u button=%08lx scene=%s\n",
+                       field/2u,(unsigned long)buttons,
+                       s && s->name ? s->name : "none");
+            }
+#endif
             plat_end_frame();
             ps2_audio_frame();
             ps2_game2d_present(gs,1);

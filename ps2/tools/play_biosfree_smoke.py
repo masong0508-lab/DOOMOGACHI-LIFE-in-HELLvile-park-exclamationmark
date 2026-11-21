@@ -30,6 +30,8 @@ def main():
                    help="Force Mesa llvmpipe within Flatpak for headless Xvfb")
     p.add_argument("--require-motion", action="store_true",
                    help="For GS animation diagnostics, require changed viewport pixels")
+    p.add_argument("--early-capture", type=int, default=0, metavar="SECOND",
+                   help="Optional extra early PNG before the normal 12s and final captures")
     args = p.parse_args()
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
@@ -38,6 +40,8 @@ def main():
         raise SystemExit("--launch elf requires a native PS2 EE executable")
     if args.seconds < 15:
         raise SystemExit("At least 15 seconds needed for a meaningful boot probe")
+    if args.early_capture and not 1 <= args.early_capture < 12:
+        raise SystemExit("--early-capture must be between 1 and 11 seconds")
     if not os.environ.get("DISPLAY"):
         raise SystemExit("DISPLAY is unset: run with xvfb-run (or an X11 desktop)")
     for binary in ("flatpak", "import"):
@@ -66,7 +70,8 @@ def main():
         proc = subprocess.Popen(cmd, stdout=logfile, stderr=subprocess.STDOUT)
         started = time.monotonic()
         try:
-            for index, offset in enumerate((12, args.seconds), 1):
+            offsets = (args.early_capture, 12, args.seconds) if args.early_capture else (12, args.seconds)
+            for index, offset in enumerate(offsets, 1):
                 delay = started + offset - time.monotonic()
                 if delay > 0:
                     time.sleep(delay)
@@ -94,6 +99,7 @@ def main():
                 "boot_image": iso.name,
                 "boot_image_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                 "seconds_observed": args.seconds,
+                "capture_offsets_seconds": list(offsets),
                 "pngs": [s.name for s in shots],
                 "result": "emulator process and two screenshots captured",
                 "limitations": [
