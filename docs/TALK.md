@@ -12,8 +12,8 @@ three residents and talk with them, and they talk with each other, in their
 own voices, while the room keeps rendering in pseudo-3D. GBA and Dreamcast
 builds and the native runner enable the `PLATF_TALK` feature. GBA uses quick
 replies and a topic picker backed by the ROM bank (`make -C gba test-talk`).
-PS1 game builds now opt into disc-backed Talk with controller replies.
-See the [current port status](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
+PS1 has an experimental disc-backed controller build gated by its RAM
+budget. See the [current port status](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
 The Talk screen is decluttered: one header line (what you are choosing, the room's mood on the right), no A/B hint lines, six list rows, short row labels, and a `>` marks who you are speaking to. Topic, To and Invite sit on an Options page (the Options row shows the current person and topic), so the main page is just the replies, Options and Bye.
 
 The full design, with the parser, the drama manager, the generator, the

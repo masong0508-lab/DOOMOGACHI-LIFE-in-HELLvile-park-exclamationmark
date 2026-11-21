@@ -24,7 +24,7 @@ project(
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
 option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
-option(DOOMO_PS1_TALK    "Include playable disc-streamed Talk on the PS1 game disc" ON)
+option(DOOMO_PS1_TALK    "Include experimental disc-streamed Talk on the PS1 game disc" OFF)
 option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
 option(DOOMO_CUTSCENE_VIEWER "Debug mode: hold SELECT at boot for a cutscene viewer (src/cutview.c)" ON)
 option(DOOMO_OVERLAYS    "Game disc: load scene code from OVL.BIN into one RAM slot (tools/ovl_plan.py)" ON)

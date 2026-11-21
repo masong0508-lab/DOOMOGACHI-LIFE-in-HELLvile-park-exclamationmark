@@ -350,7 +350,7 @@ uses no new resident save fields, persistent RAM, or per-frame work.
 
 ## PS1 disc-backed Talk integration
 
-PS1 game-disc builds now opt into `DOOMO_PS1_TALK=ON`: the shared
+The experimental PS1 game disc uses `-DDOOMO_PS1_TALK=ON`: the shared
 `SCENE_TALK` is compiled with `DOOMO_HAS_TALK`, and the existing
 PS1 overlay planner groups its scene code instead of forcing the
 entire interface to stay resident during combat. The compiled
@@ -362,13 +362,13 @@ No giant Talk bank is linked into the 2 MB PS1 RAM. Typed/keyboard
 input remains disabled on PS1; the controller uses contextual quick
 replies, topic pickers, creator traits, gifts, care and outings.
 
-The engine-test disc excludes Talk and keeps its original memory budget.
-The game build on `d8159f3c` failed during disc build. The follow-up makes
-the existing PS1 configuration code advertise both features from one
-`plat_features` definition and uses the regular progress bar in the
-non-retained UI. Full disc linking, RAM and overlay limits, save
-compatibility, audio and FMV interplay, and a controller playthrough
-await console CI. See the [upstream PS1 build](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/runs/44868560758/job/136740896943).
+Default PS1 game and engine-test discs exclude Talk. The linker hotfix
+combines feature advertising in one `plat_features` definition and uses
+the regular progress bar on PS1. CI linked the Talk-enabled ELF at
+`478299a4`, then the disc packer rejected its image and BSS end address
+of `0x8020ea10`. It needs at least 125,456 B less to reach the 64 KB
+stack reserve. Budget work and a controller playthrough remain open.
+[Talk-enabled PS1 build log](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/runs/44870223640/job/136743009926)
 
 ## Dreamcast functionality checks extended
 
