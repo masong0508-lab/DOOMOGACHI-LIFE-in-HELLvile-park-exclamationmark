@@ -277,6 +277,28 @@ static int q_candidate_score(const QCtx *q, int slot, int act, uint32_t h)
         if (old->act == act) score -= i < 2 ? 24 : i < 4 ? 13 : 5;
     }
     if (act == s->last_act) score -= 8;
+    /* The current talk also has emotional momentum. A relationship that
+     * deteriorated in THIS session is not fixed just because an old saved
+     * bond is good. Suggest a repair attempt before another provocation.
+     * These are preferences within already-safe, contextual candidates. */
+    if (slot >= 0 && slot < s->nparts) {
+        const TalkPart *person = &s->part[slot];
+        if (person->rel_d_player <= -3 || person->engage < 30) {
+            if (act == TA_APOLOGIZE || act == TA_SYMPATHIZE ||
+                act == TA_COMFORT || act == TA_ASK_FEELING) score += 7;
+            if (act == TA_JOKE || act == TA_TEASE || act == TA_DISAGREE ||
+                act == TA_OPINE_NEG) score -= 7;
+        }
+        if (person->engage >= TALK_ENGAGE_LEAN &&
+            (act == TA_ASK_ABOUT || act == TA_ASK_OPINION ||
+             act == TA_CONTINUE)) score += 2;
+    }
+    if (s->tension >= TALK_TENSION_ARGUE) {
+        if (act == TA_APOLOGIZE || act == TA_SYMPATHIZE ||
+            act == TA_COMFORT || act == TA_MEDIATE) score += 8;
+        if (act == TA_JOKE || act == TA_TEASE ||
+            act == TA_DISAGREE || act == TA_OPINE_NEG) score -= 8;
+    }
     /* A related follow-up is preferable to abruptly abandoning an active
      * thread; the memory bridge below is the deliberate exception. */
     if (q->topic && q->topic == s->topic_stack[0] &&
