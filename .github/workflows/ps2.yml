@@ -51,6 +51,13 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
             ps2/tests/talk_path_test.c -o /tmp/ps2-talk-path-test
           /tmp/ps2-talk-path-test
+      - name: Exercise CDVD Talk transport with sector and failed-disc mocks
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Ips2/tests/mock -Ips2/src -Icore/include \
+            ps2/src/talkdisc.c ps2/tests/talkdisc_mock_test.c \
+            -o /tmp/ps2-talkdisc-mock-test
+          /tmp/ps2-talkdisc-mock-test
       - name: Build genuine English Talk bank for disc
         run: |
           make -C core talk
