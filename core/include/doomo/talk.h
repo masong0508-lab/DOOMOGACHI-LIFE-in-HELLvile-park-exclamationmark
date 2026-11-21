@@ -1233,6 +1233,12 @@ int  talk_dm_say(TalkState *s, const TalkUtter *u);
  * the talk to the player with a follow-up. Plans the exchange; then talk_dm_step() until it returns
  * 0. Returns 1 when something was planned. */
 int  talk_dm_open(TalkState *s);
+/* Return a *real, ready* resident favor during the current conversation.
+ * Schedules their generated thank-you (TQP_DONE) and the normal quest-complete
+ * outcome event; rewards are not paid until talk_outcome_end() applies them.
+ * Returns 0 if the request is not ready, was already handed in this session,
+ * the resident left, or a dialogue exchange is still pending. No allocations. */
+int  talk_dm_hand_in(TalkState *s, int slot);
 /* Time without the player: `frames` at 30 fps. After TALK_IDLE_FRAMES a
  * resident talks to another (TALK_IDLE_CHATS times), then someone prods the
  * player, then nothing more until the player speaks. Returns 1 when an
