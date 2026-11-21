@@ -15,6 +15,7 @@
 #include "doomo/doomo.h"
 #include "padmap.h"
 #include "game2d.h"
+int ps2_memcard_init(void);
 
 static unsigned char pad_dma[256] __attribute__((aligned(64)));
 static int pad_open;
@@ -63,6 +64,10 @@ int main(void)
     GSGLOBAL *gs;
     unsigned field=0;
     SifInitRpc(0);
+    /* Memory card initialization before entering the game ensures the
+     * shared save UI sees real media errors, not a fake in-RAM success. */
+    if(!ps2_memcard_init())
+        printf("PS2: no ready formatted memory card in slot 1; saves unavailable\n");
     pad_open=init_pad();
     gs=gsKit_init_global();
     if(!gs)return 1;
