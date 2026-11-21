@@ -435,6 +435,14 @@ set(_shots ${CMAKE_CURRENT_BINARY_DIR}/shots)
 set(_hs    ${CMAKE_CURRENT_SOURCE_DIR}/harness/scripts)
 set(_run   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/run.py
            --emu ${DOOMO_EMU} --bios ${DOOMO_BIOS} --timeout 400)
+# The PS1 game-disc Talk test must read TALK_EN.BIN through the CD reader.
+# Engine-test ROMs remain Talk-free, with no extra harness work.
+set(_talk_harness "")
+if(DOOMO_PS1_TALK_ON)
+    set(_talk_harness
+        COMMAND ${_run} --exe ${_exe} --cue ${_cue}
+                --script ${_hs}/talk_smoke.txt --out ${_shots}/talk_smoke)
+endif()
 if(DOOMO_HOST_CC)
 	set(_adpcm
 		COMMAND ${DOOMO_HOST_CC} -O2 -I${CMAKE_CURRENT_SOURCE_DIR}/src -I${CORE_DIR}/include
@@ -484,6 +492,7 @@ else()
 		${_adpcm}
 		COMMAND ${_run} --cue ${_cue} --script ${_hs}/game_smoke.txt --out ${_shots}/game_smoke
 		        --expect "memcard: wrote"
+        ${_talk_harness}
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/harness/memcard_check.py
 		        ${_shots}/game_smoke/card1.mcd --icons ${_shots}/game_smoke/icons.png
 		        --expect BASLUS-DOOMO1*

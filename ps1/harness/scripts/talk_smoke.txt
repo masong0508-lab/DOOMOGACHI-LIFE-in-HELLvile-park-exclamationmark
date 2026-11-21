@@ -1,0 +1,20 @@
+# Exercise the REAL PS1 game disc, including Talk's CD bank reader and
+# overlay. Never run for the engine-test (which omits Talk).
+wait 150
+expect-scene TITLE
+# Nana Puddin is the fixed story resident at roster ID 1.
+scene TALK 1
+wait 60
+expect-log talkps1: TALK_EN.BIN available
+shot talk_01_greeting
+# A dismisses the opening speech. These screenshots capture the
+# Talk screen and the response UI on real emulated hardware.
+press A
+wait 25
+shot talk_02_after_first_press
+press A
+wait 25
+shot talk_03_after_second_press
+press A
+wait 25
+shot talk_04_after_third_press

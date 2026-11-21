@@ -51,6 +51,7 @@ uint32_t plat_talk_load(const char *code)
     s_lba = CdPosToInt(&f.pos);
     s_length = (uint32_t)f.size;
     s_sector = -1;
+    dbg("talkps1: TALK_EN.BIN available (%u bytes)\n", (unsigned)s_length);
     return s_length;
 }
 
