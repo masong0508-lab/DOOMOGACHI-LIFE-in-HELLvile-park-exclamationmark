@@ -381,8 +381,11 @@ int plat_keep_rows(int op, int rows);
  *   PLAT_VIEW_DROP  forget the copy. Always 0
  * The 2D drawn over the view (the HUD, the card) is drawn again on every frame as before, so a PUT frame is the
  * picture plat_view3d would have drawn, pixel for pixel. Weak default: 0 (PS1, DC, native render every frame). */
-enum { PLAT_VIEW_DROP = 0, PLAT_VIEW_KEEP = 1, PLAT_VIEW_PUT = 2 };
+enum { PLAT_VIEW_DROP = 0, PLAT_VIEW_KEEP = 1, PLAT_VIEW_PUT = 2, PLAT_VIEW_SLIDE = 3 };
 #define PLAT_VIEW_PUT_SHADED(level) (PLAT_VIEW_PUT | ((level) + 1) << 8)
+/* Move a small held view by dx pixels (-240..240), clipped to its
+ * original rectangle. The caller paints any newly exposed pixels. */
+#define PLAT_VIEW_PUT_SHIFT(dx) (PLAT_VIEW_SLIDE | ((dx) + 256) << 8)
 int plat_view_hold(int op, uint32_t key);
 
 /* ---- (ST-ADV) pan of a tone channel -------------------------------------------------------------------------------

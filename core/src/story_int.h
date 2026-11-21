@@ -137,6 +137,7 @@ int  feast_front_shot(int panel, uint32_t pt);
 void feast_cut_done(int cut);
 /* cutscene.c: screen y of the top of the current caption box (sh if none) */
 int  cutscene_caption_y(void);
+int  cutscene_bake_puff(unsigned slot, uint8_t *pixels, size_t cap);
 int  story_coop_quest_due(int profile);     /* the next co-op quest 0..3 that may start now, -1 if none */
 void story_coop_tick(void);                 /* MP1: a co-op hero's side quest starts (story.c) */
 #define story_fmt_target vm_fmt_target              /* @T / @D subject (scriptvm.c) */

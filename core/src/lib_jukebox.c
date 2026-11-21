@@ -243,10 +243,9 @@ static void row(int i, int x, int y, int w, int sel)
         plat_text(x + w - 6, y + 2 - ((lib_b.t / 8) & 1), STR_ICON_NOTE, PAL_UI_GOLD);
 }
 
-static void record(int cx, int cy, int r, int song, int playing)
+static void record_disc(int cx, int cy, int r, uint8_t label)
 {
-    uint8_t lab = PAL_PAINT((song * 7 + 4) % PAL_PAINT_COUNT, 1);
-    int a = J.spin * 6, k;
+    int k;
     ui_fill_circle(cx + 1, cy + 2, r, PAL_RAMP(RAMP_STONE, 0));
     ui_fill_circle(cx, cy, r, PAL_GRAY_D);
     ui_fill_circle(cx, cy, r - 1, PAL_BLACK);
@@ -254,9 +253,32 @@ static void record(int cx, int cy, int r, int song, int playing)
         ui_fill_circle(cx, cy, k, PAL_RAMP(RAMP_STONE, 1));
         ui_fill_circle(cx, cy, k - 1, PAL_BLACK);
     }
-    ui_fill_circle(cx, cy, r / 2 - 2, ui_darker(lab));
-    ui_fill_circle(cx, cy, r / 2 - 3, lab);
+    ui_fill_circle(cx, cy, r / 2 - 2, ui_darker(label));
+    ui_fill_circle(cx, cy, r / 2 - 3, label);
     ui_fill_circle(cx, cy, 2, PAL_WHITE);
+}
+
+static void record(int cx, int cy, int r, int song, int playing)
+{
+    uint8_t label = PAL_PAINT((song * 7 + 4) % PAL_PAINT_COUNT, 1);
+    int a = J.spin * 6;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* Keep the fixed groove and label artwork in the shared image pool.
+     * The glint and arm still animate over the same pixel positions. */
+    int w = 2 * r + 4, h = 2 * r + 4, fresh;
+    const DoomoImage *disc = portrait_pool_big(0x4A554B00u | label, w, h, &fresh);
+    if (disc) {
+        if (fresh) {
+            uint8_t *pixels = (uint8_t *)disc->pix;
+            memset(pixels, 0, (size_t)w * h);
+            ui_raster_target(pixels, cx - r, cy - r, w, h);
+            record_disc(cx, cy, r, label);
+            ui_raster_target_off();
+        }
+        plat_image(cx - r, cy - r, disc, 1, 0, 0);
+    } else
+#endif
+        record_disc(cx, cy, r, label);
     /* a glint sweeping round as it spins */
     {
         int gx = ui_wave(a, 256, r - 4), gy = ui_wave(a + 64, 256, r - 4);

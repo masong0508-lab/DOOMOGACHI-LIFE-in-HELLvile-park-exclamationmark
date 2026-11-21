@@ -189,7 +189,7 @@ typedef struct CrSpark {
 } CrSpark;
 
 /* CR9: a memo of cr_value_locked() (unlock_find walks the unlock tables; the list asks per row per
- * frame). Valid while the unlock bits are unchanged (cr.lmemo_sig). */
+ * frame). Valid while the unlock bits match cr.lmemo_unlocks. */
 #define CR_LMEMO 32
 typedef struct CrLockMemo { const struct CrRow *row; int16_t idx; uint8_t val, ok; } CrLockMemo;
 
@@ -294,7 +294,8 @@ typedef struct CrState {
     uint8_t  show;
     /* CR9: the lock memo */
     CrLockMemo lmemo[CR_LMEMO];
-    uint32_t lmemo_sig;
+    uint8_t lmemo_unlocks[DOOMO_UNLOCK_BITS / 8];
+    uint32_t lmemo_generation;
 
     /* CR6: the part grid (creator_grid.c) */
     uint8_t  g_slot;                /* doomo_part_slots index of the open row */

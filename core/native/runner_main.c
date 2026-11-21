@@ -140,6 +140,7 @@
 #include "native.h"
 #include "plat_music_native.h"            /* music: --wav (musrender) */
 #include "doomo/story_vm.h"           /* S2: story_fingerprint */
+#include "../src/story_int.h"
 #include "doomo/music.h"              /* music: music-hash */
 #include "../src/ui_internal.h"       /* S2: ui_dialog_debug (expect-text) */
 #include "doomo/lang.h"               /* P0: lang CODE */
@@ -1185,13 +1186,30 @@ static void usage(void)
             "              [--saves DIR] [--seed N] [--zoom N] [--gba-input] [--save-stream N]\n"
             "              [--assert-no-stubs] [--check-prompts] [--pad host|gba|ps1|dc] [--quiet]\n"
             "              [--verbose] [--wav FILE] [--budgets FILE] [--frame-hash FILE]\n"
-            "              [--bake-backdrops FILE] [--bake-poses FILE]\n");
+            "              [--bake-backdrops FILE] [--bake-poses FILE] [--bake-puffs FILE]\n");
+}
+
+static int bake_cutscene_puffs(const char *path)
+{
+    uint8_t pixels[240 * 160];
+    unsigned slot;
+    FILE *file = fopen(path, "wb");
+    int bytes, ok = 1;
+    if (!file) return 0;
+    for (slot = 0; (bytes = cutscene_bake_puff(slot, pixels, sizeof(pixels))) != 0; slot++) {
+        if (bytes < 0 || fwrite(pixels, 1, (size_t)bytes, file) != (size_t)bytes) {
+            ok = 0;
+            break;
+        }
+    }
+    if (fclose(file) != 0) ok = 0;
+    return ok && slot > 0;
 }
 
 int main(int argc, char **argv)
 {
     NatOptions o;
-    const char *script = NULL, *bake = NULL, *bake_poses = NULL;
+    const char *script = NULL, *bake = NULL, *bake_poses = NULL, *bake_puffs = NULL;
     int frames = -1, assert_no_stubs = 0, check_prompts = 0, pad = -1, i;
     memset(&o, 0, sizeof(o));
     o.w = 240; o.h = 160; o.seed = 0x5EED1234u; o.save_dir = ".";
@@ -1237,6 +1255,7 @@ int main(int argc, char **argv)
         /* --- SP7: every backdrop at --w x --h, for the GBA ROM (stage_native.c) --- */
         else if (strcmp(a, "--bake-backdrops") == 0 && val) { bake = val; i++; }
         else if (strcmp(a, "--bake-poses") == 0 && val) { bake_poses = val; i++; }    /* S2-4c */
+        else if (strcmp(a, "--bake-puffs") == 0 && val) { bake_puffs = val; i++; }
         else if (strcmp(a, "--help") == 0 || strcmp(a, "-h") == 0) { usage(); return 0; }
         else { fprintf(stderr, "runner: unknown option %s\n", a); usage(); return 1; }
     }
@@ -1249,6 +1268,7 @@ int main(int argc, char **argv)
     nat_init(&o);
     doomo_init();
     if (pad >= 0) input_set_pad(pad);
+    if (bake_puffs) return bake_cutscene_puffs(bake_puffs) ? 0 : 1;
     if (bake) {
         int n = nat_bake_backdrops(bake);
         if (!n) return 1;

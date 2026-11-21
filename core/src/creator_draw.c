@@ -24,6 +24,7 @@ CrLayout crl;
 void cr_layout(void)
 {
     int sw = plat_screen_w(), sh = plat_screen_h();
+    if (sw == crl.sw && sh == crl.sh) return;
     crl.sw = sw;
     crl.sh = sh;
     crl.big = sw >= 300 && sh >= 200;
@@ -336,7 +337,7 @@ void cr_region_pre_end(int r, int id, int x, int y, int w, int h, uint32_t key, 
 static int cr_still(void)
 {
     if (!CR_HOLD) return 0;
-    if (cr.phase != CRP_MAIN && cr.phase != CRP_GRID) return 0;
+    if (cr.phase != CRP_MAIN && cr.phase != CRP_GRID && cr.phase != CRP_COLOR) return 0;
     if (cr.phase_t < 12 || cr.tab_t < 6) return 0;
     if (cr.phase == CRP_MAIN && (cr.tab == CR_TAB_PERSONA || cr.tab == CR_TAB_HOME)) return 0;
     return 1;
@@ -1929,6 +1930,7 @@ static int draw_held(void)
     draw_pane();
     held_rect(crl.lx, crl.ly, crl.lw, crl.lh);
     if (cr.phase == CRP_GRID) cr_grid_draw();
+    else if (cr.phase == CRP_COLOR) draw_color();
     else draw_list();
     held_rect(0, 0, crl.sw, crl.py);
     draw_tabs();

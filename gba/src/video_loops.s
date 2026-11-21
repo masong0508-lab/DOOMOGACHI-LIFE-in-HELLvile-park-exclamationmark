@@ -107,29 +107,38 @@ plat_rect_run:
     .global vid_rect
     .type   vid_rect, %function
 vid_rect:
-    sub     r12, r2, r0                 @ width
-    cmp     r12, #1
+    sub     r12, r2, #1
+    eor     r12, r12, r0
+    bics    r12, r12, #1               @ endpoints in the same halfword?
     bne     1f
-    sub     r12, r3, r1
-    cmp     r12, #1
-    bne     1f
-    @ one pixel (dots, sparkles, stars, checker fall-backs: the UI's most
-    @ frequent rect): a halfword read-modify-write, no stack frame
-    ldr     r2, =gba_back
-    ldr     r2, [r2]
-    rsb     r3, r1, r1, lsl #4          @ y0 * 15
-    add     r2, r2, r3, lsl #4          @ + y0 * 240
-    add     r2, r2, r0                  @ byte address of the pixel
-    ldr     r3, [sp]                    @ colour
-    and     r3, r3, #0xFF
+    @ One halfword per row: single dots, vertical lines and aligned
+    @ two-pixel spans can all fill directly without a stack frame.
+    sub     r2, r2, r0                 @ width
+    rsb     r12, r1, r1, lsl #4         @ y0 * 15
+    sub     r1, r3, r1                 @ rows
+    ldr     r3, =gba_back
+    ldr     r3, [r3]
+    add     r3, r3, r12, lsl #4         @ row y0
+    add     r3, r3, r0
+    bic     r3, r3, #1                 @ address of the halfword
+    ldrb    r12, [sp]                  @ colour
+    cmp     r2, #2
+    beq     3f
     tst     r0, #1
-    bic     r2, r2, #1                  @ its halfword
-    ldrh    r12, [r2]
-    andeq   r12, r12, #0xFF00           @ even x: low byte
-    orreq   r12, r12, r3
-    andne   r12, r12, #0xFF             @ odd x: high byte
-    orrne   r12, r12, r3, lsl #8
-    strh    r12, [r2]
+    moveq   r0, #0xFF00                @ preserve the high byte
+    movne   r0, #0xFF                  @ preserve the low byte
+    movne   r12, r12, lsl #8
+2:  ldrh    r2, [r3]
+    and     r2, r2, r0
+    orr     r2, r2, r12
+    strh    r2, [r3], #240
+    subs    r1, r1, #1
+    bne     2b
+    bx      lr
+3:  orr     r12, r12, r12, lsl #8
+4:  strh    r12, [r3], #240
+    subs    r1, r1, #1
+    bne     4b
     bx      lr
 1:  sub     r12, r2, r0                 @ narrow spans (< 32 px): word masks
     cmp     r12, #32

@@ -259,6 +259,15 @@ $(OBJ)/gba/src/cookpose_blob.o: $(GBA)/src/cookpose_blob.s $(POSES)
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) '-DGBA_POSES_BIN="$(POSES)"' -c $< -o $@
 
+PUFFS := $(BUILD)/gen/puffs.bin
+$(PUFFS): backdrops-runner
+	@mkdir -p $(dir $@)
+	@$(NATIVE_BUILD)/runner --quiet --w 240 --h 160 --bake-puffs $@.tmp
+	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; echo "puffs: $@"; fi
+$(OBJ)/gba/src/puff_blob.o: $(GBA)/src/puff_blob.s $(PUFFS)
+	@mkdir -p $(dir $@)
+	$(CC) $(ASFLAGS) '-DGBA_PUFFS_BIN="$(PUFFS)"' -c $< -o $@
+
 $(GEN_TABLES): $(GBA)/tools/mktables.py
 	@mkdir -p $(dir $@)
 	$(PYTHON) $< $@

@@ -303,7 +303,7 @@ void cr_grid_draw(void)
         k = ui_key_int(k, cr.g_sel | cr.g_top << 8 | cr.pick_err << 16);
         k = ui_key_int(k, cr.pick_orig | (int)((unsigned)ui_window_glint(x, y, w, h) << 8));
         k = ui_key_str(k, cr.g_find);
-        k = ui_key_int(k, (int)(cr.lmemo_sig & 0x7FFFFFFF));          /* the lock bits were made from it */
+        k = ui_key_int(k, (int)(cr.lmemo_generation & 0x7FFFFFFF));
         if (grid_footer_moves(row)) k = ui_key_int(k, (int)(cr.t / 7));
         grid_k = k;
         pre = cr_region_pre(CRR_LIST, k);           /* S3-3: a new page is drawn before the panel */

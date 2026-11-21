@@ -251,7 +251,7 @@ static int thing_image(int type, const DoomoImage **img, int *scale, int *flags)
     return *img != NULL;
 }
 
-static void preview(int x, int y, int w, int h)
+static int preview(int x, int y, int w, int h, int shade)
 {
     const LevelInfo *L = &lv_info[ls.sel];
     const DoomoMapDef *d = doomo_map.def;
@@ -288,18 +288,33 @@ static void preview(int x, int y, int w, int h)
         }
     v.sprites = bb;
     v.sprite_count = n;
-    /* S2-2: where the platform can keep the picture (the GBA), the preview is rendered once per level change (and
-     * on each step of the slide) and held, its orbit stopped; elsewhere it orbits and renders every frame */
+    /* Where the platform can keep the picture, its orbit stops. */
 #if !defined(DOOMO_PLATFORM_PS1)
     {
-        uint32_t key = combat_view_key(&v, (uint32_t)ls.sel << 8 | ls.mode);
-        if (plat_view_hold(PLAT_VIEW_PUT, key)) return;
+        uint32_t key = combat_view_key(&v, (uint32_t)(shade + 1) << 16 | (uint32_t)ls.sel << 8 | ls.mode);
+#if defined(DOOMO_PLATFORM_GBA)
+        /* Render one full-width preview on selection, then slide the
+         * saved image within its frame. Its perspective stays fixed. */
+        int dx = ls.slide & ~1;
+        if (plat_view_hold(PLAT_VIEW_PUT_SHIFT(dx), key)) return shade >= 0;
+        plat_view3d(&v);
+        if (shade >= 0) plat_shade_rect(x, y, w, h, shade);
+        if (plat_view_hold(PLAT_VIEW_KEEP, key)) {
+            ls.pv_held = 1;
+            if (dx) plat_view_hold(PLAT_VIEW_PUT_SHIFT(dx), key);
+        }
+        return shade >= 0;
+#else
+        if (plat_view_hold(PLAT_VIEW_PUT, key)) return 0;
         plat_view3d(&v);
         if (plat_view_hold(PLAT_VIEW_KEEP, key)) ls.pv_held = 1;
+#endif
     }
 #else
+    (void)shade;
     plat_view3d(&v);                 /* (the PS1 holds 30 here: no copy, no resident RAM for it) */
 #endif
+    return 0;
 }
 
 /* ---- drawing ------------------------------------------------------------------ */
@@ -318,17 +333,19 @@ static void draw_pips(int cy, int big)
     if (n > 1 && gap * (n - 1) > sw - 24) gap = (sw - 24) / (n - 1);
     x0 = sw / 2 - gap * (n - 1) / 2;
     for (i = 0; i < LV_TABLE_N; i++) {
-        int x, sel = i == ls.sel, r = (big ? 8 : 6) + sel * 2, rank = lv_rank(i);
+        int x, sel = i == ls.sel, r = (big ? 8 : 6) + sel * 2, rank, open;
         if (!lv_built(i) || lv_page_of(i) != page) continue;
+        rank = lv_rank(i);
+        open = lv_unlocked(i);
         x = x0 + at * gap;
         at++;
         int y = cy - (sel ? (ui_wave(ls.t, 24, 2) + 2) : 0);
-        uint8_t c = !lv_unlocked(i) ? PAL_GRAY_D : rank ? lv_rank_color(rank) : PAL_UI_CREAM;
+        uint8_t c = !open ? PAL_GRAY_D : rank ? lv_rank_color(rank) : PAL_UI_CREAM;
         if (at < n && gap - 2 * r + 1 > 0) plat_rect(x + r, cy, gap - 2 * r + 1, 2, PAL_GRAY_D);
         ui_fill_circle(x + 1, y + 2, r, PAL_BLACK);
         ui_fill_circle(x, y, r + 1, sel ? PAL_WHITE : ui_darker(c));
         ui_fill_circle(x, y, r, c);
-        if (!lv_unlocked(i)) {
+        if (!open) {
             ui_text(x - 2, y - 3, STR_ICON_X, PAL_GRAY);
         } else if (rank) {
             ui_text_outline(x - 2, y - 3, lv_rank_names[rank], PAL_WHITE, ui_darker(ui_darker(c)));
@@ -348,9 +365,14 @@ static void ls_draw(void)
     const LevelInfo *L = &lv_info[ls.sel];
     int sw = plat_screen_w(), sh = plat_screen_h(), big = lvd_big(), style = theme_style();
     int px = big ? 12 : 10, py = big ? 22 : 19, pw = sw - px * 2, ph = big ? 108 : 54;
-    int unl = lv_unlocked(ls.sel), ty, k;
+    int unl = lv_unlocked(ls.sel), shaded, ty, k;
     char buf[64], tb[12];
+#if defined(DOOMO_PLATFORM_GBA)
+    /* The preview and its exposed slide margin cover this rectangle. */
+    ui_backdrop_hole(style, ls.t, px, py, px + pw, py + ph);
+#else
     ui_backdrop(style, ls.t);
+#endif
     if (plat_draw_skipped()) return;
     ui_title(sw / 2, 3, ls.mode != LVM_NORMAL ? lv_mode_names[ls.mode] : page_title(), style);
     if (mode_open(LVM_TIME_TRIAL)) {
@@ -360,11 +382,21 @@ static void ls_draw(void)
     /* the preview window */
     ui_round_rect(px - 3, py - 3, pw + 6, ph + 6, 5, ui_style(style)->outline);
     ui_round_rect(px - 2, py - 2, pw + 4, ph + 4, 4, ui_style(style)->fill_hi);
-    preview(px + ls.slide, py, pw, ph);
-    if (ls.slide) plat_rect(ls.slide > 0 ? px : px + pw + ls.slide, py, ls.slide > 0 ? ls.slide : -ls.slide, ph,
-                            ui_style(style)->fill_hi);
+    {
+        int slide = ls.slide;
+        uint8_t fill = ui_style(style)->fill_hi;
+#if defined(DOOMO_PLATFORM_GBA)
+        slide &= ~1;
+        shaded = preview(px, py, pw, ph, unl ? -1 : 9);
+        if (shaded) fill = doomo_colormap[9][fill];
+#else
+        shaded = preview(px + slide, py, pw, ph, -1);
+#endif
+        if (slide) plat_rect(slide > 0 ? px : px + pw + slide, py, slide > 0 ? slide : -slide, ph,
+                             fill);
+    }
     if (!unl) {
-        plat_shade_rect(px, py, pw, ph, 9);
+        if (!shaded) plat_shade_rect(px, py, pw, ph, 9);
         lvd_padlock(sw / 2, py + ph / 2 - (big ? 8 : 6), big ? 2 : 1, ls.t);
 #if LV_HAS_NEW
         lv_locked_reason(ls.sel, buf, sizeof(buf));

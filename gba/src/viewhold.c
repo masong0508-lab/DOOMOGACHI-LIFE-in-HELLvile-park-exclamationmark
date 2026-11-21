@@ -18,7 +18,9 @@
  *     r3d_cmrow[0] = 0), the overworld's tile slots, the house's roof tables and plat_strip's band: each of those
  *     drops the copy before it writes there (plat_view3d, plat_overworld, plat_room, PLAT_STRIP_SAVE), so the
  *     combat cards ask S2-1's modal hold for no toast band (ui_modal_no_band).
- * Rows go whole into the first area with room (a full-screen view: 136 + 21 + 21 rows of 120 B for 160).
+ * Small previews fit in the OBJ area without packing and can slide
+ * within their original rectangle. Larger views are packed, with rows
+ * going whole into the first area with room.
  * PUT expands them back (ARM loops of the IWRAM overlay's UI group, ~4 ms for the full screen); a shaded PUT
  * (a card's full-screen dim) darkens the copy itself once, so later puts cost the same. The copy is valid for the
  * view rect the raycaster last drew and the key the core gave (a hash of the view, its billboards and the world's
@@ -48,6 +50,7 @@ static uint8_t  vh_ok;                        /* a copy is held                 
 static uint8_t  vh_x, vh_y, vh_w, vh_h;       /* its rect on the screen (x, w even)            */
 static uint8_t  vh_rows_obj, vh_rows_a;       /* rows in the OBJ area, in gap A (the rest: B)  */
 static uint8_t  vh_fov, vh_fast;              /* the options the raycaster read                */
+static uint8_t  vh_raw;                       /* small views: store complete halfwords         */
 static int8_t   vh_level = -1;                /* the copy is darkened as by plat_shade_rect at this level */
 
 #define VH_ARM IWRAM_UI_CODE __attribute__((optimize("O2", "no-tree-loop-distribute-patterns")))
@@ -137,7 +140,7 @@ static int vh_options_same(void)
 
 int plat_view_hold(int op, uint32_t key)
 {
-    int n, stride, r;
+    int n, stride, r, action = op & 0xFF;
     if (op == PLAT_VIEW_KEEP) {
         int cap_obj, cap_g;
         /* only right after a view this frame drew into a Mode 4 page (not a skipped tick, a tile frame, a frame
@@ -146,18 +149,21 @@ int plat_view_hold(int op, uint32_t key)
         vh_ok = 0;
         if (gba_nodraw == GBA_NODRAW_CANVAS || hold_building() || r3d_last_frame != gba_frames) return 0;
         n = r3d_last_w / 2;
+        if (n <= 0 || r3d_last_h <= 0) return 0;
         stride = (n + 3) & ~3;
         cap_obj = 16384 / stride;
         cap_g = 2560 / stride;
-        if (n <= 0 || r3d_last_h <= 0 || cap_obj + 2 * cap_g < r3d_last_h) return 0;
+        if (cap_obj + 2 * cap_g < r3d_last_h) return 0;
+        vh_raw = r3d_last_w * r3d_last_h <= 16384;
         vh_rows_obj = (uint8_t)DOOMO_MIN(cap_obj, r3d_last_h);
         vh_rows_a = (uint8_t)DOOMO_MIN(cap_g, r3d_last_h - vh_rows_obj);
         gba_objvram_claim(OBJV_HOLD);          /* the raycaster's texture cache goes (refilled on its next view) */
         r3d_cmrow[0] = 0;                      /* and its colormap rows in the gaps */
-        iwram_ovl_use(OVL_UI);
+        if (!vh_raw) iwram_ovl_use(OVL_UI);
         for (r = 0; r < r3d_last_h; r++) {
-            const volatile uint16_t *src = gba_back + (r3d_last_y + r) * (SCREEN_W / 2) + r3d_last_x / 2;
-            if (!vh_pack_row(vh_row(r, stride), src, n)) return 0;
+            const uint16_t *src = gba_back + (r3d_last_y + r) * (SCREEN_W / 2) + r3d_last_x / 2;
+            if (vh_raw) dma3_copy16(VH_OBJ + r * (2 * n), src, n);
+            else if (!vh_pack_row(vh_row(r, stride), src, n)) return 0;
         }
         vh_x = (uint8_t)r3d_last_x; vh_y = (uint8_t)r3d_last_y;
         vh_w = (uint8_t)(r3d_last_w / 2); vh_h = (uint8_t)r3d_last_h;   /* (w in halfwords: 240 does not fit) */
@@ -168,13 +174,15 @@ int plat_view_hold(int op, uint32_t key)
         vh_ok = 1;
         return 1;
     }
-    if ((op & 0xFF) == PLAT_VIEW_PUT) {
-        int level = (op >> 8) - 1;
+    if (action == PLAT_VIEW_PUT || action == PLAT_VIEW_SLIDE) {
+        int level = action == PLAT_VIEW_PUT ? (op >> 8) - 1 : -1;
+        int dx = action == PLAT_VIEW_SLIDE ? (op >> 8) - 256 : 0;
         if (level > 14) level = -1;            /* (level 15 shades nothing, as plat_shade_rect) */
         /* a skipped tick draws nothing (its view may differ: SP8's catch-up ticks build no billboards): the copy
          * stays for the next drawn tick */
         if (gba_nodraw == 1) return vh_ok;
         if (!vh_ok || key != vh_key || !vh_options_same() || gba_objvram_owner() != OBJV_HOLD) return 0;
+        if (dx && (!vh_raw || (dx & 1))) return 0;
         /* (shaded) the darkening plat_shade_rect(0, 0, 240, 160, level) gives: only a full-screen view, and only
          * from a copy not darkened at another level */
         if (level >= 0 && (vh_x || vh_y || vh_w != SCREEN_W / 2 || vh_h != SCREEN_H)) return 0;
@@ -187,6 +195,16 @@ int plat_view_hold(int op, uint32_t key)
         if (hold_building()) return 0;
         gba_objvram_claim(OBJV_HOLD);          /* (keeps obj.c's OBJs off this frame, as a 3D view does) */
         n = vh_w;
+        if (vh_raw) {
+            int left = dx < 0 ? -dx / 2 : 0;
+            int right = dx > 0 ? dx / 2 : 0;
+            int width = n - left - right;
+            uint16_t *dst = gba_back + vh_y * (SCREEN_W / 2) + vh_x / 2 + right;
+            if (width > 0)
+                for (r = 0; r < vh_h; r++)
+                    dma3_copy16(dst + r * (SCREEN_W / 2), VH_OBJ + 2 * (r * n + left), width);
+            return 1;
+        }
         stride = (n + 3) & ~3;
         if (level != vh_level) {
             /* the first shaded put: darken the copy itself, once (the card's dim stays on while it is held) */

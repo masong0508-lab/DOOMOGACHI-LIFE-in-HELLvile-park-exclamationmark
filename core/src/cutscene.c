@@ -321,7 +321,7 @@ static void cloud(int cx, int cy, int r, uint8_t c, int checker)
 
 /* A soft cartoon cloud: coloured outline, 3-tone body, glossy top puffs,
  * gently breathing. r ~ half the width. */
-static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
+static void puff_cloud_art(int cx, int cy, int r, int ramp, int bright, int w)
 {
     static const int8_t px[6] = { -10, -5, 1, 7, 11, 0 }, py[6] = { 3, -3, -5, -2, 3, 4 };
     static const uint8_t pr[6] = { 6, 8, 9, 7, 5, 7 };
@@ -329,7 +329,7 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
     uint8_t mid = PAL_RAMP(ramp, DOOMO_CLAMP(bright - 1, 0, 7));
     uint8_t base = PAL_RAMP(ramp, DOOMO_CLAMP(bright, 0, 7));
     uint8_t light = PAL_RAMP(ramp, DOOMO_CLAMP(bright + 2, 0, 7));
-    int i, w = ui_wave((int)t, 48, 1);
+    int i;
     for (i = 0; i < 6; i++)
         ui_fill_circle(cx + px[i] * r / 10, cy + py[i] * r / 10 + (i & 1 ? w : -w), pr[i] * r / 10 + 1, dark);
     for (i = 0; i < 6; i++)
@@ -340,6 +340,69 @@ static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
     for (i = 1; i < 4; i++)
         ui_fill_circle(cx + px[i] * r / 10 - r / 6, cy + py[i] * r / 10 - r / 4 + (i & 1 ? w : -w),
                        DOOMO_MAX(1, pr[i] * r / 30), light);
+}
+
+/* The chapter card, fog and Vapula shots reuse these exact shapes.
+ * Store the three breathing positions back-to-back for each recipe. */
+static const uint8_t puff_recipes[][2] = {
+    {14, 4}, {19, 5}, {24, 6}, {24, 4}, {14, 5}, {19, 4}, {16, 3},
+    {6, 5}, {7, 5}, {8, 5}, {9, 5}, {10, 5}, {11, 5}, {12, 5}, {13, 5},
+    /* Every integer size of the first eruption panel, largest first. */
+    {48, 5}, {47, 5}, {46, 5}, {45, 5}, {44, 5}, {43, 5}, {42, 5},
+    {41, 5}, {40, 5}, {39, 5}, {38, 5}, {37, 5}, {36, 5}, {35, 5},
+    {34, 5}, {33, 5}, {32, 5}, {31, 5}, {30, 5}, {29, 5}, {28, 5},
+    {27, 5}, {26, 5}, {25, 5}, {24, 5}, {23, 5}, {22, 5}, {21, 5},
+    {20, 5}, {19, 5}, {18, 5},
+};
+
+static int puff_box(int r, int *left, int *top, int *width, int *height)
+{
+    *left = 16 * r / 10 + 2;
+    *top = 14 * r / 10 + 3;
+    *width = 2 * *left;
+    *height = *top + 11 * r / 10 + 3;
+    return *width * *height;
+}
+
+int cutscene_bake_puff(unsigned slot, uint8_t *pixels, size_t cap)
+{
+    unsigned recipe = slot / 3u;
+    int left, top, w, h, bytes;
+    if (recipe >= DOOMO_COUNTOF(puff_recipes)) return 0;
+    bytes = puff_box(puff_recipes[recipe][0], &left, &top, &w, &h);
+    if ((size_t)bytes > cap) return -1;
+    memset(pixels, 0, (size_t)bytes);
+    /* Large ellipses clip to the screen as they emit spans. Rasterize
+     * the complete sprite at a position inside the baker's viewport. */
+    ui_raster_target(pixels, 0, 0, w, h);
+    puff_cloud_art(left, top, puff_recipes[recipe][0], RAMP_VAPE,
+                   puff_recipes[recipe][1], (int)(slot % 3u) - 1);
+    ui_raster_target_off();
+    return bytes;
+}
+
+static void puff_cloud(int cx, int cy, int r, int ramp, int bright, uint32_t t)
+{
+    int breath = ui_wave((int)t, 48, 1);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (ramp == RAMP_VAPE) {
+        extern const uint8_t gba_cutscene_puffs[];
+        const uint8_t *pixels = gba_cutscene_puffs;
+        unsigned i;
+        for (i = 0; i < DOOMO_COUNTOF(puff_recipes); i++) {
+            int left, top, w, h;
+            int bytes = puff_box(puff_recipes[i][0], &left, &top, &w, &h);
+            if (puff_recipes[i][0] == r && puff_recipes[i][1] == bright) {
+                DoomoImage cloud = { (uint16_t)w, (uint16_t)h, pixels + bytes * (breath + 1),
+                                     0x50550000u + i * 3u + (unsigned)(breath + 1) };
+                plat_image(cx - left, cy - top, &cloud, 1, 0, 0);
+                return;
+            }
+            pixels += 3 * bytes;
+        }
+    }
+#endif
+    puff_cloud_art(cx, cy, r, ramp, bright, breath);
 }
 
 /* top edge of this shot's caption box (the pictures compose above it) */
@@ -400,6 +463,7 @@ static void draw_card(int ch)
         if ((ct % 60) < 3) plat_checker(0, 0, sw, sh, PAL_UI_RED);
     }
     if (ch == 4) {
+        plat_ui_loops();
         plat_checker(sw / 2, 0, sw / 2, sh, PAL_RAMP(RAMP_VAPE, 2));
         ui_heart(sw / 2, sh / 2 + 34, 10 + ui_wave((int)ct, 30, 2), PAL_UI_PINK);
     }

@@ -23,7 +23,7 @@ press RIGHT
 wait 2
 fps start
 wait 20
-expect-fps 15 action: level select move
+expect-fps 29.5 action: level select move
 shot act_level_select_move
 press LEFT
 wait 20

@@ -291,16 +291,22 @@ static void body(const FishInfo *f, int bdx, int cy, int rx, int ry)
     int dy;
     uint8_t o = C(dk(dk(f->body))), b = C(f->body), be = C(f->belly);
     uint8_t sh = C(dk(f->body)), hi = C(lt(f->body));
-    for (dy = -ry - 1; dy <= ry + 1; dy++) {
+    /* Compute each mirrored width once. The outline and shading passes
+     * still paint the same spans in the same respective layers. */
+    for (dy = 0; dy <= ry + 1; dy++) {
         int hw = ehw(rx + 1, ry + 1, dy);
-        if (hw >= 0) span(bdx - hw, bdx + hw, cy + dy, dy > ry ? C(PAL_RAMP(RAMP_STONE, 0)) : o);
+        span(bdx - hw, bdx + hw, cy + dy, dy > ry ? C(PAL_RAMP(RAMP_STONE, 0)) : o);
+        if (dy) span(bdx - hw, bdx + hw, cy - dy, o);
     }
-    for (dy = -ry; dy <= ry; dy++) {
+    for (dy = 0; dy <= ry; dy++) {
         int hw = ehw(rx, ry, dy);
-        if (hw < 0) continue;
-        if (dy >= ry - 1 && !g_sil) { span(bdx - hw, bdx + hw, cy + dy, sh); continue; }
-        if (dy <= -ry + 1 && !g_sil) { span(bdx - hw, bdx + hw, cy + dy, hi); continue; }
+        if (dy >= ry - 1 && !g_sil) {
+            span(bdx - hw, bdx + hw, cy + dy, sh);
+            span(bdx - hw, bdx + hw, cy - dy, hi);
+            continue;
+        }
         span(bdx - hw, bdx + hw, cy + dy, b);
+        if (dy) span(bdx - hw, bdx + hw, cy - dy, b);
         if (dy > ry / 4 && !g_sil && hw > 2) {
             int bw = hw * 3 / 4;
             span(bdx - bw + rx / 8, bdx + bw, cy + dy, be);

@@ -114,7 +114,13 @@ __attribute__((weak)) void map_def_cells(const DoomoMapDef *d, DoomoCell *dst, i
 void map_load_def(const DoomoMapDef *d)
 {
     int i, n;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* The ROM cell copy overwrites the whole active rectangle. Clear the
+     * header and unused tail once, avoiding a second pass over live cells. */
+    memset(&doomo_map, 0, d ? offsetof(DoomoMap, cells) : sizeof(doomo_map));
+#else
     memset(&doomo_map, 0, sizeof(doomo_map));
+#endif
     nmovers = 0;
     last_hit = 0;
     last_miss = -1;
@@ -126,6 +132,9 @@ void map_load_def(const DoomoMapDef *d)
     doomo_map.sky = d->sky;
     doomo_map.ambient = d->ambient;
     n = doomo_map.w * doomo_map.h;
+#if defined(DOOMO_PLATFORM_GBA)
+    memset(doomo_map.cells + n, 0, sizeof(doomo_map.cells) - (size_t)n * sizeof(DoomoCell));
+#endif
     map_def_cells(d, doomo_map.cells, doomo_map.w, doomo_map.h);
     /* One-time dungeon wayfinding light pass: the exit becomes an obvious
      * destination and the approaches catch a little of its light. Key

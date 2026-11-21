@@ -127,7 +127,7 @@ push CUTSCENE 1
 wait 40
 fps start
 wait 90
-fps story: cutscene chapter card 2
+expect-fps 29.5 story: cutscene chapter card 2
 shot story_cut1
 seed 1
 scene STORY 101
@@ -154,7 +154,7 @@ push CUTSCENE 10
 wait 40
 fps start
 wait 90
-fps story: cutscene home vignette
+expect-fps 29.5 story: cutscene home vignette
 shot story_cut10
 seed 1
 scene STORY 101
@@ -163,7 +163,7 @@ push CUTSCENE 5
 wait 40
 fps start
 wait 90
-fps story: cutscene fog vignette
+expect-fps 29.5 story: cutscene fog vignette
 shot story_cut5
 seed 1
 scene STORY 101
@@ -172,7 +172,7 @@ push CUTSCENE 6
 wait 30
 fps start
 wait 90
-fps story: cutscene eruption vignette
+expect-fps 29.5 story: cutscene eruption vignette
 shot story_cut6
 seed 1
 scene STORY 101
@@ -181,13 +181,13 @@ push CUTSCENE 7
 wait 60
 fps start
 wait 90
-expect-fps 14 story: cutscene vapula vignette
+expect-fps 29.5 story: cutscene vapula vignette
 shot story_cut7
 press A
 wait 2
 fps start
 wait 60
-fps story: cutscene after a press
+expect-fps 29.5 story: cutscene after a press
 shot story_cut_press
 seed 1
 scene STORY 126

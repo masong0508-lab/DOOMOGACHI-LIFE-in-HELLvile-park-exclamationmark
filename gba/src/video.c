@@ -442,6 +442,39 @@ static void clip_blit(int x, int y, const DoomoImage *img, int flags, uint32_t c
     }
 }
 
+/* Aligned opaque ROM tiles can use DMA for the same clipped pixels.
+ * Cache the opacity test by address since cartridge contents are fixed. */
+static int copy_rom_tile(int x, int y, const uint8_t *pixels)
+{
+    static const uint8_t *last_tile[4];
+    static uint8_t opaque[4], next;
+    uintptr_t addr = (uintptr_t)pixels;
+    int slot, x0, y0, x1, y1, row;
+    if ((x & 1) || (addr & 1u) || addr < 0x08000000u || addr > 0x09FFF000u)
+        return 0;
+    for (slot = 0; slot < 4; slot++)
+        if (last_tile[slot] == pixels) break;
+    if (slot == 4) {
+        slot = next;
+        next = (uint8_t)((next + 1) & 3);
+        last_tile[slot] = pixels;
+        opaque[slot] = memchr(pixels, 0, 64 * 64) == NULL;
+    }
+    if (!opaque[slot]) return 0;
+    x0 = DOOMO_MAX(0, x); x1 = DOOMO_MIN(SCREEN_W, x + 64);
+    y0 = DOOMO_MAX(0, y); y1 = DOOMO_MIN(SCREEN_H, y + 64);
+    if (x0 >= x1 || y0 >= y1) return 1;
+    for (row = y0; row < y1; row++) {
+        const uint8_t *src = pixels + (row - y) * 64 + x0 - x;
+        uint8_t *dst = (uint8_t *)gba_back + row * SCREEN_W + x0;
+        if (!(((uintptr_t)src | (uintptr_t)dst | (unsigned)(x1 - x0)) & 3u))
+            dma3_copy32(dst, src, (x1 - x0) / 4);
+        else
+            dma3_copy16(dst, src, (x1 - x0) / 2);
+    }
+    return 1;
+}
+
 /* 8bpp image, index 0 transparent, integer scale 1..4 */
 void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
                 uint8_t color)
@@ -480,6 +513,8 @@ void plat_image(int x, int y, const DoomoImage *img, int scale, int flags,
         vid_blitn(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);
         return;
     }
+    if (!gba_nodraw && scale == 1 && !flags && img->w == 64 && img->h == 64 &&
+        copy_rom_tile(x, y, img->pix)) return;
     if (flags & IMG_SHADOW)
         vid_blit(x + 1, y + 1, img, scale, (flags & IMG_FLIPX) | IMG_SILHOUETTE, PAL_BLACK);
     vid_blit(x, y, img, scale, flags & (IMG_FLIPX | IMG_SILHOUETTE), color);

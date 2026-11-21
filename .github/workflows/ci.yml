@@ -170,6 +170,13 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Screen frame-rate regression checks (GBA)
+        run: |
+          set -o pipefail
+          make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1 \
+            | tee gba/build/screen_fps.log
+          cat gba/build/screen_fps.log >> "$GITHUB_STEP_SUMMARY"
+
       # LV10: the generated Hell Breach level scripts (tools/breach_scripts.py): the autopilot plays the 7 levels,
       # the fps table goes to the job summary (the floors only gate with BREACH2_GATES=1)
       - name: Hell Breach level scripts (GBA)
@@ -371,6 +378,7 @@ jobs:
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
+            gba/build/screen_fps.log
             gba/build/breach_player_four.log
             gba/build/gba3d_census.log
             gba/build/gba3d_census.csv

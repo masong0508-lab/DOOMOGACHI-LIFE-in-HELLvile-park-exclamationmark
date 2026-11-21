@@ -655,28 +655,21 @@ void cr_row_set(DoomoResident *r, const CrRow *row, int index)
 
 static int lock_compute(const CrRow *row, int index);
 
-/* CR9: the unlock bits' signature: the memo below is valid while it is unchanged */
-static uint32_t unlock_sig(void)
-{
-    uint32_t h = 2166136261u;
-    int i;
-    for (i = 0; i < DOOMO_UNLOCK_BITS / 8; i++) h = (h ^ doomo_town.unlocks[i]) * 16777619u;
-    return h;
-}
-
 /* CR9: called once a tick, after the update and before the draw: a new unlock (granted by the
  * creator during its update, or anywhere before this tick) clears the memo, so the draw and the
  * next update see it. A lock asked later in the same update as its grant still reads the old
  * answer (nothing in the creator does that today). */
 void cr_lock_memo_check(void)
 {
-    uint32_t sig = unlock_sig();
-    if (sig != cr.lmemo_sig) { memset(cr.lmemo, 0, sizeof(cr.lmemo)); cr.lmemo_sig = sig; }
+    if (memcmp(cr.lmemo_unlocks, doomo_town.unlocks, sizeof(cr.lmemo_unlocks)) != 0) {
+        memcpy(cr.lmemo_unlocks, doomo_town.unlocks, sizeof(cr.lmemo_unlocks));
+        memset(cr.lmemo, 0, sizeof(cr.lmemo));
+        cr.lmemo_generation++;
+    }
 }
 
 int cr_value_locked(const CrRow *row, int index)
 {
-    uint32_t sig = 0;
     int k, key;
     CrLockMemo *m;
     if (!row) return 0;
@@ -691,7 +684,6 @@ int cr_value_locked(const CrRow *row, int index)
     }
     /* a species preset depends on the draft's species too */
     key = row->kind == RK_ACTION && row->aux == CA_SPECIES_PRESET ? index + 8 * RES_SPECIES(&cr.draft) : index;
-    (void)sig;
     k = (int)(((uintptr_t)row >> 2) * 7u + (unsigned)key) & (CR_LMEMO - 1);
     m = &cr.lmemo[k];
     if (m->ok && m->row == row && m->idx == key) return m->val;

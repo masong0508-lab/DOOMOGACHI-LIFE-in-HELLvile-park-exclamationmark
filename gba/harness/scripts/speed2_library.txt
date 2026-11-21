@@ -122,13 +122,13 @@ scene LIB_JUKEBOX 256
 wait 30
 fps start
 wait 90
-fps library: jukebox
+expect-fps 29.5 library: jukebox
 shot lib_jukebox
 press A
 wait 45
 fps start
 wait 130
-fps library: jukebox playing
+expect-fps 29.5 library: jukebox playing
 shot lib_jukebox_playing
 
 # ---- Gallery ----------------------------------------------------------------------
