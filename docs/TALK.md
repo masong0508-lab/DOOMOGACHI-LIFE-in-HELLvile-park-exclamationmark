@@ -1,5 +1,8 @@
 # Talk: the live house conversation
 
+**Follow-up memory retention pass:** memory eviction is now consequence-aware: unfinished favors remain pinned; completed shared play/gifts/invitations and remembered compliments/insults/promises are prioritized over older casual chats. At a full table, the oldest eligible routine record goes first. The memory status API (`talk_mem_capacity()`, `talk_mem_pinned_count()`) makes the live limit and number of protected requests inspectable without allocations. Native regression tests cover retaining the 25th resident, serializing/reloading more than the old 24-record cap, protecting the entire pinned table, and retaining shared experiences under pressure. These are committed changes, **not yet console/emulator-verified**.
+
+
 **2026-11-20 memory-cap upgrade:** Talk's persistent LRU now has 32 entries on GBA, 64 on PS1, 128 on Dreamcast and 48 in the native host test profile, rather than a universal 24. Each entry remains 12 bytes; the unchanged save payload supports loading older, smaller tables. Active/ready quests are protected against LRU eviction, and an entirely pinned full table declines additional memory rather than deleting an unfinished promise. The custom personality trait override table remains separately capped at 24, and the 1,000-resident world roster is not a memory-table size. Declared TALK chunk budgets are 544/928/1696/736 bytes respectively. Console and emulator verification is still required; see [the PS2 Deluxe roadmap](design/PS2_DELUXE_ROADMAP.md) for the proposed 192-entry PS2 profile and richer recall systems.
 
 
