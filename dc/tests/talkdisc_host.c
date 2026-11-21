@@ -15,8 +15,9 @@ const uint8_t *txt_plat_pack(int pack) { (void)pack; return NULL; }
 int txt_plat_load(int pack) { (void)pack; return 0; }
 extern long mock_reads, mock_opens, mock_maxread;
 static int fails;
-static uint32_t clk;                                      /* a clock that moves 5 ms per read of it */
-uint32_t dc_us(void) { return clk += 5000; }
+static uint32_t clk;                                      /* a clock that normally advances 5 ms per read */
+static uint32_t clk_step = 5000;
+uint32_t dc_us(void) { return clk += clk_step; }
 void dc_logf(const char *fmt, ...) { (void)fmt; }
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); fails++; } } while (0)
 int main(void)
@@ -45,8 +46,15 @@ int main(void)
     CHECK(mock_reads == 4);
     dc_talk_pump(5000);
     CHECK(mock_reads == 5);
+    /* An emulated zero-duration read must not cause a single idle tick
+     * to pull an entire bank. The floor allows four sectors in 20 ms,
+     * then the normal 5 ms host clock is restored for the rest. */
+    clk_step = 0;
+    dc_talk_pump(20000);
+    CHECK(mock_reads == 9);
+    clk_step = 5000;
     dc_talk_pump(12000);                                      /* a roomy slot takes two slices (5000 each), the third does not fit */
-    CHECK(mock_reads == 7);
+    CHECK(mock_reads == 11);
     for (ticks = 0; plat_talk_load("en") == PLAT_TALK_LOADING && ticks < 100000; ticks++) {
         long before = mock_reads;
         dc_talk_pump(5000);

@@ -160,3 +160,14 @@ rewrote the short oddity dialogue to sound more innocent and particular,
 and lets observing pairs use the *actual* first resident's hobby/food
 rather than one interchangeable stock joke. The existing grief/difficult-
 mood gate remains. Scenes still emerge only from real co-location.
+
+### Incident safety: uneasy moments remain in-world
+
+The observation picker rotates by real venue, day and game-hour,
+prefers an *existing* friend/rival/family edge when available, and limits
+per-button relationship probes. It does not invent a connection or run
+an ongoing social AI task each frame. A resident in the ghost,
+soul-lost or possessed state is not treated as an ordinary lively comic
+partner; if no living citizen is present, the player hears a more
+appropriate, quiet and uneasy line instead. A controller-driven
+regression preserves this status.

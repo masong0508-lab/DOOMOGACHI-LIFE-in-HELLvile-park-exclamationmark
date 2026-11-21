@@ -4,6 +4,7 @@
 #include "test.h"
 #include "../src/fp_int.h"
 #include "../src/fp_island.h"
+#include "../src/ui_internal.h"
 
 /* fp_island.c test hooks */
 int fp_island_select_kind(int kind);
@@ -508,6 +509,34 @@ TEST(freeplay_moment_observes_live_residents_without_forcing_bonds)
     CHECK_EQ(rel_value(a, b), before);
     CHECK_EQ(town_res(a)->activity, ACT_CAFE);
     CHECK_EQ(town_res(b)->activity, ACT_CAFE);
+}
+
+/* A ghost or possessed resident should never become a normal cheerful
+ * stranger in the observation system; it also mustn't restore them to
+ * life or create an imaginary relationship during the scene. */
+TEST(freeplay_moment_respects_a_lone_ghost)
+{
+    UiDialogDebug d;
+    int ghost, i;
+    premade_island();
+    ghost = first_alive(0);
+    CHECK(ghost >= 0);
+    for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+        DoomoResident *r = town_res(i);
+        if (r && r->activity == ACT_CAFE) r->activity = ACT_HOME;
+    }
+    town_res(ghost)->status = RES_GHOST;
+    town_res(ghost)->activity = ACT_CAFE;
+    fp_island_select_kind(LOC_CAFE);
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    CHECK(fp_island_menu_select("Catch a little moment"));
+    press(BTN_A);
+    CHECK(top_is(&SCENE_DIALOG));
+    ui_dialog_debug(&d);
+    CHECK(d.text && strstr(d.text, "streetlights") != NULL);
+    close_dialogs();
+    CHECK_EQ(town_res(ghost)->status, RES_GHOST);
 }
 
 TEST(freeplay_island_town_hall_rent_once_a_day)

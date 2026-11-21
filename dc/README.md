@@ -113,3 +113,13 @@ The pinned KallistiOS build, host parity tests, Flycast boot, input,
 by pull requests touching the Dreamcast or shared core, rather than
 exclusively by a post-merge main commit. Final performance and gameplay
 claims still require the resulting CI report.
+
+### Idle-slice Talk disc safety
+
+The streaming `TALK_EN.BIN` prefetch is still sector-sized and yields to
+the game's 30 Hz frame. Disc reads that complete too quickly to measure,
+including cached or emulated reads, now charge at least 5 ms against the
+frame's idle allowance instead of potentially initiating the entire bank
+in one frame. The host test simulates a zero-duration clock and confirms
+that only a bounded number of sectors are read. Actual KOS/Flycast
+validation remains required; this is not a claim of improved measured FPS.
