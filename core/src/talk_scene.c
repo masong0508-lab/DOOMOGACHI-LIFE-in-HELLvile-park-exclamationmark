@@ -39,8 +39,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -715,6 +715,15 @@ static void build_main(void)
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
     add_row(K_HELP, 0, 0);
+    /* A genuine sim thought bubble, not random chatter. Keep it below
+     * quick replies so the one-press response budget stays unchanged.
+     * It is refreshed on page entry/target switch, never each frame. */
+    if (T.to >= 0 && T.to < T.n) {
+        int pi = sim_problem_for(T.ids[T.to]);
+        const DoomoProblem *p = sim_problem(pi);
+        if (p && p->kind > PROB_NONE && p->kind < PROB_COUNT)
+            add_row(K_CONCERN, p->kind, 0);
+    }
     /* Make an *existing* request directly reachable from the main Talk
      * screen. Entering it opens the actual history/quest objective rather
      * than inventing a promise to hand something in. The row appears only
@@ -804,6 +813,32 @@ static void build_history(void)
             add_row(K_HISTORY_REPEAT, TALK_SHARED_INVITED, 0);
         }
     }
+    list_reset();
+}
+
+/* One resident's actual outstanding thought: two obvious choices, with
+ * the current problem checked again on every press. No saved state,
+ * invented concern or duplicate copy of the simulation problem queue. */
+static void build_concern(void)
+{
+    int pi;
+    const DoomoProblem *p;
+    if (T.to < 0 || T.to >= T.n) {
+        ui_toast("Choose one person first.");
+        build_main();
+        return;
+    }
+    pi = sim_problem_for(T.ids[T.to]);
+    p = sim_problem(pi);
+    if (!p || p->kind <= PROB_NONE || p->kind >= PROB_COUNT) {
+        ui_toast("That concern is no longer active.");
+        build_main();
+        return;
+    }
+    T.page = PG_CONCERN;
+    T.nrows = 0;
+    add_row(K_CONCERN_INFO, p->kind, 0);
+    add_row(K_CONCERN_ACT, p->kind, 0);
     list_reset();
 }
 
@@ -1160,6 +1195,30 @@ static const char *row_text(int index, char *buf)
                        r->arg == TALK_SHARED_GIFTED ? "Give another gift >" :
                        "Invite them out again >");
         break;
+    case K_CONCERN:
+        doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
+        break;
+    case K_CONCERN_INFO:
+        doomo_snprintf(buf, 48, "Hear what happened");
+        break;
+    case K_CONCERN_ACT: {
+        const char *action = "Help with this";
+        switch (r->arg) {
+        case PROB_HUNGRY: action = "Offer some food"; break;
+        case PROB_DIRTY: action = "Help them wash"; break;
+        case PROB_SICK: case PROB_CORRUPTION: action = "Offer treatment"; break;
+        case PROB_BORED: action = "Play together"; break;
+        case PROB_LONELY: case PROB_NIGHTMARE: action = "Comfort them"; break;
+        case PROB_WANTS_FRIEND: action = "Help them make a friend"; break;
+        case PROB_FIGHT: action = "Help them make peace"; break;
+        case PROB_WANTS_ITEM: action = "Hand over their requested item"; break;
+        case PROB_CRUSH: case PROB_CONFESS_HELP:
+        case PROB_BREAKUP: case PROB_PROPOSAL: action = "Give relationship advice"; break;
+        case PROB_POSSESSED: action = "How to help them"; break;
+        }
+        doomo_snprintf(buf, 48, "%s >", action);
+        break;
+    }
     case K_HELP: doomo_snprintf(buf, 48, "Help with their needs >"); break;
     case K_COMFORT: doomo_snprintf(buf, 48, "Comfort them"); break;
     case K_CLEAN: doomo_snprintf(buf, 48, "Help them wash"); break;
@@ -1418,6 +1477,117 @@ static void give_item(int item)
     build_main();
 }
 
+/* A Tomodachi-style thought bubble is actionable because it delegates to
+ * the *existing* care/problem machinery. No free hunger/medicine rewards;
+ * romance advice still goes through sim's age, consent and partner gates. */
+static void concern_reply(int id, const char *reply, const char *you)
+{
+    doomo_snprintf(T.you, sizeof T.you, "%s", you);
+    ui_say(id, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+    build_main();
+}
+
+static void concern_info(void)
+{
+    int id, pi;
+    char message[96];
+    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    id = T.ids[T.to];
+    pi = sim_problem_for(id);
+    if (pi < 0) { build_concern(); return; }
+    sim_problem_text(pi, message, (int)sizeof message);
+    doomo_snprintf(T.you, sizeof T.you, "What's on your mind?");
+    ui_say(id, message);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+}
+
+static void concern_choice(int c)
+{
+    int id, pi;
+    const DoomoProblem *p;
+    const char *reply;
+    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    id = T.ids[T.to];
+    pi = sim_problem_for(id);
+    p = sim_problem(pi);
+    if (!p) { build_concern(); return; }
+    switch (p->kind) {
+    case PROB_CRUSH: case PROB_CONFESS_HELP:
+        if (p->other == 0xFFFF) { build_concern(); return; }
+        reply = sim_advise_confess(id, p->other, c == 0);
+        break;
+    case PROB_BREAKUP: reply = sim_advise_breakup(id, c == 0); break;
+    case PROB_PROPOSAL: reply = sim_advise_propose(id, c == 0); break;
+    default: build_concern(); return;
+    }
+    concern_reply(id, reply, c == 0 ? "I think you should try." : "I'd take it slowly.");
+}
+
+static void concern_action(void)
+{
+    int id, pi, minor;
+    const DoomoProblem *p;
+    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    id = T.ids[T.to];
+    pi = sim_problem_for(id);
+    p = sim_problem(pi);
+    if (!p) { build_concern(); return; } /* expired while the page was open */
+    switch (p->kind) {
+    case PROB_HUNGRY: build_care_items(0); return;
+    case PROB_DIRTY: perform_care(K_CLEAN, 0); return;
+    case PROB_SICK: case PROB_CORRUPTION: build_care_items(1); return;
+    case PROB_BORED: play_together(); build_main(); return;
+    case PROB_LONELY: case PROB_NIGHTMARE: perform_care(K_COMFORT, 0); return;
+    case PROB_WANTS_FRIEND:
+        sim_problem_resolve(pi);
+        concern_reply(id, sim_last_reaction(), "Maybe I can introduce you.");
+        return;
+    case PROB_FIGHT:
+        if (p->other == 0xFFFF) { ui_toast("Their friend is no longer available."); return; }
+        sim_problem_resolve(pi);
+        concern_reply(id, sim_last_reaction(), "Let's sort this out.");
+        return;
+    case PROB_WANTS_ITEM:
+        minor = T.s.conv.aud.any_minor || talk_safe_minor(id);
+        if (p->item <= ITEM_NONE || p->item >= ITEM_COUNT || !inv_count(p->item) ||
+            !talk_act_gift_ok(p->item, talk_safe_minor(T.avatar), minor)) {
+            ui_toast("Find a suitable requested item first.");
+            return;
+        }
+        /* This routine consumes the item once and grants the real sim reward;
+         * selecting the informational row never touches inventory. */
+        sim_problem_resolve(pi);
+        concern_reply(id, sim_last_reaction(), "I brought the thing you wanted.");
+        return;
+    case PROB_CRUSH: case PROB_CONFESS_HELP: {
+        static const char *const choices[2] = { "Tell them how you feel", "Not yet" };
+        ui_choice(id, "Should I tell them how I feel?", choices, 2, concern_choice);
+        return;
+    }
+    case PROB_BREAKUP: {
+        static const char *const choices[2] = { "Work it out", "Let them go" };
+        ui_choice(id, "What about our relationship?", choices, 2, concern_choice);
+        return;
+    }
+    case PROB_PROPOSAL: {
+        static const char *const choices[2] = { "Pop the question!", "Take it slowly" };
+        ui_choice(id, "Should I propose?", choices, 2, concern_choice);
+        return;
+    }
+    case PROB_POSSESSED:
+        ui_toast("An exorcism is needed. Open their Care screen.");
+        return;
+    default:
+        ui_toast("You can help from the resident Care screen.");
+        return;
+    }
+}
+
 static void reminisce(unsigned selected)
 {
     int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
@@ -1663,6 +1833,9 @@ static void activate(int i)
         else if (r->arg == TALK_SHARED_GIFTED) build_give_items();
         else if (r->arg == TALK_SHARED_INVITED) build_outings();
         break;
+    case K_CONCERN: build_concern(); break;
+    case K_CONCERN_INFO: concern_info(); break;
+    case K_CONCERN_ACT: concern_action(); break;
     case K_HELP: build_care(); break;
     case K_COMFORT: case K_CLEAN: perform_care(r->kind, 0); break;
     case K_FEED: build_care_items(0); break;
@@ -1879,6 +2052,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_FEED: t = "Offer what food?"; break;
     case PG_HEAL: t = "Choose a treatment"; break;
     case PG_HISTORY: t = "Our history"; break;
+    case PG_CONCERN: t = "What's on their mind?"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1986,14 +2160,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 12 ? T.page : 0];
+    o->page = pages[T.page < 13 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -2012,7 +2186,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
