@@ -173,10 +173,12 @@ static int cap_town_max(int kind)
     return kind == TEV_ACT_INVITE ? TALK_CAP_INVITE_TOWN : kind == TEV_ACT_GIFT ? TALK_CAP_GIFT_TOWN : 1000;
 }
 
+/* A dead/missing resident must never appear able to offer a real action.
+ * The apply path has always rejected them; keep the UI/plan gate in sync. */
 int talk_outcome_can(int kind, int id)
 {
     const LedP *lp;
-    if (!cap_flag(kind) || !resident_id(id)) return 0;
+    if (!cap_flag(kind) || !alive_resident(id)) return 0;
     roll();
     lp = led_peek(id);
     return !(lp && (lp->flags & cap_flag(kind))) && cap_town(kind) < cap_town_max(kind);
@@ -186,7 +188,7 @@ int talk_outcome_why_in(const TalkState *s, int kind, int id)
 {
     int k, mine = 0, all = 0;
     const LedP *lp;
-    if (!s || !cap_flag(kind) || !resident_id(id)) return TAW_RULE;
+    if (!s || !cap_flag(kind) || !alive_resident(id)) return TAW_RULE;
     roll();
     lp = led_peek(id);
     for (k = 0; k < s->nev && k < TALK_EVENTS_MAX; k++) {
@@ -510,7 +512,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
             break;
         case TEV_ROMANCE_YES:                                /* Talk only asks: the sim rolls and owns the result */
             if (ia >= 0 && (e->b == TA_CONFESS || e->b == TA_ASK_OUT) && resident_id(ia) && sum->avatar >= 0 &&
-                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar) &&
+                sum->avatar < DOOMO_MAX_RESIDENTS && alive_resident(sum->avatar) && alive_resident(ia) &&
                 !minor_id(sum->avatar) && !minor_id(ia)) {   /* defence in depth: the DM and the sim gate it too */
                 LedQ *q = led_q(sum->avatar, ia);
                 if (!(q->flags & LQF_ASKED)) {
@@ -524,7 +526,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
             if (ia >= 0 && news_walk < 0) news_walk = ev;
             break;
         case TEV_LEARNED:                                    /* TM2d: a secret told: the player now knows that like, fear or hated food */
-            if (ia >= 0 && resident_id(ia) && e->b < 5) {
+            if (ia >= 0 && alive_resident(ia) && e->b < 5) {
                 talk_mem_know_like(ia, e->b);
                 out->learned++;
             }
