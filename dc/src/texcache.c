@@ -118,12 +118,22 @@ static void hash_insert(int slot)
     hash[i] = (uint16_t)(slot + 1);
 }
 
-static void hash_rebuild(void)
+/* Evict one open-addressed entry without rebuilding the full table of
+ * 2,048 live textures. Clearing a bucket breaks a probe chain; reinsert
+ * just that contiguous cluster until its next empty bucket. */
+static void hash_remove(int slot)
 {
-    int s;
-    memset(hash, 0, sizeof(hash));
-    for (s = TEX_STATIC; s < TEX_SLOTS; s++)
-        if (ent[s].live) hash_insert(s);
+    uint32_t i = hkey(ent[slot].key, ent[slot].sum, tex[slot].w, tex[slot].h);
+    while (hash[i] && hash[i] != (uint16_t)(slot + 1))
+        i = (i + 1u) & (HASH_SIZE - 1u);
+    if (!hash[i]) return;
+    hash[i] = 0;
+    for (i = (i + 1u) & (HASH_SIZE - 1u); hash[i];
+         i = (i + 1u) & (HASH_SIZE - 1u)) {
+        int s = (int)hash[i] - 1;
+        hash[i] = 0;
+        hash_insert(s);
+    }
 }
 
 static int hash_find(uint32_t key, uint32_t sum, int w, int h, int uid)
@@ -141,6 +151,7 @@ static int hash_find(uint32_t key, uint32_t sum, int w, int h, int uid)
 
 static void free_slot(int s)
 {
+    hash_remove(s);
     dc2d_be_tex_free(tex[s].handle);
     ent[s].live = 0;
     if (s < free_hint) free_hint = s;  /* oldest hole can be reused first */
@@ -156,7 +167,6 @@ static int evict(uint32_t age)
     if (age < 1) age = 1;
     for (s = TEX_STATIC; s < TEX_SLOTS; s++)
         if (ent[s].live && ent[s].last + age < cur_frame) { free_slot(s); any = 1; }
-    if (any) hash_rebuild();
     return any;
 }
 

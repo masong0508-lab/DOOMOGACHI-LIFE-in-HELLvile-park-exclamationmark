@@ -123,3 +123,13 @@ frame's idle allowance instead of potentially initiating the entire bank
 in one frame. The host test simulates a zero-duration clock and confirms
 that only a bounded number of sectors are read. Actual KOS/Flycast
 validation remains required; this is not a claim of improved measured FPS.
+
+### Texture eviction for crowded scenes
+
+The PAL8 cache now deletes one hash entry and repairs only its local
+collision chain when video RAM is pressured. Previously even one texture
+eviction rebuilt the entire table of 2,048 candidate textures, leading to
+unnecessary SH4 CPU cost when portraits or 3D textures changed. The
+eviction safety rules still protect the active and preceding frames;
+there are no new buffers or save-format changes. Host texture-pressure
+tests and full Flycast integration must pass before merging.
