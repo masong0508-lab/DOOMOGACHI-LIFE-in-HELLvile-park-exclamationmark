@@ -520,7 +520,9 @@ static const DoomoMapDef *s_built_def;                /* (doomo_map is one struc
  * tick sets how far the rays go; the fog stays at the draw distance, the cut is only where the
  * light is out. The distance never goes under DC_V3D_DIST_MIN, and never over the draw distance. */
 #define V3D_TICK_US   33333
-#define V3D_COST_EXP  1.0f
+/* A unit exponent in the view-cost model means distance is directly
+ * proportional to available microseconds. A powf(x, 1.0f) call would
+ * do unnecessary libm work on SH4 during every 3D view. */
 #define V3D_COST_K0   350.0f   /* us per cell before any view has been timed (Flycast: 290-330) */
 #define V3D_COST_SAFE 1.3f     /* the estimate is a peak of the last views, a busier one costs more */
 static int view_left(void)
@@ -543,7 +545,7 @@ static int view_budget(void)
     int left = view_left();
     float d;
     if (s_cost_k <= 0.0f) return s_view_dist;
-    d = left > 0 ? powf((float)left / (s_cost_k * V3D_COST_SAFE), 1.0f / V3D_COST_EXP) : 0.0f;
+    d = left > 0 ? (float)left / (s_cost_k * V3D_COST_SAFE) : 0.0f;
     return d >= (float)s_view_dist ? s_view_dist : d < (float)DC_V3D_DIST_MIN ? DC_V3D_DIST_MIN : (int)d;
 }
 
