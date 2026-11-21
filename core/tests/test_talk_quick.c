@@ -332,6 +332,61 @@ TEST(talk_quick_replies_are_safe)
     talk_db_close();
 }
 
+/* A prior, saved topic is a context cue, not a new allocation for each
+ * resident. The recent topic always takes precedence over memory. */
+TEST(talk_quick_reopens_last_subject_without_forgetting_the_thread)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie;
+    int n, i;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie != TC_NONE);
+    begin2(&s, ID_NANA, -1, 19u);
+    s.conv.mem_topic[0] = pie;
+    s.topic_stack[0] = TC_NONE;
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, 0);
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
+    CHECK(n >= 2);
+    for (i = 0; i < n; i++) CHECK_EQ(g[i].topic, pie);
+    put_line(&s, 0, -1, TA_ASK_OPINION, concept("dancing"), 0);
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
+    CHECK(n >= 2);
+    for (i = 0; i < n; i++) CHECK_EQ(g[i].topic, concept("dancing"));
+    talk_db_close();
+}
+
+/* Existing needs and mood, not an unrelated random word, change how the
+ * player can engage a resident. Every choice still runs through the DM. */
+TEST(talk_quick_reads_life_needs_as_conversation_context)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    DoomoResident *r;
+    int n;
+    premade_town();
+    CHECK(open_db());
+    r = town_res(ID_NANA);
+    set_persona(ID_NANA, 8, 6, 6, 6, 6);
+    begin2(&s, ID_NANA, -1, 39u);
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, 0);
+    r->mood = MOOD_HUNGRY;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 3u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_OFFER);
+    r->mood = MOOD_SICK;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 3u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_OFFER);
+    r->mood = MOOD_SCARED;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 3u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_COMFORT);
+    talk_db_close();
+}
+
 /* every reply, in every situation, goes through the drama manager into a real answer */
 TEST(talk_quick_replies_all_get_answers)
 {

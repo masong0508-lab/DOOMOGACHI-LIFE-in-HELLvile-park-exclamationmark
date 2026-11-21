@@ -268,6 +268,11 @@ static const uint8_t ql_five[]  = { TA_HIGH_FIVE, TA_LAUGH, TA_JOKE };
 static const uint8_t ql_nod[]   = { TA_ASK_ABOUT, TA_NOD, TA_TELL, TA_BACKCHANNEL };
 static const uint8_t ql_start[] = { TA_GREET, TA_ASK_FEELING, TA_ASK_ABOUT, TA_JOKE, TA_COMPLIMENT, TA_TELL, TA_WAVE };
 static const uint8_t ql_sinc[]  = { TA_SYMPATHIZE, TA_COMFORT, TA_OFFER, TA_ENCOURAGE };
+/* A topic-dive is not a random topic change. Keep a question or disclosure
+ * alive long enough to be meaningful; the resident's real answer still
+ * comes from talk_dm_step and the stateful language generator. */
+static const uint8_t ql_dive[]  = { TA_ASK_ABOUT, TA_ASK_OPINION, TA_ASK_FACT, TA_TELL,
+                                    TA_CONTINUE, TA_AGREE, TA_DISAGREE };
 static const uint8_t ql_chg[]   = { TA_CHANGE_TOPIC, TA_ASK_OPINION, TA_DISAGREE, TA_TEASE, TA_ASK_ABOUT, TA_TELL, TA_ASK_FEELING };
 static const uint8_t ql_wild[]  = { TA_COMPLIMENT, TA_ENCOURAGE, TA_HIGH_FIVE, TA_ASK_FEELING, TA_NOD, TA_BACKCHANNEL,
                                     TA_ANSWER, TA_ASK_ABOUT, TA_THANK };
@@ -304,6 +309,14 @@ static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **lis
 {
     static const uint8_t sad[] = { TA_SYMPATHIZE, TA_COMFORT, TA_OFFER };
     static const uint8_t angry[] = { TA_APOLOGIZE, TA_ASK_FEELING };
+    /* A character's actual simulated needs shape how one engages with
+     * them. These are actions by the player, not canned lines falsely
+     * attributed to the resident. No extra resident state is stored. */
+    static const uint8_t hungry[] = { TA_OFFER, TA_ASK_FEELING, TA_SYMPATHIZE };
+    static const uint8_t tired[] = { TA_ASK_FEELING, TA_OFFER, TA_COMFORT };
+    static const uint8_t ill[] = { TA_OFFER, TA_COMFORT, TA_ASK_FEELING };
+    static const uint8_t lonely[] = { TA_INVITE, TA_ASK_FEELING, TA_COMPLIMENT };
+    static const uint8_t scared[] = { TA_COMFORT, TA_SYMPATHIZE, TA_OFFER };
     static const uint8_t easy[] = { TA_JOKE, TA_LAUGH };
     static const uint8_t serious[] = { TA_ASK_ABOUT, TA_ASK_ADVICE, TA_ANSWER };
     static const uint8_t expr[] = { TA_COMPLIMENT, TA_HUG, TA_HIGH_FIVE };
@@ -329,6 +342,11 @@ static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **lis
     }
     if (mood == MOOD_SAD) return QSET(sad);
     if (mood == MOOD_ANGRY) return QSET(angry);
+    if (mood == MOOD_SICK || (r && r->stat[STAT_HEALTH] < 30)) return QSET(ill);
+    if (mood == MOOD_HUNGRY || (r && r->stat[STAT_HUNGER] < 20)) return QSET(hungry);
+    if (mood == MOOD_SLEEPY || (r && r->stat[STAT_ENERGY] < 15)) return QSET(tired);
+    if (mood == MOOD_LONELY || (r && r->stat[STAT_SOCIAL] < 20)) return QSET(lonely);
+    if (mood == MOOD_SCARED) return QSET(scared);
     if (at >= 10 || qk >= 12) return QSET(easy);
     if (at <= 5) return QSET(serious);
     if (ex >= 10) return QSET(expr);
@@ -353,6 +371,20 @@ static int q_grief(uint16_t topic)
     return topic && talk_db_concept(topic, &tc) && (tc.flags & TCF_GRIEF);
 }
 
+/* Only suggest a new subject when the current concept is linked by the
+ * curated association graph. Never substitute random word adjacency for
+ * a conversational segue. One 16 B bank read, no persistent allocation. */
+static int q_linked(uint16_t active, uint16_t candidate)
+{
+    uint16_t ids[TALK_ASSOC_TOP];
+    int i, n;
+    if (!candidate || candidate == active) return 0;
+    if (!active) return 1;
+    n = talk_db_assoc(active, ids, NULL);
+    for (i = 0; i < n; i++) if (ids[i] == candidate) return 1;
+    return 0;
+}
+
 int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt, TalkSugg *out)
 {
     QCtx q;
@@ -375,10 +407,18 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     /* grief and sincerity: only comfort, and the topic is not picked up */
     q.sincere = (th && (th->flags & TLF_SINCERE)) || TA_IS_SAFETY(act) || q_grief(th ? th->topic : TC_NONE) ||
                 q_grief(topic) || q_grief(s->topic_stack[0]);
-    /* the topic: what the line is about, else what the player has in play, else the last one said */
+    /* Current conversational context wins. Only on a neutral opening
+     * may an otherwise empty thread resume the resident's saved subject.
+     * This comes from the existing 24-person LRU TALK memory; no extra
+     * long-lived tokens or sentence buffers per resident are allocated. */
     q.topic = th && th->topic ? th->topic : topic ? topic : s->topic_stack[0];
+    if (!q.topic && slot >= 0 && slot < s->nparts &&
+        (!th || act == TA_GREET || act == TA_WAVE || act == TA_BACKCHANNEL)) {
+        q.topic = s->conv.mem_topic[slot];
+    }
     if (q.topic && (!talk_gen_concept_ok(q.topic, &s->conv.aud) || q_grief(q.topic))) q.topic = TC_NONE;
-    q.fresh = fresh && !q.sincere && fresh != q.topic && talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
+    q.fresh = fresh && !q.sincere && q_linked(q.topic, fresh) &&
+              talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
               ? fresh : TC_NONE;
     h = doomo_hash32(salt * 0x9E3779B1u + (uint32_t)act * 0x85EBCA6Bu + 0x7A1Bu);
 
@@ -410,8 +450,15 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 9, tmp);
         q_from(&q, ql_sinc, (int)sizeof ql_sinc, h >> 11, tmp);
     } else {
-        q_from(&q, ql_chg, (int)sizeof ql_chg, h >> 9, tmp);       /* 3: change something */
-        q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 11, tmp);    /* 4: a wildcard */
+        if (q.topic && th) {
+            /* Continue an existing thought first; changing subjects is a
+             * visible, deliberate choice only for a linked candidate. */
+            q_from(&q, ql_dive, (int)sizeof ql_dive, h >> 9, tmp);
+            q_from(&q, ql_dive, (int)sizeof ql_dive, h >> 11, tmp);
+        } else {
+            q_from(&q, ql_chg, (int)sizeof ql_chg, h >> 9, tmp);
+            q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 11, tmp);
+        }
         q_from(&q, ql_wild, (int)sizeof ql_wild, h >> 13, tmp);
     }
     for (i = 0; i < q.n; i++) out[i] = tmp[i];

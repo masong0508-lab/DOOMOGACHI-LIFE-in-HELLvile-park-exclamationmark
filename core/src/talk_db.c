@@ -2,13 +2,15 @@
  * core/include/doomo/talk.h, the compiler core/tools/talkc.py).
  *
  * One TALK_<lang>.BIN is open at a time, read a few bytes per call through
- * plat_talk_read() (or a memory image: the unit tests' fixture): a concept
+ * a bounded, one-page, read-through cache over plat_talk_read() (or from
+ * a memory image in the unit test): a concept
  * row is 8 B, an association row 16 B, a surface form one short Huffman
  * string decoded by txt.c's txt_decode with the story's own code. Nothing
  * of the database is resident (the PS1 keeps it in SPU RAM, TP1).
  *
- * RAM: the directory (14 banks x 16 B) and a few words, about 250 B of
- * .bss; nothing on the GBA, which never references it (--gc-sections).
+ * RAM: the directory (~250 B), and a single 256 B read-through window
+ * on non-GBA targets. The large language file remains platform-backed,
+ * never loaded into heap RAM here. The GBA builds omit this cache.
  * Per call: at most 128 B of stack for a string's stream.
  */
 #include "doomo/doomo.h"
@@ -30,6 +32,20 @@ static struct {
     TalkBank bank[TB_COUNT];
 } db;
 
+/* Fixed-memory streaming window: frequent 8/16 B concept and association
+ * reads from the same neighborhood share one platform read. The aligned
+ * 256 B window amortizes calls without allocating a model-sized blob.
+ * On GBA we preserve its tight RAM budget and use the direct read path. */
+#if !defined(DOOMO_PLATFORM_GBA)
+#define TALK_STREAM_BYTES 256u
+static struct {
+    uint32_t base;
+    uint16_t size;
+    uint8_t valid, pad;
+    uint8_t bytes[TALK_STREAM_BYTES];
+} stream_window;
+#endif
+
 static uint16_t le16(const uint8_t *p) { return (uint16_t)(p[0] | (p[1] << 8)); }
 static uint32_t le32(const uint8_t *p)
 {
@@ -42,6 +58,38 @@ static int rd(uint32_t off, void *dst, uint32_t len)
     if (len == 0) return 1;
     if (off > db.size || len > db.size - off) return 0;
     if (db.mem) { memcpy(dst, db.mem + off, len); return 1; }
+#if !defined(DOOMO_PLATFORM_GBA)
+    if (len <= 128u) {
+        uint32_t delta;
+        if (stream_window.valid && off >= stream_window.base) {
+            delta = off - stream_window.base;
+            if (delta <= stream_window.size && len <= stream_window.size - delta) {
+                memcpy(dst, stream_window.bytes + delta, len);
+                return 1;
+            }
+        }
+        /* A 64-byte aligned start always leaves a 128-byte read inside a
+         * 256-byte window. Handle trailing partial files without overread. */
+        {
+            uint32_t start = off & ~63u;
+            uint32_t count = db.size - start;
+            if (count > TALK_STREAM_BYTES) count = TALK_STREAM_BYTES;
+            stream_window.valid = 0;  /* failed reads never expose stale bytes */
+            if (plat_talk_read(start, stream_window.bytes, count) == count) {
+                stream_window.base = start;
+                stream_window.size = (uint16_t)count;
+                stream_window.valid = 1;
+                delta = off - start;
+                if (delta <= count && len <= count - delta) {
+                    memcpy(dst, stream_window.bytes + delta, len);
+                    return 1;
+                }
+            }
+            /* Existing platforms can elect not to service larger reads:
+             * preserve their original small-read behavior as fallback. */
+        }
+    }
+#endif
     return plat_talk_read(off, dst, len) == len;
 }
 
@@ -73,6 +121,10 @@ uint32_t talk_crc32(uint32_t crc, const uint8_t *p, uint32_t len)
 void talk_db_close(void)
 {
     memset(&db, 0, sizeof(db));
+#if !defined(DOOMO_PLATFORM_GBA)
+    /* Never reuse cache contents across language/database changes. */
+    stream_window.valid = 0;
+#endif
 }
 
 int talk_db_is_open(void) { return db.open; }
