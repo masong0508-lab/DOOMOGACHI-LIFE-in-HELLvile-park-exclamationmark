@@ -235,3 +235,22 @@ GNU Make build target (`ps2/Makefile`) has now been added and the
 workflow calls it directly. CMake remains optional for a local setup.
 Do not mistake this environment fix for verified GS boot: ELF link and
 PCSX2/hardware validation remain gates.
+
+### PS2-1: real, parity-checked world and first-person renderer
+
+The PS2 experimental game ELF now builds `ps2/src/ref_overworld.c`
+and `ps2/src/ref_view3d.c` from the same source algorithms as
+`core/native/overworld.c` and `core/native/raycast.c`.
+The renderer reads the live shared `DoomoMap` rather than drawing
+placeholder blocks: 16px world tiles, raised surfaces, proper feet
+and depth sorting, light/tint and low-wall occlusion are preserved.
+Its first-person view performs the original DDA with live step heights,
+floor/ceiling texture sampling, sky, depth-clipped sprites and fog.
+Static scratch arrays and the existing single indexed framebuffer are
+used; PS2 EE has enough headroom for the full reference state, though
+the cost must be measured before turning on higher resolution.
+CI checks exact source parity and ensures those two draw functions
+are not also defined by the old placeholder backend. Digital + analog
+disconnect handling and PS1-style button glyph selection are wired.
+**Actual EE game ELF build and PCSX2 on-screen proof remain separate
+gates**; no assertion of playable framerate until those pass.

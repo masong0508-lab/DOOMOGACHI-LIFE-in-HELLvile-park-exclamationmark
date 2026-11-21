@@ -70,13 +70,33 @@ Unlike the PS2-0 debug ELF, it **compiles and links all portable
 A fixed 320x240 indexed surface draws the shared font, UI, procedural
 portraits and reference room renderer; a fixed-size 512x256 RGBA GS
 texture is uploaded at 30Hz and presented at 60 fields/s.
-The current first-pass renderer uses only static buffers: no texture,
-portrait or scratch allocations on every tick.
+The prototype now adapts the native reference map renderers: live
+world cells, authentic 64x64 floor/wall textures, raised faces, lighting,
+billboard feet sorting and occlusion, plus the actual first-person DDA
+height raycaster with floors, ceilings, skies and step faces. Both
+render into the existing 320x240 indexed buffer. No second framebuffer
+or per-frame texture allocation is introduced.
 
-**Known incomplete:** all first-person 3D and overworld graphics are
-deliberately labelled on-screen as in-progress adapters. Audio is
+**Known incomplete:** geometry is real but still CPU-rendered; GS
+native polygons, performance profiling and PCSX2 screenshots are the
+next graphics milestones. Audio is
 silent, memory-card writes return failure instead of pretending to
 save, and disc-side Talk assets are not available. Do not use this as
 the released game or treat a successful ELF link as proof of playability.
 The extra experimental ELF is informational CI until PCSX2 testing,
 real renderer and save/audio backends pass.
+
+## Fidelity and controller safety
+
+`python3 ps2/tests/check_reference_parity.py` verifies that the PS2
+reference overworld and height raycaster remain byte-for-byte equivalent
+to the host source **except** for their frame surface include and the
+host-only draw counter. This protects against an accidental return to
+placeholder floors, ungrounded sprites or inconsistent cell heights.
+
+If PADMAN reports a disconnected controller or an unready pad, the
+new EE game loop releases its analog vector as well as its digital
+buttons. The core receives the generated left-stick D-pad mask, allowing
+its existing analog movement/camera damping to distinguish a stick from
+the physical D-pad. Temporary on-screen button labels reuse the PS1
+DualShock convention (Cross / Circle / Square / Triangle).

@@ -28,15 +28,25 @@ static int init_pad(void)
 static uint32_t read_pad(void)
 {
     struct padButtonStatus st;
-    int state;
-    if(!pad_open)return 0;
+    int state,lx,ly,rx,ry;
+    uint32_t stick;
+    /* A disconnected or resynchronizing DualShock must also release
+     * its previous analog vector. Otherwise a scene can keep walking
+     * after unplugging the controller, despite zero digital buttons. */
+    if(!pad_open)goto absent;
     state=padGetState(0,0);
-    if(state!=PAD_STATE_STABLE && state!=PAD_STATE_FINDCTP1)return 0;
-    if(!padRead(0,0,&st))return 0;
-    input_set_analog(1,(int)st.ljoy_h-128,(int)st.ljoy_v-128,
-                      (int)st.rjoy_h-128,(int)st.rjoy_v-128,0);
-    return ps2_buttons_to_core((uint16_t)~st.btns) |
-           input_stick_dpad((int)st.ljoy_h-128,(int)st.ljoy_v-128);
+    if(state!=PAD_STATE_STABLE && state!=PAD_STATE_FINDCTP1)goto absent;
+    if(!padRead(0,0,&st))goto absent;
+    lx=(int)st.ljoy_h-128; ly=(int)st.ljoy_v-128;
+    rx=(int)st.rjoy_h-128; ry=(int)st.rjoy_v-128;
+    stick=input_stick_dpad(lx,ly);
+    /* Report which digital directions are stick-generated so the core
+     * can distinguish analog walking from D-pad presses. */
+    input_set_analog(1,lx,ly,rx,ry,stick);
+    return ps2_buttons_to_core((uint16_t)~st.btns) | stick;
+absent:
+    input_set_analog(0,0,0,0,0,0);
+    return 0;
 }
 int main(void)
 {
@@ -59,6 +69,10 @@ int main(void)
     gsKit_set_test(gs,GS_ZTEST_OFF);
     if(!ps2_game2d_init(gs)){printf("PS2 GS texture memory exhausted\n");return 2;}
     doomo_init();
+    /* PS2 follows the familiar Cross/Circle/Square/Triangle help
+     * labels until a dedicated PS2 glyph-label profile is added. */
+    input_set_pad(PAD_PS1);
+    input_set_feel(1);
     printf("PS2 shared-core prototype: doomo_init complete, 30Hz logic\n");
     for(;;){
         /* Input is sampled each game tick; 60Hz GS fields never advance
