@@ -50,17 +50,18 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  *   Smooth    half resolution always (G7's "Faster").
  *   Balanced  targets 30 fps (2 vblanks): full -> half -> quarter if
  *             a lower-detail frame still misses the target. The two
- *             Bone maps use an 80x54 fallback to retain more detail
+ *             Bone maps use a 96x64 readable intermediate tier and
+ *             an 80x54 emergency tier to retain more detail
  *             under load. Upscaling uses the existing Mode 4 page.
  *             Upgrade quality only after a cooldown and a CPU-budget
  *             estimate that accounts for the more detailed renderer.
  *   Max       full/half resolution with its original 15 fps budget.
  *   Smooth    half resolution always (preserves the existing 2x artwork).
- * State: +4 bytes EWRAM for the quarter-view timing estimate. */
-static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter, 3 third */
+ * State: +4 bytes EWRAM versus the previous four-tier estimate array. */
+static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter, 3 Bone 96x64, 4 Bone 80x54 */
 static uint8_t  gov_wait;          /* frames before the next quality retry */
 static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
-static uint32_t gov_r3d[4];        /* CPU cycles per quality tier */
+static uint32_t gov_r3d[5];        /* CPU cycles per quality tier */
 static uint8_t gov_bone_overruns; /* consecutive very slow readable views */
 static const DoomoMapDef *gov_mapdef; /* reset old scene timing on map changes */
 
@@ -131,15 +132,42 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         }
         gov_bone_overruns = 0;
     }
-    if (gov_wait) { gov_wait--; return; }
-    if (frame == 4) {
-        /* Half detail casts 1.5x the rays and shades 2.2x the pixels.
-         * Retry once the current room has enough room for the extra work. */
-        if (work + gov_r3d[3] * 2u / 3u + VBL_CYC / 4u <= 3u * VBL_CYC) {
-            gov_half = 1;
-            gov_wait = 16;
+    /* The new Bone middle tier casts 48 rays at 96x64 (rather than the
+     * emergency tier's 40 rays at 80x54). Keep it while a frame fits four
+     * vblanks; only retreat to the original lower-detail image after
+     * repeated slower frames. Screen size, view distance and FOV stay fixed. */
+    if (bone && m == OPT3D_BALANCED && frame == 4) {
+        if (took > 4u) {
+            if (++gov_bone_overruns >= 3u) {
+                gov_half = 4;
+                gov_wait = 32;
+                gov_bone_overruns = 0;
+            }
             return;
         }
+        gov_bone_overruns = 0;
+    }
+    if (gov_wait) { gov_wait--; return; }
+    if (frame == 5) {
+        /* A measured middle-tier cost is preferable; before its first
+         * visit estimate 1.4x the emergency renderer. Hysteresis avoids
+         * bouncing between resolutions in a demanding corridor. */
+        uint32_t middle = gov_r3d[3] ? gov_r3d[3] :
+                          gov_r3d[4] + gov_r3d[4] * 2u / 5u;
+        uint32_t extra = middle > gov_r3d[4] ? middle - gov_r3d[4] : 0;
+        if (work + extra + VBL_CYC / 4u <= 4u * VBL_CYC)
+            gov_half = 3;
+        gov_wait = 32;
+        return;
+    }
+    if (frame == 4) {
+        /* Prefer 120x80 only when it should fit a three-vblank budget.
+         * 120x80 has 1.56x as many input pixels as 96x64. */
+        uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] :
+                             gov_r3d[3] + gov_r3d[3] / 2u;
+        uint32_t extra = half_cost > gov_r3d[3] ? half_cost - gov_r3d[3] : 0;
+        if (work + extra + VBL_CYC / 4u <= 3u * VBL_CYC)
+            gov_half = 1;
         gov_wait = 16;
         return;
     }
@@ -171,6 +199,7 @@ uint32_t r3d_last_frame;
 void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
 void r3d_up4(uint16_t *base, int hw, int vh4) IWRAM_CALL;
 void r3d_up3(uint16_t *base);
+void r3d_up5x2(uint16_t *base); /* 96x64 -> 240x160, direct 5/2 scaling */
 
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
@@ -685,11 +714,11 @@ void plat_view3d(const DoomoView3D *v)
             detail = 2;
     }
 #endif
-    if (gov_half == 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
+    if (gov_half >= 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
         bone_readability_map(m->def) && opt_get(OPT_3D_FAST) == OPT3D_BALANCED) {
-        detail = 3;
-        vw = 80;
-        vh = 54;
+        detail = gov_half;
+        vw = detail == 3 ? 96 : 80;
+        vh = detail == 3 ? 64 : 54;
     } else if (detail) { vw >>= detail; vh >>= detail; }
     gba_view3d_frame = (uint8_t)(detail + 1);
     {
@@ -768,7 +797,7 @@ void plat_view3d(const DoomoView3D *v)
      * Full resolution, other levels and view distance stay untouched.
      * No extra rays, textures or allocations; reassess the extra floor
      * sampling in the GBA emulator census before increasing it further. */
-    FL.far = ((detail == 1 || detail == 3) && bone_readability_map(m->def) &&
+    FL.far = ((detail == 1 || detail == 3 || detail == 4) && bone_readability_map(m->def) &&
               opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 768u : 1400u) << 8;
     r3d_columns();
     t1 = gba_cycles();
@@ -789,8 +818,10 @@ void plat_view3d(const DoomoView3D *v)
         if (strength > 3) strength = 3;
         plat_post_blend(colors[v->tint], strength);
     }
-    if (detail == 3) {
+    if (detail == 4) {
         r3d_up3(r3f.dst);
+    } else if (detail == 3) {
+        r3d_up5x2(r3f.dst);
     } else if (detail == 2) {
         /* Exact one-pass 4x expansion: avoids the 120x80 intermediate
          * VRAM write/read of two consecutive r3d_up2 calls. */

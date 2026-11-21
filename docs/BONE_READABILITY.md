@@ -79,3 +79,27 @@ render pass, framebuffer or per-frame geometry. This is a *source-code
 fidelity adjustment*, not a verified screenshot/FPS success: inspect the
 next real GBA ROM capture from the Cathedral start, aisle and apse and
 measure its FPS versus the prior screenshots.
+
+## GBA adaptive 96x64 fidelity tier (new, pending CI screenshots)
+
+The older Balanced governor jumped from **120x80** to **80x54**, enlarging
+40 distinct ray columns into the 240x160 screen at 3x and causing the
+conspicuous blocky skyline/wall texture in GBA emulator screenshots.
+The updated Bone-only governor now tries an intermediate **96x64** view
+(48 ray columns) before its existing 80x54 emergency fallback. The
+96x64 image is enlarged uniformly **2.5x in both axes**, with no warped
+aspect ratio or new textures; a direct ARMv4 Mode 4 VRAM routine maps
+four input rays to twenty screen pixels in place. No framebuffer,
+scratch RAM or IWRAM 3D overlay bytes are added. Existing Smooth,
+Max, other Breach levels and the full-resolution HUD are unaffected.
+
+The new middle tier is retained while the render remains within
+four GBA vblanks; three consecutive slower frames return to the old
+80x54 emergency mode. A cooldown and measured CPU costs prevent rapid
+quality toggling; the original 120x80 tier can be restored when time
+allows. No claim of 24 FPS or native visual parity is made without
+an mGBA run. Verify with `make -C gba test-3d-census`, profile
+`r3d_up5x2` cost, check for VRAM overlap and side effects, and compare
+equal-tick screenshots using `gba/tools/visual_clarity.py`. The key
+regression criteria are clear landmarks, stable movement, correct HUD,
+safe VRAM upscaling, and no catastrophic FPS loss.
