@@ -7,6 +7,8 @@ The two PNGs plus stdout are preserved for manual review in Actions.
 This script requires Play! and ImageMagick's import command.
 """
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -60,6 +62,21 @@ def main():
                     print(f"Screenshot {index} failed: {shot.stderr}", file=sys.stderr)
                     return 1
                 shots.append(png)
+            evidence = {
+                "emulator": "Play! built-in HLE BIOS",
+                "iso_name": iso.name,
+                "iso_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
+                "seconds_observed": args.seconds,
+                "pngs": [s.name for s in shots],
+                "result": "emulator process and two screenshots captured",
+                "limitations": [
+                    "Not a proof that the game rendered rather than the emulator UI",
+                    "No controller, Talk, SPU2, 3D or save/reload playthrough verified",
+                ],
+            }
+            (out / "report.json").write_text(
+                json.dumps(evidence, indent=2) + "\n", encoding="utf-8"
+            )
             print(f"Play! process survived {args.seconds} seconds; screenshots: {shots}")
             print("PASS: emulator process/screenshot smoke ONLY, not gameplay fidelity.")
             return 0
