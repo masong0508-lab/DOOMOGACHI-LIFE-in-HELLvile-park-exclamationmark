@@ -1302,7 +1302,7 @@ void talk_outcome_reset(void);
  * physically uses that location's door/menu. Returns guest ID, or -1. */
 int talk_outcome_meet_ready(int venue);
 /* On-site choice, not a remote Talk action. Both variants consume a single
- * accepted meetup; an invalid venue, an insufficient café budget, or a
+ * accepted meetup; an invalid venue, an insufficient cafe budget, or a
  * declined dialogue choice has no effect. 0 = chat, 1 = local activity. */
 #define TALK_MEET_CHAT     0
 #define TALK_MEET_ACTIVITY 1

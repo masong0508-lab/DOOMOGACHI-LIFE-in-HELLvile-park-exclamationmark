@@ -424,7 +424,7 @@ typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
 #define spr_order ((SprOrder *)(gba_r3d + GBA_BIG_SPR))
 
-static void draw_sprites(const DoomoView3D *v)
+static void draw_sprites(const DoomoView3D *v, int bone)
 {
     int i, n = 0, count = v->sprite_count;
     const int32_t smax = (int32_t)(r3f.maxd << 6);     /* (LV4) the level's view distance in 16.16 world units (64 a cell) */
@@ -512,7 +512,7 @@ static void draw_sprites(const DoomoView3D *v)
              * illuminated skull/stone walls and lava. Only a per-billboard
              * clamp; no silhouette outline, pixel pass, asset or heap RAM.
              * Fullbright sprites and normal maps are unchanged. */
-            if (level < 8 && bone_readability_map(r3f.map->def)) level = 8;
+            if (level < 8 && bone) level = 8;
         }
         s.level = (uint8_t)(level < 1 ? 1 : (level > 15 ? 15 : level));
         s.flags = b->flags;
@@ -666,7 +666,7 @@ void plat_view3d(const DoomoView3D *v)
 {
     uint32_t t0, t1, t2, t3;
     int vx, vy, vw, vh, detail = 0;
-    int a;
+    int a, bone;
     const DoomoMap *m;
     if (gba_nodraw == 1 || !v || !v->map) return;
     if (gba_nodraw) {                         /* G5: the view draws into a page */
@@ -679,6 +679,7 @@ void plat_view3d(const DoomoView3D *v)
     gba_big_claim(GBA_BIG_BY_R3D);
     t0 = gba_cycles();
     m = v->map;
+    bone = bone_readability_map(m->def);
     /* Scene changes invalidate cost estimates from the previous level:
      * otherwise entering an intricate map may inherit its 4x fallback. */
     if (gov_mapdef != m->def) {
@@ -715,7 +716,7 @@ void plat_view3d(const DoomoView3D *v)
     }
 #endif
     if (gov_half >= 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
-        bone_readability_map(m->def) && opt_get(OPT_3D_FAST) == OPT3D_BALANCED) {
+        bone && opt_get(OPT_3D_FAST) == OPT3D_BALANCED) {
         detail = gov_half;
         vw = detail == 3 ? 96 : 80;
         vh = detail == 3 ? 64 : 54;
@@ -775,7 +776,7 @@ void plat_view3d(const DoomoView3D *v)
          * (and sprites beyond the same horizon). Max detail gets a
          * longer panorama, Balanced/Smooth favor playable frame pacing.
          * No changes to AI, targeting, collisions, goals or map data. */
-        if (bone_readability_map(m->def)) {
+        if (bone) {
             int cathedral = m->def == doomo_maps[MAPID_BONE_CATHEDRAL];
             /* The Cathedral alone still spends ~51-54ms per frame and
              * falls into the 80x54 emergency scaler, blurring its skulls,
@@ -819,12 +820,12 @@ void plat_view3d(const DoomoView3D *v)
      * Full resolution, other levels and view distance stay untouched.
      * No extra rays, textures or allocations; reassess the extra floor
      * sampling in the GBA emulator census before increasing it further. */
-    FL.far = ((detail == 1 || detail == 3 || detail == 4) && bone_readability_map(m->def) &&
+    FL.far = ((detail == 1 || detail == 3 || detail == 4) && bone &&
               opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 768u : 1400u) << 8;
     r3d_columns();
     t1 = gba_cycles();
     t2 = t1;
-    draw_sprites(v);
+    draw_sprites(v, bone);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0) {
         /* Unlike the old 4x4 per-pixel ordered dither, a subtle palette
          * lerp never paints isolated red/purple dots over stonework when

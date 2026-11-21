@@ -1,5 +1,9 @@
 # GBA combat emergency-detail benchmark — November 19, 2026
 
+This records the original emergency-detail experiment. For the newest
+Bone map census and the current quality tiers, see the
+[GBA performance status](GBA.md#current-gba-performance-status).
+
 Measured using the **real GBA ROM** and the repository's headless mGBA harness:
 `make -C gba test-3d` (`gba/harness/scripts/view3d.txt`), with the
 script's seeded scene, identical 130-tick windows and 240×160 output.

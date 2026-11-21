@@ -601,7 +601,11 @@ static int config_write_card(const uint8_t *src, uint32_t len)
 
 uint32_t plat_features(void)
 {
+#ifdef DOOMO_HAS_TALK
+    return PLATF_CONFIG | PLATF_TALK;
+#else
     return PLATF_CONFIG;
+#endif
 }
 
 /* The core writes the record once, when the scene where settings changed is

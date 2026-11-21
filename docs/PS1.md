@@ -41,6 +41,13 @@ Options (`-D...`): `DOOMO_ENGINE_TEST=ON`, `DOOMO_PAL=ON`,
 built-in fallback art, `cmake --preset ps1 -B build-plat -DDOOMO_CORE=OFF
 -DDOOMO_ENGINE_TEST=ON`).
 
+`DOOMO_PS1_TALK=ON` enables controller Talk in game builds. The game disc
+places `TALK_EN.BIN` at the ISO root and streams it through a 2 KB sector
+buffer. The engine-test build omits Talk. The port advertises both machine
+configuration and Talk from its single feature function. The Talk screen
+uses the regular UI bar on PS1. Track game-disc linking and controller
+playthrough status in the [Talk port notes](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
+
 What the build does (`ps1/CMakeLists.txt`):
 
 * compiles `ps1/src/*.c` (strict: `-std=gnu99 -Werror -Wall -Wextra`) and

@@ -54,6 +54,23 @@ expect-talk-row "Add someone to chat"
 expect-talk-row "To:" 0
 wait 4
 shot talk_6_options
+press A
+expect-talk-page topic
+expect-talk-row "band"
+expect-talk-row "fishing"
+expect-talk-row "gardening"
+expect-talk-row "song" 0
+press A
+expect-talk-page main
+talk-say change_topic band
+expect-talk-you "band"
+talk-read
+talk-page more
+press A
+expect-talk-page topic
+expect-talk-row "song"
+expect-talk-row "concert"
+expect-talk-row "microphone"
 talk-page main
 expect-talk-page main
 # say goodbye: B on the main page, then the farewell boxes

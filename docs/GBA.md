@@ -7,87 +7,62 @@ on bare metal: no devkitPro, no libgba, no BIOS calls besides
 mapping, the memory map, the renderers, saves, audio, the test harness and
 the performance work.
 
-## Current GBA performance status (November 20, 2026; measured builds)
+## Current GBA performance status
 
-This section supersedes the **historical** FPS figures elsewhere in this long
-engineering diary. **Drawn FPS** (presented frames) and **logic TPS** (game
-simulation ticks) are different metrics; the emulator's two-vblank presentation
-cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
-3D level renders at 30 FPS.
+Drawn FPS counts presented frames. Logic TPS counts simulation ticks. Two
+VBlanks per draw on GBA give about 29.9 FPS. The numbers below come from the
+game ROM in headless mGBA.
 
-- **All-screen speed tour:** 16 `gba/harness/scripts/speed2_*.txt` groups
-  define **277** distinct scripted FPS windows. Codex's complete local run
-  reported **246/277** near 30 FPS (previously 232/277) on commit
-  [`49ca800f`](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/commit/49ca800f766f).
-  This complete count was reported by the local optimization run; the GitHub
-  GBA CI runs **four groups / 94 windows** with `SPEED2_GATES=1`.
-  The passing CI for `49ca800f` independently measured **79/94 at >=29.5
-  drawn FPS**. Do not confuse 246/277 with the CI subset or with 3D combat.
-- **3D combat census:** `make -C gba test-3d-census` measures **24 camera
-  windows** covering mapped Breach levels and arena in both cameras, and
-  separately gates >=29 logic TPS. On the GBA-tested
-  [`6af86e2b`](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/commit/6af86e2b699b)
-  build, **7/24** reached >=22 drawn FPS; **0/24** reached >=29.5.
-  The later `4543d33d` GBA emulator job also reported **7/24** >=22
-  and **0/24** >=29.5. These are harder 3D scenarios than most of the
-  speed-tour screens.
-- **Bone map comparison (Balanced mode; headless mGBA; both cameras):**
+The all-screen tour at `49ca800f` reached **246/277** scripted windows near
+30 drawn FPS. Its GBA CI subset reached **79/94** at 29.5 FPS or higher.
+The more demanding 3D census is a separate set of 24 player-controlled
+windows across 11 mapped Breach levels and the arena, in both cameras. In
+the latest local 3D run, **8/24** reached 22 FPS and **0/24** reached 29.5 FPS.
+Each window passed its 29 logic TPS floor.
 
-  | map / camera | `49ca800f` drawn FPS | `6af86e2b` drawn FPS | `4543d33d` drawn FPS | target |
-  |---|---:|---:|---:|---:|
-  | Bone Cathedral / first person | 14.5 | 15.4 | **16.1** | >=24 |
-  | Bone Cathedral / third person | 14.4 | 15.5 | **16.2** | >=24 |
-  | Bone Capital / first person | 15.6 | 18.1 | **18.3** | >=24 |
-  | Bone Capital / third person | 15.9 | 18.7 | **18.6** | >=24 |
+| Bone map and camera | Upstream `d8159f3c` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
+|---|---:|---:|---:|---:|
+| Cathedral, first person | 15.7 | 15.9 | 30.0 | 53.1 / 79.6 ms |
+| Cathedral, third person | 16.0 | 16.3 | 29.9 | 50.1 / 112.1 ms |
+| Capital, first person | 17.5 | 17.2 | 29.8 | 50.0 / 70.8 ms |
+| Capital, third person | 17.8 | 18.0 | 30.0 | 46.9 / 81.9 ms |
 
-  On `4543d33d`, logic remains about **29.9-30.1 TPS** in all four.
-  Mean frame work is **53.2 / 51.3 ms** (Cathedral first / third) and
-  **46.7 / 44.7 ms** (Capital first / third). Compared with `6af86e2b`,
-  Cathedral improves by 0.7 FPS in each camera, Capital first-person
-  improves by 0.2 FPS, and Capital third-person falls by 0.1 FPS.
-  The interim **24 drawn FPS** goal is **not achieved** in any camera.
-  Repeat the same movement and camera scripts before claiming an improvement:
-  `gba/harness/scripts/3d_census.txt`, and inspect p95/p99 frame work,
-  late VBlanks, spikes and captured screenshots, not just an FPS average.
-- **Visual constraints:** retain original Bone map geometry, the long
-  view-distance setting, texture/light identity, readable distant
-  silhouettes, the full-resolution 240x160 HUD and the third-person
-  character. Balanced uses a specialized **80x54** intermediate fallback
-  (scaled to screen) rather than relying on the blockier 60x40 emergency
-  tier on these two levels. The later LUT-only distant-fade adjustment and
-  ray-direction SMULL patch in `4ae9a5af`/`4543d33d` have now passed
-  the GBA ROM/emulator test and have the FPS results above. The lighting
-  change still needs screenshot-by-screenshot review; do **not** assert
-  pixel parity with the earlier, darker distance fade.
-- **Validation:** The full GBA CI at `6af86e2b` passed, and the GBA
-  ROM/headless-mGBA job at `4543d33d` also passed; the Bone census
-  and actor-collision regression checks passed. Build/engine,
-  ROM RAM/overlay limits, logic ticks, map exit playthroughs, and both
-  camera views remain hard constraints. A future patch should not silently
-  weaken a floor or cut the authored draw distance to buy FPS.
-- **Later follow-up work (unmeasured against this passing baseline):**
-  `826dec1c` rejects only provably off-range diagonal billboards before
-  projection/square math, without changing the visible set; `c2c1fcf7`
-  combines each pair of signed 64-bit billboard projections into one ARM
-  3D-overlay call, retaining the single final shift and sprite ordering;
-  `f47bd327` reports the Bone-specific >=24 FPS goal and P99 work for all
-  four cameras in `tools/gba3d_census.py`. These commits are implementation
-  or instrumentation, **not** evidence of an FPS increase: compare their
-  finished GBA CI census and screenshots with `4543d33d` before revising
-  any performance number.
+The interim target is **24 drawn FPS** in all four Bone camera windows.
+The longer-term target is **30 drawn FPS**. Capital first person lost
+0.3 FPS against the upstream run. Both maps passed the existing
+15 FPS Cathedral and 17 FPS Capital regression floors.
 
-Useful commands:
+### Current Bone rendering budget
+
+- Balanced can step from full or half detail to 96×64 (48 rays) and then
+  to 80×54 (40 rays). Three consecutive 96×64 frames that take more than four
+  VBlanks trigger the emergency tier. Smooth uses a 120×80 world viewport.
+  The 240×160 HUD is drawn after scaling.
+- Cathedral caps sightlines at 14 cells in Balanced and Smooth (12 in
+  the emergency tier). Capital uses 20 and 16. Max caps both maps at
+  26 cells. The GBA-specific roof cap applies to decorative height.
+  Collision, encounters, keys and exits use the authored maps.
+- The 96×64 scaler expands rows in place and conditionally writes the
+  third copy of each odd-numbered input row. The engine test checks all
+  38,400 output pixels and the guard immediately beyond the viewport.
+  The renderer resolves the Bone map flag once per view and reuses it for
+  distance, floor texture and actor lighting.
+- The Cathedral's brighter red approach and closer stained-glass windows
+  frame the arch. Capital keeps its brighter road surfaces and gate
+  landmarks. For visual checkpoints and caveats, see
+  [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
+
+The measured game ROM uses 234,052 B of EWRAM and leaves 28,092 B free.
+The IWRAM main stack reserve is 6,160 B against the 6,144 B minimum.
+Both values match the upstream build.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1
 make -C gba test-3d-census
-make -C gba test-3d
+python3 gba/tools/visual_clarity.py gba/build/shots/3d_census
+make -C gba test-et
+make -C gba test-talk
 ```
-
-The current roadmap is **24 drawn FPS in both Bone levels and both cameras
-while keeping the visible scenery recognizable**, with ~30 drawn FPS as the
-longer-term goal. Measure >=24 separately from the existing ~22 / ~30
-whole-census reporting; do not label a 30-TPS simulation as 30 FPS.
 
 ---------------------------------------------------------------------------
 
@@ -3269,9 +3244,8 @@ the first window includes the harness's town setup):
 
 > **Historical implementation notes:** the G-C1 governor description and
 > measurements below record the original SP8 design, not the latest
-> Balanced mode. For current Bone-specific 80x54 fallbacks, revised pace
-> handling, benchmark commits and 24 FPS target, see the status section
-> at the top of this document.
+> Balanced mode. For the current Bone resolution tiers, sightlines and
+> frame rates, see the status section at the top of this document.
 
 
 `OPT_3D_FAST` (`town.h`, option 63) is the Options row **"Combat

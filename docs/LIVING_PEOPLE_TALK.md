@@ -24,10 +24,11 @@ rules remain authoritative even when more language data is present.
   it. A failed page fetch falls back to the exact platform read.
   **No heap allocation, no per-resident language model, no resident record
   growth.** GBA omits the 256-byte cache altogether.
-* **Conversation recall**: the existing saved 24-person, 12-byte-per-entry
-  Talk LRU can cue the last topic at a neutral opening, but an active
-  subject always wins. It does not claim to store a transcript or remember
-  every one of 1,000 citizens; eviction is explicit.
+* **Conversation recall** uses the saved 12-byte resident entries. The active
+  topic takes priority and a neutral opening can cue the last topic. The
+  current caps are 32 entries on GBA, 64 on PS1, 128 on Dreamcast and 48
+  in the native test profile. Open commitments are pinned, and completed
+  shared experiences take priority over older casual chats at capacity.
 * **Related transitions**: the quick-choice generator considers a fresh
   topic only when it is in the current concept's curated association list.
   While a thread is active, quick choices prefer continuing it. Every
@@ -37,6 +38,31 @@ rules remain authoritative even when more language data is present.
   now influence offered choices for hungry, sick, tired, lonely or scared
   residents without a new per-resident emotion structure. Mood, needs and
   romance/age gates still belong to the simulation.
+
+## First everyday topics
+
+Open **Options → Topic** during Talk. **Band**, **Fishing** and **Gardening**
+are entry points. After discussing or selecting a topic, reopen the picker
+for related choices. Recent topics and known likes still appear, and the
+picker reserves space for the usual stock topics. The links are read when
+the picker opens and go through the existing audience and grief checks.
+
+| Starting topic | Linked subjects | What to cover in the next writing pass |
+|---|---|---|
+| Band | Song, lyrics, microphone, concert, encore | Ask what they like to play, give a reason, then follow up about a song or a performance. |
+| Fishing | Fishing trip, pond, riverbank, fish | Ask about a favorite spot or a fish they would like to catch. Refer to a past outing only when the simulation records it. |
+| Gardening | Garden, watering can, flower pot | Ask what they like about gardening, offer a different preference, and follow up about a plant or a tool. |
+
+Write each first exchange as a question, a direct answer, a reason and a
+follow-up. For each topic, try the same opener with two different
+personalities, then return to the conversation after a save and reload.
+Use preferences the resident already has. Route any actual invitation or
+offer through the corresponding action menu.
+
+Keep new directed links in both `assoc_hand_en.tsv` and `assoc_en.tsv` so
+they survive later editorial review and reach the shipped bank. Validate
+them with `make -C core talk-check` and the controller path in
+`core/tests/scripts/home_talk_basic.txt`. See the [Talk authoring guide](TALK.md#4-the-word-network-t1).
 
 ## Next milestones, in priority order
 
@@ -152,7 +178,7 @@ manual gift spam is not a neural conversation substitute.
 Three otherwise-unused high bits of the existing `TalkMem.likes_known`
 byte now record **completed shared play**, **an actual gift given by the
 player**, and **an accepted invitation**. They survive the existing
-versioned Talk save-chunk round trip and do not enlarge any of the 24
+versioned Talk save-chunk round trip and do not enlarge any of the
 12-byte recent-resident records. The low five known-like bits are
 unmodified. A room action only records an event after it was processed;
 refused invitations must not produce a memory. The distinction matters:
@@ -322,7 +348,7 @@ needs, or records a meeting. Native controller tests exercise both
 category paths, including no premature item consumption. The change
 uses no new resident save fields, persistent RAM, or per-frame work.
 
-## PS1 disc-backed Talk integration (new, awaiting console CI)
+## PS1 disc-backed Talk integration
 
 PS1 game-disc builds now opt into `DOOMO_PS1_TALK=ON`: the shared
 `SCENE_TALK` is compiled with `DOOMO_HAS_TALK`, and the existing
@@ -336,14 +362,13 @@ No giant Talk bank is linked into the 2 MB PS1 RAM. Typed/keyboard
 input remains disabled on PS1; the controller uses contextual quick
 replies, topic pickers, creator traits, gifts, care and outings.
 
-The engine-test disc stays Talk-free so renderer tests keep their
-original memory budget. Full game-disc fitting, overlay relocations,
-save compatibility, FMV/video interplay, dialogue timing and physical
-PCSX-Redux input tests are **not yet verified**. PS1 game builds must
-pass both linker RAM/overlay budget gates and an emulator Talk
-playthrough before this can be called a fully supported port. When
-disc swapping/moving between Talk and gameplay, check CD reads never
-interrupt a running FMV or music stream.
+The engine-test disc excludes Talk and keeps its original memory budget.
+The game build on `d8159f3c` failed during disc build. The follow-up makes
+the existing PS1 configuration code advertise both features from one
+`plat_features` definition and uses the regular progress bar in the
+non-retained UI. Full disc linking, RAM and overlay limits, save
+compatibility, audio and FMV interplay, and a controller playthrough
+await console CI. See the [upstream PS1 build](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/runs/44868560758/job/136740896943).
 
 ## Dreamcast functionality checks extended
 

@@ -33,7 +33,7 @@ cell W wall=BONE_WALL ch=56                                    # the two bell-le
 cell Y wall=SKULL_MOSAIC ch=46                                 # facade buttresses
 cell Z wall=BONE_WALL ch=40                                    # the arch posts (their top is the arch's roof)
 cell y floor=HELL_ROCK ceil=sky fh=0 light=11
-cell g floor=GORE_FLOOR ceil=sky fh=0 light=11
+cell g floor=GORE_FLOOR ceil=sky fh=0 light=13                  # red approach to the arch
 cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava           # the font of the damned
 cell z floor=INFECTED_GRASS ceil=sky fh=1 light=13 flags=secret # hidden nook
 cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=14  # the great arch (open)
@@ -114,7 +114,7 @@ FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIInnnnnnnnnnnIIIsFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIsnnnnnnnnnnnsIIsFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
-FFFFFFFFFFFFWWWWYFSFZDDDZFSFYWWWWFFFFFFFFFFFFFFF
+FFFFFFFFFFFFWWWWYFFSZDDDZSFFYWWWWFFFFFFFFFFFFFFF
 FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyyyyyyyF
 FyyyyPyyyyyyyyPyygggggggggggyyPyyyyyyyyPyPPPPPPF
 FyyyyyyyyyyyyyyyygggggggggggyyyyyyyyyyyyyPzzzzzF

@@ -549,8 +549,7 @@ r3d_up5x2:
     mov     r10, r7, lsl #16
     orr     r10, r10, r6, lsr #16  @ bbcc
     bic     r9, r9, #0xFF
-    and     r6, r6, #0xFF
-    orr     r9, r9, r6            @ abbb
+    orr     r9, r9, r8, lsr #24   @ abbb, using the packed aaaa word
     mov     r11, r7, lsl #16
     orr     r11, r11, r11, lsr #16
     bic     r11, r11, #0xFF000000
@@ -559,13 +558,9 @@ r3d_up5x2:
     orr     r12, r12, r12, lsl #16 @ dddd
     stmdb   r3!, {r8-r12}
     stmdb   r4!, {r8-r12}
-    /* GNU as ARM7TDMI does not accept the STMDBNE mnemonic here.
-     * Branch around the optional third row instead; the 96x64 image
-     * repeats even rows twice and odd rows three times. */
+    @ In GNU as divided syntax the condition comes before the mode (DB).
     tst     r1, #1
-    beq     .Lup5_skip_third
-    stmdb   r5!, {r8-r12}
-.Lup5_skip_third:
+    stmnedb r5!, {r8-r12}
     subs    lr, lr, #1
     bne     .Lup5_pair
     subs    r1, r1, #1

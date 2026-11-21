@@ -433,6 +433,7 @@ void et_upscale_test(void)
 {
     void r3d_up2(uint16_t *, int, int) __attribute__((long_call));
     void r3d_up3(uint16_t *);
+    void r3d_up5x2(uint16_t *);
     void r3d_up4(uint16_t *, int, int);
     static const uint8_t rect[][4] = { { 0, 0, 30, 40 }, { 4, 7, 25, 35 }, { 20, 13, 3, 3 } };
     unsigned i;
@@ -476,6 +477,30 @@ void et_upscale_test(void)
             }
         if (page[LINE * 160] != 0xA5A5) {
             gba_log("ET upscale FAIL third exceeded the view");
+            return;
+        }
+    }
+    {
+        int x, y;
+        volatile uint16_t *page = PAGE_B;
+        page[LINE * 160] = 0xA5A5;
+        for (y = 0; y < 64; y++)
+            for (x = 0; x < 48; x++)
+                page[y * LINE + x] = (uint16_t)(((x * 13 + y * 71) & 255) * 257);
+        r3d_up5x2(PAGE_B);
+        for (y = 0; y < 160; y++) {
+            int row = y / 5 * 2 + (y % 5 >= 2);
+            for (x = 0; x < LINE; x++) {
+                int lo = ((2 * x / 5) * 13 + row * 71) & 255;
+                int hi = (((2 * x + 1) / 5) * 13 + row * 71) & 255;
+                if (page[y * LINE + x] != (lo | (hi << 8))) {
+                    gba_logf("ET upscale FAIL five-halves at %d,%d", x, y);
+                    return;
+                }
+            }
+        }
+        if (page[LINE * 160] != 0xA5A5) {
+            gba_log("ET upscale FAIL five-halves exceeded the view");
             return;
         }
     }

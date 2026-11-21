@@ -98,19 +98,20 @@ runs on both consoles.
 | Fun Fair minigames, Concert Hall + choirs, Music Studio (lyrics + music editor, 25 singers), dreams, Library, fishing, cooking | **done** |
 | Teaser trailer (`trailer/`) | **done** |
 
-Performance: the November 20, 2026 GBA optimization pass reported
-**246/277 scripted screen windows near 30 drawn FPS** (Codex's full local
-tour; up from 232). Its passing GitHub CI independently covered 94 of
-those windows, with **79/94 at >=29.5 FPS**. The separate GBA combat census
-is more demanding: the newer verified Bone Cathedral reaches **16.1-16.2 FPS**
-and Bone Capital **18.3 FPS first-person / 18.6 FPS third-person**
-(both cameras, ~30 simulation TPS; GBA job on `4543d33d`).
-The next target is **24 drawn FPS in both Bone levels without sacrificing
-view distance, architecture, texture clarity or readable lighting**;
-30 drawn FPS remains the longer-term 3D goal. See
-[docs/GBA.md](docs/GBA.md) for commits, exact scripts, memory budgets,
-measurement scope and remaining limitations; [docs/PS1.md](docs/PS1.md)
-covers PS1 separately. Designed but not yet built: see
+The GBA all-screen speed tour reached **246/277** scripted windows near
+30 drawn FPS on `49ca800f`. Its CI subset reached **79/94** at 29.5 FPS or
+higher. The latest local combat census draws Bone Cathedral at
+**15.9–16.3 FPS** and Bone Capital at **17.2–18.0 FPS** across both cameras,
+with about 30 simulation ticks per second. The interim combat target
+is 24 drawn FPS, with 30 as the longer-term target. See the
+[GBA performance status](docs/GBA.md#current-gba-performance-status) and the
+[Bone map visual checks](docs/BONE_READABILITY.md#current-gba-validation).
+
+In Talk, open **Options → Topic** to start with Band, Fishing or Gardening.
+The picker offers linked topics as the conversation develops. See the
+[Talk writing and port notes](docs/LIVING_PEOPLE_TALK.md#first-everyday-topics).
+
+Designed but not yet built: see
 [docs/design/ROADMAP.md](docs/design/ROADMAP.md) (deep face/body
 customization and 150+ options, deeper story with the dream house and
 comic-timing engine, dynamic chiptune music with record scratches).

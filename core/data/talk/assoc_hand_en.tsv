@@ -29,3 +29,20 @@ halloween	costume	pumpkin	ghost	candy
 weekend	saturday	sunday
 rain	umbrella	puddle	storm
 birthday	birthday_cake	party	gift
+
+# Everyday topics for the first multi-turn Talk writing pass.
+band	song	concert	microphone
+concert	band	song	encore
+encore	concert
+fish	fishing	pond
+fishing	fishing_trip	pond	riverbank	fish
+fishing_trip	fishing	pond	riverbank
+flower_pot	gardening	watering_can
+garden	gardening	watering_can	flower_pot
+gardening	garden	watering_can	flower_pot
+lyrics	song	band
+microphone	band	song	concert
+pond	fishing	fish
+riverbank	fishing	fishing_trip
+song	lyrics	band	microphone
+watering_can	gardening	garden	flower_pot

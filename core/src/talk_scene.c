@@ -453,7 +453,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
                 q_grief(topic) || q_grief(s->topic_stack[0]);
     /* Current conversational context wins. Only on a neutral opening
      * may an otherwise empty thread resume the resident's saved subject.
-     * This comes from the existing 24-person LRU TALK memory; no extra
+     * This comes from the saved per-port TALK memory; no extra
      * long-lived tokens or sentence buffers per resident are allocated. */
     q.topic = th && th->topic ? th->topic : topic ? topic : s->topic_stack[0];
     if (!q.topic && slot >= 0 && slot < s->nparts &&
@@ -883,7 +883,12 @@ static void topic_add(uint16_t c)
 
 static void build_topics(void)
 {
-    int i, w;
+    static const char *const everyday[] = { "band", "fishing", "gardening" };
+    uint16_t links[TALK_ASSOC_TOP], concept, form;
+    uint32_t tags[4];
+    const TalkLine *thread = talk_quick_thread(&T.s, NULL);
+    uint16_t active = T.topic ? T.topic : T.s.topic_stack[0];
+    int i, w, count;
     T.page = PG_TOPIC;
     T.nrows = 0;
     add_row(K_NOTOPIC, 0, 0);
@@ -891,6 +896,19 @@ static void build_topics(void)
     if (T.to >= 0 && T.to < T.n)
         for (w = 0; w < 5; w++)
             if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w));
+    /* Read suggestions once on entering the picker. Leave room for the
+     * existing stock topics and keep sensitive threads on their subject. */
+    if (!q_grief(active) &&
+        (!thread || (!(thread->flags & TLF_SINCERE) && !TA_IS_SAFETY(thread->act) && !q_grief(thread->topic)))) {
+        for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + T.nstock < TROWS; i++)
+            if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
+                topic_add(concept);
+        count = talk_db_assoc(active, links, NULL);
+        for (i = 0; i < count && T.nrows + T.nstock < TROWS; i++)
+            if (links[i] != active && !q_grief(links[i]) &&
+                talk_gen_concept_ok(links[i], &T.s.conv.aud))
+                topic_add(links[i]);
+    }
     for (i = 0; i < T.nstock; i++) topic_add(T.stock[i]);
     list_reset();
 }
@@ -1569,7 +1587,13 @@ static void talk_draw(void)
         if (i == T.to) ui_text_clip(x - 5, 4, ">", st->text, x - 5, x);
         ui_text_clip(x, 4, p->id == TALK_PET_ID ? "Pet" : res_name(p->id), st->text, x, x + colw - 8);
         if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
-        else if (T.to < 0 || i == T.to) ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+        else if (T.to < 0 || i == T.to) {
+#if UI_PANELS
+            ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+#else
+            ui_bar(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+#endif
+        }
     }
     py = layout(&rows);
     ph = sh - py;

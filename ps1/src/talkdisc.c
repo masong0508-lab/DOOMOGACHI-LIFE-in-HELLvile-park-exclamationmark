@@ -79,8 +79,4 @@ uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
     return done;
 }
 
-/* The PS1 has an actual Talk scene and disc bank with this build flag.
- * Advertise it for input routing, subject to talk_ready() validating the
- * bank itself before opening any conversation. */
-uint32_t plat_features(void) { return PLATF_TALK; }
 #endif

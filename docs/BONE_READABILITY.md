@@ -1,7 +1,27 @@
-# Bone level legibility pass
+# Bone level legibility
 
-This map/renderer pass uses **existing art and geometry**: no new sprites, geometry,
-textures, framebuffers, or per-frame ray operations.
+## Current GBA validation
+
+The native Cathedral reference calls for a red approach, skull masonry,
+stained glass framing a dark central entrance, and readable goal, health
+and ammo text. The Cathedral facade now places its existing stained glass
+one tile closer to each side of the arch and lights the red approach
+separately from the outer stone. The matched GBA approach captures show
+the windows framing the arch later into the walk. The same map tiles
+keep their original solidity and height. Capital's navigation cues are
+its lit market roads, gates and contrasting stone.
+
+The headless mGBA census passed the existing Bone frame-rate and logic
+floors in both cameras. The 96×64 scaler engine test checked every
+pixel, including the boundary between 2- and 3-row repeats and the VRAM
+guard after the final row. These checks cover the sampled views. Use the
+approach, nave, choir, organ, market, lift and skybridge checkpoints
+below for a full visual review. The 24 and 30 drawn FPS targets remain
+open. See the [measured camera results](GBA.md#current-gba-performance-status).
+
+## Earlier passes
+
+These notes record successive iterations and the test status at the time.
 
 ## Visual guidance
 

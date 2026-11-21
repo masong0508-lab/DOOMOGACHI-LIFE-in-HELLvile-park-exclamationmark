@@ -433,11 +433,12 @@ TEST(talk_mem_chunk_round_trip)
         if (i % 4 == 0) talk_mem_set_flags(id, TMF_REFUSED_TODAY);
         if (i % 5 == 0) talk_mem_set_flags(id, TMF_COMPLIMENTED | TMF_PROMISED);
     }
-    {   /* end a conversation with the last three, so their flags are saved ones */
+    {   /* Finish the conversation with the flagged resident checked below. */
         TalkConv c;
         memset(&c, 0, sizeof c);
         c.n = 3; c.spoke = 7;
-        for (i = 0; i < 3; i++) c.id[i] = (int16_t)alive(TALK_MEM_MAX - 2 - i);
+        for (i = 0; i < 2; i++) c.id[i] = (int16_t)alive(TALK_MEM_MAX - 2 - i);
+        c.id[2] = (int16_t)alive(20);
         talk_mem_end(&c);
     }
     talk_mem_set_flags(alive(0), TMF_INSULTED);           /* pending: never saved */

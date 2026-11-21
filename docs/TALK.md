@@ -9,9 +9,11 @@
 Talk is the Facade-style conversation mode of the house in
 **BOREagotchi LIFE! - in HELLvile PARK...**. You stand in a room with one to
 three residents and talk with them, and they talk with each other, in their
-own voices, while the room keeps rendering in pseudo-3D. It is for the
-**PS1 and the Dreamcast** (the `PLATF_TALK` feature bit). The native runner
-runs it for tests. The GBA game ROM has it too (quick replies and topics from the ROM-resident bank; no keyboard, so no typed line; `make -C gba test-talk`).
+own voices, while the room keeps rendering in pseudo-3D. GBA and Dreamcast
+builds and the native runner enable the `PLATF_TALK` feature. GBA uses quick
+replies and a topic picker backed by the ROM bank (`make -C gba test-talk`).
+PS1 game builds now opt into disc-backed Talk with controller replies.
+See the [current port status](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
 The Talk screen is decluttered: one header line (what you are choosing, the room's mood on the right), no A/B hint lines, six list rows, short row labels, and a `>` marks who you are speaking to. Topic, To and Invite sit on an Options page (the Options row shows the current person and topic), so the main page is just the replies, Options and Bye.
 
 The full design, with the parser, the drama manager, the generator, the
@@ -201,6 +203,10 @@ spot-checking. Two edges were removed by hand (wedding to onion, ghost to
 After the first acceptance, edit `assoc_en.tsv` directly: a new `--accept`
 would bring back the removed edges.
 
+The topic picker shows up to eight eligible links from the current subject
+as space permits. Follow the [everyday topic writing plan](LIVING_PEOPLE_TALK.md#first-everyday-topics)
+for the Band, Fishing and Gardening branches.
+
 ---------------------------------------------------------------------------
 
 ## 5. The compiler (`talkc.py`)
@@ -273,8 +279,9 @@ talk_db_assoc(id, ids, w)      /* the top 8; talk_db_edges(): all of them (DC, n
 talk_db_cat / _cat_name / _cat_root
 ```
 
-Everything is read through `plat_talk_read()`, a few bytes at a time. On
-the PS1 the file will live in SPU RAM (TP1). The native platform reads
+Everything is read through `plat_talk_read()`, a few bytes at a time. The
+PS1 game disc stores the bank as `TALK_EN.BIN` and reads it through a
+2048-byte CD-sector buffer. The native platform reads
 `$DOOMO_TALK_DIR/TALK_<code>.BIN`, or by default `core/build/talk/`, whole,
 into the heap.
 
