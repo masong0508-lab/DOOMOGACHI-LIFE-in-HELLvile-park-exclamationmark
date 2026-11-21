@@ -129,7 +129,10 @@ jobs:
           set -eu
           make -C ps2 disc
           test -s ps2/build/doomogachi_ps2_game.iso
-          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f | \
+          # xorriso may emit the file listing to stderr instead of
+          # stdout; retain both streams and fail on any command error.
+          set -o pipefail
+          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f 2>&1 | \
             tee /tmp/ps2-iso-manifest.txt
           grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
           grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
