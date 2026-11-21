@@ -190,6 +190,7 @@ int main(int argc,char **argv)
         draw_boot(gs);
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
+        gsKit_queue_reset(gs->Os_Queue);
         ++s_vblanks;
         if((s_vblanks % 600u)==0)
             printf("[PS2] video fields=%u logic ticks=%u pad=%04x\n",
