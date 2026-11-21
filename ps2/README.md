@@ -176,3 +176,58 @@ prototype; an attempted disc build verifies all required root assets.
 The real PCSX2 acceptance route is in
 `ps2/tests/PCSX2_PLAYTHROUGH.md`. No emulator/BIOS is bundled in CI
 and a green compile alone is **not** gameplay verification.
+
+## Reproducible PS2 build and BIOS-free emulator test lab
+
+A developer with Docker on Linux can build the real game ELF and ISO with
+one command from the repository root:
+
+```sh
+sh ps2/tools/build_container.sh
+# Output: ps2/build/doomogachi_ps2_game.iso
+```
+
+This uses the official `ps2dev/ps2dev:latest` cross-toolchain image,
+not the host's compiler. It installs Make, Python and xorriso in the
+temporary image, runs the diagnostic and real-game builds, and packages
+the disc-side TALK_EN.BIN and audsrv IRX. No copyrighted PS2 BIOS or
+original commercial game files are included.
+
+### First real emulator attempt (no BIOS required)
+
+Play! is a free open-source emulator with its **own high-level BIOS**
+implementation. On Ubuntu/Debian Linux with an X11-capable desktop:
+
+```sh
+sudo apt-get install flatpak xvfb xauth imagemagick
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user flathub org.purei.Play
+dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+  python3 ps2/tools/play_biosfree_smoke.py \
+  ps2/build/doomogachi_ps2_game.iso --seconds 35
+```
+
+The runner preserves `ps2/build/play-smoke/emulator.log`,
+`boot-1.png`, `boot-2.png` and `report.json` (including ISO SHA256).
+On GitHub Actions the `biosfree-play-smoke` job runs **after** the actual
+EE game ELF and ISO have succeeded, retrieves that exact ISO, and
+uploads these outputs as `doomogachi-ps2-play-biosfree-capture`.
+
+**Interpretation is strict:** a process still running after 35 seconds
+and two PNG files only establish that Play! started and presented
+windows. They DO NOT establish that the game rendered, that its controls
+work, or that Talk, saves and audio are correct. Inspect the PNGs and
+video/logic telemetry before calling anything playable. A Play! HLE
+incompatibility is not necessarily a game bug.
+
+For deeper gameplay/PS2 fidelity, use PCSX2 with a BIOS dumped from
+your **own PS2**, and run the full acceptance walkthrough in
+`ps2/tests/PCSX2_PLAYTHROUGH.md`. No external BIOS is ever fetched by
+this project. PCSX2 and hardware acceptance are separate from the
+BIOS-free smoke job.
+
+The model's temporary terminal may not have Docker/PS2SDK/Play!
+installed and may not have outbound network access. In that situation,
+the GitHub Actions job is the repeatable remote environment; the
+absence of a completed run must be reported rather than presenting
+queued actions as tests that already passed.
