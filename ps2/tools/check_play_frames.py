@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 
-def visible_fraction(path):
+def game_crop(path):
     dimensions = subprocess.check_output(
         ["identify", "-format", "%w %h", str(path)], text=True).split()
     if len(dimensions) != 2:
@@ -21,11 +21,13 @@ def visible_fraction(path):
     width, height = map(int, dimensions)
     if width < 1024 or height < 600:
         raise ValueError(f"Unexpected screenshot dimensions: {width}x{height}")
-    # For CI's 1280x720 Xvfb: 880x555+40+25. This region is
-    # entirely game content, excluding Play!'s title/menu/status bars.
-    crop = f"{int(width * 0.6875)}x{int(height * 0.77083)}+{int(width * 0.03125)}+{int(height * 0.03472)}"
+    # The ROI lies wholly inside the Play! viewport, not its menus.
+    return f"{int(width * 0.6875)}x{int(height * 0.77083)}+{int(width * 0.03125)}+{int(height * 0.03472)}"
+
+
+def visible_fraction(path):
     output = subprocess.check_output(
-        ["convert", str(path), "-crop", crop, "+repage",
+        ["convert", str(path), "-crop", game_crop(path), "+repage",
          "-colorspace", "gray", "-threshold", "3%",
          "-format", "%[fx:mean]", "info:"],
         text=True, stderr=subprocess.DEVNULL,
@@ -36,15 +38,29 @@ def visible_fraction(path):
     return fraction
 
 
+def viewport_signature(path):
+    # Check actual cropped RGB pixels rather than full-window PNG bytes:
+    # the emulator's status-bar FPS could change while GS output freezes.
+    return subprocess.check_output(
+        ["convert", str(path), "-crop", game_crop(path), "+repage",
+         "-format", "%#", "info:"],
+        text=True, stderr=subprocess.DEVNULL,
+    ).strip()
+
+
 def inspect(images, min_visible_fraction=0.002):
-    results = [{"image": str(p.name), "visible_fraction": visible_fraction(p)}
+    results = [{"image": str(p.name),
+                "visible_fraction": visible_fraction(p),
+                "game_pixels_sha": viewport_signature(p)}
                for p in images]
-    # All screenshots must show visible content. Two black screenshots
-    # are stronger evidence of a failure than any frame-rate counter.
+    # All screenshots must show visible content. A changing emulator
+    # status bar does not count as a changing PS2 frame.
     verdict = all(x["visible_fraction"] >= min_visible_fraction for x in results)
+    changed = len({x["game_pixels_sha"] for x in results}) > 1
     return {
         "status": "rendered_pixels_observed" if verdict else "black_viewport",
         "minimum_fraction": min_visible_fraction,
+        "viewport_changed": changed,
         "frames": results,
         "limits": "Pixels alone do not prove gameplay, control response or scene progression",
     }
