@@ -1281,6 +1281,12 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out);
 /* Forget today's ledger (a new town does it by itself: the ledger is keyed by day and town seed). */
 void talk_outcome_reset(void);
+/* Day-scoped real rendezvous: an accepted invite becomes a pending
+ * meeting, not a teleported player or an imaginary completed outing.
+ * The story-place interaction passes its concrete venue when the player
+ * physically uses that location's door/menu. Returns guest ID, or -1. */
+int talk_outcome_meet_ready(int venue);
+int talk_outcome_meet(int venue);
 
 /* ---- TM2e: sim actions a reply can carry (core/src/talk_act.c, talk_outcome.c; docs/TALK.md 6o; design 6) ----
  * A reply carries at most one action. The rule, in code and tested: a line says it only if the sim will do it

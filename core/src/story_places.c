@@ -10,6 +10,9 @@
  */
 #include "story_int.h"
 #include "doomo/home.h"
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 static const char *const place_names[PLACE_COUNT] = {
     "", "Your Cottage", "Town Hall", "Brimstone Bites", "HaHa Mart",
@@ -122,13 +125,33 @@ int story_item_price(int item)
 
 /* ---- the menu ----------------------------------------------------------------------- */
 enum { OPT_TALK, OPT_BUY, OPT_ACT, OPT_REST, OPT_WORKSHOP, OPT_SHOPSCREEN, OPT_GRAVE,
-       OPT_HEAL, OPT_LEAVE, OPT_INSIDE };
-#define MENU_MAX 6
+       OPT_HEAL, OPT_LEAVE, OPT_INSIDE, OPT_MEET };
+#define MENU_MAX 7
 static const char *menu_txt[MENU_MAX];
 static uint8_t menu_op[MENU_MAX];
 static int menu_n, menu_place;
 static char menu_q[64];
 static char talk_label[32];
+#ifdef DOOMO_HAS_TALK
+static char meet_label[48];
+
+/* Explicit place identity: never award a meetup merely because the
+ * player opened Talk somewhere on the map. Only an actual place door
+ * may make one pending invitation actionable. Park and beach currently
+ * lack an exact on-site interaction, so they cannot claim a meeting. */
+static int meeting_venue(int place)
+{
+    switch (place) {
+    case PLACE_CAFE: case PLACE_STALLS: return ACT_CAFE;
+    case PLACE_CHURCH: return ACT_CHURCH;
+    case PLACE_SHOP: return ACT_SHOP;
+    case PLACE_WORKSHOP: return ACT_WORKSHOP;
+    case PLACE_CONCERT_HALL: return ACT_CONCERT;
+    case PLACE_VAPE_SHOP: return ACT_VAPE_SHOP;
+    default: return -1;
+    }
+}
+#endif
 
 static const DoomoActivity *acts[5];
 static const char *act_txt[6];
@@ -276,6 +299,19 @@ static void menu_pick(int c)
     case OPT_INSIDE:                              /* S2: the dream house (H1/H4) */
         story_push_scene(&SCENE_HOME, HOME_ARG_OWN(home_of_place(menu_place)), PEND_HOME, CTX_FREE, 0);
         break;
+#ifdef DOOMO_HAS_TALK
+    case OPT_MEET: {
+        int id = talk_outcome_meet(meeting_venue(menu_place));
+        if (id >= 0) {
+            audio_sfx(SFX_SPARKLE);
+            story_say(id, "You came! I'm happy we got to spend time together.");
+            ui_toast("A shared day to remember!");
+        } else {
+            story_say(-1, "You missed each other. Try inviting them again!");
+        }
+        break;
+    }
+#endif
     default: break;
     }
 }
@@ -305,6 +341,17 @@ static void open_menu(int p)
     if (p == PLACE_SHOP) add_opt("Browse every shelf", OPT_SHOPSCREEN);
     if (p == PLACE_GRAVEYARD) add_opt("Visit the graves", OPT_GRAVE);
     if (story_place_has_activities(p)) add_opt("Activities", OPT_ACT);
+#ifdef DOOMO_HAS_TALK
+    {
+        int venue = meeting_venue(p);
+        int guest = venue >= 0 ? talk_outcome_meet_ready(venue) : -1;
+        if (guest >= 0) {
+            const DoomoResident *friend = town_res(guest);
+            doomo_snprintf(meet_label, sizeof meet_label, "Meet up with %s", friend->name);
+            add_opt(meet_label, OPT_MEET);
+        }
+    }
+#endif
     add_opt("Leave", OPT_LEAVE);
     doomo_snprintf(menu_q, sizeof(menu_q), "%s", place_names[p]);
     if (menu_n == 1) {

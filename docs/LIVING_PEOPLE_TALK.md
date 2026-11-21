@@ -167,3 +167,34 @@ Acceptance tests check zero-byte empty saves, unchanged memory-entry
 size, remembered play/gift flags across a versioned save reload, and the
 Talk UI exposing the memory option only after an event. The same
 feature must be separately verified on each port that enables Talk.
+
+## Physical-location meetup (first working town integration)
+
+An accepted Talk invitation records its destination in the unused
+`LedP.pad` byte of the existing **day-scoped** Talk outcome ledger.
+A player who walks to the matching physical building and opens its
+normal place menu can now choose **Meet up with [resident]**. The action
+is offered only when that NPC is still actually at the accepted venue,
+their invitation has not already been claimed, and it is the same town
+day. Completing the meeting restores both participants' Joy/Social,
+strengthens their relationship, and records an actual shared-time
+memory. A missed meetup or the wrong building makes no change, and
+one invitation cannot be claimed twice. The input appears only on
+platforms where Talk is enabled; non-Talk ports retain their place
+menus. Neither the player nor the citizen is secretly teleported.
+
+The supported physical place menus are cafe/stalls, church, shop,
+workshop, concert hall and vape shop. Park and beach invitations still
+update the resident's activity, **but are not yet claimable at a place
+menu**, because those locations lack an exact corresponding building
+trigger. The rendezvous currently expires on day rollover and does
+not survive loading a save partway through the day. Those are honest
+limitations, not features to pretend completed.
+
+This is a *location-validated interaction*, not yet a scene with both
+characters visibly walking together, or full family/group outings.
+Future steps: outdoor park/beach interaction zones, place-aware NPC
+spawn presentation, saved pending appointments, and several activity
+choices per venue. The new native action test verifies the right
+venue, single-consumption behavior, changed needs and shared memory.
+No 3D raycasting, NPC arrays or per-frame work is added.

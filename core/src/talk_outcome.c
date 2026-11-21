@@ -220,6 +220,10 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
         if (e->b < ACT_COUNT && talk_act_invite_ok(TA_INVITE, e->b, minor_room_of(sum), town_hour()) &&
             sim_nudge_activity(ia, e->b, 60)) {
             lp->flags |= LPF_INVITE;
+            /* Existing 8-byte ledger entry has an unused pad. Encode the
+             * REAL accepted venue there for this game day (venue+1; zero
+             * means none/consumed). No new RAM or per-frame lookup. */
+            lp->pad = (uint8_t)(e->b + 1);
             led.invn++;
             out->invited++;
             /* An acceptance is a remembered *invitation*, not a
@@ -247,6 +251,55 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
         break;
     default: break;
     }
+}
+
+int talk_outcome_meet_ready(int venue)
+{
+    int i;
+    if (venue < 0 || venue >= ACT_COUNT) return -1;
+    roll();
+    for (i = 0; i < led.np; i++) {
+        const LedP *p = &led.p[i];
+        const DoomoResident *r;
+        if (!(p->flags & LPF_INVITE) || p->pad != venue + 1 ||
+            !alive_resident(p->id))
+            continue;
+        r = town_res(p->id);
+        if (r && r->activity == venue) return p->id;
+    }
+    return -1;
+}
+
+int talk_outcome_meet(int venue)
+{
+    int id = talk_outcome_meet_ready(venue), i, avatar;
+    DoomoResident *r, *player;
+    if (id < 0) return -1;
+    /* The player reached a REAL place menu. A stale or redirected NPC
+     * cannot be met, and consuming the rendezvous is exactly once. */
+    for (i = 0; i < led.np; i++) {
+        if (led.p[i].id == id) {
+            led.p[i].pad = 0;
+            break;
+        }
+    }
+    r = town_res(id);
+    avatar = playas_slot();
+    player = town_res(avatar);
+    sim_stat_add(r, STAT_SOCIAL, 12);
+    sim_stat_add(r, STAT_HAPPY, 10);
+    if (player && player != r && player->status == RES_ALIVE) {
+        sim_stat_add(player, STAT_SOCIAL, 10);
+        sim_stat_add(player, STAT_HAPPY, 8);
+    }
+    rel_adjust(id, avatar, 4);
+    sim_mood_of(id);
+    if (player && player != r && player->status == RES_ALIVE)
+        sim_mood_of(avatar);
+    /* This is the moment the invited person actually spends time with
+     * the player, not the earlier moment they said they would. */
+    talk_mem_note_shared(id, TALK_SHARED_PLAYED);
+    return id;
 }
 
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)

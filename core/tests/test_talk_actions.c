@@ -468,6 +468,38 @@ static int items_total(void)
     return n;
 }
 
+TEST(action_meetup_requires_a_real_matching_place)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    uint16_t cafe;
+    int a, happy;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult > 0);
+    a = adults[0];
+    cafe = concept("brimstone bites");
+    CHECK(cafe && talk_act_venue_of(cafe) == ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_PARK), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    happy = town_res(a)->stat[STAT_HAPPY];
+    CHECK_EQ(talk_outcome_meet(ACT_PARK), -1);
+    CHECK_EQ(town_res(a)->stat[STAT_HAPPY], happy);
+    CHECK_EQ(talk_outcome_meet(ACT_CAFE), a);
+    CHECK(town_res(a)->stat[STAT_HAPPY] >= happy);
+    CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    CHECK_EQ(talk_outcome_meet(ACT_CAFE), -1); /* one visit, not farmable */
+    doomo_town.day++;                         /* day rollover drops pending plans */
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    talk_db_close();
+}
+
 TEST(action_sim_effects)
 {
     TalkState s;
