@@ -21,6 +21,7 @@
 			${DOOMO_ISO_INTRO}
 			${DOOMO_ISO_OVL}
 			${DOOMO_ISO_SFX}
+			${DOOMO_ISO_TALK}
 			${DOOMO_ISO_PACK}
 			<file name="TEXT.BIN"   type="data" source="TEXT.BIN" />
 			<file name="README.TXT" type="data" source="${PROJECT_SOURCE_DIR}/README.md" />

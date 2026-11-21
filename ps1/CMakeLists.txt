@@ -24,6 +24,7 @@ project(
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
 option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
+option(DOOMO_PS1_TALK    "Include playable disc-streamed Talk on the PS1 game disc" ON)
 option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
 option(DOOMO_CUTSCENE_VIEWER "Debug mode: hold SELECT at boot for a cutscene viewer (src/cutview.c)" ON)
 option(DOOMO_OVERLAYS    "Game disc: load scene code from OVL.BIN into one RAM slot (tools/ovl_plan.py)" ON)
@@ -48,6 +49,30 @@ endif()
 file(GLOB PS1_SRCS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
                                      ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s)
 list(SORT PS1_SRCS)
+
+# Talk on PS1: compile a language bank once and put it in the ISO root.
+# PS1 stores only one CD sector in RAM; the ~MB bank must never become EXE
+# data or a 2 MB main-RAM allocation. Engine-test discs retain their
+# minimal launch footprint; this feature is for the regular game disc.
+set(DOOMO_PS1_TALK_ON OFF)
+set(DOOMO_ISO_TALK "")
+set(DOOMO_TALK_DEP "")
+if(DOOMO_CORE AND DOOMO_PS1_TALK AND NOT DOOMO_ENGINE_TEST)
+    set(DOOMO_PS1_TALK_ON ON)
+    file(GLOB_RECURSE DOOMO_TALK_DATA CONFIGURE_DEPENDS ${CORE_DIR}/data/talk/*)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
+        COMMAND ${Python3_EXECUTABLE} ${CORE_DIR}/tools/talkc.py --bin --lang en
+                --out ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
+        DEPENDS ${DOOMO_TALK_DATA} ${CORE_DIR}/tools/talkc.py
+                ${CORE_DIR}/tools/talkc_parse.py ${CORE_DIR}/tools/talkc_safe.py
+                ${CORE_DIR}/tools/talkc_gen.py ${CORE_DIR}/include/doomo/talk.h
+                ${CORE_DIR}/gen/txt_dict.c ${CORE_DIR}/data/story/register.tsv
+        COMMENT "Preparing PS1 disc-streamed Talk bank (TALK_EN.BIN)"
+        VERBATIM)
+    set(DOOMO_TALK_DEP ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN)
+    set(DOOMO_ISO_TALK "<file name=\"TALK_EN.BIN\" type=\"data\" source=\"TALK_EN.BIN\" />")
+endif()
 
 # --- S2: the story text packs (SPEC C3) --- core/gen/text_*.c are the
 # GBA's and the native runner's ROM copies; the PS1 reads the same bytes
@@ -264,6 +289,9 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 		${CORE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
 	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
+    if(DOOMO_PS1_TALK_ON)
+        target_compile_definitions(${_t} PRIVATE DOOMO_HAS_TALK=1)
+    endif()
 	# CR10: the part-script VM is built in (it was off while the PS1 had no room: PS1-RAM landed). The part scripts
 	# and the packed part icons are RAW bytes in SPU RAM (PARTS.BIN, src/partstore.c, core/src/part_lru.c), a script
 	# read into a 2 KB per-render arena, an icon onto the stack: neither is linked.
@@ -380,7 +408,7 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_TALK_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

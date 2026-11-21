@@ -85,6 +85,10 @@ GROUPS = [
     ("gallery",  r"ui_gallery$"),
     # --- H4 (for H3, SPEC C3/C6): the dream house; house_api.c stays resident ---
     ("home",     r"home(_\w+)?$|room_ref$|furn_data$"),
+    # PS1 Talk (disc bank reader is resident; the scene itself has an
+    # overlay group). Do not let 50+ KB of conversation UI bloat the
+    # always-resident 2 MB RAM footprint when the player is in combat.
+    ("talk",     r"talk_scene$"),
     # --- end H4 ---
 ]
 OVL_KINDS = (".text", ".rodata")

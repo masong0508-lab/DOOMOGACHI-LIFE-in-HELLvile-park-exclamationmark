@@ -321,3 +321,26 @@ venue eligibility. Opening a menu alone never consumes an item, changes
 needs, or records a meeting. Native controller tests exercise both
 category paths, including no premature item consumption. The change
 uses no new resident save fields, persistent RAM, or per-frame work.
+
+## PS1 disc-backed Talk integration (new, awaiting console CI)
+
+PS1 game-disc builds now opt into `DOOMO_PS1_TALK=ON`: the shared
+`SCENE_TALK` is compiled with `DOOMO_HAS_TALK`, and the existing
+PS1 overlay planner groups its scene code instead of forcing the
+entire interface to stay resident during combat. The compiled
+`TALK_EN.BIN` language database is placed at the ISO root. A new
+`ps1/src/talkdisc.c` implements the shared Talk storage hooks with
+one aligned **2048-byte CD sector** in main RAM; it supports reads
+across sector boundaries and fails safely if the disc file is missing.
+No giant Talk bank is linked into the 2 MB PS1 RAM. Typed/keyboard
+input remains disabled on PS1; the controller uses contextual quick
+replies, topic pickers, creator traits, gifts, care and outings.
+
+The engine-test disc stays Talk-free so renderer tests keep their
+original memory budget. Full game-disc fitting, overlay relocations,
+save compatibility, FMV/video interplay, dialogue timing and physical
+PCSX-Redux input tests are **not yet verified**. PS1 game builds must
+pass both linker RAM/overlay budget gates and an emulator Talk
+playthrough before this can be called a fully supported port. When
+disc swapping/moving between Talk and gameplay, check CD reads never
+interrupt a running FMV or music stream.
