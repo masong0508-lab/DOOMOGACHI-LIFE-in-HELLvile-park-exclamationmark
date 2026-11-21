@@ -332,6 +332,38 @@ TEST(talk_quick_replies_suit_the_resident)
     talk_db_close();
 }
 
+/* An old insult should invite reconciliation even if the resident is
+ * normally playful. Today's urgent medical/emotional needs remain above
+ * yesterday's memories in the priority order. */
+TEST(talk_quick_reconciliation_uses_actual_saved_social_context)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    DoomoResident *r;
+    int n;
+    premade_town();
+    CHECK(open_db());
+    r = town_res(ID_NANA);
+    set_persona(ID_NANA, 8, 8, 13, 12, 8);
+    r->mood = MOOD_OK;
+    begin2(&s, ID_NANA, -1, 371u);
+    put_line(&s, 0, -1, TA_ASK_FEELING, TC_NONE, 0);
+    s.conv.mem_flags[0] = TMF_INSULTED;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_APOLOGIZE);
+    s.conv.mem_flags[0] = 0;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_JOKE);
+    s.conv.mem_flags[0] = TMF_INSULTED;
+    r->mood = MOOD_SICK;
+    n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
+    CHECK(n >= 2);
+    CHECK_EQ(g[1].act, TA_OFFER);
+    talk_db_close();
+}
+
 /* Two created citizens with identical persona sliders but distinct
  * explicitly chosen traits should invite visibly different responses.
  * The room's emotional state still overrides the trait choice. */
