@@ -8,6 +8,7 @@
  */
 #include <time.h>
 #include "test.h"
+#include "../src/sim_int.h"  /* world-AI read-only social venue predictor */
 
 static void fast_clock(void)
 {
@@ -467,6 +468,59 @@ TEST(sim_babies_blend_their_parents)
     CHECK_EQ(baby, i);
     CHECK(DOOMO_RES_SLOTS || baby == 600);
     CHECK(town_res(baby)->flags & RF_HELLBORN);
+}
+
+/* World-AI uses only actual witnesses at a destination and actual
+ * relationship edges. No fabricated co-location, no save table and no
+ * broad full-town search during the 30-FPS clock. */
+TEST(sim_world_social_goals_follow_real_bonds_and_presence)
+{
+    DoomoResident *me, *friend;
+    DoomoEdge *edge;
+    int ix, sc;
+    town_new(TOWN_FREEPLAY, 4242, TOWN_POP_PREMADE);
+    sim_init();
+    me = town_res(1);
+    friend = town_res(13);
+    CHECK(me != NULL && friend != NULL);
+    CHECK(me->status == RES_ALIVE && friend->status == RES_ALIVE);
+    me->stat[STAT_SOCIAL] = 20;
+    me->mood = MOOD_LONELY;
+    friend->activity = ACT_CAFE;
+
+    /* Ring stores the two most recent witnesses; empty slots are 0xffff.
+     * Relationship alone is insufficient when the other person is absent. */
+    CHECK_EQ(sim_venue_social_bias(1, ACT_CAFE), 0);
+    sim_s.ring[ACT_CAFE][SIM_RING - 1] = 13;
+    CHECK_EQ(sim_venue_social_bias(1, ACT_CAFE), 0);
+    edge = rel_get_or_add(1, 13);
+    CHECK(edge != NULL);
+    edge->kind = REL_BEST_FRIEND;
+    edge->value = 80;
+    sc = sim_venue_social_bias(1, ACT_CAFE);
+    CHECK(sc >= 15);
+    CHECK_EQ(sim_venue_social_bias(1, ACT_PARK), 0);
+    friend->activity = ACT_HOME;
+    CHECK_EQ(sim_venue_social_bias(1, ACT_CAFE), 0);
+    friend->activity = ACT_CAFE;
+
+    /* A living rival at the same cafe discourages a visit. */
+    edge->kind = REL_NEMESIS;
+    edge->value = -80;
+    CHECK(sim_venue_social_bias(1, ACT_CAFE) < 0);
+
+    /* Satisfied residents follow their regular hobbies/work instead. */
+    me->stat[STAT_SOCIAL] = 100;
+    me->mood = MOOD_OK;
+    CHECK_EQ(sim_venue_social_bias(1, ACT_CAFE), 0);
+    me->stat[STAT_SOCIAL] = 20;
+    me->mood = MOOD_LONELY;
+
+    ix = SIM_RING - 2;
+    sim_s.ring[ACT_CAFE][ix] = 13; /* the same person twice isn't two friends */
+    CHECK(sim_venue_social_bias(1, ACT_CAFE) >= -20);
+    CHECK_EQ(sim_venue_social_bias(1, ACT_SLEEPING), 0);
+    CHECK_EQ(sim_venue_social_bias(-1, ACT_CAFE), 0);
 }
 
 TEST(sim_per_tick_budget)
