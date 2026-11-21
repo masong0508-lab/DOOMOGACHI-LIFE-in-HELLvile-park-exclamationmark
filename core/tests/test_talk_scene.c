@@ -364,6 +364,35 @@ TEST(talk_scene_history_topic_is_a_real_followup_question)
     CHECK(strstr(d.you, "pie") != NULL); /* asks the resident, not a fake transcript */
 }
 
+TEST(talk_scene_history_repeat_play_really_changes_simulation)
+{
+    TalkSceneDebug d;
+    DoomoResident *p;
+    int before_happy, before_energy, row;
+    town();
+    p = town_res(ID_NANA);
+    p->status = RES_ALIVE;
+    p->stat[STAT_ENERGY] = 80;
+    p->stat[STAT_HAPPY] = 45;
+    p->stat[STAT_SOCIAL] = 40;
+    CHECK(open_talk(ID_NANA));
+    talk_mem_note_shared(ID_NANA, TALK_SHARED_PLAYED);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d));
+    CHECK_STR(d.page, "history");
+    CHECK(find_row("historyrepeat", TALK_SHARED_PLAYED, -1) >= 0);
+    CHECK_EQ(find_row("historyrepeat", TALK_SHARED_GIFTED, -1), -1);
+    CHECK_EQ(find_row("historyrepeat", TALK_SHARED_INVITED, -1), -1);
+    before_happy = p->stat[STAT_HAPPY];
+    before_energy = p->stat[STAT_ENERGY];
+    row = find_row("historyrepeat", TALK_SHARED_PLAYED, -1);
+    go_to(row); press(BTN_A);
+    CHECK(p->stat[STAT_HAPPY] > before_happy);
+    CHECK(p->stat[STAT_ENERGY] < before_energy);
+    CHECK(talk_scene_debug(&d) && d.busy);
+}
+
 TEST(talk_scene_offer_and_give_are_real_actions)
 {
     TalkSceneDebug d;
