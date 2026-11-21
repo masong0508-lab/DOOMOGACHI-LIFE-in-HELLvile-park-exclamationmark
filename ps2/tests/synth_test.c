@@ -59,6 +59,46 @@ int main(void)
     ps2_synth_sample(&a,sfx,7,0,15);
     ps2_synth_render(&a,pcm,PS2_SOUND_FRAMES);
     for(i=0;i<PS2_SOUND_FRAMES*2;i++)CHECK(pcm[i]==0);
+    /* Stereo tone pan should route without changing the oscillator rate. */
+    ps2_synth_reset(&a);
+    ps2_synth_tone(&a,0,440,12,2);
+    ps2_synth_tone_pan(&a,0,0);
+    ps2_synth_render(&a,pcm,64);
+    CHECK(pcm[0]!=0 && pcm[1]==0);
+    ps2_synth_tone_pan(&a,0,2);
+    ps2_synth_render(&a,pcm,64);
+    CHECK(pcm[0]==0 && pcm[1]!=0);
+
+    /* PCM pan must not duplicate the right channel into the left. */
+    ps2_synth_reset(&a);
+    ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,-64,4,0);
+    ps2_synth_render(&a,pcm,7);
+    CHECK(pcm[2]==127*15*11 && pcm[3]==0);
+    ps2_synth_reset(&a);
+    ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,64,4,0);
+    ps2_synth_render(&a,pcm,7);
+    CHECK(pcm[2]==0 && pcm[3]==127*15*11);
+
+    /* One octave upward consumes every other source PCM sample. */
+    ps2_synth_reset(&a);
+    ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,0,4,12);
+    CHECK(a.sample[0].step==131072u);
+    ps2_synth_render(&a,pcm,3);
+    CHECK(pcm[2]==-128*15*11);
+    CHECK(pcm[4]==-40*15*11);
+
+    /* A low-priority tick cannot interrupt three important SFX;
+     * a higher-priority request can reclaim one existing voice. */
+    ps2_synth_reset(&a);
+    for(i=0;i<PS2_SOUND_SAMPLES;i++)
+        ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,0,10,0);
+    ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,0,1,0);
+    CHECK(a.sample[0].priority==10);
+    CHECK(a.sample[1].priority==10);
+    CHECK(a.sample[2].priority==10);
+    ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,0,20,0);
+    CHECK(a.sample[0].priority==20);
+    CHECK(sizeof(Ps2Synth)<256u);
     printf("PS2 SPU2 PCM mixer: %d host checks, %d failed\n",checks,errors);
     return errors!=0;
 }
