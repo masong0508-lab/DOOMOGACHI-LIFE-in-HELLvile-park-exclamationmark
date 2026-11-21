@@ -190,3 +190,14 @@ card bypasses it, using `portrait_image_ui` (no synchronous heavy
 portrait render on the constrained ports). No save changes or extra
 portrait framebuffer/cache blocks. A native scene regression checks
 that prefetch starts upon opening the directory, before scrolling.
+
+### Focused resident screen and reaction faces
+
+The one large portrait on a resident's own page now uses the streamed
+focus path as well, instead of waiting behind the shared thumbnail
+admission budget. The record's actual expression is requested before
+transitioning from a roster, apartment, or island link, and independently
+on a direct resident-scene entry. Interactions that change expression
+queue their new face before starting the corresponding FX/dialogue.
+These requests use the existing single background portrait job and
+unchanged 18/27KB pool, rather than new portrait textures or allocations.

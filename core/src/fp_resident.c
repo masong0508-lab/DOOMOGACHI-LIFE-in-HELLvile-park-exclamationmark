@@ -130,6 +130,11 @@ static void react(int expr, int fx, int n)
     int px = big ? 4 + 51 : 4 + 27, py = big ? 22 + 50 : 18 + 30;
     R.react_t = 70;
     R.react_expr = (int16_t)expr;
+    /* A reward/argument can change the face immediately. The upcoming
+     * expression enters the same background renderer before this
+     * action's dialogue/FX occupies the next frame. */
+    if (R.id >= 0 && R.id < DOOMO_MAX_RESIDENTS)
+        portrait_prefetch(R.id, expr);
     if (fx >= 0) fp_fx_burst(px, py, fx, n);
 }
 
@@ -616,6 +621,10 @@ static void res_enter(int arg)
     memset(&R, 0, sizeof(R));
     R.tab = TAB_CARE;
     set_resident(DOOMO_CLAMP(arg, 0, DOOMO_MAX_RESIDENTS - 1));
+    /* Direct scene visits (from a saved scene or story) also get the
+     * ahead-of-frame request; don't rely on the roster being the caller. */
+    if (me() && me()->status != RES_EMPTY)
+        portrait_prefetch(R.id, fp_mood_expr(me()));
 }
 
 static void res_leave(void)
@@ -834,7 +843,11 @@ static void draw_left(const RLayout *L, const DoomoResident *r, int style)
         fp_portrait(L->px, L->py, -1, L->scale, 0, WIN_MINT);
         ui_text_center(L->px + w / 2, L->py + L->ph / 2 - 4, "Empty", PAL_RAMP(RAMP_MINT, 2));
     } else {
-        fp_portrait(L->px, L->py, R.id, L->scale, expr, style == WIN_HELL ? WIN_DARK : WIN_MINT);
+        /* This is the sole large portrait on the screen. Do not make a
+         * ready face wait behind the small-image admission budget; the
+         * renderer still composes cache misses in bounded slices. */
+        (void)fp_portrait_streamed(L->px, L->py, R.id, L->scale, expr,
+                                  style == WIN_HELL ? WIN_DARK : WIN_MINT);
     }
     if (r->flags & RF_FAVORITE) ui_star(L->px + w - 6, L->py + 6, 4, PAL_UI_GOLD);
     y = L->py + L->ph + 3;

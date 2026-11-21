@@ -384,7 +384,14 @@ void fp_goto_island(int arg) { scene_set(&SCENE_ISLAND, arg); }
 
 void fp_open_resident(int id)
 {
+    const DoomoResident *r;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+    /* Queue the resident's *actual* expression before the scene switch.
+     * By the time its first frame is drawn, the handheld idle-slice
+     * renderer has already seen the request. The same queue is shared
+     * with the roster, so visiting a prewarmed card is a cache hit. */
+    r = fp_res(id);
+    if (r && r->status != RES_EMPTY) portrait_prefetch(id, fp_mood_expr(r));
     scene_push(&SCENE_RESIDENT, id);
 }
 
