@@ -74,6 +74,8 @@ jobs:
           assert struct.unpack_from('<I',bank,16)[0]==len(bank)
           print('PS2 Talk bank valid:',len(bank),'bytes')
           PY
+      - name: Prevent boot-order regressions (draw before blocking IOP calls)
+        run: python3 ps2/tests/test_boot_order.py
       - name: Verify Play! game-tick telemetry and emulator harness
         run: |
           python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py
