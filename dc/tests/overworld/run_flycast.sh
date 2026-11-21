@@ -68,7 +68,10 @@ for s in $SCRIPTS; do
         fp_island) mingated=0 overmax=1 ;;
         *) mingated=1 overmax=0 ;;
     esac
-    python3 -I "$here/compare3d.py" "$d/dc" "$d/host" --min-gated $mingated > "$d/compare.txt" 2>&1
+    # Keep hard pixel-accuracy gating; save masks to the CI artifact when
+    # textures, camera, or sprite phases diverge. No threshold relaxation.
+    python3 -I "$here/compare3d.py" "$d/dc" "$d/host" --min-gated $mingated \
+        --diff-dir "$d/diffs" > "$d/compare.txt" 2>&1
     crc=$?
     drop3=$(grep -o 'polygons left out [0-9]*' "$d/dcrun.log" | grep -o '[0-9]*$')
     drop2=$(grep -o 'dropped [0-9]*, texture' "$d/dcrun.log" | grep -o '[0-9]*' | head -1)
