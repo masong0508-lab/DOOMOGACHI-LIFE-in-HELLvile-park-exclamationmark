@@ -186,6 +186,14 @@ TEST(levels_autopilot_reaches_original_expansion_exits)
     }
 }
 
+TEST(levels_autopilot_reaches_bone_capital_exit)
+{
+    if (!lv_built(LV_HB14)) return;
+    opt_set(OPT_DIFFICULTY, DIFF_PLUSHIE);
+    rng_seed(&doomo_rng, 1);
+    CHECK_EQ(play_level(LV_HB14, 1, 30 * 60 * 12, 0), 1);
+}
+
 /* ---- every level renders in first and third person at both sizes -------------- */
 TEST(levels_render_fp_tp_both_sizes)
 {

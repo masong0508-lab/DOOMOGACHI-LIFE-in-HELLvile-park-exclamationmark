@@ -779,8 +779,8 @@ test-breach-player: harness
 
 # --- Whole-game GBA 3D performance census. Legacy levels plus mapped
 # GBA-only pilot levels, both cameras and standalone free-play arena.
-# This reports >=22 / >=30 FPS targets but deliberately does not hard-gate
-# frames until all baseline cases meet them; >=29 logic ticks/s is gated.
+# Targets are reported separately from the Bone maps' current FPS
+# regression floors. Each window also guards >=29 logic ticks/s.
 GBA3D_CENSUS_LOG ?= $(BUILD)/gba3d_census.log
 .PHONY: test-3d-census
 test-3d-census: harness

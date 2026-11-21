@@ -36,7 +36,7 @@ uint32_t r3d_dbg[4];
 extern const uint8_t gba_missing_tex[64 * 64];
 
 /* (G7) the frame's 3D view: 0 none, 1 full resolution, 2 half,
- * 3 emergency quarter detail. The HUD always remains full-size.
+ * 3 quarter detail, 4 third detail. The HUD always remains full-size.
  * (SP8, from G9) gba_view3d_pace is the pace video_flip
  * holds (vblanks a 3D frame, low 3 bits) and its count of frames that beat
  * it (the rest). Two bytes where G7's int was: no EWRAM. */
@@ -49,25 +49,23 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  * the game ever sees it.
  *   Smooth    half resolution always (G7's "Faster").
  *   Balanced  targets 30 fps (2 vblanks): full -> half -> quarter if
- *             a lower-detail frame still misses the target. The 4x view
- *             is a safety net for heavy rooms; a quarter frame is rebuilt
- *             at 60x40 then doubled twice using the existing in-place
- *             upscaler. No new framebuffers or texture allocations.
+ *             a lower-detail frame still misses the target. The two
+ *             Bone maps use an 80x54 fallback to retain more detail
+ *             under load. Upscaling uses the existing Mode 4 page.
  *             Upgrade quality only after a cooldown and a CPU-budget
  *             estimate that accounts for the more detailed renderer.
  *   Max       full/half resolution with its original 15 fps budget.
  *   Smooth    half resolution always (preserves the existing 2x artwork).
  * State: +4 bytes EWRAM for the quarter-view timing estimate. */
-static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter */
+static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter, 3 third */
 static uint8_t  gov_wait;          /* frames before the next quality retry */
 static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
-static uint32_t gov_r3d[3];        /* CPU cycles per quality tier */
+static uint32_t gov_r3d[4];        /* CPU cycles per quality tier */
 static uint8_t gov_bone_overruns; /* consecutive very slow readable views */
 static const DoomoMapDef *gov_mapdef; /* reset old scene timing on map changes */
 
-/* On the two intricate Bone maps, 2x resolution is substantially easier to
- * read than emergency 4x. Keep 2x while it costs at most three vblanks
- * (~20 FPS); 4x remains available for genuinely slower views. */
+/* The Bone maps keep half detail while it fits three vblanks. A
+ * middle tier can carry more of their long, intricate sightlines. */
 static int bone_readability_map(const DoomoMapDef *def)
 {
     return def == doomo_maps[MAPID_BONE_CAPITAL] ||
@@ -76,9 +74,9 @@ static int bone_readability_map(const DoomoMapDef *def)
 
 uint32_t r3d_presentation_cap(int frame)
 {
-    /* Quarter detail is already the governor's fastest tier. Show each
-     * ready frame after two vblanks, even in a run of late frames. */
-    if (frame == 3) return 2;
+    /* The two lowest-detail tiers show every frame as soon as it fits
+     * the two-vblank minimum. */
+    if (frame >= 3) return 2;
     /* Let the readable Bone view recover to 20 FPS immediately. */
     if (frame == 2 && r3f.map && bone_readability_map(r3f.map->def) &&
         opt_get(OPT_3D_FAST) == OPT3D_BALANCED)
@@ -97,8 +95,7 @@ static int view_half(void)
 }
 #endif
 
-/* main.c video_flip: frame=1 full, 2 half, 3 quarter; `took` is the
- * vblank gap. This function changes only the NEXT render's detail. */
+/* main.c video_flip: `took` is the vblank gap. Update the next render. */
 void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
 {
     int m = opt_get(OPT_3D_FAST);
@@ -125,38 +122,33 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * 30 fps frame: quarter detail needs only 30 rays and 40 pixel rows.
      * Keep Max's previous quality contract and Smooth's existing 2x mode. */
     if (frame == 2 && m == OPT3D_BALANCED) {
-        /* A detailed Bone interior must not become a blocky 60x40 picture
-         * after one slow render. Only use the quarter-size safety valve
-         * after two consecutive severe misses (>4 vblanks each). All
-         * other levels keep their already-measured fast fallback. */
-        if (took > (bone ? 4u : 2u)) {
+        if (took > (bone ? 3u : 2u)) {
             if (bone && ++gov_bone_overruns < 2u) return;
             gov_bone_overruns = 0;
-            gov_half = 2;
-            gov_wait = bone ? 2 : 32;
+            gov_half = bone ? 3 : 2;
+            gov_wait = 32;
             return;
         }
         gov_bone_overruns = 0;
     }
     if (gov_wait) { gov_wait--; return; }
-    if (frame == 3) {
-        /* Quarter-size Bone frames can suppress valuable wall and floor
-         * detail. Retry 120x80 after at most three panic frames, instead
-         * of staying pixelated due to an old pessimistic cost estimate. */
-        if (bone) {
+    if (frame == 4) {
+        /* Half detail casts 1.5x the rays and shades 2.2x the pixels.
+         * Retry once the current room has enough room for the extra work. */
+        if (work + gov_r3d[3] * 2u / 3u + VBL_CYC / 4u <= 3u * VBL_CYC) {
             gov_half = 1;
-            gov_wait = 2;
+            gov_wait = 16;
             return;
         }
+        gov_wait = 16;
+        return;
+    }
+    if (frame == 3) {
         /* When a cheap frame leaves room for the measured half-detail
          * cost, try an upgrade. Back off if it immediately runs late. */
         uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] : gov_r3d[2] * 2u;
         uint32_t est = work + (half_cost > gov_r3d[2] ? half_cost - gov_r3d[2] : 0);
-        /* Allow 2x quality to recover at the same budget at which Bone
-         * maps retain it. Otherwise one overloaded 4x frame could leave
-         * a room stuck at emergency detail until the level is exited. */
-        uint32_t target = r3f.map && bone_readability_map(r3f.map->def) ? 3u : 2u;
-        if (est + VBL_CYC / 4u <= target * VBL_CYC) {
+        if (est + VBL_CYC / 4u <= 2u * VBL_CYC) {
             gov_half = 1;
             gov_wait = 16;
         } else gov_wait = 16;
@@ -178,6 +170,7 @@ uint32_t r3d_last_frame;
  * halfwords) doubled in place to 2 hw x 2 vh2 */
 void r3d_up2(uint16_t *base, int hw, int vh2) IWRAM_CALL;
 void r3d_up4(uint16_t *base, int hw, int vh4) IWRAM_CALL;
+void r3d_up3(uint16_t *base);
 
 static int cache_vw = -1, cache_vh = -1;
 static int cache_amb = -1;
@@ -673,7 +666,12 @@ void plat_view3d(const DoomoView3D *v)
             detail = 2;
     }
 #endif
-    if (detail) { vw >>= detail; vh >>= detail; }
+    if (gov_half == 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
+        bone_readability_map(m->def) && opt_get(OPT_3D_FAST) == OPT3D_BALANCED) {
+        detail = 3;
+        vw = 80;
+        vh = 54;
+    } else if (detail) { vw >>= detail; vh >>= detail; }
     gba_view3d_frame = (uint8_t)(detail + 1);
     {
         int fov = opt_get(OPT_FOV);
@@ -726,14 +724,6 @@ void plat_view3d(const DoomoView3D *v)
          * detail. Shorten the render horizon only in Balanced's fallback. */
         if (detail == 2 && vd > 16 && m->def == doomo_maps[MAPID_GRAVEYARD_SHIFT])
             vd = 16;
-        /* Preserve the authored view distance at 120x80, especially the
-         * Cathedral's long aisles. The old hard 16-cell cap removed
-         * distant architecture from normal Balanced gameplay. Keep the
-         * 12-cell limit only for short-lived quarter-size panic frames. */
-        if (detail == 2 && vd > 12u &&
-            (m->def == doomo_maps[MAPID_BONE_CAPITAL] ||
-             m->def == doomo_maps[MAPID_BONE_CATHEDRAL]))
-            vd = 12u;
         r3f.maxd = vd << 16;
     }
     if (m->def != cache_mapdef || m->w != cache_mw || m->h != cache_mh || frame_no == 0)
@@ -755,7 +745,7 @@ void plat_view3d(const DoomoView3D *v)
     /* At a distance, small surface texels alias into a checkerboard on
      * the Bone maps. Use the existing average-colour path earlier in
      * Balanced's readable tier. The ray horizon and walls stay intact. */
-    FL.far = (detail == 1 && bone_readability_map(m->def) &&
+    FL.far = ((detail == 1 || detail == 3) && bone_readability_map(m->def) &&
               opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 640u : 1400u) << 8;
     r3d_columns();
     t1 = gba_cycles();
@@ -763,7 +753,9 @@ void plat_view3d(const DoomoView3D *v)
     draw_sprites(v);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
         r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
-    if (detail == 2) {
+    if (detail == 3) {
+        r3d_up3(r3f.dst);
+    } else if (detail == 2) {
         /* Exact one-pass 4x expansion: avoids the 120x80 intermediate
          * VRAM write/read of two consecutive r3d_up2 calls. */
         r3d_up4(r3f.dst, vw >> 1, vh);

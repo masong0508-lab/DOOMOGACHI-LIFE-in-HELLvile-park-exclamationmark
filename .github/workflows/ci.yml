@@ -204,7 +204,7 @@ jobs:
       # 3D goal covers all mapped GBA Breach levels (including pilots), both cameras
       # and the standalone arena. Unlike the four historically comparable
       # stress windows, this census comes from the legacy and mapped-pilot lists.
-      # FPS is report-only until it reaches the 22 interim / ~30 final floor.
+      # Report the 22 interim / ~30 final goals and gate the Bone regressions.
       - name: Census every built GBA 3D level (player-controlled)
         run: |
           set -euo pipefail

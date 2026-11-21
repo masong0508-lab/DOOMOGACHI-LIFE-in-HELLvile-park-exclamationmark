@@ -432,6 +432,7 @@ void et_blit2_test(void)
 void et_upscale_test(void)
 {
     void r3d_up2(uint16_t *, int, int) __attribute__((long_call));
+    void r3d_up3(uint16_t *);
     void r3d_up4(uint16_t *, int, int);
     static const uint8_t rect[][4] = { { 0, 0, 30, 40 }, { 4, 7, 25, 35 }, { 20, 13, 3, 3 } };
     unsigned i;
@@ -456,6 +457,27 @@ void et_upscale_test(void)
                 gba_logf("ET upscale FAIL case %u pixel %d", i, p);
                 return;
             }
+    }
+    {
+        int x, y;
+        volatile uint16_t *page = PAGE_B;
+        page[LINE * 160] = 0xA5A5;
+        for (y = 0; y < 54; y++)
+            for (x = 0; x < 40; x++)
+                page[y * LINE + x] = (uint16_t)(0xA507u + 13u * x + 317u * y);
+        r3d_up3(PAGE_B);
+        for (y = 0; y < 160; y++)
+            for (x = 0; x < LINE; x++) {
+                uint16_t want = (uint16_t)(0xA507u + 13u * (x / 3) + 317u * ((y + 1) / 3));
+                if (page[y * LINE + x] != want) {
+                    gba_logf("ET upscale FAIL third at %d,%d", x, y);
+                    return;
+                }
+            }
+        if (page[LINE * 160] != 0xA5A5) {
+            gba_log("ET upscale FAIL third exceeded the view");
+            return;
+        }
     }
     gba_log("ET upscale ok");
 }

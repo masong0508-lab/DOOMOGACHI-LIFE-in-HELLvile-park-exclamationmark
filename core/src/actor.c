@@ -28,26 +28,59 @@ static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  *
 static int16_t  corpse_count;
 static uint16_t actor_end;       /* one past the highest possibly used slot */
 
-/* GBA collision broad phase: index of USED+SOLID slots, ordered by actor
- * index. A scan of 128 slots was previously repeated for EACH attempt by
- * EACH demon. This 128-byte EWRAM cache is rebuilt only when actors become
- * solid / the arena is cleared. A removed solid remains harmless until the
- * next rebuild: the exact flags and geometry are still checked at use.
- * Positions are never cached; moving actors therefore stay correct.
- * Other ports retain their original collision logic and memory layout. */
 #if defined(DOOMO_PLATFORM_GBA)
-static uint8_t solid_order[ACTOR_MAX];
-static uint16_t solid_count;
+/* One bit per solid slot, grouped by its world-space X stripe. Nearby
+ * movement attempts walk only the intersected stripes, then run the
+ * existing exact body and height checks in original slot order. */
+#define SOLID_STRIPES 32
+#define SOLID_WORDS ((ACTOR_MAX + 31) / 32)
+static uint32_t solid_bits[SOLID_STRIPES][SOLID_WORDS];
+static unsigned solid_radius;
 static uint8_t solid_dirty = 1;
+
+static int solid_stripe(int world_x)
+{
+    return DOOMO_CLAMP(world_x >> 7, 0, SOLID_STRIPES - 1);
+}
+
 static void solid_rebuild(void)
 {
-    uint16_t i, n = 0;
-    for (i = 0; i < actor_end; i++)
-        if ((doomo_actors[i].flags & (AF_USED | AF_SOLID)) ==
-                                       (AF_USED | AF_SOLID))
-            solid_order[n++] = (uint8_t)i;
-    solid_count = n;
+    unsigned i;
+    solid_radius = 0;
+    memset(solid_bits, 0, sizeof(solid_bits));
+    for (i = 0; i < actor_end; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        if ((a->flags & (AF_USED | AF_SOLID)) != (AF_USED | AF_SOLID)) continue;
+        solid_bits[solid_stripe(FIX2INT(a->x))][i >> 5] |= 1u << (i & 31);
+        if (a->radius > solid_radius) solid_radius = a->radius;
+    }
     solid_dirty = 0;
+}
+
+static int solid_candidates(uint8_t *near, fix16 x, int radius, int omit)
+{
+    /* Low-bit index via a multiply on ARM7TDMI, which has no CLZ. */
+    static const uint8_t bit_index[32] = {
+         0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8,
+        31,27,13,23,21,19,16, 7,26,12,18, 6,11, 5,10, 9
+    };
+    int wx = FIX2INT(x), lo, hi, word, n = 0;
+    if (solid_dirty) solid_rebuild();
+    radius += (int)solid_radius;
+    lo = solid_stripe(wx - radius);
+    hi = solid_stripe(wx + radius);
+    for (word = 0; word < SOLID_WORDS; word++) {
+        int lane;
+        uint32_t bits = solid_bits[lo][word];
+        for (lane = lo + 1; lane <= hi; lane++) bits |= solid_bits[lane][word];
+        if ((omit >> 5) == word) bits &= ~(1u << (omit & 31));
+        while (bits) {
+            uint32_t low = bits & (0u - bits);
+            near[n++] = (uint8_t)(word * 32 + bit_index[(low * 0x077CB531u) >> 27]);
+            bits ^= low;
+        }
+    }
+    return n;
 }
 #endif
 
@@ -269,7 +302,6 @@ void actors_clear(void)
     corpse_count = 0;
     actor_end = 0;
 #if defined(DOOMO_PLATFORM_GBA)
-    solid_count = 0;
     solid_dirty = 1;
 #endif
 }
@@ -556,15 +588,6 @@ static int demon_try_move_filtered(int idx, fix16 dx, fix16 dy,
     fix16 nx = a->x + dx, ny = a->y + dy;
     int fl, ce, z = FIX2INT(a->z), i, j;
     int flying = (a->flags & AF_FLYING) != 0;
-#if defined(DOOMO_PLATFORM_GBA)
-    /* A null filter is the ordinary, most frequent movement path. Reuse
-     * only the currently solid indices; preserve their exact slot order. */
-    if (!near) {
-        if (solid_dirty) solid_rebuild();
-        near = solid_order;
-        nnear = solid_count;
-    }
-#endif
     /* Check nearby blocking bodies before scanning tile heights. A crowded
      * doorway rejects most candidate steps here, saving 1-4 collision
      * cell and mover queries per rejected step without changing outcomes. */
@@ -619,6 +642,16 @@ static int demon_try_move_filtered(int idx, fix16 dx, fix16 dy,
             if (fl < z - 64) return 0;
         }
     }
+#if defined(DOOMO_PLATFORM_GBA)
+    if (!solid_dirty && (a->flags & AF_SOLID)) {
+        int from = solid_stripe(FIX2INT(a->x)), to = solid_stripe(FIX2INT(nx));
+        if (from != to) {
+            uint32_t bit = 1u << (idx & 31);
+            solid_bits[from][idx >> 5] &= ~bit;
+            solid_bits[to][idx >> 5] |= bit;
+        }
+    }
+#endif
     a->x = nx;
     a->y = ny;
     if (!flying) {
@@ -630,7 +663,14 @@ static int demon_try_move_filtered(int idx, fix16 dx, fix16 dy,
 /* Direct knockback/charge paths still use the original complete search. */
 static int demon_try_move(int idx, fix16 dx, fix16 dy)
 {
+#if defined(DOOMO_PLATFORM_GBA)
+    uint8_t near[ACTOR_MAX];
+    const DoomoActor *a = &doomo_actors[idx];
+    int count = solid_candidates(near, a->x + dx, a->radius, idx);
+    return demon_try_move_filtered(idx, dx, dy, near, count);
+#else
     return demon_try_move_filtered(idx, dx, dy, 0, 0);
+#endif
 }
 
 static void demon_walk(int idx, int want_angle)
@@ -644,52 +684,27 @@ static void demon_walk(int idx, int want_angle)
      * move does not change a->x/y, and no other actor can move during this
      * call, so one envelope covers all five remaining angle attempts. */
     uint8_t near[ACTOR_MAX];
-    int nnear = 0, use_near = actor_end > 12;
+    int nnear = 0;
+#if !defined(DOOMO_PLATFORM_GBA)
+    int use_near = actor_end > 12;
+#endif
     int k;
     if (ai_move[idx] > 0) {
         ai_move[idx]--;
         want_angle = ai_dir[idx];
     }
+#if defined(DOOMO_PLATFORM_GBA)
+    nnear = solid_candidates(near, a->x, a->radius + FIX2INT(step) + 1, idx);
+#endif
     for (k = 0; k < 6; k++) {
         int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;
         fix16 dx = FIXMUL(fx_cos(ang), step), dy = FIXMUL(fx_sin(ang), step);
         int moved;
+#if !defined(DOOMO_PLATFORM_GBA)
         if (k == 1 && use_near) {
             int j;
             /* Allow a full world unit of rounding slack around the maximum
              * step. All six angles have |dx|, |dy| <= step + 1 world unit. */
-#if defined(DOOMO_PLATFORM_GBA)
-            /* The actor radii are uint8 and demon step is <= 10.25 world
-             * units, so this signed 16.16 envelope is far under INT32_MAX.
-             * Compute it with 32-bit operations on ARM7; 64-bit arithmetic
-             * remains in the other-port fallback below. */
-            const int32_t slack = step + INT2FIX(1);
-            if (solid_dirty) solid_rebuild();
-            {
-                int total = solid_count;
-                for (j = 0; j < total; j++) {
-                    int slot = solid_order[j];
-                    const DoomoActor *o = &doomo_actors[slot];
-                    int32_t rr;
-                    if (slot == idx || (o->flags & (AF_USED | AF_SOLID)) !=
-                                       (AF_USED | AF_SOLID)) continue;
-                    rr = (o->radius + a->radius - 4) * 65536 + slack;
-                    if (rr < 0) continue;
-                    /* Exact unsigned difference across the full signed
-                     * 32-bit coordinate range: signed order chooses which
-                     * unsigned subtraction has the absolute magnitude. */
-                    {
-                        uint32_t bound = (uint32_t)rr;
-                        uint32_t ax = (uint32_t)a->x, ay = (uint32_t)a->y;
-                        uint32_t ox = (uint32_t)o->x, oy = (uint32_t)o->y;
-                        uint32_t ddx = o->x >= a->x ? ox - ax : ax - ox;
-                        uint32_t ddy = o->y >= a->y ? oy - ay : ay - oy;
-                        if (ddx > bound || ddy > bound) continue;
-                    }
-                    near[nnear++] = (uint8_t)slot;
-                }
-            }
-#else
             /* Preserve the original 64-bit envelope on other ports. */
             const int64_t slack = (int64_t)step + INT2FIX(1);
             for (j = 0; j < actor_end; j++) {
@@ -704,13 +719,18 @@ static void demon_walk(int idx, int want_angle)
                     (int64_t)o->y - a->y < -rr) continue;
                 near[nnear++] = (uint8_t)j;
             }
-#endif
         }
+#endif
         /* At cardinal angles one component is exactly zero. If the
          * diagonal attempt failed, its identical axis attempt cannot
          * succeed: rejected moves have no side effects. Still execute the
          * distinct zero-displacement attempt where it was present, since
          * it may apply a valid floor step. This is behavior-preserving. */
+#if defined(DOOMO_PLATFORM_GBA)
+        moved = demon_try_move_filtered(idx, dx, dy, near, nnear) ||
+                (dy && demon_try_move_filtered(idx, dx, 0, near, nnear)) ||
+                (dx && demon_try_move_filtered(idx, 0, dy, near, nnear));
+#else
         if (k && use_near)
             moved = demon_try_move_filtered(idx, dx, dy, near, nnear) ||
                     (dy && demon_try_move_filtered(idx, dx, 0, near, nnear)) ||
@@ -719,6 +739,7 @@ static void demon_walk(int idx, int want_angle)
             moved = demon_try_move(idx, dx, dy) ||
                     (dy && demon_try_move(idx, dx, 0)) ||
                     (dx && demon_try_move(idx, 0, dy));
+#endif
         if (moved) {
             if (k > 0) {
                 ai_dir[idx] = (int16_t)ang;
@@ -1677,6 +1698,11 @@ int actor_kill_group_alive(int arg)
 void actors_tick(void)
 {
     int i;
+#if defined(DOOMO_PLATFORM_GBA)
+    /* Scene scripts can edit actor slots between ticks. Rebuild on the
+     * first collision query, then track moves during this update. */
+    solid_dirty = 1;
+#endif
     while (actor_end && !(doomo_actors[actor_end - 1].flags & AF_USED)) actor_end--;
     /* Reload the bound after each update. A projectile or demon spawned
      * into a later slot still gets its turn in this same tick. */
