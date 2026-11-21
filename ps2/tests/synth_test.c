@@ -98,6 +98,28 @@ int main(void)
     CHECK(a.sample[2].priority==10);
     ps2_synth_sample_ex(&a,sfx,7,PS2_SOUND_RATE,15,0,20,0);
     CHECK(a.sample[0].priority==20);
+
+    /* Previously a pathological rate could wrap a 64-bit calculated
+     * Q16.16 step down to uint32_t and unintentionally play slowly.
+     * The mixer must saturate the step and finish a short SFX safely. */
+    ps2_synth_reset(&a);
+    ps2_synth_sample_ex(&a,sfx,7,UINT32_MAX,15,0,4,24);
+    CHECK(a.sample[0].step==UINT32_MAX);
+    ps2_synth_render(&a,pcm,1);
+    CHECK(a.sample[0].pcm==NULL);
+
+    /* A long source near the Q16.16 representable limit must stop
+     * rather than wrap its cursor to frame zero and play forever.
+     * The static 64KiB fixture is host-only, not part of the PS2 ELF. */
+    {
+        static const int8_t long_sfx[65536]={0};
+        ps2_synth_reset(&a);
+        ps2_synth_sample(&a,long_sfx,sizeof long_sfx,PS2_SOUND_RATE,15);
+        a.sample[0].pos=UINT32_MAX-1u;
+        a.sample[0].step=4u;
+        ps2_synth_render(&a,pcm,1);
+        CHECK(a.sample[0].pcm==NULL);
+    }
     CHECK(sizeof(Ps2Synth)<256u);
     printf("PS2 SPU2 PCM mixer: %d host checks, %d failed\n",checks,errors);
     return errors!=0;
