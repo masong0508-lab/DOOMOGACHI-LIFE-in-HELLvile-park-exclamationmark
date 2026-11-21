@@ -11,7 +11,7 @@ endif
 EE_BIN := build/doomogachi_ps2.elf
 EE_OBJS := build/main.o build/padmap.o
 EE_INCS += -I../core/include -Isrc -I$(GSKIT)/include
-EE_CFLAGS += -std=c99 -ffunction-sections -fdata-sections
+EE_CFLAGS += -std=c99 -DDOOMO_PLATFORM_PS2=1 -DDOOMO_HAS_TALK=1 -ffunction-sections -fdata-sections
 EE_LDFLAGS += -L$(GSKIT)/lib -Wl,--gc-sections
 EE_LIBS := -lgskit_toolkit -lgskit -ldmakit -lmc -lpad -lm
 include $(PS2SDK)/samples/Makefile.pref
@@ -37,14 +37,15 @@ clean:
 DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
-GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
+GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
+GAME_LIBS := $(EE_LIBS) -laudsrv -lcdvd
 GAME_BIN := build/doomogachi_ps2_game.elf
 
 .PHONY: game
 game: $(GAME_BIN)
 $(GAME_BIN): $(GAME_OBJS)
 	@mkdir -p $(@D)
-	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(GAME_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(EE_LIBS)
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(GAME_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(GAME_LIBS)
 
 build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
 	@mkdir -p build
@@ -55,6 +56,18 @@ build/game2d.o: src/game2d.c src/game2d.h src/indexed_blit.h
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
 build/memcard.o: src/memcard.c src/save_journal.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/audio.o: src/audio.c src/synth.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/synth.o: src/synth.c src/synth.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/talkdisc.o: src/talkdisc.c src/talk_path.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 
@@ -69,3 +82,24 @@ build/ref_overworld.o: src/ref_overworld.c src/frame_ref.h src/game2d.h
 build/ref_view3d.o: src/ref_view3d.c src/frame_ref.h src/game2d.h
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+# PS2-4 CD image for PCSX2 / PS2 homebrew disc launch. The English
+# language bank comes from the SAME generator as PS1 and Dreamcast, not
+# a new hand-maintained dialogue file. audsrv.irx ships from PS2SDK.
+TALK_BIN := ../core/build/talk/TALK_en.BIN
+AUDSRV_IRX := $(PS2SDK)/iop/irx/audsrv.irx
+DISC_ROOT := build/disc
+DISC_ISO := build/doomogachi_ps2_game.iso
+
+$(TALK_BIN):
+	$(MAKE) -C ../core talk
+.PHONY: disc
+disc: $(GAME_BIN) $(TALK_BIN) $(AUDSRV_IRX)
+	@command -v xorriso >/dev/null || (echo 'Install xorriso to build the PS2 ISO' && false)
+	@mkdir -p $(DISC_ROOT)
+	cp $(GAME_BIN) $(DISC_ROOT)/DOOMOG.ELF
+	cp $(TALK_BIN) $(DISC_ROOT)/TALK_EN.BIN
+	cp $(AUDSRV_IRX) $(DISC_ROOT)/AUDSRV.IRX
+	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
+	xorriso -as mkisofs -iso-level 1 -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
+	@echo "PS2 disc image ready: $(DISC_ISO)"
