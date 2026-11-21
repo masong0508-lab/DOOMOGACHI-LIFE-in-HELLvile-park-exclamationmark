@@ -807,13 +807,14 @@ static int fp_portrait_draw(int x, int y, int id, int scale, int expr, int style
     if (!r) return 0;
     key = 0x20000000u | ((uint32_t)id << 8) | (uint32_t)(expr & 0xFF);
     if (focused || memo_ok(key, res_hash(id, r), 3)) {
-        const DoomoImage *img = portrait_image_ui(id, expr);
+        const DoomoImage *img = focused ? portrait_image_focused(id, expr) : portrait_image_ui(id, expr);
         if (img) {
             plat_image(x + 3, y + 3, img, scale, 0, 0);
             return 1;
         }
     }
-    placeholder(x + w / 2, y + h / 2, 10 * scale, look_skin(RES_LOOK_VIEW(r), 1));
+    placeholder(x + w / 2, y + h / 2, (focused ? 17 : 10) * scale,
+                look_skin(RES_LOOK_VIEW(r), 1));
     return 0;
 }
 

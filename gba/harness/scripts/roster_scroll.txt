@@ -20,25 +20,23 @@ expect-scene ROSTER
 
 # Cold card: selected portrait is requested on scene entry, and should
 # progress in idle slices without delaying cursor response.
-fps portrait_cold_card
+fps start
 wait 45
-fps end
+fps portrait_cold_card
 shot portrait_cold
 
 # Moving through 1000 logical ids (500 physical GBA slots), the card
 # may show a chibi until its exact bust is cached, but scrolling must
 # never block on a whole high-quality redraw.
-fps roster_scroll
 down DOWN
 wait 130
 release
-fps end
+fps roster_scroll
 shot portrait_scroll
 
 # Same citizen at rest: renderer can use idle slices to finish its face.
-fps portrait_settled
 wait 110
-fps end
+fps portrait_settled
 shot portrait_settled
 expect-scene ROSTER
 
@@ -47,7 +45,7 @@ expect-scene ROSTER
 latency A 120 roster -> resident (A)
 wait 80
 expect-scene RESIDENT
-fps resident_face
+fps start
 wait 90
-fps end
+fps resident_face
 shot resident_face

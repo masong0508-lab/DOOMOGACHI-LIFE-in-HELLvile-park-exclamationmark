@@ -497,13 +497,11 @@ static void draw_card(const Layout *L, int style)
         return;
     }
     px = x + (w - (PORTRAIT_W + 6)) / 2;
-    /* Always show a cached face on the FIRST selected frame. If there
-     * isn't one, render the frame and the resident's existing small
-     * chibi while background slices fill the bust; no six-frame blank
-     * period and no synchronous full-bust render on GBA/PS1. */
-    if (!fp_portrait_streamed(px, y + 6, id, 1, -1, WIN_MINT))
-        fp_chibi(id, px + 3 + (PORTRAIT_W - BODYSPR_W) / 2,
-                 y + 9 + (PORTRAIT_H - BODYSPR_H) / 2, 0, 0, 0);
+    /* Do not draw a chibi on the same procedural canvas after each
+     * partial bust slice: that reset the canvas's generation and made
+     * the high-resolution portrait repeatedly restart. Instead the
+     * cheap UI silhouette stands in until the focused face is ready. */
+    (void)fp_portrait_streamed(px, y + 6, id, 1, -1, WIN_MINT);
     ty = y + PORTRAIT_H + 13;
     ui_text_center(x + w / 2, ty, r->name, st->text);
     ty += FONT_LINE;

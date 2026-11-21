@@ -65,6 +65,9 @@ void figure_render(const DoomoLook *l, int status, int expr, int anim,
  * portraits never stall a frame. An empty slot gives a lavender "?"
  * silhouette. */
 const DoomoImage *portrait_image(int resident_id, int expr);
+/* Selected portrait, not for a grid: cache hit returns at once; otherwise
+ * compose in 26 slices with a ~12-tick deadline, without another buffer. */
+const DoomoImage *portrait_image_focused(int resident_id, int expr);
 const DoomoImage *bodyspr_image(int resident_id, int dir, int frame);
 /* V11: while 1 or 2, a body the cache lacks is drawn as a sliced job (GBA only; no-op elsewhere), see portrait.c */
 /* (1: with no facing cached it may be skipped for a few ticks, 2: it is drawn at once; S2-7: 3 is 1 on every

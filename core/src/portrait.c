@@ -721,6 +721,7 @@ typedef struct Job {
     uint8_t  on, step, kind;
     uint8_t  bdir, bframe;      /* CK_BODY job (V11): the facing and frame being drawn */
     uint8_t  urgent;            /* SP2: new content behind a stand-in: done within PC_STANDIN ticks */
+    uint8_t  focus;             /* selected face: bounded 12-tick deadline */
     uint8_t  vac;               /* SP2: an empty slot's "?" silhouette (vacant()) when done */
     uint8_t  pf;                /* SP2: a prefetch (queued again if it is aborted) */
     uint8_t  si;                /* SP2: draws new content behind a stand-in (or nothing: hold 3) */
@@ -1037,6 +1038,7 @@ static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const Doomo
     job.step = SL_SETUP;
     job.restarts = 0;
     job.urgent = 0;
+    job.focus = 0;
     job.vac = 0;
     job.pf = 0;
     job.si = 0;
@@ -1151,7 +1153,12 @@ static void job_pump(void)
 {
     if (job.on && job.urgent && job.fq_tick != now()) {
         /* its share of this tick, once a tick however often it is asked for (idle-time slices shrink it) */
-        int left = SL_N - job.step, ticks = (int)(job.t0 + (si_ticks ? si_ticks : PC_STANDIN_HOLD) - now());
+        /* A focused face completes in twelve ticks rather than waiting
+         * indefinitely for idle budget, spreading its 26 pieces instead
+         * of forcing one whole portrait render in a frame. */
+        int left = SL_N - job.step;
+        int due = job.focus ? 12 : (si_ticks ? si_ticks : PC_STANDIN_HOLD);
+        int ticks = (int)(job.t0 + (uint32_t)due - now());
         job.fq_tick = now();
         job.fq = (uint8_t)(ticks <= 0 ? left : (left + ticks - 1) / ticks);
     }
@@ -1262,12 +1269,15 @@ uint32_t portrait_hitcheck_fails(void) { return 0; }
  * the image to show, or NULL when there is nothing to stand in: then the caller draws at once, or with `none`
  * (portrait_hold(3)) the job is started anyway (urgent) and the caller shows nothing meanwhile. */
 static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_t lh, const DoomoLook *l,
-                         const DoomoDeep *d, int st, int expr, const Phase *p, int vac, int none, int patient)
+                         const DoomoDeep *d, int st, int expr, const Phase *p, int vac, int none, int patient, int focus)
 {
     CacheEnt *o = cache_get(kind, rid, base, lh, 0x0000F000u, 0);
     if (!o) o = cache_get(kind, rid, base, lh, 0, 0);
     if (!o && !none) return NULL;
     if (!job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
+        /* New focused selection supersedes only a previous focused job,
+         * never a dialogue/creator job; cache storage stays unchanged. */
+        if (focus && job.on && job.focus) job_abort();
         if (job.on && (job.urgent || job_hold || job.si) && (int32_t)(now() - job.want) <= job_stale()) {
             /* another stand-in's job is under way: this one waits its turn (two at once would double the cost) */
         } else {
@@ -1277,13 +1287,24 @@ static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_
                 o->tick = now();
             }
             if (job_begin(kind, rid, key, lh, l, d, st, expr, p, 0)) {
-                job.urgent = !patient && (!o || !recent_has(content_hash(kind, rid, lh, base)));
+                job.urgent = focus || (!patient && (!o || !recent_has(content_hash(kind, rid, lh, base))));
+                job.focus = (uint8_t)focus;
                 job.si = 1;
                 job.vac = (uint8_t)vac;
             }
         }
     }
-    if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) job.want = now();
+    if (job_for(kind, rid, lh, base, 0xFFFFFF00u)) {
+        job.want = now();
+        /* Promote an already-started, patient prefetch instead of
+         * abandoning its partial canvas and starting from zero. */
+        if (focus && !job.focus) {
+            job.focus = 1;
+            job.urgent = 1;
+            job.t0 = now();
+            job.fq_tick = now() - 1;
+        }
+    }
     if (!o) return NULL;
     o = cache_find(kind, rid, base, lh, 0x0000F000u);
     if (!o) o = cache_find(kind, rid, base, lh, 0);
@@ -1337,7 +1358,8 @@ static const DoomoImage *animated(int kind, int rid, const DoomoLook *l, const D
     if (!e && (hold_on >= 3 || (!hold_on && si_ticks))) {
         /* SP2: a new expression / status of a look on screen: a few ticks of the old picture instead of a
          * whole render in this frame; portrait_hold(3) with nothing to stand in: a few ticks of nothing */
-        CacheEnt *o = standin(kind, rid, key, base, lh, l, d, st, expr, &p, status == RES_EMPTY, hold_on >= 3, hold_on == 4);
+        CacheEnt *o = standin(kind, rid, key, base, lh, l, d, st, expr, &p,
+                              status == RES_EMPTY, hold_on >= 3, hold_on == 4, hold_on == 5);
         if (o || hold_on >= 3) {
             job_pump();
             e = cache_find(kind, rid, base, lh, 0xFFFFFF00u);
@@ -1470,6 +1492,19 @@ const DoomoImage *portrait_image(int resident_id, int expr)
     return animated(CK_PORTRAIT, resident_id, &al, &D, status, expr);
 }
 
+/* The one selected face in the scrollable roster or resident page.
+ * A matching prefetch becomes urgent and finishes in bounded slices
+ * within twelve game ticks; cached faces return immediately. */
+const DoomoImage *portrait_image_focused(int resident_id, int expr)
+{
+    int saved = hold_on;
+    const DoomoImage *img;
+    hold_on = 5;
+    img = portrait_image(resident_id, expr);
+    hold_on = saved;
+    return img;
+}
+
 /* CR9: the cached bust of any look (the creator's draft), like figure_image; CR3: with a resolved
  * set (the gene's new fields), or none */
 PD_STATIC const DoomoImage *portrait_image_look_d(const DoomoLook *l, const DoomoDeep *d, int status, int expr)
@@ -1592,6 +1627,7 @@ static int body_job_start(const DoomoResident *r, int rid, uint32_t key, uint32_
     job.step = SL_SETUP;
     job.restarts = 0;
     job.urgent = 0;
+    job.focus = 0;
     job.vac = 0;
     job.pf = 0;
     job.si = 0;

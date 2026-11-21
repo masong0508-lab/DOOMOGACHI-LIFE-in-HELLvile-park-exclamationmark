@@ -214,6 +214,20 @@ pre-existing FPS regression thresholds. CI reports these measured
 numbers without setting an unverified speed floor. The PS2 import
 should use the same fixed-seed navigation test before raising limits.
 
+### Portrait completion fix for GBA roster previews
+
+A frame-rate pass found an actual still-missing full portrait after
+110 settled ticks: the card launched a patient no-deadline preview
+and the fallback chibi reused the bust renderer's scratch canvas,
+forcing partial jobs to restart. The single focused card now uses
+`portrait_image_focused` with a 12-tick bounded slice deadline;
+preexisting prefetch work is promoted, not discarded. The roster
+fallback now draws a simple UI silhouette that does not touch the
+procedural canvas. This adds no heap, image pool, framebuffer or
+serialized bytes. Dedicated host tests check cold prefetch promotion
+and rapid focus changes without any idle pumping; the GBA benchmark
+renames its completed-measurement windows correctly.
+
 ## PS2-0 implementation checkpoint (Nov 21, 2026)
 
 The standalone `ps2/` tree now has a PS2SDK/gsKit EE project, an
