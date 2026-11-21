@@ -21,6 +21,11 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
             ps2/src/padmap.c ps2/tests/padmap_test.c -o /tmp/ps2-padmap-test
           /tmp/ps2-padmap-test
+      - name: Verify fast indexed sprites against the host oracle
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/indexed_blit_test.c -o /tmp/ps2-blit-test
+          /tmp/ps2-blit-test
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
