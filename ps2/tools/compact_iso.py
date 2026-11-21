@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from check_ps2_boot import verify_image_boot
 
 SECTOR_SIZE = 2048
 REQUIRED = {"SYSTEM.CNF", "DOOMOG.ELF", "TALK_EN.BIN", "AUDSRV.IRX"}
@@ -108,6 +109,7 @@ def main():
             raise ValueError(f"Missing required compression program: {command}")
 
     disc_files = check_iso(iso)
+    boot_target = verify_image_boot(iso)
     initial_sha = sha256(iso)
     raw_size = iso.stat().st_size
     name = iso.stem
@@ -152,6 +154,7 @@ def main():
         "schema_version": 1,
         "branch_commit": os.environ.get("GITHUB_SHA", "local"),
         "source_iso_sha256": initial_sha,
+        "boot2_target": boot_target,
         "iso9660_files": disc_files,
         "roundtrip": "both compressed formats restored byte-identical ISO",
         "images": images,
