@@ -177,6 +177,46 @@ int main(void)
     CHECK(!plat_save_read(0,out,sizeof out,&size));
     CHECK(plat_save_read(1,out,sizeof out,&size));
     CHECK(size==sizeof a && memcmp(out,a,sizeof a)==0);
+
+    /* Reinitialize the real libmc transport as it would be after a fresh
+     * boot, but do not clear the mock's memory-card files. A successful
+     * write must survive re-creating the RPC client, not just the
+     * process-local 'ready' flag or the one-frame save UI. */
+    CHECK(ps2_memcard_init());
+    memset(out,0x00,sizeof out);
+    size=0;
+    CHECK(plat_save_read(1,out,sizeof out,&size));
+    CHECK(size==sizeof a && memcmp(out,a,sizeof a)==0);
+    CHECK(!plat_save_read(0,out,sizeof out,&size)); /* erased slot stays gone */
+
+    /* Both journal banks survive independent boots; verify newest-bank
+     * selection and recovery from an interrupted next save after reboot. */
+    CHECK(plat_save_write(1,b,sizeof b));
+    CHECK(ps2_memcard_init());
+    memset(out,0x00,sizeof out);
+    CHECK(plat_save_read(1,out,sizeof out,&size));
+    CHECK(size==sizeof b && memcmp(out,b,sizeof b)==0);
+    writes=0;fail_write_after=3;
+    CHECK(!plat_save_write(1,c,sizeof c));
+    fail_write_after=-1;
+    CHECK(ps2_memcard_init());
+    CHECK(plat_save_read(1,out,sizeof out,&size));
+    CHECK(size==sizeof b && memcmp(out,b,sizeof b)==0);
+
+    /* Reboot with missing/unformatted media must reject success instead of
+     * trusting an earlier ready or formatted state. A subsequent reboot
+     * with restored media must recover the same verified saved bytes. */
+    card_present=0;
+    CHECK(!ps2_memcard_init());
+    CHECK(!plat_save_read(1,out,sizeof out,&size));
+    card_present=1;card_formatted=0;
+    CHECK(!ps2_memcard_init());
+    CHECK(!plat_save_write(1,c,sizeof c));
+    card_formatted=1;
+    CHECK(ps2_memcard_init());
+    memset(out,0x00,sizeof out);
+    CHECK(plat_save_read(1,out,sizeof out,&size));
+    CHECK(size==sizeof b && memcmp(out,b,sizeof b)==0);
     printf("PS2 memory-card host integration: %d checks, %d failures\n",checks,failures);
     return failures?1:0;
 }
