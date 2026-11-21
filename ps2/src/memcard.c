@@ -168,7 +168,12 @@ int plat_save_read(int slot,void *data,uint32_t cap,uint32_t *size)
     if(size)*size=0;
     if(slot<0 || slot>1 || !data || !size || !card_ready())return 0;
     b=latest_bank(slot,NULL);
-    return b>=0 && read_bank(slot,b,NULL,data,cap,size);
+    if(b<0)return 0;
+    if(read_bank(slot,b,NULL,data,cap,size))return 1;
+    /* If the preferred bank changes or becomes corrupt between the
+     * validity scan and its second read, the surviving bank can still
+     * restore the player's island rather than losing a valid save. */
+    return read_bank(slot,1-b,NULL,data,cap,size);
 }
 int plat_save_write(int slot,const void *data,uint32_t size)
 {
