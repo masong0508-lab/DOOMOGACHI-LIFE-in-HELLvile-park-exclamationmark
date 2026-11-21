@@ -60,6 +60,16 @@ cadence is about 29.9 drawn FPS. A stable ~30 logic TPS **does not** mean a
   ROM RAM/overlay limits, logic ticks, map exit playthroughs, and both
   camera views remain hard constraints. A future patch should not silently
   weaken a floor or cut the authored draw distance to buy FPS.
+- **Later follow-up work (unmeasured against this passing baseline):**
+  `826dec1c` rejects only provably off-range diagonal billboards before
+  projection/square math, without changing the visible set; `c2c1fcf7`
+  combines each pair of signed 64-bit billboard projections into one ARM
+  3D-overlay call, retaining the single final shift and sprite ordering;
+  `f47bd327` reports the Bone-specific >=24 FPS goal and P99 work for all
+  four cameras in `tools/gba3d_census.py`. These commits are implementation
+  or instrumentation, **not** evidence of an FPS increase: compare their
+  finished GBA CI census and screenshots with `6af86e2b` before revising
+  any performance number.
 
 Useful commands:
 
