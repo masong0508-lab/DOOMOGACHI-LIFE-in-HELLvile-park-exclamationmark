@@ -50,7 +50,7 @@ talk-read
 talk-page more
 expect-talk-page more
 expect-talk-row "Topic:"
-expect-talk-row "Invite someone"
+expect-talk-row "Add someone to chat"
 expect-talk-row "To:" 0
 wait 4
 shot talk_6_options

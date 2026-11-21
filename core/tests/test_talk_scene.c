@@ -133,7 +133,14 @@ TEST(talk_scene_needs_help_changes_real_sim_stats)
     go_to(find_row("clean", -1, -1)); press(BTN_A);
     CHECK(r->stat[STAT_HYGIENE] > before);
     CHECK(talk_scene_debug(&d) && d.busy);
-    while (talk_scene_debug(&d) && d.busy) { frames(0, 30); press(BTN_A); }
+    {
+        int step;
+        for (step = 0; step < 40 && talk_scene_debug(&d) && d.busy; step++) {
+            frames(0, 30);
+            press(BTN_A);
+        }
+        CHECK(talk_scene_debug(&d) && !d.busy);
+    }
     row = find_row("help", -1, -1);
     CHECK(row >= 0);
     go_to(row); press(BTN_A);

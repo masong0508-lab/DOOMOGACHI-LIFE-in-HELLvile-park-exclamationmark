@@ -249,7 +249,11 @@ TEST(traits_save_round_trip_and_old_saves)
     doomo_town.day = 5;
     talk_mem_touch(ID_RIVET);
     n = chunk(b, sizeof b);
-    CHECK(n == TALK_MEM_HDR + TALK_MEM_ENTRY && b[0] == TALK_MEM_VERSION);
+    CHECK(n == TALK_MEM_HDR + TALK_MEM_ENTRY && b[0] == TALK_MEM_VERSION_EVENTS);
+    /* Simulate a true pre-event v1 payload: the original writer used 1.
+     * This must still load, while new writes explicitly use v3/v4 so
+     * unused high bits in old likes never become false memories. */
+    b[0] = TALK_MEM_VERSION;
     talk_mem_reset();
     CHECK(ext()->read(b, n, TALK_MEM_VERSION));
     CHECK_EQ(talk_mem_count(), 1);
@@ -263,7 +267,7 @@ TEST(traits_save_round_trip_and_old_saves)
     CHECK_EQ(talk_trait_set(ID_NANA, &ts), TTE_OK);
     n = chunk(b, sizeof b);
     CHECK_EQ(n, TALK_MEM_HDR + TALK_MEM_ENTRY + 1 + 6);
-    CHECK_EQ(b[0], TALK_MEM_VERSION_TRAITS);
+    CHECK_EQ(b[0], TALK_MEM_VERSION_EVENTS_TRAITS);
     n2 = chunk(b2, sizeof b2);
     CHECK(n2 == n && memcmp(b, b2, n) == 0);
     CHECK(n <= SAVE_EXT_MAX_TALK);

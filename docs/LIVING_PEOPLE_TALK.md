@@ -242,3 +242,17 @@ uses exactly one item. This is not full free-form neural reasoning,
 but a concrete way for the resident's simulated life to shape actions
 and player decisions. The ghost-play memory guard also now agrees with
 `sim_play`: ghosts don't require a minimum Energy meter.
+
+## Regression review after adding memory and care
+
+Native CI exposed two old assumptions in test expectations, not a
+resident save-size change: `traits_save_round_trip_and_old_saves`
+compared a new writer's payload byte against legacy v1/v2 constants,
+and the `home_talk_basic` control script still searched for the old
+"Invite someone" label instead of "Add someone to chat". The test now
+explicitly simulates v1 when checking compatibility, while comparing
+new writes against the correct event-aware v3/v4 payloads. The UI
+script expects the renamed control. The care-menu test now bounds
+dialogue-dismissal presses at 40 and asserts the box actually closes.
+These are test contract changes, not a claim that full console
+integration has passed; retest with `make -C core unit scripts`.
