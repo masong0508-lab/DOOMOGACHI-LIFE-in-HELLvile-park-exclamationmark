@@ -145,6 +145,6 @@ static const DoomoThing things_bone_cathedral[78] = {
 };
 
 const DoomoMapDef map_def_bone_cathedral = {
-    "Bone Cathedral", 48, 56, MAP_DUNGEON, 3, 6, 9,
+    "Bone Cathedral", 48, 56, MAP_DUNGEON, 3, 6, 12,
     cells_bone_cathedral, things_bone_cathedral, 78
 };
