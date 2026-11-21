@@ -3,7 +3,8 @@
 
 Usage: python3 tools/gba3d_census.py gba/build/gba3d_census.log
        [--csv gba/build/gba3d_census.csv] [--require-worklog]
-Logic >=29 TPS is gated by the harness. The 22/30 FPS goals remain report-only.
+Logic >=29 TPS is gated by the harness. The whole-census 22/30 FPS goals
+and Bone Cathedral / Bone Capital 24 FPS interim goal remain report-only.
 Every mapped GBA Breach entry must have first- and third-person windows.
 
 With --worklog, the existing harness reports the work of each presented frame;
@@ -30,7 +31,7 @@ GAPS = re.compile(
 GAP_BIN = re.compile(r"^(\d+)\+?:(\d+)$")
 
 COLUMNS = ("level", "camera", "logic_tps", "drawn_fps", "work_avg_ms",
-           "work_max_ms", "ms_to_30_work", "fps_to_22", "fps_to_30",
+           "work_max_ms", "ms_to_30_work", "fps_to_22", "fps_to_24", "fps_to_30",
            "work_samples", "work_p50_ms", "work_p90_ms", "work_p95_ms",
            "work_p99_ms", "work_worst_tick", "work_over_33ms",
            "work_over_45ms", "work_over_50ms", "gap_3plus", "gap_4plus",
@@ -101,6 +102,7 @@ def main():
             "work_avg_ms": avg, "work_max_ms": float(maximum),
             "ms_to_30_work": round(max(0.0, avg - 1000.0 / 30.0), 2),
             "fps_to_22": round(max(0.0, 22.0 - drawn), 1),
+            "fps_to_24": round(max(0.0, 24.0 - drawn), 1),
             "fps_to_30": round(max(0.0, 30.0 - drawn), 1),
         }
         if window_work:
@@ -138,6 +140,14 @@ def main():
           (len(LEVELS) + len(GBA_3D_PILOTS), len(LEVELS), len(GBA_3D_PILOTS), len(ordered)))
     print("Interim >=22 drawn FPS: %d/%d; final ~30 drawn FPS (>=29.5): %d/%d" %
           (n22, len(ordered), n30, len(ordered)))
+    bone = [r for r in ordered if r["level"] in ("cathedral", "bone_capital")]
+    bone24 = sum(r["drawn_fps"] >= 24 for r in bone)
+    print("Bone Cathedral + Bone Capital interim >=24 drawn FPS: %d/%d (both cameras; report-only)" %
+          (bone24, len(bone)))
+    for r in sorted(bone, key=lambda r: (r["level"], r["camera"])):
+        print("Bone 24 target: %-12s %-5s %.1f drawn FPS; %.1f FPS short; %.1f ms avg work; %.1f ms P99 work" %
+              (r["level"], r["camera"], r["drawn_fps"], r["fps_to_24"],
+               r["work_avg_ms"], r.get("work_p99_ms", 0.0)))
     print("| Level | Camera | Drawn FPS | Logic TPS | Work avg/max ms | Work ms to 30 | FPS shortfall to 30 |")
     print("|---|---|---:|---:|---:|---:|---:|")
     for r in ordered:
