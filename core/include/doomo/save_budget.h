@@ -97,12 +97,20 @@ int32_t save_budget_compute(uint32_t cap, uint32_t last_total,
 uint32_t save_budget_declared_max(uint32_t tag);
 /* --- end K0 --- */
 
-/* --- T0 (docs/TALK.md 6.8): 'TALK', the talk memory: 4 B + 24 x 12 B =
- * 292 B worst (talk.h TALK_MEM_WORST) + 145 B of explicit trait sets (TM1: 1 + 24 x 6) = 437, declared 448. PS1, DC and native
- * only (the GBA never registers it), but the joint worst case holds it in
- * both slots anyway (test_contracts_talk.c). save_budget_declared_max() knows
- * its tag too. --- */
-#define SAVE_EXT_MAX_TALK     448u
+/* --- TALK save chunk capacity by platform. Each 12-byte memory entry is
+ * persistent; the existing 24 explicit trait sets add up to 145 bytes.
+ * 11 spare bytes allow headroom without changing the chunk wire format.
+ * Dreamcast's 128-entry history costs ~1.7 KiB worst case, subject to
+ * VMU free-block checks at save time. --- */
+#if defined(DOOMO_PLATFORM_DC)
+#define SAVE_EXT_MAX_TALK     1696u
+#elif defined(DOOMO_PLATFORM_PS1)
+#define SAVE_EXT_MAX_TALK     928u
+#elif defined(DOOMO_PLATFORM_GBA)
+#define SAVE_EXT_MAX_TALK     544u
+#else
+#define SAVE_EXT_MAX_TALK     736u
+#endif
 #define SAVE_BUDGET_TALK_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 
