@@ -55,6 +55,10 @@ jobs:
           assert struct.unpack_from('<I',bank,16)[0]==len(bank)
           print('PS2 Talk bank valid:',len(bank),'bytes')
           PY
+      - name: Lint BIOS-free Play! emulator harness
+        run: |
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py
+          python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
       - name: Verify PS2 real map rendering stays in sync with host
         run: python3 ps2/tests/check_reference_parity.py
 
@@ -144,8 +148,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick
-          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
+          dbus-run-session -- bash -ec '
+            flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+            flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
+          '
       - name: Retrieve game ISO compiled in this workflow
         uses: actions/download-artifact@v4
         with:
@@ -156,7 +162,7 @@ jobs:
         run: |
           set -eu
           test -s ps2/build/doomogachi_ps2_game.iso
-          xvfb-run -a -s '-screen 0 1280x720x24' \
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
             ps2/build/doomogachi_ps2_game.iso --seconds 35
       - name: Preserve emulator log and two boot screenshots
