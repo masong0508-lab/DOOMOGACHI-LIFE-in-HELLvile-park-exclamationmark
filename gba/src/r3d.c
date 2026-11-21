@@ -776,9 +776,18 @@ void plat_view3d(const DoomoView3D *v)
          * longer panorama, Balanced/Smooth favor playable frame pacing.
          * No changes to AI, targeting, collisions, goals or map data. */
         if (bone_readability_map(m->def)) {
+            int cathedral = m->def == doomo_maps[MAPID_BONE_CATHEDRAL];
+            /* The Cathedral alone still spends ~51-54ms per frame and
+             * falls into the 80x54 emergency scaler, blurring its skulls,
+             * arches and stained-glass silhouettes. Its 48x56 map has
+             * long decoration-only sightlines. Render the closest 14
+             * cells in Balanced/Smooth and 12 in emergency, but leave
+             * the actual 3D map, physics, AI, doors and exit untouched.
+             * This may help the governor reach the sharper 96x64 tier.
+             * Keep the Capital and manual Max quality budgets intact. */
             uint32_t cap = (opt_get(OPT_3D_FAST) == OPT3D_MAX) ? 26u :
-                           (detail == 4 ? 16u :
-                           (m->def == doomo_maps[MAPID_BONE_CATHEDRAL] ? 18u : 20u));
+                           (cathedral ? (detail == 4 ? 12u : 14u) :
+                            (detail == 4 ? 16u : 20u));
             if (vd > cap) vd = cap;
         }
         /* Graveyard's long outdoor rays are still costly at quarter

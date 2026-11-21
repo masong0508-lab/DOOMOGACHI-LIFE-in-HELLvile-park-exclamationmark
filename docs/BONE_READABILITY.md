@@ -178,3 +178,25 @@ repetition. The replacement was separately accepted by an ARMv4T
 assembler before pushing. GBA CI still must build and run the ROM;
 validate that the compiled scaler produces correct pixels, no memory
 corruption, and retains the 96x64 readability benefit.
+
+## GBA Cathedral sightline pass: favor crisp mid resolution
+
+After the `c15733bc` mGBA census, the Cathedral remained in the
+**80×54 emergency** presentation at **15.5 FPS first person and
+16.3 FPS third person**, while the Capital reached 96×64 at 17.3/17.4
+FPS. The reference image demands recognizable nearby skull stonework,
+Gothic windows, towers and a clear central opening rather than a noisy
+long-range pattern. In GBA **Balanced and Smooth only**, the Cathedral
+ray horizon now caps at **14 cells** (formerly 18); in its emergency
+80×54 state, it caps at **12 cells** (formerly 16). Capital retains its
+20/16 limits and manual Max retains its existing 26-cell panorama.
+The actual authored map and collision/AI ranges are unchanged.
+
+**Test gate:** compare first/third Cathedral drawn FPS, average render
+work and actual screenshot ray tier with the `c15733bc` baseline;
+look especially for transitions between outside facade, narthex, nave,
+windows, crossing and organ gate. Improved numbers are *not* assumed:
+if a formerly visible threat, exit or prominent landmark is hidden,
+restore that sightline or add a more selective occlusion rule. This
+changes GBA view rendering only; PC, PS1 and Dreamcast retain full
+artist-authored geometry, textures and distance.
