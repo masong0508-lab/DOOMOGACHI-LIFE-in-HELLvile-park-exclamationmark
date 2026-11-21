@@ -2097,8 +2097,19 @@ tints:
         if (c->flags & CELL_PORTAL) { tint = TINT_PURPLE; lvl = 4; }
         if (doomo_player.hp > 0 && doomo_player.hp <= 30) {
             int beat = combat_px.heartbeat % (doomo_player.hp <= 15 ? 18 : 26);
-            int pulse = beat < 4 ? 6 - beat : beat < 8 ? 3 : 1;
+#if defined(DOOMO_PLATFORM_GBA)
+            /* The GBA's small 3D view must stay legible during a fight.
+             * Health already pulses in the heart badge: do not keep
+             * washing the whole Cathedral in a red, pixel-dithered haze.
+             * Direct hit feedback still comes from hurt_flash below and
+             * the directional damage indicator. */
+            (void)beat;
+#else
+            /* Other ports keep their existing world-space warning, but
+             * with a quieter peak and no permanent resting tint. */
+            int pulse = beat < 3 ? 3 - beat : beat < 6 ? 1 : 0;
             if (pulse > lvl) { tint = TINT_RED; lvl = pulse; }
+#endif
         }
         if (doomo_player.pickup_flash && doomo_player.pickup_flash * 2 > lvl) {
             tint = TINT_GOLD; lvl = DOOMO_MIN(doomo_player.pickup_flash, 6);
