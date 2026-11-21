@@ -122,10 +122,19 @@ typedef struct TalkAudience {
 /* ---- the talk memory chunk 'TALK' (T6 owns it; T0 fixes its size) ---------
  * [u8 version][u8 count][u16 day_of_last] then count x 12 B entries
  * {u16 id; u16 day; u16 topic_a; u16 topic_b; u8 flags; u8 likes_known;
- *  u16 spare}, at most TALK_MEM_MAX (LRU). Worst case 4 + 24 x 12 = 292 B
- * (SAVE_EXT_MAX_TALK in save_budget.h is 320). Nothing is written while it
- * is empty. PS1, DC and native only: the GBA never registers it. */
-#define TALK_MEM_MAX       24
+ *  u16 spare}, at most TALK_MEM_MAX (LRU). Entry layout is unchanged:
+ * existing smaller saves load without migration. The cap varies by port,
+ * with Dreamcast retaining deeper social history. A full table protects
+ * unfinished requests from eviction. */
+#if defined(DOOMO_PLATFORM_DC)
+#define TALK_MEM_MAX       128
+#elif defined(DOOMO_PLATFORM_PS1)
+#define TALK_MEM_MAX       64
+#elif defined(DOOMO_PLATFORM_GBA)
+#define TALK_MEM_MAX       32
+#else
+#define TALK_MEM_MAX       48
+#endif
 #define TALK_MEM_HDR       4
 #define TALK_MEM_ENTRY     12
 #define TALK_MEM_WORST     (TALK_MEM_HDR + TALK_MEM_MAX * TALK_MEM_ENTRY)
@@ -711,7 +720,7 @@ int talk_scene_person_x(int i);
 
 /* ---- T6: talk memory (core/src/talk_save.c; docs/TALK.md 6e) ------------------
  * What a resident remembers of the player's talks: the 'TALK' chunk's table
- * (TALK_MEM_MAX entries, the most recently used first; a 25th person evicts
+ * (TALK_MEM_MAX entries, the most recently used first; an overflow evicts
  * the last). Ids are a resident, the hero or a family pool id; the pet and
  * anyone who is gone have no entry. Every call first clears
  * TMF_REFUSED_TODAY when the town day has changed. The chunk itself is
