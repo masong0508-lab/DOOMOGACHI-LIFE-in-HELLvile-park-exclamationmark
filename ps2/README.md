@@ -341,3 +341,39 @@ not claim that the synthetic ELF is executable or that the real game
 has passed emulator testing. The release gate is still an actual
 cross-compiled game ISO and successful Play!/PCSX2 walkthrough.
 
+
+## PS2-10: disc ELF size and actual Play! visual evidence
+
+The unstripped game ELF contains DWARF debugging information. Previously
+all of that metadata was copied to the ISO, inflating downloads without
+adding gameplay content. Now the `disc` target builds a second ELF using
+PS2DEV's MIPS strip tool with `--strip-debug`. The original unstripped
+`build/doomogachi_ps2_game.elf` stays available for debugging; only the
+smaller `build/doomogachi_ps2_disc.elf` becomes `DOOMOG.ELF` in the
+ISO. `ps2/tools/check_disc_elf.py` compares the original and compact
+ELFs' **entry points and every byte in every loadable program segment**.
+Any change to actual loaded code/data, or a stripping run that fails to
+reduce size, halts packaging rather than shipping an unverified image.
+This is an on-disc storage reduction, not a reduction in running RAM.
+
+A review of the earlier Play! screenshots (run 44950195103) revealed
+that although the emulator loaded DOOMOG.ELF and its process survived
+35 seconds, the entire game viewport was black at both 12 and 35
+seconds. The previous capture was only a process-liveness pass, **not a
+rendering success**. The optional EE-console heartbeat was also absent
+from the emulator log (possibly not forwarded by Play!), so gameplay
+execution remains unverified. The new capture gate computes visible
+pixel coverage inside the game viewport using ImageMagick, excluding
+the emulator's menu/status bars, and rejects two black frames. Its
+failure still uploads both screenshots, the log and JSON evidence.
+
+You can repeat the visual check against captures using:
+
+```sh
+python3 ps2/tools/check_play_frames.py \\
+  ps2/build/play-smoke/boot-1.png ps2/build/play-smoke/boot-2.png
+```
+
+Only a successful newly built disc and a visible gameplay screenshot
+may clear the visual boot gate; an actual playable release also requires
+controller, Talk, sound, memory-card persistence and scene traversal.
