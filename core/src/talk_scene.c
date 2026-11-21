@@ -1322,12 +1322,15 @@ static void finish(void)
         for (k = 0; k < sum.nev; k++)
             if (sum.ev[k].kind == TEV_ACT_INVITE) { v = sum.ev[k].b; break; }
         if (v >= 0 && v < ACT_COUNT)
-            doomo_snprintf(msg, sizeof msg, "Outing accepted: %s", doomo_activity_names[v]);
-        else doomo_snprintf(msg, sizeof msg, "Outing accepted!");
+            doomo_snprintf(msg, sizeof msg, "Meet today: %s (City Map)", doomo_activity_names[v]);
+        else doomo_snprintf(msg, sizeof msg, "Outing accepted! Check City Map.");
     }
     else if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %s", sgn);
     else if (o.dating) doomo_snprintf(msg, sizeof msg, "A new couple! Bond %s", sgn);
     else if (sum.flags & TDF_K7) doomo_snprintf(msg, sizeof msg, "The chat ended.");
+    else if (o.quests_done) doomo_snprintf(msg, sizeof msg, "Favor completed! Bond %s", sgn);
+    else if (o.learned) doomo_snprintf(msg, sizeof msg, "Learned something new! Bond %s", sgn);
+    else if (o.problems) doomo_snprintf(msg, sizeof msg, "You helped them! Bond %s", sgn);
     else doomo_snprintf(msg, sizeof msg, "Chat over. Bond %s", sgn);
     T.active = 0;
     scene_pop();
