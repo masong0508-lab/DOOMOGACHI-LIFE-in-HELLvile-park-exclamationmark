@@ -53,7 +53,7 @@ static struct TalkScn {
     int       n, avatar;
     int8_t    to;                       /* slot spoken to, -1 everyone               */
     uint8_t   page, cat, active, busy, after, leaving, typed_ok, gen;   /* gen: TD2, steps still to run (talk_scene_slice) */
-    uint8_t   pending;                  /* a topic act waiting for its topic         */
+    uint8_t   pending, handin;          /* pending topic; real quest payout after thanks */
     uint16_t  topic, idle;
     int       nrows, nstock;
     TRow      row[TROWS];
@@ -1183,7 +1183,31 @@ static const char *row_text(int index, char *buf)
 }
 
 /* ---- running the talk ----------------------------------------------------------------------- */
-static void cb_after(void) { T.busy = 0; T.after = 1; }
+static void begin_talk(void);
+
+static void cb_after(void)
+{
+    if (T.handin) {
+        TalkOutcome out;
+        char msg[48];
+        /* The genuine, generated thank-you is finished. Commit the
+         * TEV_QUEST_DONE through the same outcome ledger as any other
+         * conversation (real inventory, reward, bond, needs and news),
+         * then seamlessly resume Talk in a fresh session. */
+        T.handin = 0;
+        talk_outcome_end(&T.s, &out, NULL);
+        begin_talk();
+        build_main();
+        if (out.quests_done)
+            doomo_snprintf(msg, sizeof msg, "Favor complete! H$%d earned", (int)out.reward);
+        else doomo_snprintf(msg, sizeof msg, "Favor was not completed.");
+        ui_toast(msg);
+        T.after = 1;
+        return;
+    }
+    T.busy = 0;
+    T.after = 1;
+}
 
 static void show_lines(void)
 {
@@ -1248,6 +1272,15 @@ void talk_scene_slice(int on) { slice_on = (uint8_t)(on != 0); }
 static void gen_done(void)
 {
     int k;
+    if (T.handin && !T.s.nlines) {
+        /* No generated thank-you means no completion event was emitted.
+         * Never pay on an empty or missing language-bank response. */
+        T.handin = 0;
+        T.gen = 0;
+        ui_toast("That favor cannot be handed in right now.");
+        build_history();
+        return;
+    }
     if (T.gen == 1 && (T.s.flags & TDF_FAREWELL)) T.leaving = 1;
     /* Once an outing has been *accepted* and the answer generated, close
      * the encounter after its dialogue box: talk_outcome_end commits the
@@ -1566,8 +1599,17 @@ static void activate(int i)
             for (i = 0; i < T.s.nev; i++)
                 if (T.s.ev[i].kind == TEV_QUEST_DONE &&
                     T.s.ev[i].a == T.to) queued = 1;
-            ui_toast(queued ? "Finish this chat to hand in the favor." :
-                              "Ready! Talk again to hand in the favor.");
+            if (!queued && talk_dm_hand_in(&T.s, T.to)) {
+                /* Generate the resident's real TQP_DONE response; the
+                 * callback commits the event after the player reads it.
+                 * Prevent double claiming and preserve cross-port slicing. */
+                T.handin = 1;
+                doomo_snprintf(T.you, sizeof T.you, "I've finished your favor.");
+                gen_run(2);
+            } else {
+                ui_toast(queued ? "Finish this chat to receive the reward." :
+                                  "The favor cannot be handed in yet.");
+            }
         } else if (state == TQS_ACTIVE) {
             /* The same specific instruction shown in the Side quest log,
              * including the target or required item. No fake task text. */
