@@ -60,3 +60,22 @@ The checked-in generated map C files must match the authored maps; run
   compare the **drawn FPS** and any floor aliasing against the earlier
   640-unit baseline. Revert the 768-unit cutoff if significant FPS or
   shimmering regressions appear; keeping actor visibility is independent.
+
+## Cathedral material correction: avoid a pastel-pink aisle
+
+The original `CARPET` material is reused from the cute-world interiors.
+In GBA census screenshots it makes the Cathedral nave a wide, bright-pink
+patch when lighted for visibility, overwhelming the old red Gothic stone.
+The authored Cathedral now uses its **existing** `GORE_FLOOR` material
+on the principal aisle (`c` and choir triggers R/Q/V), the apse stairs
+(`a`), the blue-door approach (`U`) and the secret reliquary floor (`r`).
+The aisle light is slightly reduced, 14 -> 13; its surrounding
+nave tiles and pews remain 11 and 9, respectively, so the route is
+still distinguishable without fluorescent color. All heights, stairs,
+doors, secret/trigger flags, things and object positions stay unchanged.
+Generated map C is updated in the same commit. Because the material is
+already in the level and texture cache, this introduces **no new asset**,
+render pass, framebuffer or per-frame geometry. This is a *source-code
+fidelity adjustment*, not a verified screenshot/FPS success: inspect the
+next real GBA ROM capture from the Cathedral start, aisle and apse and
+measure its FPS versus the prior screenshots.

@@ -40,14 +40,14 @@ cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=14  # the great arch 
 cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=13
 cell s floor=BONE_WALL ceil=SKULL_MOSAIC fh=1 ch=22 light=10   # spiral steps (overlay)
 cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=11
-cell c floor=CARPET ceil=SKULL_MOSAIC fh=0 ch=40 light=14      # the aisle
+cell c floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=13      # the aisle
 cell q floor=WOOD_FLOOR ceil=SKULL_MOSAIC fh=1 ch=40 light=9  # pews
 cell G floor=BONE_WALL ceil=SKULL_MOSAIC fh=12 ch=40 light=10  # galleries
 cell x floor=TILE_FLOOR ceil=sky fh=0 light=12                 # the crossing (open sky)
 cell X floor=BONE_WALL ceil=sky fh=12 light=12                 # gallery under the sky
 cell l floor=LAVA ceil=sky fh=-3 light=15 flags=lava
-cell a floor=CARPET ceil=SKULL_MOSAIC fh=2 ch=40 light=13      # apse stairs (overlay)
-cell U floor=CARPET ceil=DOOR_HELL fh=6 ch=16 light=12 flags=door tag=2 # blue door
+cell a floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=2 ch=40 light=13      # apse stairs (overlay)
+cell U floor=GORE_FLOOR ceil=DOOR_HELL fh=6 ch=16 light=12 flags=door tag=2 # blue door
 cell t floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=12 ch=26 light=11
 cell L floor=PENTAGRAM_FLOOR ceil=sky fh=12 light=14 flags=lift tag=24 # bell tower lift
 cell b floor=WOOD_FLOOR ceil=sky fh=24 light=13                # bell chamber
@@ -55,7 +55,7 @@ cell B floor=WOOD_WALL ceil=sky fh=27 light=15 flags=secret    # above the bells
 cell T wall=BONE_WALL ch=31                                    # bell tower walls
 cell A floor=BONE_WALL ceil=SKULL_MOSAIC fh=13 ch=26 light=13  # bone altar
 cell e floor=TILE_FLOOR ceil=BONE_WALL fh=12 ch=21 light=11 flags=door # secret door behind the altar
-cell r floor=CARPET ceil=STAINED_GLASS fh=12 ch=21 light=15 flags=secret # the reliquary
+cell r floor=GORE_FLOOR ceil=STAINED_GLASS fh=12 ch=21 light=15 flags=secret # the reliquary
 cell p floor=GORE_FLOOR ceil=sky fh=6 light=12
 cell k floor=WOOD_FLOOR ceil=sky fh=8 light=14                 # organ console
 cell j floor=GORE_FLOOR ceil=sky fh=6 light=14 flags=trigger tag=21
