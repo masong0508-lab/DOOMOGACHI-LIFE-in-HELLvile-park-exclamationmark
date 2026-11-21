@@ -46,7 +46,6 @@ int main(void)
         gsKit_prim_sprite(gs,40,365,600,385,1,white);
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
-        gsKit_queue_reset(gs->Os_Queue);
         ++field;
     }
 }
