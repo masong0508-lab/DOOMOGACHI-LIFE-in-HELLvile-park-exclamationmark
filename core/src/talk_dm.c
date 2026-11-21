@@ -1169,11 +1169,20 @@ static void hist_push(TalkState *s, int who, int act, int flags, int to, uint16_
 }
 
 /* ---- the player's turn --------------------------------------------------------------- */
-static void mem_acts(TalkState *s, int act)
+static void mem_acts(TalkState *s, int act, int to)
 {
-    if (act == TA_COMPLIMENT || act == TA_PRAISE_OTHER) s->mem_earned |= TMF_COMPLIMENTED;
-    else if (act == TA_INSULT || act == TA_MOCK) s->mem_earned |= TMF_INSULTED;
-    else if (act == TA_PROMISE) s->mem_earned |= TMF_PROMISED;
+    int k;
+    unsigned flag = act == TA_COMPLIMENT || act == TA_PRAISE_OTHER ? TMF_COMPLIMENTED :
+                    act == TA_INSULT || act == TA_MOCK ? TMF_INSULTED :
+                    act == TA_PROMISE ? TMF_PROMISED : 0;
+    if (!flag) return;
+    s->mem_earned |= (uint8_t)flag; /* legacy aggregate summary */
+    /* A directed act belongs to its actual listener, NOT the entire room.
+     * Broadcast acts legitimately affect every present, non-pet resident.
+     * This is bounded by four participants; no per-frame work or save change. */
+    for (k = 0; k < s->nparts; k++)
+        if (talker(s, k) && (to < 0 || to == k))
+            s->mem_to[k] |= (uint8_t)flag;
 }
 
 /* K-11: TDF_CARE mirrors the turns of care still to come */
@@ -1214,7 +1223,6 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     rng_for(s, &rng, 0);
     hist_push(s, 0xFF, s->in.act[0], THF_PLAYER, target, s->in.topic[0]);
     act = s->in.act[0];
-    mem_acts(s, act);
     if (aud.any_minor) { s->conv.aud.any_minor = 1; s->flags |= TDF_KIDSAFE; }
 
     if (g == TG_END_K7) {                                   /* the adults step in, briefly and with no joke; then everyone leaves */
@@ -1252,6 +1260,10 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     }
     if (g == TG_DISTRESS) s->tension = (uint8_t)(s->tension > 1 ? s->tension - 1 : 0);
     if (g != TG_PASS) { s->last_act = (uint8_t)act; return g; }  /* a refusal, a deflection, distress, hate: the answer only */
+    /* Only a line that actually passed the audience/safety gate can be
+     * recorded as a social experience. A blocked insult isn't a remembered
+     * insult, and a bystander isn't its recipient. */
+    mem_acts(s, act, target);
 
     /* ---- the utterance stood ---- */
     {                                                       /* TQ: an answer to the request on the table: the giver answers it */
