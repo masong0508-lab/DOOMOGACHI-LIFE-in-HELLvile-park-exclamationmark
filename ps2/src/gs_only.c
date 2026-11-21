@@ -22,10 +22,20 @@ int main(void)
     gs->Field=GS_FIELD;
     gs->Width=640;
     gs->Height=448;
+    /* Run each format experiment separately against the previously visible
+     * CT32 / alpha-disabled baseline. No IOP calls enter these probes. */
+#if defined(PS2_GS_PROBE_CT16)
+    gs->PSM=GS_PSM_CT16;
+#else
     gs->PSM=GS_PSM_CT32;
+#endif
     gs->ZBuffering=GS_SETTING_OFF;
     gs->DoubleBuffering=GS_SETTING_ON;
+#if defined(PS2_GS_PROBE_ALPHA)
+    gs->PrimAlphaEnable=GS_SETTING_ON;
+#else
     gs->PrimAlphaEnable=GS_SETTING_OFF;
+#endif
     dmaKit_init(D_CTRL_RELE_OFF,D_CTRL_MFD_OFF,D_CTRL_STS_UNSPEC,
                 D_CTRL_STD_OFF,D_CTRL_RCYC_8,1<<DMA_CHANNEL_GIF);
     dmaKit_chan_init(DMA_CHANNEL_GIF);

@@ -104,6 +104,19 @@ def main():
             (out / "report.json").write_text(
                 json.dumps(evidence, indent=2) + "\n", encoding="utf-8"
             )
+            # Surface the actual frame ratios and EE evidence in CI logs.
+            # Previously they were visible only inside the artifact ZIP,
+            # making a green GS-only probe easy to overinterpret.
+            print("PLAY_FRAME_CHECK " + json.dumps({
+                "status": visual["status"],
+                "viewport_changed": visual["viewport_changed"],
+                "frames": visual["frames"],
+            }, sort_keys=True), flush=True)
+            print("PS2_EE_TELEMETRY " + json.dumps({
+                "status": telemetry["status"],
+                "count": telemetry["count"],
+                "frame_hash_changed": telemetry["frame_hash_changed"],
+            }, sort_keys=True), flush=True)
             print(f"Play! process survived {args.seconds} seconds; screenshots: {shots}")
             if visual["status"] == "black_viewport":
                 print("FAIL: screenshots show an effectively black game viewport.",

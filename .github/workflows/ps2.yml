@@ -118,9 +118,11 @@ jobs:
           make -C ps2 -j2
           # Isolate native GS output from all IOP startup, PADMAN, CD,
           # audio and memory-card RPCs, for black-screen emulator triage.
-          make -C ps2 gs-only
-          test -s ps2/build/doomogachi_ps2_gs_only.elf
-          mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2_gs_only.elf
+          make -C ps2 gs-probes
+          for elf in doomogachi_ps2_gs_only doomogachi_ps2_gs_ct16 doomogachi_ps2_gs_alpha; do
+            test -s "ps2/build/$elf.elf"
+            mips64r5900el-ps2-elf-readelf -h "ps2/build/$elf.elf"
+          done
           test -s ps2/build/doomogachi_ps2.elf
           mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
           printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
@@ -180,6 +182,8 @@ jobs:
           path: |
             ps2/build/doomogachi_ps2.elf
             ps2/build/doomogachi_ps2_gs_only.elf
+            ps2/build/doomogachi_ps2_gs_ct16.elf
+            ps2/build/doomogachi_ps2_gs_alpha.elf
             ps2/build/BUILD_SOURCE.txt
           if-no-files-found: error
 
@@ -291,6 +295,26 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_gs_only.elf --launch elf \
               --out ps2/build/play-gsonly --seconds 20 --software-gl --require-motion
+      - name: Test CT16 GS display path without IOP or alpha blending
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_ct16.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_ct16.elf --launch elf \
+              --out ps2/build/play-gs-ct16 --seconds 20 --software-gl --require-motion
+      - name: Test alpha-blended CT32 GS path without IOP
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_alpha.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_alpha.elf --launch elf \
+              --out ps2/build/play-gs-alpha --seconds 20 --software-gl --require-motion
       - name: Preserve game and independent diagnostic boot evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -300,4 +324,6 @@ jobs:
             ps2/build/play-smoke/
             ps2/build/play-bootstrap/
             ps2/build/play-gsonly/
+            ps2/build/play-gs-ct16/
+            ps2/build/play-gs-alpha/
           if-no-files-found: warn

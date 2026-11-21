@@ -23,12 +23,31 @@ all: $(EE_BIN)
 # Minimal EE/GS-only animation: independent of PADMAN, libmc, SPU2,
 # CDVD and the gameplay core. It is a troubleshooting ELF, never a ROM.
 GS_ONLY_BIN := build/doomogachi_ps2_gs_only.elf
-.PHONY: gs-only
+GS_CT16_BIN := build/doomogachi_ps2_gs_ct16.elf
+GS_ALPHA_BIN := build/doomogachi_ps2_gs_alpha.elf
+.PHONY: gs-only gs-probes
 gs-only: $(GS_ONLY_BIN)
+# Cross-compile independent GS experiments, changing just one state each.
+# They reuse the same source, renderer and libraries; no game data is added.
+gs-probes: gs-only $(GS_CT16_BIN) $(GS_ALPHA_BIN)
 build/gs_only.o: src/gs_only.c
 	@mkdir -p build
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
 $(GS_ONLY_BIN): build/gs_only.o
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
+		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
+
+build/gs_only_ct16.o: src/gs_only.c
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_GS_PROBE_CT16=1 -c $< -o $@
+$(GS_CT16_BIN): build/gs_only_ct16.o
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
+		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
+
+build/gs_only_alpha.o: src/gs_only.c
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_GS_PROBE_ALPHA=1 -c $< -o $@
+$(GS_ALPHA_BIN): build/gs_only_alpha.o
 	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
 		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
 

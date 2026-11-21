@@ -22,6 +22,14 @@ def test_gs_only():
                   "gsKit_queue_exec(", "gsKit_sync_flip("):
         assert token in gs, f"Missing real GS display operation: {token}"
     assert "gs->PSM=GS_PSM_CT32;" in gs
+    assert "gs->PSM=GS_PSM_CT16;" in gs
+    assert "#if defined(PS2_GS_PROBE_CT16)" in gs
+    assert "#if defined(PS2_GS_PROBE_ALPHA)" in gs
+    assert "gs->PrimAlphaEnable=GS_SETTING_ON;" in gs
+    assert "gs->PrimAlphaEnable=GS_SETTING_OFF;" in gs
+    assert "gs-probes: gs-only $(GS_CT16_BIN) $(GS_ALPHA_BIN)" in make
+    assert "-DPS2_GS_PROBE_CT16=1" in make
+    assert "-DPS2_GS_PROBE_ALPHA=1" in make
     assert "for(;;)" in gs and "++field;" in gs
     assert "gs-only: $(GS_ONLY_BIN)" in make
     assert "-lgskit -ldmakit" in make
