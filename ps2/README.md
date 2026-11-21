@@ -60,3 +60,23 @@ the upstream `ps2dev/ps2dev` container and uploads it on success.
 This branch is **stacked on top of** the existing cross-port optimization
 PR #5; keep the PS2 PR separate until its prerequisite is merged. It
 does not alter the GBA/PS1/Dreamcast builds.
+
+## PS2-1 experimental shared-core game (in progress)
+
+`make -C ps2 game` attempts a separate `doomogachi_ps2_game.elf`.
+Unlike the PS2-0 debug ELF, it **compiles and links all portable
+`core/src` and `core/gen` sources directly** and invokes the actual
+`doomo_init()` and `doomo_frame()` at 30 logic ticks per second.
+A fixed 320x240 indexed surface draws the shared font, UI, procedural
+portraits and reference room renderer; a fixed-size 512x256 RGBA GS
+texture is uploaded at 30Hz and presented at 60 fields/s.
+The current first-pass renderer uses only static buffers: no texture,
+portrait or scratch allocations on every tick.
+
+**Known incomplete:** all first-person 3D and overworld graphics are
+deliberately labelled on-screen as in-progress adapters. Audio is
+silent, memory-card writes return failure instead of pretending to
+save, and disc-side Talk assets are not available. Do not use this as
+the released game or treat a successful ELF link as proof of playability.
+The extra experimental ELF is informational CI until PCSX2 testing,
+real renderer and save/audio backends pass.

@@ -30,3 +30,30 @@ build/padmap.o: src/padmap.c src/padmap.h ../core/include/doomo/input.h
 
 clean:
 	rm -rf build
+
+# Experimental real game target: link shared C99 core directly. This
+# remains separate from the fully green PS2-0 diagnostic until its title,
+# portraits, scene navigation and performance run on PCSX2.
+DOOMO_CORE := $(abspath ../core)
+include ../core/sources.mk
+GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
+GAME_OBJS := build/game_main.o build/game2d.o build/padmap.o $(GAME_CORE_OBJS)
+GAME_BIN := build/doomogachi_ps2_game.elf
+
+.PHONY: game
+game: $(GAME_BIN)
+$(GAME_BIN): $(GAME_OBJS)
+	@mkdir -p $(@D)
+	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $(GAME_OBJS) $(EE_LDFLAGS) $(EXTRA_LDFLAGS) $(EE_LIBS)
+
+build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/game2d.o: src/game2d.c src/game2d.h
+	@mkdir -p build
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+
+build/core/%.o: $(DOOMO_CORE)/%.c
+	@mkdir -p $(@D)
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@

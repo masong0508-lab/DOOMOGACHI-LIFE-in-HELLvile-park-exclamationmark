@@ -51,6 +51,27 @@ jobs:
           mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
           printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" > ps2/build/BUILD_SOURCE.txt
+      - name: Experimental PS2-1 linked shared-game ELF
+        # Keep PS2-0 release gate separate from this newly ported backend.
+        # A failure appears visibly in this step and the run summary.
+        continue-on-error: true
+        run: |
+          set -eu
+          if make -C ps2 game -j2 > /tmp/ps2-game-link.log 2>&1; then
+            echo 'PS2 shared-core game: EE ELF linked' >> "$GITHUB_STEP_SUMMARY"
+            ls -lh ps2/build/doomogachi_ps2_game.elf
+          else
+            echo 'PS2 shared-core game link errors (prototype):' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 45 /tmp/ps2-game-link.log | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - name: Upload experimental game ELF only if linked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-prototype
+          path: ps2/build/doomogachi_ps2_game.elf
+          if-no-files-found: ignore
       - name: Upload PS2 ELF for PCSX2 and homebrew launchers
         uses: actions/upload-artifact@v4
         with:
