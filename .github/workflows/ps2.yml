@@ -284,7 +284,7 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_gs_only.elf --launch elf \
-              --out ps2/build/play-gsonly --seconds 20 --software-gl
+              --out ps2/build/play-gsonly --seconds 20 --software-gl --require-motion
       - name: Preserve game and independent diagnostic boot evidence
         if: always()
         uses: actions/upload-artifact@v4
