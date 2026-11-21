@@ -89,7 +89,7 @@ jobs:
         run: python3 ps2/tests/test_gs_queue_recycle.py
       - name: Verify Play! game-tick telemetry and emulator harness
         run: |
-          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py ps2/tools/check_story_progress.py
           python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
           python3 ps2/tools/pcsx2_visual_check.py --help >/dev/null
           python3 ps2/tests/probe_log_test.py
@@ -146,8 +146,8 @@ jobs:
             exit 1
           fi
       - name: Build synthetic Story navigation diagnostic without changing game ISO
-        # Optional verification tool; its result cannot certify real pad input.
-        continue-on-error: true
+        # REQUIRED regression gate for scene progression; never shipped and
+        # never interpreted as proof of a physical DualShock controller.
         run: |
           make -C ps2 story-probe -j2
       - name: Package PS2 gameplay ISO with real Talk bank and audsrv
@@ -280,6 +280,7 @@ jobs:
         run: |
           set -eu
           python3 -m unittest discover -s ps2/tests -p test_play_frame_gate.py -v
+          python3 -m unittest discover -s ps2/tests -p test_story_visual_gate.py -v
           test -s ps2/build/doomogachi_ps2_game.iso
           mkdir -p ps2/build/play-smoke
           LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
@@ -317,9 +318,8 @@ jobs:
         with:
           name: doomogachi-ps2-story-probe-elf
           path: ps2/build
-      - name: Capture actual shared-core Story transition with scripted input
+      - name: Capture and prove shared-core Story transition with scripted input
         if: always()
-        continue-on-error: true
         timeout-minutes: 4
         run: |
           set -eu
@@ -328,6 +328,11 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_story_probe.elf --launch elf \
               --out ps2/build/play-story-probe --seconds 22 --early-capture 3 --software-gl
+          python3 ps2/tools/check_story_progress.py \
+            ps2/build/play-story-probe/boot-1.png \
+            ps2/build/play-story-probe/boot-2.png \
+            ps2/build/play-story-probe/boot-3.png \
+            --output ps2/build/play-story-probe/story-progress.json
       - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
         if: always()
         timeout-minutes: 4
