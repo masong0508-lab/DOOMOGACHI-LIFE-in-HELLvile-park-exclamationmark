@@ -253,6 +253,21 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
     }
 }
 
+/* The day-scoped reservation belongs to a real person and real location.
+ * Unlike meet_ready, this reports a missed/pending appointment too, so the
+ * Talk journal can explain why no guest appeared at the expected place.
+ * No sim tick, heap, or new save data. */
+int talk_outcome_meet_plan(int resident_id)
+{
+    const LedP *p;
+    if (!resident_id(resident_id) || !alive_resident(resident_id)) return -1;
+    roll();
+    p = led_peek(resident_id);
+    if (!p || !(p->flags & LPF_INVITE) ||
+        p->pad == 0 || p->pad > ACT_COUNT) return -1;
+    return (int)p->pad - 1;
+}
+
 int talk_outcome_meet_ready(int venue)
 {
     int i;
