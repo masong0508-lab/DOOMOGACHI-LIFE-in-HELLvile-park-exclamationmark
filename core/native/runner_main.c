@@ -102,6 +102,8 @@
  *   talk-quick N        (T8) say quick reply N (0 is the top row): the pad moves the cursor (UP / DOWN, the
  *                       shorter way round) and presses A; counted like every press
  *   talk-quick-act ACT  (T8) the quick reply whose act is ACT (ask_about, laugh, ...), as talk-quick; fails when none is offered
+ *   talk-care comfort (DC safety integration) choose Offer Help > Comfort them through the actual UI;
+ *                       applies real resident simulation effects, not an imaginary utterance.
  *   talk-say ACT [TOPIC] (T8) say act ACT from its category page (compliment, hug, flirt, greet ...; the names
  *                       are the TA_ names without TA_, lower case) through the pad; a topic page, when the
  *                       act wants one, takes TOPIC (default: Any topic). Fails when the screen does not offer
@@ -677,6 +679,27 @@ static void talk_cmd(const char *cmd, int argc, char **argv)
             }
             tk_pick(t);
         }
+        /* Offer, Invite and Give are now functional submenus. Their
+         * selection isn't a spoken answer: never let a script assert the
+         * sincerity of the preceding line as though this one replied. */
+        if (!talk_scene_debug(&d) || !d.busy)
+            fail("talk-say opened a submenu instead of speaking; choose an actual action:", a1);
+    } else if (strcmp(cmd, "talk-care") == 0) {
+        if (!ok || strcmp(a1, "comfort") != 0 || !tk_main()) {
+            fail("talk-care: expected comfort on an active Talk screen", a1); return;
+        }
+        if (!tk_pick(tk_find("cat", talk_scene_act_cat(TA_OFFER), -1)) ||
+            !tk_pick(tk_find("act", TA_OFFER, -1))) {
+            fail("Offer help is not available", ""); return;
+        }
+        if (!talk_scene_debug(&d) || strcmp(d.page, "care") != 0) {
+            fail("Offer help did not open real care actions", ""); return;
+        }
+        if (!tk_pick(tk_find("comfort", -1, -1))) {
+            fail("Comfort action is not available", ""); return;
+        }
+        if (!talk_scene_debug(&d) || !d.busy)
+            fail("Comfort did not produce a real response", "");
     } else if (strcmp(cmd, "talk-type") == 0) {
         const char *s;
         if (!ok || !tk_main()) { fail("talk-type: no main page", ""); return; }
