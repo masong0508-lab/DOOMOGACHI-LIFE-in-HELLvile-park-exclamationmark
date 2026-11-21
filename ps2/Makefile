@@ -131,6 +131,7 @@ disc: $(GAME_DISC_BIN) $(TALK_BIN) $(AUDSRV_IRX)
 	cp $(AUDSRV_IRX) $(DISC_ROOT)/AUDSRV.IRX
 	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
 	xorriso -as mkisofs -iso-level 1 $(ISO_PAD_OPT) -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
+	python3 tools/check_ps2_boot.py --iso $(DISC_ISO) --source SYSTEM.CNF
 	@echo "PS2 disc image ready: $(DISC_ISO)"
 
 # BIOS-free Play! emulator smoke; runs on a desktop Linux host with
