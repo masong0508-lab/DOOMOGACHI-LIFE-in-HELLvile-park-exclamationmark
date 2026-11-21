@@ -20,11 +20,11 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def sample_iso(tmp, omit=None):
+def sample_iso(tmp, omit=None, boot_path=r"cdrom0:\DOOMOG.ELF;1"):
     payload = tmp / "payload"
     payload.mkdir()
     files = {
-        "SYSTEM.CNF": b"BOOT2 = cdrom0:\\DOOMOG.ELF;1\nVER = 1.00\nVMODE = NTSC\n",
+        "SYSTEM.CNF": ("BOOT2 = " + boot_path + "\nVER = 1.00\nVMODE = NTSC\n").encode("ascii"),
         "DOOMOG.ELF": b"synthetic-elf-not-executable-" * 512,
         "TALK_EN.BIN": b"TALK" + bytes(range(256)) * 256,
         "AUDSRV.IRX": b"synthetic-irx-not-executable-" * 256,
@@ -58,6 +58,7 @@ class CompactImageTests(unittest.TestCase):
             report = json.loads((out / "manifest.json").read_text())
             self.assertEqual(report["source_iso_sha256"], original_hash)
             self.assertEqual(report["schema_version"], 1)
+            self.assertEqual(report["boot2_target"], r"CDROM0:\DOOMOG.ELF;1")
             self.assertEqual(len(report["images"]), 3)
             self.assertIn("TALK_EN.BIN", report["iso9660_files"])
             self.assertIn("AUDSRV.IRX", report["iso9660_files"])
@@ -73,6 +74,21 @@ class CompactImageTests(unittest.TestCase):
             self.assertIn("byte-for-byte ISO round trips", text)
             checksums = (out / "SHA256SUMS.txt").read_text()
             self.assertIn(original_hash, checksums)
+
+    def test_reject_double_slash_boot_path(self):
+        with tempfile.TemporaryDirectory() as work:
+            tmp = Path(work)
+            bad_path = r"cdrom0:\\" + r"\DOOMOG.ELF;1"
+            iso = sample_iso(tmp, boot_path=bad_path)
+            out = tmp / "compact"
+            result = subprocess.run(
+                [sys.executable, str(PACKAGER), "--iso", str(iso),
+                 "--out-dir", str(out)], text=True, capture_output=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("BOOT2", result.stderr)
+            self.assertFalse(list(out.glob("*.chd")))
+            self.assertFalse(list(out.glob("*.iso.zst")))
 
     def test_reject_missing_disc_assets(self):
         with tempfile.TemporaryDirectory() as work:
