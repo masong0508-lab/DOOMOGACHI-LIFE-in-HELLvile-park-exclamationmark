@@ -1,0 +1,41 @@
+name: PS2 compact-image packaging tests
+on:
+  push:
+    paths:
+      - 'ps2/tools/compact_iso.py'
+      - 'ps2/tests/test_compact_iso.py'
+      - '.github/workflows/ps2-compact.yml'
+  pull_request:
+    paths:
+      - 'ps2/tools/compact_iso.py'
+      - 'ps2/tests/test_compact_iso.py'
+      - '.github/workflows/ps2-compact.yml'
+  workflow_dispatch:
+
+# Validate compression even when PS2 EE cross-build runners are queued.
+concurrency:
+  group: ps2-compact-test-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  compact-roundtrip:
+    name: CHD and ISO.ZST exact roundtrip (host fixture)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install real DVD-image conversion tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mame-tools zstd xorriso
+          command -v chdman
+          command -v zstd
+          command -v xorriso
+      - name: Lint image package scripts
+        run: |
+          python3 -m py_compile ps2/tools/compact_iso.py ps2/tests/test_compact_iso.py
+      - name: Confirm compression and exact ISO recovery
+        run: |
+          python3 -m unittest discover -s ps2/tests -p test_compact_iso.py -v
+          echo 'PS2 CHD/Zstandard host packaging and integrity checks passed.' >> "$GITHUB_STEP_SUMMARY"
+      # Synthetic test media is deliberately not uploaded as a playable ROM.
