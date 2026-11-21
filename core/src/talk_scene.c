@@ -27,6 +27,8 @@
 #include "doomo/family.h"
 #include "doomo/resident_acc.h"
 #include "doomo/rng.h"
+#include "doomo/sim.h"
+#include "doomo/items.h"
 
 #ifdef DOOMO_HAS_TALK
 
@@ -36,8 +38,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -594,6 +596,7 @@ static void build_main(void)
      * classic quick-reply and four-press compliment budgets stay intact. */
     add_row(K_OUT, 0, 0);
     add_row(K_PLAY, 0, 0);
+    add_row(K_SHOW, 0, 0);
 #ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
 #endif
@@ -653,6 +656,35 @@ static void build_outings(void)
     }
     if (!T.nrows) {
         ui_toast("No outings available right now.");
+        build_main();
+        return;
+    }
+    list_reset();
+}
+
+/* Only the player's actually-held, safe non-key items appear. Keys are
+ * story artifacts, not props to disclose or hand to a resident. This list
+ * is bounded by the existing 40-row Talk UI; no inventory or string copy. */
+static void build_show_items(void)
+{
+    int item, minor;
+    if (T.to < 0 || T.to >= T.n || T.ids[T.to] < 0 ||
+        T.ids[T.to] >= DOOMO_MAX_RESIDENTS || !town_alive(T.ids[T.to])) {
+        ui_toast("Choose a resident first.");
+        build_main();
+        return;
+    }
+    minor = T.s.conv.aud.any_minor || talk_safe_minor(T.ids[T.to]);
+    T.page = PG_SHOW;
+    T.nrows = 0;
+    for (item = ITEM_NONE + 1; item < ITEM_COUNT && T.nrows < TROWS; item++) {
+        if (!inv_count(item) || doomo_items[item].category == ICAT_KEY ||
+            (minor && talk_act_item_adult(item)))
+            continue;
+        add_row(K_SHOWITEM, item, 0);
+    }
+    if (!T.nrows) {
+        ui_toast("No items to show right now.");
         build_main();
         return;
     }
@@ -723,6 +755,8 @@ static const char *row_text(int index, char *buf)
     case K_INVITE: doomo_snprintf(buf, 48, "Add someone to chat >"); break;
     case K_OUT: doomo_snprintf(buf, 48, "Ask to go somewhere >"); break;
     case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
+    case K_SHOW: doomo_snprintf(buf, 48, "Show an item >"); break;
+    case K_SHOWITEM: doomo_snprintf(buf, 48, "Show %s", doomo_items[r->arg].name); break;
     case K_OUTING:
         doomo_snprintf(buf, 48, "Visit %s", outing[r->arg].label);
         break;
@@ -877,6 +911,27 @@ static void play_together(void)
     ui_say_done(cb_after);
 }
 
+static void show_item(int item)
+{
+    int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    const char *reply;
+    if (target < 0 || target >= DOOMO_MAX_RESIDENTS || !town_alive(target) ||
+        item <= ITEM_NONE || item >= ITEM_COUNT ||
+        !inv_count(item) || doomo_items[item].category == ICAT_KEY ||
+        ((T.s.conv.aud.any_minor || talk_safe_minor(target)) && talk_act_item_adult(item))) {
+        ui_toast("That item can't be shown here.");
+        build_main();
+        return;
+    }
+    reply = sim_show(target, item);
+    doomo_snprintf(T.you, sizeof T.you, "Look at my %s!", doomo_items[item].name);
+    ui_say(target, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+    build_main();
+}
+
 static void say_quick(int i)
 {
     TalkUtter u;
@@ -987,6 +1042,8 @@ static void activate(int i)
     case K_QUICK: say_quick(r->arg); break;
     case K_OUT: build_outings(); break;
     case K_PLAY: play_together(); break;
+    case K_SHOW: build_show_items(); break;
+    case K_SHOWITEM: show_item(r->arg); break;
     case K_OUTING:
         T.to = T.to < 0 ? 0 : T.to;
         T.topic = r->v;
@@ -1191,6 +1248,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_TOPIC:  t = "Talk about..."; break;
     case PG_INVITE: t = "Who joins in?"; break;
     case PG_OUTING: t = "Where shall we go?"; break;
+    case PG_SHOW: t = "Show something..."; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1292,14 +1350,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 6 ? T.page : 0];
+    o->page = pages[T.page < 7 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -1318,7 +1376,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

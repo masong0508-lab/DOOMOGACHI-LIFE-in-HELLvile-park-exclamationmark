@@ -55,6 +55,9 @@ void sim_advance_minutes(int minutes);
  * reaction string for the UI). */
 const char *sim_feed(int id, int item);
 const char *sim_gift(int id, int item);
+/* Show a real held item without handing it away. The reaction uses the
+ * resident's tastes/persona. Ownership is checked at the instant of use. */
+const char *sim_show(int id, int item);
 const char *sim_clean(int id);
 const char *sim_play(int id);
 const char *sim_talk(int id);

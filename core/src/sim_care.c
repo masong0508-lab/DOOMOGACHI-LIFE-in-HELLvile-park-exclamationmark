@@ -202,6 +202,52 @@ static int gift_taste(const DoomoResident *r, int item)
     }
 }
 
+/* A showcase is a view of a real inventory item, not a pretend gift:
+ * it does not consume the item, create an unseen duplicate, or grant
+ * farmable relationship points. Reactions depend on the resident's
+ * saved tastes, personality and current status, like actual gifts do.
+ * The player can follow up with Give via the existing care workflow. */
+const char *sim_show(int id, int item)
+{
+    static const char *const love[TONE_COUNT] = {
+        "You own a %s? That's exactly my style!",
+        "A %s?! SHOW ME! Oh, that's wonderful!",
+        "A %s. You have good taste. Don't tell anyone.",
+        "The %s deserves its own tiny museum!"
+    };
+    static const char *const like[TONE_COUNT] = {
+        "That's a nice %s. Where did you find it?",
+        "Ooh! A %s! That's pretty cool!",
+        "Huh. Nice %s. I respect that.",
+        "You and that %s look like a legendary duo!"
+    };
+    static const char *const fear[TONE_COUNT] = {
+        "Please put the %s away. It makes me nervous.",
+        "YIKES, A %s! Don't wave it at me!",
+        "A %s. No thanks. Keep it over there.",
+        "That %s is plotting against us. I know it."
+    };
+    static const char *const neutral[TONE_COUNT] = {
+        "A %s? Interesting. Tell me about it.",
+        "A %s! I have so many questions!",
+        "So you have a %s. All right.",
+        "Behold, the mighty %s! What does it do?"
+    };
+    const char *fail;
+    DoomoResident *r = care_target(id, &fail);
+    int taste;
+    if (!r) return fail;
+    if (item <= ITEM_NONE || item >= ITEM_COUNT ||
+        doomo_items[item].category == ICAT_KEY)
+        return "That isn't something to show off.";
+    if (!inv_count(item)) return missing(item);
+    if (r->status == RES_POSSESSED || r->status == RES_SOUL_LOST)
+        return demon_line(id);
+    taste = gift_taste(r, item);
+    return pick_tone(r, taste > 1 ? love : taste > 0 ? like :
+                       taste < 0 ? fear : neutral, doomo_items[item].name);
+}
+
 const char *sim_gift(int id, int item)
 {
     static const char *const adore[TONE_COUNT] = {

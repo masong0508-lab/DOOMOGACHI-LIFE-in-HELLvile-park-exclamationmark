@@ -120,3 +120,17 @@ status and per-day action caps in `test_talk_actions.c`. Further work:
 showing a specific inventory item, giving it with confirmation, moving
 the player's avatar with the guest, and recording the outing as an
 episodic memory. Do not label these unimplemented behaviors complete.
+
+## Inventory-backed showcasing (implemented shared core)
+
+A Talk **Show an item** page enumerates *actually held* non-key inventory
+items. Children/rooms involving minors exclude adult-restricted items.
+On selection, ownership, resident status and age restrictions are
+rechecked before displaying the item and an actual response derived from
+the resident's saved taste/fears and personality voice. The inventory
+count does not decrease: *showing* is not *giving*. No friendship points,
+free inventory, story progression or pseudo-item are fabricated. The
+scene remains active and keeps the resident's original conversation.
+A UI regression test verifies an owned Plushie is offered and remains in
+the inventory after showcasing. Explicit real item gifting, as opposed
+to showing, is a separate future confirmation/consumption action.

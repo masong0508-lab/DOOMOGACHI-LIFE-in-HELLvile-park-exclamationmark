@@ -14,6 +14,7 @@
 #include "doomo/roster.h"
 #include "doomo/town.h"
 #include "doomo/ui.h"
+#include "doomo/items.h"
 #include "../src/ui_internal.h"     /* UiDialogDebug */
 
 #define ID_NANA 1
@@ -145,6 +146,37 @@ TEST(talk_scene_real_outing_menu_and_play_action)
     CHECK(r->stat[STAT_HAPPY] > happy);
     CHECK(r->stat[STAT_ENERGY] < energy);
     CHECK(talk_scene_debug(&d) && d.busy);
+}
+
+TEST(talk_scene_show_only_a_real_held_item)
+{
+    TalkSceneDebug d;
+    int row, i, shown = 0, count;
+    town();
+    CHECK_EQ(inv_count(ITEM_PLUSHIE), 0);
+    CHECK(inv_add(ITEM_PLUSHIE, 1) == 1);
+    CHECK(open_talk(ID_NANA));
+    row = find_row("show", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "show") == 0);
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        int item = -1;
+        talk_scene_row_debug(i, &kind, &item, NULL, NULL);
+        if (strcmp(kind, "showitem") == 0 && item == ITEM_PLUSHIE) {
+            shown = i + 1;
+            break;
+        }
+    }
+    CHECK(shown > 0);
+    count = inv_count(ITEM_PLUSHIE);
+    go_to(shown - 1);
+    press(BTN_A);
+    CHECK_EQ(inv_count(ITEM_PLUSHIE), count); /* show never steals the item */
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "Plushie") != NULL || strstr(d.you, "plushie") != NULL);
 }
 
 TEST(talk_scene_a_quick_reply_is_one_press)
