@@ -146,8 +146,9 @@ int main(int argc,char **argv)
 {
     GSGLOBAL *gs;
     (void)argc; (void)argv;
-    SifInitRpc(0);
-    s_pad_open=ps2_pad_init();
+    /* Bring up the video hardware FIRST. In a BIOS-free emulator, an
+     * unsupported SIF/PADMAN RPC might otherwise stall the application
+     * before the GS has ever displayed a test frame. */
     gs=gsKit_init_global();
     if(!gs) { printf("[PS2] GS init allocation failed\n"); return 1; }
     gs->Mode=GS_MODE_NTSC;
@@ -164,6 +165,14 @@ int main(int argc,char **argv)
     gsKit_init_screen(gs);
     gsKit_set_test(gs,GS_ZTEST_OFF);
     gsKit_mode_switch(gs,GS_ONESHOT);
+    /* Paint a complete real GS frame before any IOP module RPC.
+     * This separates graphics bring-up from controller/SIF startup in
+     * Play! captures. It is the existing PS2-0 diagnostic view. */
+    draw_boot(gs);
+    gsKit_queue_exec(gs);
+    gsKit_sync_flip(gs);
+    SifInitRpc(0);
+    s_pad_open=ps2_pad_init();
     printf("[PS2] DOOMOGACHI PS2-0 boot - GS 640x448 NTSC, PAD=%d\n",s_pad_open);
     for(;;){
         uint32_t b=ps2_pad_poll();
