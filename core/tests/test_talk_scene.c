@@ -106,6 +106,49 @@ TEST(talk_scene_the_debug_view_describes_the_page)
     CHECK_EQ(talk_scene_act_cat(TA_REFUSE_SEXUAL), -1);    /* never a row */
 }
 
+TEST(talk_scene_needs_help_changes_real_sim_stats)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    int row, before, food;
+    town();
+    r = town_res(ID_NANA);
+    r->stat[STAT_HYGIENE] = 30;
+    r->stat[STAT_HAPPY] = 25;
+    r->stat[STAT_SOCIAL] = 30;
+    r->stat[STAT_HEALTH] = 30;
+    r->stat[STAT_HUNGER] = 25;
+    CHECK(inv_add(ITEM_CUPCAKE, 1) >= 1);
+    CHECK(inv_add(ITEM_MEDICINE, 1) >= 1);
+    CHECK(open_talk(ID_NANA));
+    row = find_row("help", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "care") == 0);
+    CHECK(find_row("comfort", -1, -1) >= 0);
+    CHECK(find_row("clean", -1, -1) >= 0);
+    CHECK(find_row("feed", -1, -1) >= 0);
+    CHECK(find_row("heal", -1, -1) >= 0);
+    before = r->stat[STAT_HYGIENE];
+    go_to(find_row("clean", -1, -1)); press(BTN_A);
+    CHECK(r->stat[STAT_HYGIENE] > before);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    while (talk_scene_debug(&d) && d.busy) { frames(0, 30); press(BTN_A); }
+    row = find_row("help", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    row = find_row("feed", -1, -1);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "feed") == 0);
+    food = find_row("feeditem", ITEM_CUPCAKE, -1);
+    CHECK(food >= 0);
+    before = inv_count(ITEM_CUPCAKE);
+    go_to(food); press(BTN_A);
+    CHECK_EQ(inv_count(ITEM_CUPCAKE), before - 1);
+    CHECK(talk_scene_debug(&d) && d.busy);
+}
+
 TEST(talk_scene_real_outing_menu_and_play_action)
 {
     TalkSceneDebug d;

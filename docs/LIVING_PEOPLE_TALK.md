@@ -221,3 +221,24 @@ Only v3/v4 saves restore the new actual shared-event markers. This
 prevents uninitialized high bits in old saves from being mistaken for
 real meetings or gifts. Native round-trip and old-save tests cover the
 new version and unchanged-structure migration rules.
+
+## Care from within Talk (shared simulation)
+
+The Talk main menu now includes **Help with their needs**. A resident
+with ordinary living status can receive care using the existing
+`sim_comfort`, `sim_clean`, `sim_feed`, and `sim_heal` pathways.
+The first two directly affect real Joy/Social/Sanity or Hygiene and
+relationships; feeding and treatment enumerate actual inventory items,
+apply existing food/medical effects and consume the appropriate item.
+No action invents food, medicine or a diagnosis. If the person is already
+clean, the wash choice is hidden; if no eligible supplies are available,
+the corresponding item menu is hidden. Age-sensitive items are excluded
+in rooms with children. The list is built on user interaction, not every
+render frame, and introduces zero bytes to each resident record.
+
+Controller-driven checks verify that an available need appears, that
+washing changes the saved Hygiene meter, and that offering real food
+uses exactly one item. This is not full free-form neural reasoning,
+but a concrete way for the resident's simulated life to shape actions
+and player decisions. The ghost-play memory guard also now agrees with
+`sim_play`: ghosts don't require a minimum Energy meter.

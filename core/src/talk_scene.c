@@ -38,8 +38,8 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -598,6 +598,7 @@ static void build_main(void)
     add_row(K_PLAY, 0, 0);
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
+    add_row(K_HELP, 0, 0);
     /* A shared-memory callback is offered only for a real prior event,
      * for this particular person. It cannot invent a past relationship. */
     if (T.to >= 0 && T.to < T.n &&
@@ -729,6 +730,117 @@ static void build_give_items(void)
     list_reset();
 }
 
+/* The live needs, not a random text topic, define the help actions.
+ * Show only useful care actions; inventory-based aid is selectable only
+ * when the player owns an eligible item. No extra per-resident data or
+ * frame-time scan (these lists are built on button press). */
+static int care_target_id(void)
+{
+    int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id) ||
+        town_res(id)->status != RES_ALIVE) return -1;
+    return id;
+}
+
+static int care_item_ok(int item, int category)
+{
+    int minor = T.s.conv.aud.any_minor || talk_safe_minor(T.avatar);
+    if (item <= ITEM_NONE || item >= ITEM_COUNT || !inv_count(item) ||
+        doomo_items[item].category != category) return 0;
+    if (minor && talk_act_item_adult(item)) return 0;
+    return 1;
+}
+
+static int care_has_items(int category)
+{
+    int item;
+    for (item = ITEM_NONE + 1; item < ITEM_COUNT; item++)
+        if (care_item_ok(item, category)) return 1;
+    return 0;
+}
+
+static void build_care(void)
+{
+    int target = care_target_id();
+    const DoomoResident *r;
+    if (target < 0) {
+        ui_toast("This person can't receive care.");
+        build_main();
+        return;
+    }
+    r = town_res(target);
+    T.page = PG_CARE;
+    T.nrows = 0;
+    add_row(K_COMFORT, 0, 0); /* supportive care always has a real effect */
+    if (r->stat[STAT_HYGIENE] < 95) add_row(K_CLEAN, 0, 0);
+    if (care_has_items(ICAT_FOOD)) add_row(K_FEED, 0, 0);
+    if (care_has_items(ICAT_CARE) || care_has_items(ICAT_EXORCISM))
+        add_row(K_HEAL, 0, 0);
+    list_reset();
+}
+
+static void build_care_items(int is_med)
+{
+    int item;
+    if (care_target_id() < 0) { build_main(); return; }
+    T.page = is_med ? PG_HEAL : PG_FEED;
+    T.nrows = 0;
+    for (item = ITEM_NONE + 1; item < ITEM_COUNT && T.nrows < TROWS; item++) {
+        if ((is_med && (care_item_ok(item, ICAT_CARE) || care_item_ok(item, ICAT_EXORCISM))) ||
+            (!is_med && care_item_ok(item, ICAT_FOOD)))
+            add_row(is_med ? K_HEALITEM : K_FEEDITEM, item, 0);
+    }
+    if (!T.nrows) { ui_toast("No suitable supplies in your bag."); build_care(); return; }
+    list_reset();
+}
+
+static void perform_care(int kind, int item)
+{
+    int target = care_target_id();
+    const char *reply;
+    if (target < 0) { ui_toast("This person can't receive care."); build_main(); return; }
+    if (kind == K_CLEAN && town_res(target)->stat[STAT_HYGIENE] >= 95) {
+        ui_toast("They're already clean.");
+        build_care();
+        return;
+    }
+    if (kind == K_FEEDITEM && !care_item_ok(item, ICAT_FOOD)) {
+        ui_toast("You don't have that food.");
+        build_care();
+        return;
+    }
+    if (kind == K_HEALITEM && !care_item_ok(item, ICAT_CARE) &&
+        !care_item_ok(item, ICAT_EXORCISM)) {
+        ui_toast("You don't have that medicine.");
+        build_care();
+        return;
+    }
+    switch (kind) {
+    case K_COMFORT:
+        reply = sim_comfort(target);
+        doomo_snprintf(T.you, sizeof T.you, "I'm here for you.");
+        break;
+    case K_CLEAN:
+        reply = sim_clean(target);
+        doomo_snprintf(T.you, sizeof T.you, "Let me help you clean up.");
+        break;
+    case K_FEEDITEM:
+        reply = sim_feed(target, item);
+        doomo_snprintf(T.you, sizeof T.you, "Would you like some %s?", doomo_items[item].name);
+        break;
+    case K_HEALITEM:
+        reply = sim_heal(target, item);
+        doomo_snprintf(T.you, sizeof T.you, "Let's try some %s.", doomo_items[item].name);
+        break;
+    default: build_care(); return;
+    }
+    ui_say(target, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+    build_main();
+}
+
 static void topic_add(uint16_t c)
 {
     int i;
@@ -798,6 +910,13 @@ static const char *row_text(int index, char *buf)
     case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
+    case K_HELP: doomo_snprintf(buf, 48, "Help with their needs >"); break;
+    case K_COMFORT: doomo_snprintf(buf, 48, "Comfort them"); break;
+    case K_CLEAN: doomo_snprintf(buf, 48, "Help them wash"); break;
+    case K_FEED: doomo_snprintf(buf, 48, "Offer something to eat >"); break;
+    case K_HEAL: doomo_snprintf(buf, 48, "Use medicine >"); break;
+    case K_FEEDITEM: doomo_snprintf(buf, 48, "Offer %s", doomo_items[r->arg].name); break;
+    case K_HEALITEM: doomo_snprintf(buf, 48, "Use %s", doomo_items[r->arg].name); break;
     case K_OUTING:
         doomo_snprintf(buf, 48, "Visit %s", outing[r->arg].label);
         break;
@@ -947,7 +1066,7 @@ static void play_together(void)
     {
         const DoomoResident *r = town_res(target);
         int can_play = r && (r->status == RES_ALIVE || r->status == RES_GHOST) &&
-                       r->stat[STAT_ENERGY] >= 15;
+                       (r->status == RES_GHOST || r->stat[STAT_ENERGY] >= 15);
         reply = sim_play(target);
         if (can_play) talk_mem_note_shared(target, TALK_SHARED_PLAYED);
     }
@@ -1155,6 +1274,11 @@ static void activate(int i)
     case K_GIVE: build_give_items(); break;
     case K_GIVEITEM: give_item(r->arg); break;
     case K_REMEMBER: reminisce(); break;
+    case K_HELP: build_care(); break;
+    case K_COMFORT: case K_CLEAN: perform_care(r->kind, 0); break;
+    case K_FEED: build_care_items(0); break;
+    case K_HEAL: build_care_items(1); break;
+    case K_FEEDITEM: case K_HEALITEM: perform_care(r->kind, r->arg); break;
     case K_OUTING:
         T.to = T.to < 0 ? 0 : T.to;
         T.topic = r->v;
@@ -1361,6 +1485,9 @@ static const char *panel_title(char *buf, int cap)
     case PG_OUTING: t = "Where shall we go?"; break;
     case PG_SHOW: t = "Show something..."; break;
     case PG_GIVE: t = "Choose a gift..."; break;
+    case PG_CARE: t = "How can you help?"; break;
+    case PG_FEED: t = "Offer what food?"; break;
+    case PG_HEAL: t = "Choose a treatment"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
     default: break;
@@ -1462,14 +1589,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 8 ? T.page : 0];
+    o->page = pages[T.page < 11 ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -1488,7 +1615,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
