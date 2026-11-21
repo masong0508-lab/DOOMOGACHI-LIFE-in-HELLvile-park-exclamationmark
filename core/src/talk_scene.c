@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -724,6 +724,12 @@ static void build_main(void)
         if (p && p->kind > PROB_NONE && p->kind < PROB_COUNT)
             add_row(K_CONCERN, p->kind, 0);
     }
+    /* An accepted outing is not imaginary: show where to meet this
+     * person today. The target is sampled on menu build, not on draw. */
+    if (T.to >= 0 && T.to < T.n) {
+        int venue = talk_outcome_meet_plan(T.ids[T.to]);
+        if (venue >= 0) add_row(K_MEET_PLAN, 0, venue);
+    }
     /* Make an *existing* request directly reachable from the main Talk
      * screen. Entering it opens the actual history/quest objective rather
      * than inventing a promise to hand something in. The row appears only
@@ -793,6 +799,10 @@ static void build_history(void)
      * know whether an apology or a casual question makes sense. This is
      * sampled only on opening History, not drawn/calculated each frame. */
     add_row(K_HISTORY_TONE, T.s.part[T.to].engage, T.s.tension);
+    {
+        int venue = talk_outcome_meet_plan(id);
+        if (venue >= 0) add_row(K_MEET_PLAN, 1, venue);
+    }
     if (m) {
         if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
             !q_grief(m->topic_a))
@@ -1194,6 +1204,10 @@ static const char *row_text(int index, char *buf)
                        r->arg == TALK_SHARED_PLAYED ? "Play together again" :
                        r->arg == TALK_SHARED_GIFTED ? "Give another gift >" :
                        "Invite them out again >");
+        break;
+    case K_MEET_PLAN:
+        doomo_snprintf(buf, 48, "Meet today: %s >", r->v < ACT_COUNT ?
+                       doomo_activity_names[r->v] : "unknown place");
         break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
@@ -1833,6 +1847,22 @@ static void activate(int i)
         else if (r->arg == TALK_SHARED_GIFTED) build_give_items();
         else if (r->arg == TALK_SHARED_INVITED) build_outings();
         break;
+    case K_MEET_PLAN: {
+        char hint[80];
+        int venue, id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+        venue = id >= 0 ? talk_outcome_meet_plan(id) : -1;
+        if (venue < 0) {
+            ui_toast("This invitation is no longer active.");
+        } else if (talk_outcome_meet_ready(venue) != id) {
+            ui_toast("They have moved on; try another invitation tomorrow.");
+        } else {
+            doomo_snprintf(hint, sizeof(hint),
+                           "Visit %s on the City Map today.",
+                           doomo_activity_names[venue]);
+            ui_toast(hint);
+        }
+        break;
+    }
     case K_CONCERN: build_concern(); break;
     case K_CONCERN_INFO: concern_info(); break;
     case K_CONCERN_ACT: concern_action(); break;
@@ -2186,7 +2216,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
