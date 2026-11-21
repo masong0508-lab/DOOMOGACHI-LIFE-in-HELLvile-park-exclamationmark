@@ -742,6 +742,10 @@ typedef struct TalkMem {
 } TalkMem;                        /* TALK_MEM_ENTRY = 12 B                        */
 /* Entries held, and entry i (0 the most recent), NULL past the end. */
 int  talk_mem_count(void);
+/* Lightweight status for UI and tests: capacity and pinned unfinished
+ * commitments. Neither query creates entries or reorders the LRU. */
+int  talk_mem_capacity(void);
+int  talk_mem_pinned_count(void);
 const TalkMem *talk_mem_at(int i);
 /* The entry of id, or NULL. An entry whose person is gone is dropped here. */
 const TalkMem *talk_mem_find(int id);
