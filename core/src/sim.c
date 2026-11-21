@@ -411,7 +411,7 @@ static int job_venue(int id)
 int sim_venue_social_bias(int id, int venue)
 {
     const DoomoResident *self;
-    int n, score = 0;
+    int n, score = 0, previous = -1;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS ||
         venue < 0 || venue >= ACT_COUNT || !sim_is_venue(venue) ||
         venue == ACT_WANDERING || venue == ACT_HAUNTING)
@@ -428,6 +428,8 @@ int sim_venue_social_bias(int id, int venue)
         if (other < 0 || other >= DOOMO_MAX_RESIDENTS || other == id) continue;
         seen = town_res(other);
         if (!seen || !sim_alive_ok(seen) || seen->activity != venue) continue;
+        if (other == previous) continue; /* one visitor cannot count as two friends */
+        previous = other;
         edge = rel_find(id, other); /* binary search of the sorted edge graph */
         if (!edge) continue;
         kind = edge->kind & REL_KIND_MASK;
