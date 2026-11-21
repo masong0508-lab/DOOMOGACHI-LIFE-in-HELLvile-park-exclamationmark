@@ -928,3 +928,39 @@ TEST(action_p2_p3_p7_random)
     CHECK(nact >= 100);
     talk_db_close();
 }
+
+/* Planning and applying must agree when a resident is no longer alive.
+ * Otherwise menus can advertise unavailable actions or memory discoveries. */
+TEST(action_inactive_resident_guards)
+{
+    int id;
+    TalkSummary sum;
+    TalkOutcome out;
+    premade_town();
+    people();
+    CHECK(nadult > 0);
+    id = adults[0];
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, id));
+    town_res(id)->status = RES_GHOST;
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, id));
+    CHECK(!talk_outcome_can(TEV_ACT_GIFT, id));
+    CHECK(!talk_outcome_can(TEV_ACT_ASK, id));
+
+    memset(&sum, 0, sizeof sum);
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = 1;
+    sum.id[0] = (int16_t)id;
+    sum.nev = 2;
+    sum.ev[0].kind = TEV_LEARNED;
+    sum.ev[0].a = 0;
+    sum.ev[0].b = 0;
+    sum.ev[1].kind = TEV_ACT_INVITE;
+    sum.ev[1].a = 0;
+    sum.ev[1].b = ACT_PARK;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ((int)out.learned, 0);
+    CHECK_EQ((int)out.invited, 0);
+    CHECK_EQ((int)out.skipped, 1);
+    town_res(id)->status = RES_ALIVE;
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, id));
+}
