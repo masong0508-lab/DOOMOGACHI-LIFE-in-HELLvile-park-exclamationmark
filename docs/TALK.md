@@ -1,5 +1,8 @@
 # Talk: the live house conversation
 
+**2026-11-20 memory-cap upgrade:** Talk's persistent LRU now has 32 entries on GBA, 64 on PS1, 128 on Dreamcast and 48 in the native host test profile, rather than a universal 24. Each entry remains 12 bytes; the unchanged save payload supports loading older, smaller tables. Active/ready quests are protected against LRU eviction, and an entirely pinned full table declines additional memory rather than deleting an unfinished promise. The custom personality trait override table remains separately capped at 24, and the 1,000-resident world roster is not a memory-table size. Declared TALK chunk budgets are 544/928/1696/736 bytes respectively. Console and emulator verification is still required; see [the PS2 Deluxe roadmap](design/PS2_DELUXE_ROADMAP.md) for the proposed 192-entry PS2 profile and richer recall systems.
+
+
 Talk is the Facade-style conversation mode of the house in
 **BOREagotchi LIFE! - in HELLvile PARK...**. You stand in a room with one to
 three residents and talk with them, and they talk with each other, in their
