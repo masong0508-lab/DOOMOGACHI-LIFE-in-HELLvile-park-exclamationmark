@@ -1,14 +1,17 @@
 # Boot splash -> title. Screenshots of the splash animation.
-wait 12
+wait 1
+expect-scene BOOT
 shot boot_drop
-wait 16
+wait 17
 shot boot_squash
-wait 32
+wait 25
 shot boot_name
-wait 50
+wait 16
 shot boot_settled
-wait 18
+wait 15
 shot boot_wipe
-wait 20
+wait 8
+expect-scene BOOT
+wait 3
 expect-scene TITLE
 shot title

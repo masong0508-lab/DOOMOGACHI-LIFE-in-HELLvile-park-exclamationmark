@@ -64,6 +64,16 @@ make -C gba test-et
 make -C gba test-talk
 ```
 
+### Startup logo
+
+The HaHaland mascot is visible on the first rendered logo frame. The shared
+splash hands off to the title or first-boot setup after 84 logic ticks
+(about 2.8 seconds, down from 4.1). In mGBA, average frame work over the
+first 59 measured logo ticks dropped from 17.3 ms to 11.5 ms, with roughly
+30 drawn FPS in both runs. These timings cover the game splash after core
+initialization. The GBA smoke test captures the opening and checks the
+automatic title handoff.
+
 ---------------------------------------------------------------------------
 
 Quick start:

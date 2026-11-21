@@ -19,7 +19,7 @@ expect-log doomo: init
 expect-log scene: set BOOT
 expect-scene BOOT
 shot dc_boot
-# the boot splash hands over to TITLE at tick 123 on the native runner
+# the boot splash hands over to TITLE after 84 logic ticks
 wait 160
 expect-log scene: set TITLE
 expect-scene TITLE

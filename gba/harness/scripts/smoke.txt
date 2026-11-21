@@ -1,9 +1,14 @@
 # smoke.txt - the game ROM: boot, title, a few presses, no crash / hang
 # (make -C gba test-game). Screenshots go to gba/build/shots/game.
-wait 30
+wait 2
 expect-log doomo: init
+expect-scene BOOT
+shot game00_boot_start
+wait 28
 shot game01_boot
-wait 60
+wait 55
+expect-scene TITLE
+wait 5
 shot game02_title
 # the harness text probe (SPEC R20: expect-text, hcmd.c)
 expect-text PRESS START

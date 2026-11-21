@@ -8,10 +8,10 @@
 #include "doomo/options_store.h"
 #include "doomo/plat_ext.h"
 
-#define T_LAND   24
-#define T_TEXT   30
-#define T_WIPE   104
-#define T_END    124
+#define T_LAND   16
+#define T_TEXT   21
+#define T_WIPE   66
+#define T_END    84
 
 static void heart_face(int cx, int cy, int s, int t)
 {
@@ -21,9 +21,10 @@ static void heart_face(int cx, int cy, int s, int t)
     int ew = DOOMO_MAX(s / 8, 2), eh = DOOMO_MAX(s / 5, 3);
     int i;
     if (blink) {
-        for (i = -ew; i <= ew; i++) {
-            plat_rect(cx - ex + i, ey + (i == -ew || i == ew), 1, 1, ink);
-            plat_rect(cx + ex + i, ey + (i == -ew || i == ew), 1, 1, ink);
+        for (i = -ex; i <= ex; i += 2 * ex) {
+            plat_rect(cx + i - ew + 1, ey, 2 * ew - 1, 1, ink);
+            plat_rect(cx + i - ew, ey + 1, 1, 1, ink);
+            plat_rect(cx + i + ew, ey + 1, 1, 1, ink);
         }
     } else {
         ui_fill_ellipse(cx - ex, ey, ew, eh, ink);
@@ -77,7 +78,6 @@ static void boot_update(void)
         return;
     }
     if (t < T_WIPE && t > 4 && btn_pressed(BTN_A | BTN_START | BTN_B)) {
-        /* skip: straight to the wipe */
         boot_next();
     }
 }
@@ -90,11 +90,14 @@ static void boot_draw(void)
     int s = big ? 32 : 24;                    /* heart half-size */
     int cx = sw / 2, rest_y = sh * 2 / 5 - (big ? 6 : 4);
     int hy, hsx = s, hsy = s, i;
+    int wipe = 0;
+
+    if (plat_draw_skipped()) return;
 
     /* ---- heart motion: fall, squash, bounce, settle, breathe ---------- */
     if (t < T_LAND) {
         int f = T_LAND - t;
-        hy = rest_y - f * f * (rest_y + s) / (T_LAND * T_LAND);
+        hy = rest_y - f * f * (rest_y - s) / (T_LAND * T_LAND);
         hsy = s + (t > T_LAND - 8 ? 2 : 0);            /* stretch as it falls */
         hsx = s - (t > T_LAND - 8 ? 1 : 0);
     } else {
@@ -116,22 +119,23 @@ static void boot_draw(void)
      * is one colour, so skip everything underneath (same picture) */
     if (t >= T_WIPE) {
         int u = t - T_WIPE;
-        int sz = 4 + u * u * (sw + sh) / 260;
-        if (ui_heart_flat_covers_screen(cx, hy, sz)) {
-            plat_rect(0, 0, sw, sh, PAL_RAMP(RAMP_PASTEL_PINK, 5));
+        wipe = 4 + u * u * (sw + sh) / 260;
+        if (ui_heart_flat_covers_screen(cx, hy, wipe)) {
+            plat_clear(PAL_RAMP(RAMP_PASTEL_PINK, 5));
             return;
         }
     }
-    ui_backdrop(WIN_CREAM, (uint32_t)t);
-    /* ground shadow */
+    /* Quiet stage behind the wordmark. The mascot and its sparkles supply
+     * the motion, so the background takes only two opaque fills. */
+    {
+        int seam = rest_y + s + 9;
+        plat_rect(0, 0, sw, seam, PAL_UI_CREAM);
+        plat_rect(0, seam, sw, sh - seam, PAL_RAMP(RAMP_PEACH, 7));
+    }
     {
         int dist = rest_y - hy;
         int rx = s - DOOMO_CLAMP(dist / 3, 0, s - 4), y0 = rest_y + s + 3;
-        int k;
-        for (k = -2; k <= 2; k++) {
-            int half = rx * (6 - (k < 0 ? -k : k)) / 6;
-            plat_shade_rect(cx - half, y0 + k, half * 2 + 1, 1, 11);
-        }
+        ui_fill_ellipse(cx, y0, rx, 2, PAL_RAMP(RAMP_PEACH, 6));
     }
     /* orbiting sparkles once landed */
     if (t > T_LAND + 4) {
@@ -160,7 +164,7 @@ static void boot_draw(void)
             char ch[2];
             int age = t - T_TEXT - k * 2;
             static const int8_t pop[] = { 6, 2, -3, -4, -2, 0, 1, 1, 0 };
-            int dy = age < (int)sizeof(pop) ? pop[age] : (ui_wave(t + k * 6, 48, 1));
+            int dy = age < (int)sizeof(pop) ? pop[age] : 0;
             ch[0] = word[k];
             ch[1] = 0;
             ui_text_big(tx + k * FONT_ADVANCE * scale, ty + dy, ch, scale,
@@ -178,11 +182,9 @@ static void boot_draw(void)
     }
 
     /* ---- heart iris wipe to the title ---------------------------------- */
-    if (t >= T_WIPE) {
-        int u = t - T_WIPE;
-        int sz = 4 + u * u * (sw + sh) / 260;
-        ui_heart_flat(cx, hy, sz + 3, PAL_RAMP(RAMP_PASTEL_PINK, 3));
-        ui_heart_flat(cx, hy, sz, PAL_RAMP(RAMP_PASTEL_PINK, 5));
+    if (wipe) {
+        ui_heart_flat(cx, hy, wipe + 3, PAL_RAMP(RAMP_PASTEL_PINK, 3));
+        ui_heart_flat(cx, hy, wipe, PAL_RAMP(RAMP_PASTEL_PINK, 5));
     }
 }
 
