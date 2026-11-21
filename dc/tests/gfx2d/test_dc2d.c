@@ -110,6 +110,30 @@ static void test_twiddle(void)
             }
         CHECK(err == 0, "twiddle8 round trip: %d texels wrong", err);
     }
+    {   /* The no-clear fast path must overwrite stale opaque AND zero
+         * texels; switching back to a padded texture must clear its edge. */
+        static uint8_t src[32 * 16];
+        static uint16_t dst[32 * 16 / 2];
+        int x, y, bad = 0;
+        memset(dst, 0xA5, sizeof dst);
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++)
+                src[y * 32 + x] = ((x + y) % 5 == 0) ? 0 : (uint8_t)(x + 7 * y + 1);
+        dc2d_twiddle8(dst, src, 32, 16, 32, 16);
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++)
+                bad += ((uint8_t *)dst)[dc2d_twiddle_index((uint32_t)x, (uint32_t)y, 32, 16)] != src[y * 32 + x];
+        CHECK(bad == 0, "twiddle8 full-size transparent overwrite: %d mismatches", bad);
+        dc2d_twiddle8(dst, src, 24, 13, 32, 16);
+        bad = 0;
+        for (y = 0; y < 16; y++)
+            for (x = 0; x < 32; x++) {
+                uint8_t got = ((uint8_t *)dst)[dc2d_twiddle_index((uint32_t)x, (uint32_t)y, 32, 16)];
+                uint8_t want = (x < 24 && y < 13) ? src[y * 24 + x] : 0;
+                bad += got != want;
+            }
+        CHECK(bad == 0, "twiddle8 padded-after-full clear: %d mismatches", bad);
+    }
 }
 
 static void test_uv16(void)
