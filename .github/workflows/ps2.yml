@@ -10,6 +10,13 @@ on:
       - '.github/workflows/ps2.yml'
   workflow_dispatch:
 
+# Many PS2 development commits can arrive while hosted runners are busy.
+# Only the newest commit on a branch needs its costly SDK+emulator gate;
+# never let superseded runs consume the entire pending queue.
+concurrency:
+  group: ps2-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   padmap-host:
     name: PS2 pad semantics (host, 16 buttons)
