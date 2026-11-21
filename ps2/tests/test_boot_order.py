@@ -29,6 +29,14 @@ def test_boot_order():
     )
     assert "gs->PSM=GS_PSM_CT16;" in main
     assert "gs->ZBuffering=GS_SETTING_OFF;" in main
+    # This is a Play! black-screen regression, not an aesthetic choice:
+    # isolated alpha-enabled CT32 rendered 0% visible viewport pixels,
+    # while CT32/CT16 alpha-disabled controls rendered moving graphics.
+    assert "gs->PrimAlphaEnable=GS_SETTING_OFF;" in main
+    assert "gs->PrimAlphaEnable=GS_SETTING_ON;" not in main
+    diagnostic = (SOURCE.parent / "main.c").read_text(encoding="utf-8")
+    assert "gs->PrimAlphaEnable=GS_SETTING_OFF;" in diagnostic
+    assert "gs->PrimAlphaEnable=GS_SETTING_ON;" not in diagnostic
 
 
 if __name__ == "__main__":

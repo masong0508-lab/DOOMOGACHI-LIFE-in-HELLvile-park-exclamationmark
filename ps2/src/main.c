@@ -158,7 +158,10 @@ int main(int argc,char **argv)
     gs->Height=VIEW_H;
     gs->ZBuffering=GS_SETTING_OFF;
     gs->DoubleBuffering=GS_SETTING_ON;
-    gs->PrimAlphaEnable=GS_SETTING_ON;
+    /* Play! GS-only A/B probes: alpha-on CT32 is black, whereas
+     * alpha-off CT32 and CT16 visibly animate. These diagnostics use
+     * opaque primitives, so do not enable global blending at boot. */
+    gs->PrimAlphaEnable=GS_SETTING_OFF;
     dmaKit_init(D_CTRL_RELE_OFF,D_CTRL_MFD_OFF,D_CTRL_STS_UNSPEC,
                 D_CTRL_STD_OFF,D_CTRL_RCYC_8,1<<DMA_CHANNEL_GIF);
     dmaKit_chan_init(DMA_CHANNEL_GIF);

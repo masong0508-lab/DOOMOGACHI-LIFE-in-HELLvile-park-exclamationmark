@@ -101,7 +101,12 @@ int main(void)
     gs->PSMZ=GS_PSMZ_16S;
     gs->ZBuffering=GS_SETTING_OFF;
     gs->DoubleBuffering=GS_SETTING_ON;
-    gs->PrimAlphaEnable=GS_SETTING_ON;
+    /* This game presents an opaque full-screen indexed image. In Play!,
+     * enabling global GS primitive alpha caused the isolated CT32 probe
+     * to go completely black; CT16 with alpha off displayed correctly.
+     * Keep blending disabled until an independently verified alpha path
+     * is implemented. This changes no game buffer or upload allocation. */
+    gs->PrimAlphaEnable=GS_SETTING_OFF;
     dmaKit_init(D_CTRL_RELE_OFF,D_CTRL_MFD_OFF,D_CTRL_STS_UNSPEC,
                 D_CTRL_STD_OFF,D_CTRL_RCYC_8,1<<DMA_CHANNEL_GIF);
     dmaKit_chan_init(DMA_CHANNEL_GIF);
