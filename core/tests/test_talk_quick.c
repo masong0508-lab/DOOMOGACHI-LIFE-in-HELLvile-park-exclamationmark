@@ -398,6 +398,97 @@ TEST(talk_quick_reopens_last_subject_without_forgetting_the_thread)
     talk_db_close();
 }
 
+/* A seasoned conversation should not keep proposing the player's last
+ * sentence just because the seeded list happened to rotate to it. The
+ * deliberative ranker uses the real DM reaction model, then applies a small
+ * short-term novelty penalty; there is no heap or trained weights table. */
+TEST(talk_quick_predictive_policy_discourages_repeat_acts)
+{
+    TalkState s;
+    TalkSugg before[TALK_QUICK_MAX], after[TALK_QUICK_MAX], copy[TALK_QUICK_MAX];
+    int changed = 0, i, n, m;
+    uint16_t pie;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie != TC_NONE);
+    begin2(&s, ID_NANA, -1, 118u);
+    put_line(&s, 0, -1, TA_TELL, pie, 0);
+    s.topic_stack[0] = pie;
+    for (i = 0; i < 32; i++) {
+        s.turn = 0;
+        s.nhist = 0;
+        s.last_act = TA_NONE;
+        n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, (uint32_t)i, before);
+        CHECK(n >= 2);
+        memset(s.hist, 0, sizeof s.hist);
+        s.hist[0].who = 0xffu;
+        s.hist[0].flags = THF_PLAYER;
+        s.hist[0].act = before[0].act;
+        s.hist[0].topic = pie;
+        s.nhist = 1;
+        s.turn = 4;
+        s.last_act = before[0].act;
+        m = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, (uint32_t)i, after);
+        CHECK(m >= 2);
+        if (after[0].act != before[0].act) changed++;
+        CHECK_EQ(talk_quick_replies(&s, 0, TC_NONE, TC_NONE, (uint32_t)i, copy), m);
+        CHECK_EQ(after[0].act, copy[0].act);   /* same brain state: deterministic */
+        CHECK(after[0].topic == pie && !TA_IS_ROMANCE(after[0].act));
+    }
+    CHECK_MSG(changed >= 23, "repeat was only discouraged in %d/32 seeded conversations", changed);
+    talk_db_close();
+}
+
+/* A resident's *actual saved subject*, when explicitly associated with
+ * what they are discussing now, makes a fourth-slot segue rather than an
+ * unrelated forced topic change. It remains optional and respects grief. */
+TEST(talk_quick_personal_semantic_bridge_is_earned_and_opt_in)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t band, song;
+    uint16_t links[TALK_ASSOC_TOP];
+    int n, i, found = 0, bridge = -1;
+    premade_town();
+    CHECK(open_db());
+    band = concept("band");
+    song = concept("song");
+    CHECK(band != TC_NONE && song != TC_NONE);
+    n = talk_db_assoc(band, links, NULL);
+    for (i = 0; i < n; i++) if (links[i] == song) found = 1;
+    CHECK(found);
+    begin2(&s, ID_NANA, -1, 218u);
+    put_line(&s, 0, -1, TA_TELL, band, 0);
+    s.topic_stack[0] = band;
+    s.conv.mem_topic[0] = song;
+    s.turn = 4;
+    s.last_act = TA_GREET;
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(n >= 3);
+    for (i = 0; i < n; i++)
+        if (g[i].act == TA_CHANGE_TOPIC && g[i].topic == song) bridge = i;
+    CHECK_EQ(bridge, n - 1);
+    /* Do not keep suggesting a change after the player just changed subject. */
+    s.last_act = TA_CHANGE_TOPIC;
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    /* The context exists but no personal association was saved: no segue. */
+    s.last_act = TA_GREET;
+    s.conv.mem_topic[0] = TC_NONE;
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    s.conv.mem_topic[0] = song;
+    put_line(&s, 0, -1, TA_TELL, band, TLF_SINCERE);
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    for (i = 0; i < n; i++) {
+        CHECK(g[i].act != TA_CHANGE_TOPIC);
+        CHECK(g[i].act == TA_COMFORT || g[i].act == TA_SYMPATHIZE ||
+              g[i].act == TA_OFFER || g[i].act == TA_ENCOURAGE);
+    }
+    talk_db_close();
+}
+
 /* Existing needs and mood, not an unrelated random word, change how the
  * player can engage a resident. Every choice still runs through the DM. */
 TEST(talk_quick_reads_life_needs_as_conversation_context)
