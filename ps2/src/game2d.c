@@ -2,8 +2,8 @@
  * The core's authoritative 256-colour palette, 5x8 font, portraits and
  * user interface draw here at 320x240. A single 512x256 RGBA GS texture
  * is refreshed at 30Hz; NTSC fields display the most recent image at
- * 60Hz. The placeholder 3D and overworld adapters are deliberately
- * visibly incomplete until the proper GS 3D renderer is ported.
+ * 60Hz. The reference 3D/overworld renderers share this indexed surface;
+ * native GS polygon acceleration is still an unimplemented milestone.
  * No new per-resident portrait cache, heap allocation or save fields.
  */
 #include <stdio.h>
@@ -134,7 +134,7 @@ int ps2_game2d_init(GSGLOBAL *gs)
     memset(&picture,0,sizeof picture);
     /* GS sampling covers 320x240; the larger power-of-two texture edge
      * is always transparent. The edge is never touched by game drawing,
-     * so clear it once at boot instead of ~57KB every 30Hz upload. */
+     * so clear it once at boot instead of 212KiB every 30Hz upload. */
     memset(upload,0,sizeof upload);
     picture.Width=TEX_W;picture.Height=TEX_H;
     picture.PSM=GS_PSM_CT32;
