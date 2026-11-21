@@ -64,22 +64,41 @@ absent:
     input_set_analog(0,0,0,0,0,0);
     return 0;
 }
+/* GS-only boot panels exist before libmc, CDVD, PADMAN, or SPU2 RPCs.
+ * If an IOP service blocks (notably on experimental HLE emulators),
+ * the user still gets a visible hardware-initialization stage instead
+ * of an unexplained black screen. These are a few primitives at boot,
+ * not a new texture or an every-frame rendering cost. */
+static void show_boot_stage(GSGLOBAL *gs,int stage)
+{
+    u64 bg=GS_SETREG_RGBAQ(18,11,38,0x80,0);
+    u64 bar=GS_SETREG_RGBAQ(189,72,138,0x80,0);
+    u64 done=GS_SETREG_RGBAQ(96,217,178,0x80,0);
+    gsKit_clear(gs,bg);
+    gsKit_prim_sprite(gs,0,0,640,22,1,bar);
+    gsKit_prim_sprite(gs,64,183,576,264,1,bar);
+    gsKit_prim_sprite(gs,72,191,568,256,2,bg);
+    gsKit_prim_sprite(gs,72,191,72+((stage+1)*496)/5,256,3,done);
+    gsKit_queue_exec(gs);
+    gsKit_sync_flip(gs);
+    printf("PS2_BOOT_STAGE stage=%d\n",stage);
+}
 int main(void)
 {
     GSGLOBAL *gs;
     unsigned field=0;
-    SifInitRpc(0);
-    /* Memory card initialization before entering the game ensures the
-     * shared save UI sees real media errors, not a fake in-RAM success. */
-    if(!ps2_memcard_init())
-        printf("PS2: no ready formatted memory card in slot 1; saves unavailable\n");
-    ps2_talk_disc_init();
-    (void)ps2_audio_init();
-    pad_open=init_pad();
+    /* The GS must start FIRST. Previously card/CDVD/audio RPCs ran
+     * before even allocating a graphics context and could hang boot
+     * with no signal of which subsystem failed. */
     gs=gsKit_init_global();
     if(!gs)return 1;
     gs->Mode=GS_MODE_NTSC;gs->Interlace=GS_INTERLACED;
     gs->Field=GS_FIELD;gs->Width=640;gs->Height=448;
+    /* Output is 16-bit RGB, matching our native RGB5551 frame texture.
+     * Preserves gsKit VRAM for streaming sprites and avoids excessive
+     * 32-bit display double buffers on a real 4 MiB GS. */
+    gs->PSM=GS_PSM_CT16;
+    gs->PSMZ=GS_PSMZ_16S;
     gs->ZBuffering=GS_SETTING_OFF;
     gs->DoubleBuffering=GS_SETTING_ON;
     gs->PrimAlphaEnable=GS_SETTING_ON;
@@ -89,8 +108,21 @@ int main(void)
     gsKit_init_screen(gs);
     gsKit_mode_switch(gs,GS_ONESHOT);
     gsKit_set_test(gs,GS_ZTEST_OFF);
+    show_boot_stage(gs,0);
+    SifInitRpc(0);
+    show_boot_stage(gs,1);
+    /* Memory card initialization before entering the game ensures the
+     * shared save UI sees real media errors, not a fake in-RAM success. */
+    if(!ps2_memcard_init())
+        printf("PS2: no ready formatted memory card in slot 1; saves unavailable\n");
+    show_boot_stage(gs,2);
+    ps2_talk_disc_init();
+    (void)ps2_audio_init();
+    pad_open=init_pad();
+    show_boot_stage(gs,3);
     if(!ps2_game2d_init(gs)){printf("PS2 GS texture memory exhausted\n");return 2;}
     doomo_init();
+    show_boot_stage(gs,4);
     /* PS2 follows the familiar Cross/Circle/Square/Triangle help
      * labels until a dedicated PS2 glyph-label profile is added. */
     input_set_pad(PAD_PS1);
