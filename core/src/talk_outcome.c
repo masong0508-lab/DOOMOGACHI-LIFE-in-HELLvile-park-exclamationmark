@@ -365,6 +365,12 @@ int talk_outcome_meet_kind(int venue, int kind)
     /* Shared memory is recorded only after the actual meetup happened,
      * never when the NPC merely accepted the original invitation. */
     talk_mem_note_shared(id, TALK_SHARED_PLAYED);
+    /* Tomodachi-style public-life continuity: a named event in the
+     * existing 8-byte Town News ring, only after the player arrived,
+     * paid any required cost and shared an actual activity. Since the
+     * appointment was consumed above, revisiting the menu cannot
+     * fabricate another headline. */
+    sim_news_rec(NT_TALK_MEET, venue, NEWS_IDS(id, avatar, NEWS_NONE));
     return id;
 }
 
