@@ -20,7 +20,13 @@ textures, framebuffers, or per-frame ray operations.
   128-entry setup lookup table, with no added pixel or ray work.
 * All original map dimensions, placed things, enemy AI, keys, triggers,
   secrets, sky, long view-distance settings and HUD layout are preserved.
-  Distant floor averaging is left at 640 units to avoid unmeasured FPS loss.
+  The following conservative GBA pass extends the low-resolution Bone-tier
+  textured-floor cutoff from 640 to 768 world units, then still uses the
+  texture's average to prevent horizon shimmer. This samples existing
+  texture further into the view and **may increase frame time**: a measured
+  emulator comparison is required. Actor billboards on Bone maps get a
+  minimum light of 8/15 (unless already brighter) to distinguish players,
+  enemies and pickups from dark stone without any added draw loops.
 
 ## Verification (do not conflate correctness with an FPS claim)
 
@@ -37,3 +43,20 @@ textures, framebuffers, or per-frame ray operations.
 
 The checked-in generated map C files must match the authored maps; run
 `make -C core check-gen` after subsequent edits.
+
+## GBA fidelity follow-up (current pending validation)
+
+* `gba/src/r3d.c`: keep a little more original floor/aisle/road texture in
+  the Balanced 120x80 and 80x54 tiers (far averaging at 768 rather than
+  640 world units). This is still substantially less clear than the native
+  full-resolution view; do not represent it as native-equivalent.
+* Floor and sprite visibility are adjusted without changing geometry,
+  collision, map tags, asset count, HUD resolution, view-distance cutoff,
+  or the existing FPS safety governor.
+* Non-fullbright sprites in the Bone maps retain at least level 8 (of 15)
+  lighting to keep active actors visible. Other maps retain their old
+  sprite lighting.
+* Re-run all four GBA Bone census windows, screenshot walkthroughs, and
+  compare the **drawn FPS** and any floor aliasing against the earlier
+  640-unit baseline. Revert the 768-unit cutoff if significant FPS or
+  shimmering regressions appear; keeping actor visibility is independent.

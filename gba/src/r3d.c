@@ -478,6 +478,12 @@ static void draw_sprites(const DoomoView3D *v)
             level = l - r3d_fade[bk < R3D_FADE_N ? bk : R3D_FADE_N - 1];
             if (level < 1) level = 1;
             level += b->light;
+            /* Bone readability: retain the actor's existing sprite and
+             * colour palette, but keep it discernible against the newly
+             * illuminated skull/stone walls and lava. Only a per-billboard
+             * clamp; no silhouette outline, pixel pass, asset or heap RAM.
+             * Fullbright sprites and normal maps are unchanged. */
+            if (level < 8 && bone_readability_map(r3f.map->def)) level = 8;
         }
         s.level = (uint8_t)(level < 1 ? 1 : (level > 15 ? 15 : level));
         s.flags = b->flags;
@@ -755,11 +761,15 @@ void plat_view3d(const DoomoView3D *v)
     r3f.frame = ++frame_no;
     r3f.cp_over = 0;
 
-    /* At a distance, small surface texels alias into a checkerboard on
-     * the Bone maps. Use the existing average-colour path earlier in
-     * Balanced's readable tier. The ray horizon and walls stay intact. */
+    /* The low-resolution Bone tiers use the average-colour floor beyond
+     * a minification cutoff: this prevents checkerboard shimmer near the
+     * horizon. Preserve recognisable carpet/road texture a little farther
+     * (768 rather than 640 world units) before switching to the average.
+     * Full resolution, other levels and view distance stay untouched.
+     * No extra rays, textures or allocations; reassess the extra floor
+     * sampling in the GBA emulator census before increasing it further. */
     FL.far = ((detail == 1 || detail == 3) && bone_readability_map(m->def) &&
-              opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 640u : 1400u) << 8;
+              opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 768u : 1400u) << 8;
     r3d_columns();
     t1 = gba_cycles();
     t2 = t1;
