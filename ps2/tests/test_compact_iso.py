@@ -48,11 +48,12 @@ class CompactImageTests(unittest.TestCase):
             image = sample_iso(tmp)
             original_hash = digest(image)
             out = tmp / "compact"
-            subprocess.run(
+            result = subprocess.run(
                 [sys.executable, str(PACKAGER), "--iso", str(image),
                  "--out-dir", str(out), "--zstd-level", "7"],
-                check=True, text=True, capture_output=True,
+                text=True, capture_output=True,
             )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(original_hash, digest(image))
             report = json.loads((out / "manifest.json").read_text())
             self.assertEqual(report["source_iso_sha256"], original_hash)
