@@ -134,11 +134,14 @@ jobs:
           grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
           grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
           grep -q '/DOOMOG.ELF' /tmp/ps2-iso-manifest.txt
-      - name: Upload gameplay ISO for PCSX2 walkthrough
+      - name: Upload lossless gameplay ISO for emulator and hardware tests
         uses: actions/upload-artifact@v4
         with:
           name: doomogachi-ps2-game-iso
           path: ps2/build/doomogachi_ps2_game.iso
+          # Compact images retain longer; the original ISO remains a
+          # short-lived compatibility and emulator smoke-test artifact.
+          retention-days: 3
           if-no-files-found: error
       - name: Upload experimental game ELF only if linked
         if: always()
@@ -154,6 +157,54 @@ jobs:
           path: |
             ps2/build/doomogachi_ps2.elf
             ps2/build/BUILD_SOURCE.txt
+          if-no-files-found: error
+
+
+  compact-images:
+    name: PS2 compact ISO, CHD and archive (SHA256 verified)
+    runs-on: ubuntu-24.04
+    needs: [ps2-elf]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lossless disc compression and ISO verification tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mame-tools zstd xorriso
+          command -v chdman
+          command -v zstd
+          command -v xorriso
+      - name: Test compact-image tool against a synthetic ISO
+        run: |
+          set -eu
+          python3 -m py_compile ps2/tools/compact_iso.py ps2/tests/test_compact_iso.py
+          python3 -m unittest discover -s ps2/tests -p test_compact_iso.py -v
+      - name: Download exactly the gameplay ISO produced by this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build
+      - name: Build verified PS2 CHD and Zstandard archive
+        run: |
+          set -eu
+          python3 ps2/tools/compact_iso.py \
+            --iso ps2/build/doomogachi_ps2_game.iso \
+            --out-dir ps2/build/compact --zstd-level 15
+          cat ps2/build/compact/SIZE_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload compact PS2 files only after lossless roundtrip verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-compact-images
+          path: |
+            ps2/build/compact/*.chd
+            ps2/build/compact/*.iso.zst
+            ps2/build/compact/manifest.json
+            ps2/build/compact/SHA256SUMS.txt
+            ps2/build/compact/SIZE_REPORT.md
+          # Archive files are already compressed. Do not re-deflate them
+          # in the Actions artifact ZIP and consume unnecessary runner CPU.
+          compression-level: 0
+          retention-days: 14
           if-no-files-found: error
 
 
