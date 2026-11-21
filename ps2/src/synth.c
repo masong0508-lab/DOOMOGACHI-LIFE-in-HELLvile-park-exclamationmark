@@ -78,7 +78,14 @@ void ps2_synth_sample_ex(Ps2Synth *s,const int8_t *pcm,uint32_t n,
     v=&s->sample[slot];
     adjusted=((uint64_t)rate*pitch_q16[semitones+24]+32768u)>>16;
     if(adjusted==0)adjusted=1;
-    v->step=(uint32_t)((adjusted<<16)/PS2_SOUND_RATE);
+    /* An invalid high-rate SFX must not truncate the Q16.16 step
+     * through uint32_t and turn into a slow/repeating sound. All math
+     * here is 64-bit before the final, explicitly saturated cast. */
+    {
+        uint64_t q16_step=(adjusted<<16)/PS2_SOUND_RATE;
+        if(q16_step>UINT32_MAX)q16_step=UINT32_MAX;
+        v->step=(uint32_t)q16_step;
+    }
     if(!v->step)v->step=1;
     v->pcm=pcm;v->length=n;v->pos=0;
     v->volume=volume;v->pan=pan;v->priority=priority;
@@ -140,8 +147,15 @@ void ps2_synth_render(Ps2Synth *s,int16_t *stereo,unsigned frames)
             rg=v->pan<0?64+(int)v->pan:64;
             left+=sample*lg/64;
             right+=sample*rg/64;
-            v->pos+=v->step;
-            if((v->pos>>16)>=v->length)v->pcm=0;
+            /* The 32-bit Q16.16 cursor can represent at most 65536
+             * source frames. Stop cleanly on overflow rather than wrap
+             * to the start of a long/corrupt sample and loop forever. */
+            if(v->step>UINT32_MAX-v->pos) {
+                v->pcm=0;
+            } else {
+                v->pos+=v->step;
+                if((v->pos>>16)>=v->length)v->pcm=0;
+            }
         }
         /* Saturate channels separately; no additional PCM framebuffer
          * and no extra hardware voices. */
