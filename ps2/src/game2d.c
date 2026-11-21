@@ -175,13 +175,7 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
 void plat_tone(int ch,uint16_t hz,uint8_t vol,uint8_t wave)
 {(void)ch;(void)hz;(void)vol;(void)wave;}
 void plat_sample(int sfx,uint8_t vol){(void)sfx;(void)vol;}
-/* No PS2 memory-card IOP transport yet. Report failure safely, never
- * pretend a save was persisted to EE RAM. */
-int plat_save_write(int slot,const void *data,uint32_t size)
-{(void)slot;(void)data;(void)size;return 0;}
-int plat_save_read(int slot,void *data,uint32_t cap,uint32_t *size)
-{(void)slot;(void)data;(void)cap;if(size)*size=0;return 0;}
-int plat_save_erase(int slot){(void)slot;return 0;}
+/* PS2-2: save transport is implemented in memcard.c. */
 uint32_t plat_entropy(void){return 0xCE11A17u;}
 uint32_t plat_ticks(void){return frame_ticks;}
 void plat_log(const char *s){if(s)printf("[PS2 core] %s\n",s);}
