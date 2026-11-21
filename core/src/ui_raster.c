@@ -147,7 +147,15 @@ static void ut_rect(int x, int y, int w, int h, uint8_t c)
  * which re-rasterised every big glyph twice per frame (the PS1 title ran
  * at 11.6 fps, 60% of its 81 ms in text_emit). 16 KB of RAM is cheap
  * there. */
-#define SC_POOL 2560                   /* was 4096 (RAM pass, -6,144 B); the title draws ~1150 rects a frame, a full pool only skips caching */
+/* PS1's 2 MB budget was 224 bytes into its protected 64 KB stack
+ * reserve on the latest portrait pass. Save 1,024 bytes by retaining
+ * 2,304 cached shape rects (still twice the ~1,150 needed for the
+ * title). GBA and other ports keep their prior pool sizes. */
+#if defined(DOOMO_PLATFORM_PS1)
+#define SC_POOL 2304
+#else
+#define SC_POOL 2560
+#endif
 #define SC_ENT  160
 #define SC_HASH 256
 #endif
