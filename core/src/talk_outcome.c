@@ -548,19 +548,18 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
     int k;
     if (!s) return;
     if (!sum) sum = &local;
-    for (k = 0; k < s->nparts; k++) {                        /* what the player earned: those who stayed in the room */
+    for (k = 0; k < s->nparts; k++) {
         int id = s->part[k].id;
         if (is_pet_id(id)) continue;
-        /* A resident who stormed out still remembers an insult that
-         * happened BEFORE leaving. Walking out must not erase an actual
-         * addressed experience; only topic/social gain requires presence. */
+        /* The saved memory belongs only to this actual addressee. A
+         * bystander does not inherit someone else's insult, and a person
+         * who walked out still remembers what they heard before leaving. */
         if (s->mem_to[k]) talk_mem_set_flags(id, s->mem_to[k]);
-        if (s->part[k].flags & TPF_LEFT) continue;
-        /* Each resident only remembers actions they were addressed with.
-         * The summary's old aggregate is not a per-person memory: using
-         * it here previously made innocent bystanders remember being
-         * insulted or promised something. */
-        if (s->topic_stack[0] && (s->part[k].flags & TPF_SPOKE)) talk_mem_note_topic(id, s->topic_stack[0]);
+        /* Topic recall needs participation; someone who left doesn't
+         * gain unrelated experience from the room continuing to talk. */
+        if ((s->part[k].flags & TPF_LEFT) == 0 &&
+            s->topic_stack[0] && (s->part[k].flags & TPF_SPOKE))
+            talk_mem_note_topic(id, s->topic_stack[0]);
     }
     talk_mem_end(&s->conv);
     talk_dm_end(s, sum);
