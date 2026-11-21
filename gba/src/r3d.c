@@ -763,8 +763,21 @@ void plat_view3d(const DoomoView3D *v)
     t1 = gba_cycles();
     t2 = t1;
     draw_sprites(v);
-    if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0)
-        r3d_tint_pass(doomo_tintmap[v->tint], v->tint_level > 16 ? 16 : v->tint_level);
+    if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0) {
+        /* Unlike the old 4x4 per-pixel ordered dither, a subtle palette
+         * lerp never paints isolated red/purple dots over stonework when
+         * the player is hurt. Let postfx_vblank blend the whole finished
+         * image, including the HUD, uniformly at just 1..3 of 16.
+         * No framebuffer scan, extra RAM or texture-detail loss.
+         * It also avoids the full-view tint pass on every hit frame. */
+        static const uint8_t colors[TINT_COUNT] = {
+            PAL_BLACK, PAL_UI_RED, PAL_UI_GOLD, PAL_UI_MINT,
+            PAL_UI_PURPLE, PAL_BLACK
+        };
+        int strength = ((int)v->tint_level + 3) >> 2;
+        if (strength > 3) strength = 3;
+        plat_post_blend(colors[v->tint], strength);
+    }
     if (detail == 3) {
         r3d_up3(r3f.dst);
     } else if (detail == 2) {
