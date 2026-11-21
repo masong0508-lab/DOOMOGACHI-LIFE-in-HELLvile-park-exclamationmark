@@ -403,6 +403,7 @@ static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **lis
     static const uint8_t blunt[] = { TA_DISAGREE, TA_OPINE_NEG, TA_TELL };
     static const uint8_t polite[] = { TA_THANK, TA_APOLOGIZE, TA_ASK_FEELING };
     static const uint8_t mid[] = { TA_ASK_OPINION, TA_TELL, TA_ENCOURAGE };
+    static const uint8_t reconcile[] = { TA_APOLOGIZE, TA_ASK_FEELING, TA_SYMPATHIZE };
     DoomoResident buf;
     const DoomoResident *r = NULL;
     int id, sp = 6, ex = 6, at = 6, qk = 6, mood = MOOD_OK;
@@ -427,6 +428,13 @@ static int q_suit(const TalkState *s, int slot, int sincere, const uint8_t **lis
     if (mood == MOOD_SLEEPY || (r && r->stat[STAT_ENERGY] < 15)) return QSET(tired);
     if (mood == MOOD_LONELY || (r && r->stat[STAT_SOCIAL] < 20)) return QSET(lonely);
     if (mood == MOOD_SCARED) return QSET(scared);
+    /* Only after urgent needs are addressed: a resident you hurt on the
+     * previous visit gets a chance for a real apology, even if today's
+     * topic and their permanent personality are otherwise cheerful.
+     * This is backed by the current TALK save chunk, not made-up dialogue. */
+    if (slot >= 0 && slot < s->nparts &&
+        (s->conv.mem_flags[slot] & TMF_INSULTED))
+        return QSET(reconcile);
     /* Explicit creator traits must have visible consequences beyond a
      * different voice. Keep the five saved persona sliders as the default
      * and let a custom trait steer only the second, suggested response.
@@ -707,6 +715,16 @@ static void build_main(void)
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
     add_row(K_HELP, 0, 0);
+    /* Make an *existing* request directly reachable from the main Talk
+     * screen. Entering it opens the actual history/quest objective rather
+     * than inventing a promise to hand something in. The row appears only
+     * when this selected resident has an unfinished favor. */
+    if (T.to >= 0 && T.to < T.n) {
+        int kind, st;
+        if (talk_quest_state(T.ids[T.to], &kind, &st, NULL, NULL) &&
+            (st == TQS_ACTIVE || st == TQS_READY))
+            add_row(K_HISTORY, 1, talk_quest_ready(T.ids[T.to]) ? TQS_READY : st);
+    }
     /* A shared-memory callback is offered only for a real prior event,
      * for this particular person. It cannot invent a past relationship. */
     if (T.to >= 0 && T.to < T.n &&
@@ -1096,7 +1114,12 @@ static const char *row_text(int index, char *buf)
     case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
-    case K_HISTORY: doomo_snprintf(buf, 48, "Our history >"); break;
+    case K_HISTORY:
+        if (r->arg == 1)
+            doomo_snprintf(buf, 48, r->v == TQS_READY ?
+                           "Favor ready: check request >" : "Your favor: check goal >");
+        else doomo_snprintf(buf, 48, "Our history >");
+        break;
     case K_HISTORY_INFO:
         doomo_snprintf(buf, 48, "Town memory: %d/%d, %d open",
                        (int)r->v, talk_mem_capacity(), (int)r->arg);
@@ -1511,7 +1534,15 @@ static void activate(int i)
     case K_GIVE: build_give_items(); break;
     case K_GIVEITEM: give_item(r->arg); break;
     case K_REMEMBER: reminisce(0); break;
-    case K_HISTORY: build_history(); break;
+    case K_HISTORY: {
+        int shortcut = r->arg;
+        build_history();
+        /* The main-page shortcut opens with the real favor already
+         * selected, not the generic table-capacity status above it. */
+        if (shortcut && T.nrows > 1 && T.row[1].kind == K_HISTORY_QUEST)
+            T.list.sel = 1;
+        break;
+    }
     case K_HISTORY_INFO:
         ui_toast("Open favors are protected from eviction.");
         break;
