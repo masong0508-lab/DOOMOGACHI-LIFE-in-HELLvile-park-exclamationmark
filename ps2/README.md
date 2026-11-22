@@ -158,8 +158,10 @@ works. Its audsrv.irx must come from the installed SDK.
 
 The disc path exposes the same `TALK_EN.BIN` compiled by
 `make -C core talk`; no new or hand-authored substitute language file
-is introduced. It uses PS2 CDVD calls and one 2048-byte aligned sector
-cache over the core's existing 256-byte window. The actual Talk scene
+is introduced. It reads the ISO file through the SDK filesystem with a
+2048-byte aligned block cache behind the core's 256-byte window.
+The raw CDVD path could find the directory entry but failed its sector
+read in Play!. The actual Talk scene
 is now linked, with controller-accessible quick replies, Ask about
 their day and a real social-memory ledger. On an ELF boot without the
 language disc it does not advertise Talk. Typed entry is off because
@@ -250,19 +252,20 @@ queued actions as tests that already passed.
 
 ## PS2-6 portable follow-up checks
 
-The new CDVD host test executes the actual `ps2/src/talkdisc.c` against
-an isolated PS2SDK CD mock. It verifies cached sectors, cross-sector
-reads, bounds checking, failed DMA reads, missing media, and resets after
-disc initialization failure. The full test is in
+The Talk disc host test executes `ps2/src/talkdisc.c` against an isolated
+file at the SDK's disc path. It verifies cached blocks, cross-block
+reads, bounds checking, short reads, invalid headers, missing media, and
+reinitialization after a failed open. The full test is in
 `ps2/tests/talkdisc_mock_test.c`. The SPU2 mixer test now exercises
 six waveforms, stereo routing, pitched samples, priority stealing and
 voice-state bounds. No new audio heap allocations or expanded buffers.
 
 The branch's PS2 build/test jobs may be queued while shared hosted runners
 are busy; the workflow cancels superseded PS2 runs for the same branch.
-A successful host mixer/CDVD mock test **does not** prove SPU2 output or
-optical-disc reads in Play! / PCSX2. Keep the PR draft until the real
-EE build and emulator captures pass.
+Use emulator or hardware playback to validate SPU2 output and disc reads
+in addition to the host tests. Play! verified the English Talk bank with
+a resident greeting and the interactive quick-reply menu. Keep the PR
+draft through the PCSX2 acceptance walkthrough.
 
 ## PS2-7 exact-content GS upload suppression
 

@@ -50,12 +50,20 @@ def inspect_causality(scripted, idle, threshold=MIN_CONTROL_DIVERGENCE, controll
     if len({str(Path(p).resolve()) for p in scripted + idle}) != 6:
         raise ValueError("All six capture images must be distinct")
     sha = check_controller_reports(scripted, idle) if controller else None
-    progression = inspect_story(scripted)
     active = [_sample(p) for p in scripted]
     baseline = [_sample(p) for p in idle]
-    changes = [_changed(a,b) for a,b in zip(active,baseline)]
+    changes = [_changed(a, b) for a, b in zip(active, baseline)]
+    if controller:
+        # Both post-input captures can land in the same Story cutscene.
+        # Require departure from the opening and divergence from idle at
+        # both capture times so title animation and autoplay cannot pass.
+        departed = all(_changed(active[0], frame) >= threshold for frame in active[1:])
+        progression = "left_opening" if departed else "opening_departure_not_proven"
+    else:
+        progression = inspect_story(scripted)["status"]
+        departed = progression == "large_scene_transitions_observed"
     passes = (
-        progression["status"] == "large_scene_transitions_observed"
+        departed
         and changes[0] < threshold and changes[1] >= threshold and changes[2] >= threshold
     )
     success = "controller_input_changes_scenes" if controller else "scripted_input_changes_scenes"
@@ -64,7 +72,7 @@ def inspect_causality(scripted, idle, threshold=MIN_CONTROL_DIVERGENCE, controll
         "input_source": "play_qt_virtual_pad" if controller else "diagnostic_elf",
         "iso_sha256": sha,
         "minimum_control_divergence": threshold,
-        "scripted_progression": progression["status"],
+        "scripted_progression": progression,
         "aligned_frame_difference": {
             "before_input": round(changes[0], 6),
             "after_first_input": round(changes[1], 6),

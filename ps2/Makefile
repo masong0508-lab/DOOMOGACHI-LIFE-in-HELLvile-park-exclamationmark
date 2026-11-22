@@ -79,7 +79,7 @@ DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
 GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
-GAME_LIBS := $(EE_LIBS) -laudsrv -lcdvd
+GAME_LIBS := $(EE_LIBS) -laudsrv
 GAME_BIN := build/doomogachi_ps2_game.elf
 # CI-only synthetic Start -> Story -> New Story acceptance diagnostic.
 # Shared core and subsystem startup are unchanged; just substitute

@@ -79,6 +79,31 @@ class StoryCausalityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"threshold"):
                 inspect_causality([open_a,scene1,scene2],[open_b,idle1,idle2],threshold=0)
 
+            # The controller can reach Story at both snapshots while the
+            # cutscene still uses the same background.
+            captures = []
+            for side, images in (("keys", [open_a, scene1, scene1_clone]),
+                                 ("idle", [open_b, idle1, idle2])):
+                directory = folder / side
+                directory.mkdir()
+                frames = [directory / f"boot-{i}.png" for i in range(1, 4)]
+                for frame, image in zip(frames, images):
+                    shutil.copyfile(image, frame)
+                keys = [{"key": "Return", "seconds": 6}, {"key": "z", "seconds": 8},
+                        {"key": "z", "seconds": 10}] if side == "keys" else []
+                (directory / "report.json").write_text(json.dumps(dict(
+                    boot_media_type="disc", boot_image_sha256="a" * 64,
+                    capture_offsets_seconds=[3, 12, 22], x11_key_events=keys,
+                    pngs=[frame.name for frame in frames],
+                )))
+                captures.append(frames)
+            self.assertEqual(inspect_causality(*captures, controller=True)["status"],
+                             "controller_input_changes_scenes")
+            shutil.copyfile(scene1, captures[1][1])
+            shutil.copyfile(scene1_clone, captures[1][2])
+            self.assertEqual(inspect_causality(*captures, controller=True)["status"],
+                             "input_causality_not_proven")
+
 
 if __name__ == "__main__":
     unittest.main()
