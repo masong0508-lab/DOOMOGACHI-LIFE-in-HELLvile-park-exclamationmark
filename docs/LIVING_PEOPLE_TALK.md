@@ -99,6 +99,29 @@ Track first-reply and follow-up latency, total disc reads, and worst
 frame time while the dialogue opens and scrolls. The story and relationship
 gates still apply to the linked choices.
 
+### Adaptiveness across one life
+
+Use the same resident's routine, temperament, relationships, and confirmed
+memories from their first day through the end of their story. Add small
+encounters at each stage, with enough variants that two residents who
+share an interest can still respond differently. The examples below are
+writing and playtest targets.
+
+| Stage | What the resident can react to | First encounter to write and test |
+| --- | --- | --- |
+| Creator and move-in | Saved traits, actual household, interests, and first meeting | A shy plant lover invites the player to look at a sprout. An outgoing neighbor with the same interest asks for help naming it. Both react to a real planting or gift on the next visit. |
+| Preset island or first Story visit | Resident profile, familiar places, and relationships already in the world | A regular at Brimstone Bites points out where the baker works. The baker knows the shop and their own routine, and learns the player's name at their own introduction. |
+| Ordinary days | Live activity, needs, weather or time where observed, and completed shared events | A friend changes their plan when tired, then asks to reschedule when their routine makes room. A neighbor passing by can react to what they see at the venue. |
+| Days leading to a bad ending | Visible household needs, losses, and absence of close ties | An empty chair prompts a worried check-in when its usual occupant is missing. A visit, act of care, or reconciliation changes the next check-in only if the simulation records it. Keep the finale resolution in the existing story rules. |
+| Ending and later visits | Reached ending, surviving residents, cleared chapter gates, and the actual state of the park | A resident remembers a parade they attended, or tells the player why they stayed away. In **New life here**, a different avatar meets the same surviving residents with their own relationships. |
+| New Game+ | Run flag and documented carryover of endings seen and their counts | The new run can have an authored opening echo. A first meeting still uses the new world's relationships. Prior friendships and promises require an explicit carryover design before they can surface. |
+
+Replay each stage with two personality profiles, then change one world fact
+and check that only residents with grounds to know it change their response.
+Check a warm reunion, a missed plan, a resident who needs time alone, and a
+visit after save and reload. The test should verify an ensuing action or a
+visible change in routine or relationship when an encounter promises one.
+
 ## Next milestones, in priority order
 
 1. **Coherence/fact tests**: 10+ turn scripted conversations with explicit
