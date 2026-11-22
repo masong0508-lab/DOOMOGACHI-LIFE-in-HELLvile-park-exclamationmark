@@ -35,10 +35,14 @@ def check_controller_reports(active, idle):
         raise ValueError("Controller and idle runs must capture at the same times")
     keys = driven.get("x11_key_events", [])
     if (control.get("x11_key_events") != [] or not isinstance(keys, list)
+            or len(keys) < 3
             or any(not isinstance(e, dict) or type(e.get("seconds")) is not int for e in keys)
-            or [e.get("key") for e in keys] != ["Return", "z", "z"]
-            or not offsets[0] < keys[0]["seconds"] < keys[1]["seconds"] < keys[2]["seconds"] < offsets[1]):
-        raise ValueError("Expected START/CROSS/CROSS between the first two frames and no keys in the idle run")
+            or keys[0].get("key") != "Return" or any(e.get("key") != "z" for e in keys[1:])):
+        raise ValueError("Expected START, two or more CROSS presses, and no keys in the idle run")
+    times = [event["seconds"] for event in keys]
+    if (not offsets[0] < times[0] < times[-1] < offsets[1] < offsets[2]
+            or any(a >= b for a, b in zip(times, times[1:]))):
+        raise ValueError("Controller keys must be ordered between the opening and middle captures")
     return sha
 
 

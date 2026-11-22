@@ -315,7 +315,7 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_game.iso \
-              --out ps2/build/play-pad-idle --seconds 22 --early-capture 3 --software-gl
+              --out ps2/build/play-pad-idle --seconds 34 --early-capture 9 --middle-capture 24 --software-gl
       - name: Require Qt virtual-controller progression on the gameplay ISO
         if: always()
         timeout-minutes: 4
@@ -325,8 +325,8 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_game.iso \
-              --out ps2/build/play-pad-keys --seconds 22 --early-capture 3 --software-gl \
-              --x11-key Return@6 --x11-key z@8 --x11-key z@10
+              --out ps2/build/play-pad-keys --seconds 34 --early-capture 9 --middle-capture 24 --software-gl \
+              --x11-key Return@12 --x11-key z@14 --x11-key z@16 --x11-key z@18 --x11-key z@20
           python3 ps2/tools/check_story_causality.py \
             --controller \
             --scripted ps2/build/play-pad-keys/boot-1.png ps2/build/play-pad-keys/boot-2.png ps2/build/play-pad-keys/boot-3.png \

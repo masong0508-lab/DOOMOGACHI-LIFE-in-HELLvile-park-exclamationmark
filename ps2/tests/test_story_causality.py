@@ -37,6 +37,16 @@ class ControllerReportsTests(unittest.TestCase):
                 (frames[0].parent / "report.json").write_text(json.dumps(report))
             self.assertEqual(check_controller_reports(*pairs), "a" * 64)
 
+            for report in reports:
+                report["capture_offsets_seconds"] = [9, 24, 34]
+            reports[0]["x11_key_events"] = [
+                {"seconds": seconds, "key": key} for seconds, key in
+                ((12, "Return"), (14, "z"), (16, "z"), (18, "z"), (20, "z"))
+            ]
+            for frames, report in zip(pairs, reports):
+                (frames[0].parent / "report.json").write_text(json.dumps(report))
+            self.assertEqual(check_controller_reports(*pairs), "a" * 64)
+
             idle_report = pairs[1][0].parent / "report.json"
             idle_report.write_text(json.dumps(dict(reports[1], boot_image_sha256="b" * 64)))
             with self.assertRaisesRegex(ValueError, "same ISO"):

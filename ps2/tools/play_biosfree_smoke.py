@@ -24,6 +24,7 @@ from check_play_frames import inspect
 # game ISO through Play!'s real virtual PADMAN; never confuse them with
 # direct PS2_SCRIPTED_STORY_PROBE input in the test-only ELF.
 X11_TEST_KEYS = frozenset(("Return", "z", "x", "Up", "Down", "Left", "Right"))
+X11_KEY_HOLD_SECONDS = 0.18
 
 
 def parse_x11_key_events(raw, duration):
@@ -53,8 +54,14 @@ def send_x11_key(key):
         try:
             subprocess.run(["xdotool", "windowfocus", "--sync", wid],
                            capture_output=True, check=True, timeout=8)
-            subprocess.run(["xdotool", "key", "--clearmodifiers", "--delay", "120", key],
-                           capture_output=True, check=True, timeout=8)
+            # Keep the button down across several 30 Hz input polls.
+            try:
+                subprocess.run(["xdotool", "keydown", "--clearmodifiers", key],
+                               capture_output=True, check=True, timeout=8)
+                time.sleep(X11_KEY_HOLD_SECONDS)
+            finally:
+                subprocess.run(["xdotool", "keyup", key],
+                               capture_output=True, check=True, timeout=8)
             return wid
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             last_error = str(exc)
@@ -73,7 +80,9 @@ def main():
     p.add_argument("--require-motion", action="store_true",
                    help="For GS animation diagnostics, require changed viewport pixels")
     p.add_argument("--early-capture", type=int, default=0, metavar="SECOND",
-                   help="Optional extra early PNG before the normal 12s and final captures")
+                   help="Optional extra early PNG before the middle and final captures")
+    p.add_argument("--middle-capture", type=int, default=12, metavar="SECOND",
+                   help="Time for the middle capture (default: 12 seconds)")
     p.add_argument("--x11-key", action="append", default=[], metavar="KEY@SECOND",
                    help="EXPERIMENTAL Play! Qt keyboard injection (Return=START, z=CROSS); repeat for more keys")
     args = p.parse_args()
@@ -88,8 +97,8 @@ def main():
         raise SystemExit("--launch elf requires a native PS2 EE executable")
     if args.seconds < 15:
         raise SystemExit("At least 15 seconds needed for a meaningful boot probe")
-    if args.early_capture and not 1 <= args.early_capture < 12:
-        raise SystemExit("--early-capture must be between 1 and 11 seconds")
+    if not 0 <= args.early_capture < args.middle_capture < args.seconds:
+        p.error("Require 0 <= early capture < middle capture < final capture")
     if not os.environ.get("DISPLAY"):
         raise SystemExit("DISPLAY is unset: run with xvfb-run (or an X11 desktop)")
     for binary in (("flatpak", "import", "xdotool") if key_events else ("flatpak", "import")):
@@ -118,7 +127,9 @@ def main():
         proc = subprocess.Popen(cmd, stdout=logfile, stderr=subprocess.STDOUT)
         started = time.monotonic()
         try:
-            offsets = (args.early_capture, 12, args.seconds) if args.early_capture else (12, args.seconds)
+            offsets = (args.middle_capture, args.seconds)
+            if args.early_capture:
+                offsets = (args.early_capture,) + offsets
             # Combine X11 key deliveries and screenshots on the SAME
             # monotonic clock. No input is injected into the game code.
             events = [(when, 0, "screenshot", i) for i, when in enumerate(offsets, 1)]
