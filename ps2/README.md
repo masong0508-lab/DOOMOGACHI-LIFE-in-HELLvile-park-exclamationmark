@@ -192,11 +192,14 @@ simulation. The existing memory-card format stores the results.
 
 Free Play venue menus offer one meetup choice per available guest. A
 confirmed meetup stays with the named resident in Story and Free Play.
-In Talk, **Options > Our history** recalls completed visits by location.
-PS2 saves hold 128 distinct visits across resident and avatar pairs.
-They remain available after the corresponding Town News headline scrolls
-out. Talk waits through a full pause after a controller input before a
-resident starts an idle exchange.
+In Talk, **Options > Our history > Outing journal** lists completed visits
+by date. The PS2 stores up to 1,536 outings per save, about 32 game years
+at one outing per week across the island. The journal can jump to the
+oldest or newest page. Optional elder memory lapses grow more frequent
+over time for affected residents, and a dated journal entry can help
+them remember. The archive stays available after Town News rotates.
+Talk waits through a full pause after controller input before a resident
+starts an idle exchange.
 
 Same-day meetup plans now survive a memory-card save and reload. They
 belong to the character who made them, and a guest's saved activity

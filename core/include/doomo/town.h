@@ -157,6 +157,7 @@ enum {
     OPT_NOTES,                /* (LV11) content notes: 0 every time, 1 first time only; machine-wide */
     OPT_MEMORIAL,             /* (LV11) show the town's dead by name on the Vault's memorial wall: 0 off, 1 on; machine-wide */
 #endif
+    OPT_MEMORY_LAPSES,        /* optional elder recall changes, saved with the island */
     OPT2_END
 };
 enum { STICK_TURN = 0, STICK_STRAFE = 1 };

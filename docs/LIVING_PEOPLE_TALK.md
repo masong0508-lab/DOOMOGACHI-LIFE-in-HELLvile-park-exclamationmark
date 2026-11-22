@@ -444,20 +444,41 @@ venue comes first. **Remember when we...?** uses their newest matching
 visit. The response reflects the resident's current mood and personality.
 Recounting a visit adds no relationship points, items, or headlines.
 
-Completed visits use the optional `TVIS` save chunk. Each entry takes
-three bytes and records the two people and the venue. Returning to the
-same venue with the same person refreshes that entry. Once full, the
-archive drops its oldest entry. Existing saves import completed visits
-that still appear in Town News. A visit then survives news rotation and
-recent-topic eviction. When moving to a smaller archive, the game keeps
-the newest records that fit.
+**Options > Our history > Outing journal** lists actual outings with the
+selected resident. Entries carry the island calendar date and can be
+browsed by page, with shortcuts to the oldest and newest pages. A
+return trip on a different day gets its own entry. An identical same-day
+trip is recorded once.
 
-| Platform | Saved visit records | Maximum payload |
-|---|---:|---:|
-| GBA | 24 | 72 bytes |
-| PS1 with Talk | 64 | 192 bytes |
-| PS2 and native | 128 | 384 bytes |
-| Dreamcast | 192 | 576 bytes |
+The optional `TVIS` v2 chunk holds five bytes per outing. When it fills,
+the journal keeps recent trips in full and thins crowded older months.
+It keeps a representative visit for each older month when space allows,
+preferring to trim repeated outings first. Older `TVIS` entries remain
+readable as undated outings, and saves that predate the archive can
+import dates for completed visits still in Town News. Cross-console
+loads keep the newest compatible records within the destination budget.
+
+| Platform | Outings per save | Approximate span at one outing per game week across the island | Maximum payload |
+|---|---:|---:|---:|
+| GBA | 112 | 2.3 years | 627 bytes |
+| PS1 Talk profile | 384 | 8 years | 2,051 bytes |
+| Dreamcast | 768 | 16 years | 4,099 bytes |
+| PS2 and native | 1,536 | 32 years | 7,939 bytes |
+
+One game year is 336 days. The span depends on how often the town
+records outings. A daily-outing stress test retains an early trip for
+8 years in the PS1 profile, 16 on Dreamcast, and 32 on PS2. The archive
+preserves samples of those older months as the island gets busier.
+Outing dates cover the first 195 game years.
+
+**Options > Life Sim > Elder memory lapses** is off by default. When
+enabled, some elders develop occasional difficulty recalling outings.
+The game tracks progression from their first shared outing or memory
+conversation with the option enabled. Over time, residents can recall an
+outing clearly, remember part of it, or ask for help placing it. The
+same day's reply is consistent across reloads. Selecting a dated journal
+entry can help them recall details. The journal preserves the shared
+record, and the simulation updates recall only during relevant actions.
 
 Moving the Talk cursor, changing speakers, and clicking a choice restart
 the pause timer. A resident can start a spontaneous exchange after a

@@ -23,6 +23,7 @@
  */
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
+#include "doomo/save_budget.h"
 #include "doomo/playas.h"
 #include "doomo/family.h"
 #include "doomo/resident_acc.h"
@@ -39,13 +40,15 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY };
+enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL, K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
 #define TROWS 40
 #define TSTOCK 24
+#define JOURNAL_PAGE 8
+#define JOURNAL_LAST 0xFFFFu
 
 static struct TalkScn {
     TalkState s;
@@ -57,6 +60,9 @@ static struct TalkScn {
     uint16_t  topic, idle, followup;     /* transient subject offered by a live reply */
     int       nrows, nstock;
     TRow      row[TROWS];
+    TalkVisit journal[JOURNAL_PAGE + 1];
+    char      journal_date[JOURNAL_PAGE][16];
+    uint16_t  journal_offset;
     uint16_t  stock[TSTOCK];
     TalkSugg  quick[TALK_QUICK_MAX];     /* the replies to what was just said (top of the main page) */
     uint8_t   nquick, followup_place;    /* outing index + 1 from the last day-plan reply */
@@ -820,13 +826,17 @@ static void build_more(void)
 }
 
 /* Sample only on menu entry or when a player chooses a memory. */
+static int meet_memory_minor(int id)
+{
+    if (T.to < 0 || T.to >= T.s.nparts || (T.s.part[T.to].flags & TPF_LEFT) ||
+        id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id)) return -1;
+    return T.s.conv.aud.any_minor || talk_safe_minor(id) || talk_safe_minor(T.avatar);
+}
+
 static int meet_memory_venues(int id, int *venues, int capacity)
 {
-    int minor;
-    if (T.to < 0 || T.to >= T.s.nparts || (T.s.part[T.to].flags & TPF_LEFT) ||
-        id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id)) return 0;
-    minor = T.s.conv.aud.any_minor || talk_safe_minor(id) || talk_safe_minor(T.avatar);
-    return talk_visit_venues(id, T.avatar, minor, venues, capacity);
+    int minor = meet_memory_minor(id);
+    return minor < 0 ? 0 : talk_visit_venues(id, T.avatar, minor, venues, capacity);
 }
 
 static int last_meet_venue(int id)
@@ -868,6 +878,7 @@ static void build_history(void)
         if (venue >= 0) add_row(K_MEET_PLAN, 1, venue);
         count = meet_memory_venues(id, venues, ACT_COUNT);
         for (i = 0; i < count; i++) add_row(K_MEET_MEMORY, 0, venues[i]);
+        if (count) add_row(K_JOURNAL, 0, 0);
     }
     if (m) {
         /* Knowledge is revealed only by a real earlier conversation.
@@ -894,6 +905,42 @@ static void build_history(void)
             add_row(K_HISTORY_REPEAT, TALK_SHARED_INVITED, 0);
         }
     }
+    list_reset();
+}
+
+static void visit_date_label(char *buf, size_t cap, uint32_t day)
+{
+    uint32_t calendar = day + 3u * SIM_MONTH_DAYS;   /* the island opens April 1 */
+    if (day == TALK_VISIT_UNDATED) doomo_snprintf(buf, cap, "Undated");
+    else doomo_snprintf(buf, cap, "Y%u %u/%u", (unsigned)(calendar / SIM_YEAR_DAYS + 1u),
+                        (unsigned)((calendar / SIM_MONTH_DAYS) % 12u + 1u),
+                        (unsigned)(calendar % SIM_MONTH_DAYS + 1u));
+}
+
+static void build_journal(int offset)
+{
+    int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+    int minor = meet_memory_minor(id), count, i;
+    if (minor < 0) { build_history(); return; }
+    if (offset == JOURNAL_LAST) {
+        int total = talk_visit_page(id, T.avatar, minor, 0, NULL, SAVE_TVIS_VISITS);
+        offset = total > 0 ? ((total - 1) / JOURNAL_PAGE) * JOURNAL_PAGE : 0;
+    }
+    count = talk_visit_page(id, T.avatar, minor, offset, T.journal, JOURNAL_PAGE + 1);
+    if (!count) { build_history(); return; }
+    T.page = PG_JOURNAL;
+    T.journal_offset = (uint16_t)offset;
+    T.nrows = 0;
+    if (offset > 0) add_row(K_JOURNAL_NEWER, 0, offset - JOURNAL_PAGE);
+    for (i = 0; i < count && i < JOURNAL_PAGE; i++) {
+        visit_date_label(T.journal_date[i], sizeof T.journal_date[i], T.journal[i].day);
+        add_row(K_JOURNAL_VISIT, i, T.journal[i].venue);
+    }
+    if (count > JOURNAL_PAGE) {
+        add_row(K_JOURNAL_OLDER, 0, offset + JOURNAL_PAGE);
+        if (!offset) add_row(K_JOURNAL_OLDER, 1, JOURNAL_LAST);
+    }
+    if (offset > JOURNAL_PAGE) add_row(K_JOURNAL_NEWER, 1, 0);
     list_reset();
 }
 
@@ -1327,6 +1374,12 @@ static const char *row_text(int index, char *buf)
         break;
     case K_MEET_MEMORY:
         doomo_snprintf(buf, 48, "Our visit to %s", sim_venue_name(r->v));
+        break;
+    case K_JOURNAL: doomo_snprintf(buf, 48, "Outing journal >"); break;
+    case K_JOURNAL_NEWER: doomo_snprintf(buf, 48, "%s", r->arg ? "<< Newest outings" : "< Newer outings"); break;
+    case K_JOURNAL_OLDER: doomo_snprintf(buf, 48, "%s", r->arg ? "Oldest outings >>" : "Older outings >"); break;
+    case K_JOURNAL_VISIT:
+        doomo_snprintf(buf, 48, "%s - %s", T.journal_date[r->arg], sim_venue_name(r->v));
         break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
@@ -1838,17 +1891,33 @@ static void concern_action(void)
     }
 }
 
-static void recall_meetup(int id, int venue)
+static void recall_meetup(int id, int venue, int cue, uint32_t day)
 {
     const DoomoResident *r = town_res(id);
     const char *ending = "I'd like to catch up again sometime.";
-    char line[128];
+    const char *place = sim_venue_name(venue);
+    int recall = talk_visit_recall(id, cue);
+    char line[128], date[16];
+    if (day == TALK_VISIT_UNDATED) doomo_snprintf(T.you, sizeof T.you, "Remember when we met at %s?", place);
+    else {
+        visit_date_label(date, sizeof date, day);
+        doomo_snprintf(T.you, sizeof T.you, "Remember %s on %s?", place, date);
+    }
+    if (recall != TALK_RECALL_CLEAR) {
+        show_scene_reply(id, recall == TALK_RECALL_HAZY
+            ? "That sounds familiar. The details are a little hazy today."
+            : cue ? "I can't quite place it today. I'm glad you kept it in the journal."
+                  : "I can't quite place it today. Would you look in the journal with me?", TC_NONE);
+        return;
+    }
     if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
         ending = "I'm glad we had that time together.";
     else if (RES_PERSONA(r, PERS_EXPRESSION) >= 10)
         ending = "I'd circle that day on my calendar!";
-    doomo_snprintf(T.you, sizeof T.you, "Remember when we met at %s?", sim_venue_name(venue));
-    doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", sim_venue_name(venue), ending);
+    if (day == TALK_VISIT_UNDATED)
+        doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", place, ending);
+    else
+        doomo_snprintf(line, sizeof line, "I remember our %s outing to %s. %s", date, place, ending);
     show_scene_reply(id, line, TC_NONE);
 }
 
@@ -1864,7 +1933,7 @@ static void reminisce(unsigned selected)
      * supplies a specific event, which is rechecked at activation time. */
     if (!selected) {
         int venue = last_meet_venue(target);
-        if (venue >= 0) { recall_meetup(target, venue); return; }
+        if (venue >= 0) { recall_meetup(target, venue, 0, TALK_VISIT_UNDATED); return; }
         if (talk_mem_shared(target, TALK_SHARED_PLAYED)) selected = TALK_SHARED_PLAYED;
         else if (talk_mem_shared(target, TALK_SHARED_GIFTED)) selected = TALK_SHARED_GIFTED;
         else if (talk_mem_shared(target, TALK_SHARED_INVITED)) selected = TALK_SHARED_INVITED;
@@ -2141,8 +2210,20 @@ static void activate(int i)
         int venues[ACT_COUNT], count, j, id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
         count = meet_memory_venues(id, venues, ACT_COUNT);
         for (j = 0; j < count; j++) if (venues[j] == r->v) break;
-        if (j < count) recall_meetup(id, r->v);
+        if (j < count) recall_meetup(id, r->v, 0, TALK_VISIT_UNDATED);
         else build_history();
+        break;
+    }
+    case K_JOURNAL: case K_JOURNAL_NEWER: case K_JOURNAL_OLDER:
+        build_journal(r->v);
+        break;
+    case K_JOURNAL_VISIT: {
+        int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+        int minor = meet_memory_minor(id);
+        const TalkVisit *visit = &T.journal[r->arg];
+        if (minor >= 0 && talk_visit_has(id, T.avatar, minor, visit))
+            recall_meetup(id, visit->venue, 1, visit->day);
+        else build_journal(T.journal_offset);
         break;
     }
     case K_CONCERN: build_concern(); break;
@@ -2234,7 +2315,7 @@ static void change_to(int to)
     T.followup = TC_NONE;
     T.to = (int8_t)to;
     if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
-    else if (T.page == PG_HISTORY) build_history();
+    else if (T.page == PG_HISTORY || T.page == PG_JOURNAL) build_history();
     else if (T.page == PG_MAIN) {
         int c;
         build_main();
@@ -2244,6 +2325,14 @@ static void change_to(int to)
         for (c = 0; c < T.nrows; c++)
             if (T.row[c].kind == K_CAT) { T.list.sel = c; break; }
     }
+}
+
+static void back_page(void)
+{
+    T.pending = 0;
+    if (T.page == PG_JOURNAL) build_history();
+    else if (T.page == PG_HISTORY) build_more();
+    else build_main();
 }
 
 /* the panel: header 16 px + the list rows (the draw and the pointer share it) */
@@ -2275,7 +2364,7 @@ static int pointer_click(int x, int y)
     }
     if (y < py) return 0;
     if (y < py + 17) {
-        if (T.page != PG_MAIN) { T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
+        if (T.page != PG_MAIN) back_page();
         return 1;
     }
     if (ui_list_click(&T.list, 6, py + 17, sw - 12, x, y) == UI_SELECT) activate(T.list.sel);
@@ -2342,7 +2431,7 @@ static void talk_update(void)
     if (r == UI_SELECT) { restart_idle_clock(); activate(T.list.sel); }
     else if (r == UI_CANCEL) {
         restart_idle_clock();
-        if (T.page != PG_MAIN) { T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
+        if (T.page != PG_MAIN) back_page();
         else bye();
     } else if (r == UI_CHANGED || btn_down(BTN_UP | BTN_DOWN | BTN_L | BTN_R | BTN_A | BTN_B | BTN_SELECT))
         restart_idle_clock();
@@ -2375,6 +2464,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_FEED: t = "Offer what food?"; break;
     case PG_HEAL: t = "Choose a treatment"; break;
     case PG_HISTORY: t = "Our history"; break;
+    case PG_JOURNAL: t = "Outing journal"; break;
     case PG_CONCERN: t = "What's on their mind?"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
@@ -2483,14 +2573,14 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern", "journal" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
-    o->page = pages[T.page < 13 ? T.page : 0];
+    o->page = pages[T.page < DOOMO_COUNTOF(pages) ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
     o->nparts = T.n;
@@ -2509,7 +2599,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

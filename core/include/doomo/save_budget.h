@@ -112,16 +112,25 @@ uint32_t save_budget_declared_max(uint32_t tag);
 #define SAVE_EXT_MAX_TALK     736u
 #endif
 #define SAVE_BUDGET_TALK_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR)
-/* Completed Talk visits use three bytes per distinct guest, avatar and venue. */
+/* Dated outings use five bytes per visit, and each tracked elder uses four
+ * bytes. The header is a u16 visit count and a u8 elder count. */
+#define SAVE_TVIS_WIRE_VISITS 1536u
+#define SAVE_TVIS_WIRE_ELDERS   64u
+#define SAVE_TVIS_WIRE_MAX (3u + SAVE_TVIS_WIRE_VISITS * 5u + SAVE_TVIS_WIRE_ELDERS * 4u)
 #if defined(DOOMO_PLATFORM_GBA)
-#define SAVE_EXT_MAX_TVIS  72u
+#define SAVE_TVIS_VISITS  112u
+#define SAVE_TVIS_ELDERS   16u
 #elif defined(DOOMO_PLATFORM_PS1)
-#define SAVE_EXT_MAX_TVIS 192u
+#define SAVE_TVIS_VISITS  384u
+#define SAVE_TVIS_ELDERS   32u
 #elif defined(DOOMO_PLATFORM_DC)
-#define SAVE_EXT_MAX_TVIS 576u
+#define SAVE_TVIS_VISITS  768u
+#define SAVE_TVIS_ELDERS   64u
 #else
-#define SAVE_EXT_MAX_TVIS 384u
+#define SAVE_TVIS_VISITS SAVE_TVIS_WIRE_VISITS
+#define SAVE_TVIS_ELDERS SAVE_TVIS_WIRE_ELDERS
 #endif
+#define SAVE_EXT_MAX_TVIS (3u + SAVE_TVIS_VISITS * 5u + SAVE_TVIS_ELDERS * 4u)
 #define SAVE_BUDGET_TVIS_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TVIS) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 

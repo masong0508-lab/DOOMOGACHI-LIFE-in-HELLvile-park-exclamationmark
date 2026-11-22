@@ -64,7 +64,7 @@ TEST(talk_visit_archive_imports_legacy_news_and_filters_by_participant)
     CHECK(save_game(1));      /* legacy visit history exists only in the newspaper */
     CHECK(load_game(1));
     sim_init();
-    CHECK_EQ(doomo_save_ext_tvis->size(), 9);
+    CHECK_EQ(doomo_save_ext_tvis->size(), 3 + 3 * 5);
     for (i = 0; i < NEWS_MAX; i++) sim_news_rec(NT_PIE, 0, NEWS_IDS(ID_NANA, NEWS_NONE, NEWS_NONE));
     CHECK_EQ(talk_visit_venues(ID_NANA, DOOMO_PLAYER_ID, 0, venues, ACT_COUNT), 2);
     CHECK_EQ(venues[0], ACT_CONCERT);
@@ -79,23 +79,139 @@ TEST(talk_visit_archive_keeps_recent_records_within_the_save_budget)
 {
     const DoomoSaveExt *ext = doomo_save_ext_tvis;
     uint8_t bytes[SAVE_EXT_MAX_TVIS];
-    int i, venue, cap = SAVE_EXT_MAX_TVIS / 3u;
+    TalkVisit row;
+    int i, cap = SAVE_TVIS_VISITS;
     uint32_t size;
     premade_town();
     sim_init();
     CHECK_EQ(save_budget_declared_max(SAVE_EXT_TAG_TVIS), SAVE_EXT_MAX_TVIS);
-    for (i = 0; i < cap; i++) talk_visit_note(i, DOOMO_PLAYER_ID, ACT_PARK);
-    talk_visit_note(0, DOOMO_PLAYER_ID, ACT_PARK); /* moved forward, once */
-    talk_visit_note(cap, DOOMO_PLAYER_ID, ACT_PARK);
-    CHECK_EQ(talk_visit_venues(1, DOOMO_PLAYER_ID, 0, &venue, 1), 0);
-    CHECK_EQ(talk_visit_venues(0, DOOMO_PLAYER_ID, 0, &venue, 1), 1);
+    for (i = 0; i < cap; i++) {
+        doomo_town.day = (uint32_t)i * 7u;
+        talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    }
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, cap - 1, &row, 1), 1);
+    CHECK_EQ(row.day, 0);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, &row, 1), 1);
+    CHECK_EQ(row.day, (cap - 1) * 7u);
+    doomo_town.day += 7u;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, cap - 1, &row, 1), 1);
+    CHECK_EQ(row.day, 0);     /* compact a crowded older month before dropping its anchor */
     size = ext->write(bytes, sizeof bytes);
-    CHECK_EQ(size, sizeof bytes);
-    CHECK(!ext->read(bytes, size - 1, 1));
+    CHECK_EQ(size, 3u + cap * 5u);
+    CHECK(!ext->read(bytes, size - 1, ext->version));
     CHECK_EQ(ext->size(), 0);
-    CHECK(ext->read(bytes, size, 1));
-    CHECK_EQ(talk_visit_venues(cap, DOOMO_PLAYER_ID, 0, &venue, 1), 1);
-    CHECK_EQ(venue, ACT_PARK);
+    CHECK(ext->read(bytes, size, ext->version));
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, cap + 1), cap);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, &row, 1), 1);
+    CHECK_EQ(row.venue, ACT_CAFE);
+    CHECK_EQ(row.day, doomo_town.day);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, cap - 1, &row, 1), 1);
+    CHECK_EQ(row.day, 0);
+    CHECK_EQ(talk_visit_page(ID_NANA, ID_RIVET, 0, 0, &row, 1), 0);
+}
+
+TEST(talk_visit_archive_keeps_repeat_outings_years_apart)
+{
+    const DoomoSaveExt *ext = doomo_save_ext_tvis;
+    uint32_t first_size, later_size;
+    premade_town();
+    sim_init();
+    doomo_town.day = 1;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    first_size = ext->size();
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK_EQ(ext->size(), first_size);
+    doomo_town.day += 25u * 336u;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    later_size = ext->size();
+    CHECK(later_size > first_size);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(ext->size(), later_size);
+}
+
+TEST(talk_visit_archive_retains_early_outings_under_daily_churn)
+{
+    TalkVisit oldest, newest;
+    unsigned day, end = SAVE_TVIS_VISITS / 4u * SIM_MONTH_DAYS;
+    premade_town();
+    sim_init();
+    talk_visit_note(ID_RIVET, DOOMO_PLAYER_ID, ACT_CAFE);
+    for (day = 1; day <= end; day++) {
+        doomo_town.day = day;
+        talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    }
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_visit_page(ID_RIVET, DOOMO_PLAYER_ID, 0, 0, &oldest, 1), 1);
+    CHECK_EQ(oldest.day, 0);
+    CHECK_EQ(oldest.venue, ACT_CAFE);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, &newest, 1), 1);
+    CHECK_EQ(newest.day, end);
+}
+
+TEST(talk_visit_archive_preserves_unknown_dates_from_v1)
+{
+    const DoomoSaveExt *ext = doomo_save_ext_tvis;
+    TalkVisit rows[2];
+    uint32_t record = NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    uint8_t v1[] = { (uint8_t)record, (uint8_t)(record >> 8), (uint8_t)(record >> 16) };
+    premade_town();
+    sim_init();
+    doomo_town.day = 77;
+    CHECK(ext->read(v1, sizeof v1, 1));
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, rows, 2), 2);
+    CHECK_EQ(rows[0].day, 77u);
+    CHECK_EQ(rows[1].day, TALK_VISIT_UNDATED);
+    CHECK(talk_visit_has(ID_NANA, DOOMO_PLAYER_ID, 0, &rows[1]));
+    CHECK(!talk_visit_has(ID_NANA, ID_RIVET, 0, &rows[1]));
+}
+
+TEST(talk_elder_recall_lapses_progress_and_journal_cues_help)
+{
+    uint32_t day, outset = 1700;
+    int misses[3] = {0}, cues = 0, answer = -1, repeat = TALK_RECALL_CLEAR;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 10, TOWN_POP_PREMADE);   /* Nana is susceptible on this island */
+    RES_SET_STAGE(town_res(ID_NANA), LIFE_ELDER);
+    sim_init();
+    doomo_town.day = outset;
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 0);
+    opt_set(OPT_MEMORY_LAPSES, 1);
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK_EQ(talk_visit_recall(ID_NANA, 0), TALK_RECALL_CLEAR);
+    for (day = 1; day < 420; day++) {
+        int recall, cue;
+        doomo_town.day = outset + day;
+        recall = talk_visit_recall(ID_NANA, 0);
+        cue = talk_visit_recall(ID_NANA, 1);
+        CHECK(cue <= recall);
+        if (day < 28) CHECK_EQ(recall, TALK_RECALL_CLEAR);
+        else misses[day < 84 ? 0 : day < 168 ? 1 : 2] += recall != TALK_RECALL_CLEAR;
+        cues += cue < recall;
+        CHECK_EQ(talk_visit_recall(ID_RIVET, 0), TALK_RECALL_CLEAR);  /* adult */
+        if (day >= 168 && recall == TALK_RECALL_LAPSE) { answer = (int)day; repeat = recall; }
+    }
+    CHECK(misses[0] > 0 && misses[0] * 84 < misses[1] * 56);
+    CHECK(misses[1] * 252 < misses[2] * 84);
+    CHECK(cues > 0 && answer >= 0);
+    if (answer < 0) return;
+    doomo_town.day = outset + (uint32_t)answer;
+    CHECK(save_game(1));
+    town_new(TOWN_FREEPLAY, 12, TOWN_POP_PREMADE);
+    CHECK(load_game(1));
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 1);
+    CHECK_EQ(talk_visit_recall(ID_NANA, 0), repeat);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 2), 1);
+    opt_set(OPT_MEMORY_LAPSES, 0);
+    CHECK_EQ(talk_visit_recall(ID_NANA, 0), TALK_RECALL_CLEAR);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 2), 1);
 }
 
 static uint16_t concept(const char *key)

@@ -779,6 +779,17 @@ int  talk_mem_shared(int id, unsigned event_flags);
 void talk_visit_note(int guest, int avatar, int venue);
 void talk_visit_import_news(void);
 int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity);
+#define TALK_VISIT_UNDATED 0xFFFFu
+typedef struct TalkVisit {
+    uint32_t day;
+    int venue;
+} TalkVisit;
+/* Fetch a page, newest first. A null page counts the matching records,
+ * up to capacity. Records made before dates were saved use UNDATED. */
+int talk_visit_page(int guest, int avatar, int minor, int offset, TalkVisit *page, int capacity);
+int talk_visit_has(int guest, int avatar, int minor, const TalkVisit *visit);
+enum { TALK_RECALL_CLEAR, TALK_RECALL_HAZY, TALK_RECALL_LAPSE };
+int talk_visit_recall(int guest, int cue);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte

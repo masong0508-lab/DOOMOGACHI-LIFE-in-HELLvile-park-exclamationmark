@@ -49,39 +49,54 @@ const DoomoOptionInfo doomo_option2_info[OPT2_COUNT] = {
     /* OPT_SLIDER_RANGE */ { "Slider range", 4, 0, v_srange_, OPTPAGE_CHEATS }     /* (CR-SLIDERX) a cheat */,
 #if OPT_LV11
     /* OPT_NOTES  */ { "Content notes", 2, 0, v_notes_, OPTPAGE_GAME },
-    /* OPT_MEMORIAL */ { "Memorial names", 2, 1, v_off_on_, OPTPAGE_GAME }
+    /* OPT_MEMORIAL */ { "Memorial names", 2, 1, v_off_on_, OPTPAGE_GAME },
 #endif
+    /* OPT_MEMORY_LAPSES */ { "Elder memory lapses", 2, 0, v_off_on_, OPTPAGE_SIM }
 };
 
 #define STICK_IDX (OPT_STICK_MODE - OPT2_FIRST)
 #define SRANGE_IDX (OPT_SLIDER_RANGE - OPT2_FIRST)
-/* the ids before OPT_STICK_MODE, a hole where the stick bit lives, then OPT_SLIDER_RANGE (CR-SLIDERX: x1..x4 as 0..3) */
+#define LAPSES_IDX (OPT_MEMORY_LAPSES - OPT2_FIRST)
+#define OPT2_LAPSES_WIRE (SRANGE_IDX + 3)
+/* The stick bit leaves a hole before slider range in the original option bytes. */
 static uint8_t s_opt2[SRANGE_IDX + 1] = { MATURE_OFF, 1, 1, 1 };
-/* quiet: applying a record, no writes back, no platform calls; cfg_dirty: a machine-wide option changed
- * since the record was last written. One byte for both (GBA EWRAM: STKOPT paid for its new option with these bits). */
+static struct {
+    uint8_t quiet : 1, cfg_dirty : 1, stick : 1, lapses : 1;
 #if OPT_LV11
-/* the bit options (OPT_SLIDER_RANGE is the byte after the stick hole): OPT_STICK_MODE, OPT_NOTES, OPT_MEMORIAL (stored inverted: zero is On) */
-static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1, notes : 1, memo_off : 1; } s_fl;
-typedef char opt2_bits_are_the_last_ids[OPT2_END == OPT_MEMORIAL + 1 && OPT_NOTES == OPT_SLIDER_RANGE + 1 && SRANGE_IDX == STICK_IDX + 1 ? 1 : -1];   /* a later id grows s_opt2 */
+    uint8_t notes : 1, memo_off : 1;
+#endif
+} s_fl;
+DOOMO_STATIC_ASSERT(OPT2_END == OPT_MEMORY_LAPSES + 1 && SRANGE_IDX == STICK_IDX + 1, opt2_bit_ids);
+#if OPT_LV11
 #define NOTES_IDX (OPT_NOTES - OPT2_FIRST)
 #define MEMO_IDX  (OPT_MEMORIAL - OPT2_FIRST)
+DOOMO_STATIC_ASSERT(NOTES_IDX == SRANGE_IDX + 1 && MEMO_IDX == NOTES_IDX + 1 &&
+                    LAPSES_IDX == OPT2_LAPSES_WIRE, opt2_vault_ids);
+#else
+DOOMO_STATIC_ASSERT(LAPSES_IDX == SRANGE_IDX + 1, opt2_ps1_ids);
+#endif
+
 static int o2_load(int i)
 {
-    return i == STICK_IDX ? s_fl.stick : i == NOTES_IDX ? s_fl.notes : i == MEMO_IDX ? !s_fl.memo_off : s_opt2[i];
+    if (i == STICK_IDX) return s_fl.stick;
+    if (i == LAPSES_IDX) return s_fl.lapses;
+#if OPT_LV11
+    if (i == NOTES_IDX) return s_fl.notes;
+    if (i == MEMO_IDX) return !s_fl.memo_off;
+#endif
+    return s_opt2[i];
 }
-static void o2_store(int i, int v)     /* anything else reads the first value (Turn, Every time) / On */
+
+static void o2_store(int i, int v)
 {
     if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;
+    else if (i == LAPSES_IDX) s_fl.lapses = v == 1;
+#if OPT_LV11
     else if (i == NOTES_IDX) s_fl.notes = v == 1;
     else if (i == MEMO_IDX) s_fl.memo_off = v == 0;
+#endif
     else s_opt2[i] = (uint8_t)v;
 }
-#else
-static struct { uint8_t quiet : 1, cfg_dirty : 1, stick : 1; } s_fl;   /* stick = OPT_STICK_MODE's value */
-typedef char opt2_srange_is_the_last_id[OPT2_END == SRANGE_IDX + OPT2_FIRST + 1 && SRANGE_IDX == STICK_IDX + 1 ? 1 : -1];   /* a later id grows s_opt2 */
-static int o2_load(int i) { return i == STICK_IDX ? s_fl.stick : s_opt2[i]; }
-static void o2_store(int i, int v) { if (i == STICK_IDX) s_fl.stick = v == STICK_STRAFE;   /* anything else reads Turn */ else s_opt2[i] = (uint8_t)v; }
-#endif
 
 #if OPT_LV11
 #define LV11_MACHINE(opt) ((opt) == OPT_NOTES || (opt) == OPT_MEMORIAL)
@@ -350,35 +365,47 @@ void opt_machine_changed(int opt, int value)
  * version 1: OPT2_COUNT value bytes. version 2 (CL4): the tips' seen flags (u32, little endian) first,
  * then the value bytes, so options added later still append at the end. */
 #define OPT2_SEEN 4u
-static uint32_t opt2_size(void) { return OPT2_SEEN + OPT2_COUNT; }
+/* PS1 omits the two Vault options. The recall option has one wire offset
+ * across ports. Keep the original payload length while it is off. */
+static uint32_t opt2_size(void)
+{
+    return OPT2_SEEN + (s_fl.lapses ? OPT2_LAPSES_WIRE + 1 : LAPSES_IDX);
+}
 
 static uint32_t opt2_write(uint8_t *dst, uint32_t cap)
 {
     int i;
     uint32_t seen = tip_seen_bits();
-    if (cap < OPT2_SEEN + OPT2_COUNT) return 0;
+    uint32_t size = opt2_size();
+    if (cap < size) return 0;
     for (i = 0; i < (int)OPT2_SEEN; i++) dst[i] = (uint8_t)(seen >> (8 * i));
-    for (i = 0; i < OPT2_COUNT; i++) dst[OPT2_SEEN + i] = (uint8_t)opt2_get(OPT2_FIRST + i);
-    return OPT2_SEEN + OPT2_COUNT;
+    for (i = 0; i < LAPSES_IDX; i++) dst[OPT2_SEEN + i] = (uint8_t)opt2_get(OPT2_FIRST + i);
+    if (s_fl.lapses) {
+        for (; i < OPT2_LAPSES_WIRE; i++)
+            dst[OPT2_SEEN + i] = i == OPT2_LAPSES_WIRE - 1 ? 1 : 0;   /* PS1's missing Vault defaults */
+        dst[OPT2_SEEN + OPT2_LAPSES_WIRE] = 1;
+    }
+    return size;
 }
 
 static int opt2_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
     uint32_t i;
     if (version >= 2) {
-        if (len < OPT2_SEEN) return 1;
+        if (len < OPT2_SEEN) return 0;
         tip_seen_merge((uint32_t)src[0] | (uint32_t)src[1] << 8 | (uint32_t)src[2] << 16 | (uint32_t)src[3] << 24);
         src += OPT2_SEEN;
         len -= OPT2_SEEN;
     }
-    for (i = 0; i < len && i < OPT2_COUNT; i++) {
+    for (i = 0; i < len && i < LAPSES_IDX; i++) {
         int opt = OPT2_FIRST + (int)i;
         if (is_machine(opt) && have_config()) continue;       /* the machine's record wins */
         put_machine(opt, src[i]);
     }
     /* an older chunk is shorter: the world's options it does not carry (STKOPT) go to their defaults */
-    for (; i < OPT2_COUNT; i++)
+    for (; i < LAPSES_IDX; i++)
         if (!is_machine(OPT2_FIRST + (int)i)) { o2_store((int)i, doomo_option2_info[i].def); apply2(OPT2_FIRST + (int)i); }
+    s_fl.lapses = len > OPT2_LAPSES_WIRE && src[OPT2_LAPSES_WIRE] == 1;
     return 1;
 }
 
@@ -387,6 +414,7 @@ static void opt2_reset(void)
     /* an old save without the chunk: the world's options go to their defaults, the machine's stay */
     o2_store(OPT_LOSS - OPT2_FIRST, doomo_option2_info[OPT_LOSS - OPT2_FIRST].def);
     apply2(OPT_LOSS);
+    s_fl.lapses = 0;
     o2_store(STICK_IDX, STICK_TURN);
     o2_store(OPT_SLIDER_RANGE - OPT2_FIRST, 0);                  /* CR-SLIDERX: an old save reads x1 */
     apply2(OPT_SLIDER_RANGE);

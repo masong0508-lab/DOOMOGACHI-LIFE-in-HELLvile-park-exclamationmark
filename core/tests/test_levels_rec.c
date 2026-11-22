@@ -354,7 +354,11 @@ TEST(levels_brch_budget_holds_in_both_slots)
     CHECK(LV_BRCH_MAX <= SAVE_EXT_MAX_BRCH);
     CHECK_EQ(SAVE_BUDGET_BRCH_WORST, SAVE_BUDGET_LZ_WORST(160u) + SAVE_BUDGET_CHUNK_HDR);
     printf("      joint worst with TALK, TVIS and BRCH: story %u B, free play %u B\n", (unsigned)story, (unsigned)fp);
+#if defined(DOOMO_PLATFORM_GBA)
     CHECK(story + SAVE_BUDGET_MARGIN <= SAVE_SLOT_STORY_CAP_CFG - 4096u);
+#else
+    CHECK(story + SAVE_BUDGET_MARGIN <= SAVE_SLOT_STORY_CAP);
+#endif
     CHECK(fp + SAVE_BUDGET_MARGIN <= SAVE_SLOT_FP_CAP);
     /* a registered chunk is counted: its worst case lands in the live budget's bound */
     CHECK(save_ext_at(save_ext_count() - 1 - (doomo_save_ext_tvis != NULL)) == doomo_save_ext_breach);

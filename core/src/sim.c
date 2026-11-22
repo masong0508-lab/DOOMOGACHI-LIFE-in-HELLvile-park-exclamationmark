@@ -254,8 +254,8 @@ const DoomoSimStats *sim_stats(void) { return &sim_s.stats; }
 void sim_date(int *month, int *dom)
 {
     uint32_t d = doomo_town.day;
-    if (month) *month = (int)((3 + d / 28) % 12);
-    if (dom) *dom = (int)(d % 28) + 1;
+    if (month) *month = (int)((3 + d / SIM_MONTH_DAYS) % 12);
+    if (dom) *dom = (int)(d % SIM_MONTH_DAYS) + 1;
 }
 
 int sim_concert_genre(void)

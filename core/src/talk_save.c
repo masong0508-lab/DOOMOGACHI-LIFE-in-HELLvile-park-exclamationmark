@@ -445,61 +445,153 @@ static const DoomoSaveExt talk_ext = {
 };
 const DoomoSaveExt *const doomo_save_ext_talk = &talk_ext;
 
-/* An independent archive lets smalltalk rotate without losing visits.
- * Each record holds two 10-bit identities followed by a 4-bit venue.
- * Repeating a place moves that record to the front. */
-#define TVIS_REC 3u
-#define TVIS_MAX (SAVE_EXT_MAX_TVIS / TVIS_REC)
-#define TVIS_WIRE_MAX 576u   /* largest console's payload, accepted on all ports */
+/* TVIS v2, newest first: [u16 visits][u8 elders], followed by five bytes
+ * per outing and four per elder. Each outing holds two 10-bit IDs, a
+ * four-bit venue and a 16-bit date. V1 visits had no recorded date. */
+#define TVIS_HDR 3u
+#define TVIS_REC 5u
+#define TVIS_ELDER_REC 4u
+#define TVIS_V1_REC 3u
+#define TVIS_V1_MAX 576u
+#define TVIS_PEOPLE 0xFFFFFu
 static struct {
-    uint8_t count;
-    uint8_t rows[TVIS_MAX][TVIS_REC];
+    uint16_t count;
+    uint8_t elders;
+    uint8_t rows[SAVE_TVIS_VISITS][TVIS_REC];
+    uint32_t elder[SAVE_TVIS_ELDERS];
 } visits;
 
-DOOMO_STATIC_ASSERT(SAVE_EXT_MAX_TVIS % TVIS_REC == 0 && SAVE_EXT_MAX_TVIS <= TVIS_WIRE_MAX, visit_archive_fits);
+DOOMO_STATIC_ASSERT(SAVE_EXT_MAX_TVIS <= SAVE_TVIS_WIRE_MAX && SAVE_TVIS_WIRE_MAX <= DOOMO_SAVE_EXT_MAX,
+                    visit_archive_fits);
 DOOMO_STATIC_ASSERT(ACT_COUNT <= 16 && DOOMO_PLAYER_ID + HOUSEHOLD_CAP_MAX < NEWS_NONE, visit_fields_fit);
 
-static uint32_t visit_unpack(const uint8_t *p)
+static uint32_t visit_key(const uint8_t *p)
 {
-    return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
+    return get16(p) | ((uint32_t)p[2] << 16);
 }
 
-static int visit_valid(int guest, int avatar, int venue)
+static uint32_t visit_day(const uint8_t *p)
 {
-    return guest >= 0 && guest < DOOMO_MAX_RESIDENTS && guest != avatar &&
-           person_ok(guest) && person_ok(avatar) && talk_act_invite_ok(TA_INVITE, venue, 0, 12);
+    return get16(p + 3);
 }
 
-static int visit_index(uint32_t value)
+static uint32_t visit_today(void)
+{
+    return DOOMO_MIN(doomo_town.day, TALK_VISIT_UNDATED - 1);
+}
+
+static int visit_guest_ok(int guest)
+{
+    return guest >= 0 && guest < DOOMO_MAX_RESIDENTS;
+}
+
+static int visit_valid(uint32_t key)
+{
+    int guest = (int)(key & 1023u), avatar = (int)((key >> 10) & 1023u);
+    return visit_guest_ok(guest) && guest != avatar && person_ok(guest) && person_ok(avatar) &&
+           talk_act_invite_ok(TA_INVITE, (int)(key >> 20), 0, 12);
+}
+
+static int elder_eligible(int guest)
+{
+    uint32_t seed;
+    if (!visit_guest_ok(guest) || town_res(guest)->status != RES_ALIVE || sim_life_stage(guest) != LIFE_ELDER)
+        return 0;
+    seed = doomo_town.seed ^ ((uint32_t)guest * 0x9E3779B1u);
+    return doomo_hash32(seed ^ 0xEF34E10Du) % 6u == 0;
+}
+
+/* Track a small subset of elders, starting with their first shared outing
+ * or memory conversation. No town-wide daily aging pass is needed. */
+static int elder_index(int guest)
 {
     int i;
-    for (i = 0; i < visits.count; i++) if (visit_unpack(visits.rows[i]) == value) return i;
+    for (i = 0; i < visits.elders; i++) if ((visits.elder[i] & 1023u) == (unsigned)guest) return i;
     return -1;
+}
+
+static int elder_observe(int guest)
+{
+    int i;
+    if (!opt_get(OPT_MEMORY_LAPSES) || !elder_eligible(guest)) return -1;
+    i = elder_index(guest);
+    if (i >= 0 || visits.elders == SAVE_TVIS_ELDERS) return i;
+    i = visits.elders++;
+    visits.elder[i] = (visit_today() << 10) | (uint32_t)guest;
+    return i;
+}
+
+int talk_visit_recall(int guest, int cue)
+{
+    uint32_t elapsed, chance, roll, day, onset;
+    int i = elder_observe(guest);
+    if (i < 0) return TALK_RECALL_CLEAR;
+    day = visit_today();
+    onset = visits.elder[i] >> 10;
+    elapsed = day >= onset ? day - onset : 0;
+    chance = elapsed < 28u ? 0u : elapsed < 84u ? 32u : elapsed < 168u ? 80u : 136u;
+    if (cue) chance /= 2u;
+    /* One consistent recall day per elder, including after loading. A new
+     * day can be easier or harder. The journal is never modified by recall. */
+    roll = doomo_hash32(doomo_town.seed ^ (day * 0x85EBCA6Bu) ^
+                        ((uint32_t)guest * 0xC2B2AE35u)) & 255u;
+    return roll < chance / 3u ? TALK_RECALL_LAPSE : roll < chance ? TALK_RECALL_HAZY : TALK_RECALL_CLEAR;
+}
+
+static int visit_duplicate(uint32_t key, uint32_t day)
+{
+    int i;
+    for (i = visits.count - 1; i >= 0 && visit_day(visits.rows[i]) == day; i--)
+        if (visit_key(visits.rows[i]) == key) return 1;
+    return 0;
+}
+
+static void visit_pack(uint8_t *p, uint32_t key, uint32_t day)
+{
+    put16(p, key & 0xFFFFu);
+    p[2] = (uint8_t)(key >> 16);
+    put16(p + 3, day);
+}
+
+static int visit_evict(void)
+{
+    int i, oldest = visits.count - 1, crowded = -1;
+    /* Keep recent entries in full. In the oldest quarter, thin dates
+     * that already have a monthly anchor, preferring repeat outings. */
+    for (i = oldest - 1; i >= (int)(SAVE_TVIS_VISITS * 3u / 4u); i--) {
+        uint32_t day = visit_day(visits.rows[i]), older = visit_day(visits.rows[i + 1]);
+        if (day == TALK_VISIT_UNDATED || older == TALK_VISIT_UNDATED ||
+            day / SIM_MONTH_DAYS != older / SIM_MONTH_DAYS) continue;
+        if (visit_key(visits.rows[i]) == visit_key(visits.rows[i + 1])) return i;
+        if (crowded < 0) crowded = i;
+    }
+    return crowded >= 0 ? crowded : oldest;
+}
+
+static void visit_push(uint32_t key, uint32_t day)
+{
+    int i;
+    /* Same-day trips to the same venue use one record. Most days stop
+     * after a handful of rows, with no scan of the older history. */
+    for (i = 0; i < visits.count && visit_day(visits.rows[i]) == day; ++i)
+        if (visit_key(visits.rows[i]) == key) break;
+    if (i == visits.count || visit_day(visits.rows[i]) != day) {
+        if (visits.count < SAVE_TVIS_VISITS) i = visits.count++;
+        else i = visit_evict();
+    }
+    memmove(visits.rows + 1, visits.rows, TVIS_REC * (unsigned)i);
+    visit_pack(visits.rows[0], key, day);
 }
 
 void talk_visit_note(int guest, int avatar, int venue)
 {
-    int i;
-    uint32_t value;
-    if (!visit_valid(guest, avatar, venue)) return;
-    value = NEWS_IDS(guest, avatar, venue);
-    i = visit_index(value);
-    if (i < 0) {
-        if (visits.count < TVIS_MAX) visits.count++;
-        i = visits.count - 1;
-    }
-    memmove(visits.rows + 1, visits.rows, TVIS_REC * (unsigned)i);
-    visits.rows[0][0] = (uint8_t)value;
-    visits.rows[0][1] = (uint8_t)(value >> 8);
-    visits.rows[0][2] = (uint8_t)(value >> 16);
-}
-
-static uint32_t visit_in_news(int i)
-{
-    const DoomoNewsRec *news = sim_news_record(i);
-    if (!news || (news->tmpl != NT_TALK_MEET && news->tmpl != NT_TALK_MEET_FAV) ||
-        news->v >> 20 != NEWS_NONE || news->arg8 >= ACT_COUNT) return 0;
-    return (news->v & 0xFFFFFu) | ((uint32_t)news->arg8 << 20);
+    uint32_t key;
+    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE ||
+        venue < 0 || venue >= ACT_COUNT) return;
+    key = NEWS_IDS(guest, avatar, venue);
+    if (!visit_valid(key)) return;
+    visit_push(key, visit_today());
+    elder_observe(guest);
 }
 
 void talk_visit_import_news(void)
@@ -507,57 +599,141 @@ void talk_visit_import_news(void)
     int i;
     if (visits.count) return;
     for (i = sim_news_count() - 1; i >= 0; i--) {
-        uint32_t value = visit_in_news(i);
-        if (value) talk_visit_note(value & 1023u, (value >> 10) & 1023u, value >> 20);
+        const DoomoNewsRec *news = sim_news_record(i);
+        uint32_t key, day;
+        if (!news || (news->tmpl != NT_TALK_MEET && news->tmpl != NT_TALK_MEET_FAV) ||
+            news->v >> 20 != NEWS_NONE || news->arg8 >= ACT_COUNT) continue;
+        key = (news->v & TVIS_PEOPLE) | ((uint32_t)news->arg8 << 20);
+        /* The news stores the low 16 bits of the day. */
+        day = doomo_town.day - (uint16_t)(doomo_town.day - news->day);
+        if (visit_valid(key) && day <= visit_today()) visit_push(key, day);
     }
+}
+
+static int visit_matches(const uint8_t *row, uint32_t people, int minor)
+{
+    return (visit_key(row) & TVIS_PEOPLE) == people &&
+           talk_act_invite_ok(TA_INVITE, (int)(row[2] >> 4), minor, 12);
 }
 
 int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity)
 {
     uint32_t people, seen = 0;
-    int i, news_count, count = 0;
-    if (guest < 0 || guest >= DOOMO_MAX_RESIDENTS || avatar < 0 || avatar >= (int)NEWS_NONE) return 0;
-    news_count = sim_news_count();
+    int i, count = 0;
+    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE) return 0;
     people = NEWS_IDS(guest, avatar, 0);
-    for (i = 0; i < visits.count + news_count && count < capacity; i++) {
-        uint32_t value = i < visits.count ? visit_unpack(visits.rows[i]) : visit_in_news(i - visits.count);
-        int venue = (int)(value >> 20);
+    for (i = 0; i < visits.count && count < capacity; i++) {
+        const uint8_t *row = visits.rows[i];
+        int venue = (int)(visit_key(row) >> 20);
         uint32_t bit = 1u << venue;
-        if ((value & 0xFFFFFu) != people || seen & bit ||
-            !talk_act_invite_ok(TA_INVITE, venue, minor, 12)) continue;
+        if ((seen & bit) || !visit_matches(row, people, minor)) continue;
         venues[count++] = venue;
         seen |= bit;
     }
     return count;
 }
 
-static void visit_reset(void) { visits.count = 0; }
+int talk_visit_page(int guest, int avatar, int minor, int offset, TalkVisit *page, int capacity)
+{
+    uint32_t people;
+    int i, count = 0;
+    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE) return 0;
+    people = NEWS_IDS(guest, avatar, 0);
+    for (i = 0; i < visits.count && count < capacity; i++) {
+        const uint8_t *row = visits.rows[i];
+        if (!visit_matches(row, people, minor)) continue;
+        if (offset > 0) { offset--; continue; }
+        if (page) {
+            page[count].venue = (int)(row[2] >> 4);
+            page[count].day = visit_day(row);
+        }
+        count++;
+    }
+    return count;
+}
 
-static uint32_t visit_size(void) { return visits.count * TVIS_REC; }
+int talk_visit_has(int guest, int avatar, int minor, const TalkVisit *visit)
+{
+    uint32_t key;
+    int i;
+    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE ||
+        !talk_act_invite_ok(TA_INVITE, visit->venue, minor, 12)) return 0;
+    key = NEWS_IDS(guest, avatar, visit->venue);
+    for (i = 0; i < visits.count; ++i)
+        if (visit_key(visits.rows[i]) == key && visit_day(visits.rows[i]) == visit->day) return 1;
+    return 0;
+}
+
+static void visit_reset(void)
+{
+    visits.count = 0;
+    visits.elders = 0;
+}
+
+static uint32_t visit_size(void)
+{
+    if (!visits.count && !visits.elders) return 0;
+    return TVIS_HDR + visits.count * TVIS_REC + visits.elders * TVIS_ELDER_REC;
+}
 
 static uint32_t visit_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t size = visit_size();
-    if (cap < size) return 0;
-    if (size) memcpy(dst, visits.rows, size);
+    uint32_t i, size = visit_size();
+    if (!size || cap < size) return 0;
+    put16(dst, visits.count);
+    dst[2] = visits.elders;
+    memcpy(dst + TVIS_HDR, visits.rows, visits.count * TVIS_REC);
+    dst += TVIS_HDR + visits.count * TVIS_REC;
+    for (i = 0; i < visits.elders; i++, dst += TVIS_ELDER_REC) {
+        put16(dst, visits.elder[i] & 0xFFFFu);
+        put16(dst + 2, visits.elder[i] >> 16);
+    }
     return size;
+}
+
+static int visit_read_v1(const uint8_t *src, uint32_t len)
+{
+    uint32_t i;
+    if (len > TVIS_V1_MAX || len % TVIS_V1_REC) return 0;
+    for (i = 0; i < len && visits.count < SAVE_TVIS_VISITS; i += TVIS_V1_REC) {
+        uint32_t key = get16(src + i) | ((uint32_t)src[i + 2] << 16);
+        if (visit_valid(key) && !visit_duplicate(key, TALK_VISIT_UNDATED))
+            visit_pack(visits.rows[visits.count++], key, TALK_VISIT_UNDATED);
+    }
+    return 1;
 }
 
 static int visit_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
-    uint32_t i;
+    uint32_t count, elders, i, last_day = visit_today();
     visit_reset();
-    if (version != 1 || len > TVIS_WIRE_MAX || len % TVIS_REC) return 0;
-    for (i = 0; i < len && visits.count < TVIS_MAX; i += TVIS_REC) {
-        uint32_t value = visit_unpack(src + i);
-        if (visit_valid(value & 1023u, (value >> 10) & 1023u, value >> 20) && visit_index(value) < 0)
-            memcpy(visits.rows[visits.count++], src + i, TVIS_REC);
+    if (version == 1) return visit_read_v1(src, len);
+    if (version != 2 || len < TVIS_HDR || len > SAVE_TVIS_WIRE_MAX) return 0;
+    count = get16(src);
+    elders = src[2];
+    if (count > SAVE_TVIS_WIRE_VISITS || elders > SAVE_TVIS_WIRE_ELDERS ||
+        len != TVIS_HDR + count * TVIS_REC + elders * TVIS_ELDER_REC) return 0;
+    src += TVIS_HDR;
+    for (i = 0; i < count && visits.count < SAVE_TVIS_VISITS; i++) {
+        const uint8_t *row = src + i * TVIS_REC;
+        uint32_t key = visit_key(row), day = visit_day(row);
+        if ((day != TALK_VISIT_UNDATED && (last_day == TALK_VISIT_UNDATED || day > last_day)) ||
+            !visit_valid(key) || visit_duplicate(key, day)) continue;
+        last_day = day;
+        memcpy(visits.rows[visits.count++], row, TVIS_REC);
+    }
+    src += count * TVIS_REC;
+    for (i = 0; i < elders && visits.elders < SAVE_TVIS_ELDERS; i++, src += TVIS_ELDER_REC) {
+        uint32_t item = get16(src) | ((uint32_t)get16(src + 2) << 16);
+        int guest = (int)(item & 1023u);
+        if (item >> 10 <= visit_today() && elder_eligible(guest) && elder_index(guest) < 0)
+            visits.elder[visits.elders++] = item;
     }
     return 1;
 }
 
 static const DoomoSaveExt visit_ext = {
-    SAVE_EXT_TAG_TVIS, 1, visit_size, visit_write, visit_read, visit_reset, SAVE_EXT_MAX_TVIS
+    SAVE_EXT_TAG_TVIS, 2, visit_size, visit_write, visit_read, visit_reset, SAVE_EXT_MAX_TVIS
 };
 const DoomoSaveExt *const doomo_save_ext_tvis = &visit_ext;
 #endif /* DOOMO_HAS_TALK */

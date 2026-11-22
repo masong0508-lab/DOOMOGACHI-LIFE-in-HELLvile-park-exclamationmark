@@ -1429,7 +1429,7 @@ static void write_exts(void)
         uint32_t len;
         if (!e || !e->write) continue;
         len = e->size ? e->size() : DOOMO_SAVE_EXT_MAX;
-        /* A town with no archived visits needs no optional history chunk. */
+        /* A town with no journal data needs no optional history chunk. */
         if (!len && e->tag == SAVE_EXT_TAG_TVIS) continue;
         if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
         len = e->write(Z.stage, len);

@@ -213,6 +213,8 @@ const char *sim_possessor_name(int id);
 
 /* Calendar: 12 months of 28 days (birthdays use the same calendar); day 0
  * of a new island is the 1st of April. */
+#define SIM_MONTH_DAYS 28u
+#define SIM_YEAR_DAYS (12u * SIM_MONTH_DAYS)
 void sim_date(int *month, int *day_of_month);
 /* Today's concert genre (MUSIC_*): residents who like it flock there. */
 int  sim_concert_genre(void);

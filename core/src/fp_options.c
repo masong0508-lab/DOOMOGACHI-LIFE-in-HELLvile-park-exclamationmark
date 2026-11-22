@@ -184,6 +184,7 @@ static const char *help_of(int opt)
     if (opt == OPT_TURN_SWAP) return help_turn[input_pad()];
     if (opt == OPT_CAMERA_DEFAULT) return help_camera[input_pad()];
     if (opt == OPT_LOSS) return "Family members can be lost over a life. Off: nobody is ever lost.";
+    if (opt == OPT_MEMORY_LAPSES) return "Some elders can find outings harder to recall over time. The outing journal can help.";
     if (opt == OPT_RUMBLE) return "Controller rumble, apart from Screen shake.";
 #if DOOMO_TRIGGERS                       /* the row only shows on a one-stick Dreamcast pad: no byte on the PS1 / GBA */
     if (opt == OPT_STICK_MODE) return "Turn: stick X turns, L / R strafe. Strafe: the other way round. Works with Controls: Auto.";
@@ -238,6 +239,9 @@ static void build_rows(void)
                                           * platform (DECISIONS 2026-11-08; G7 showed it on the GBA only) */
     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
+#ifndef DOOMO_HAS_TALK
+            i != OPT_MEMORY_LAPSES &&
+#endif
             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)) &&
             (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))) &&
             ROW_LV11(i))

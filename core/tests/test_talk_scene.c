@@ -814,6 +814,62 @@ TEST(talk_scene_visit_history_outlives_news_and_recent_topics)
     CHECK(box.text && strstr(box.text, "Brimstone Bites"));
 }
 
+TEST(talk_scene_journal_can_revisit_older_trips_to_the_same_place)
+{
+    UiDialogDebug box;
+    char label[48];
+    int journal, row;
+    town();
+    doomo_town.day = 8;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    doomo_town.day += 25u * 336u;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    journal = find_row("journal", -1, -1);
+    CHECK(journal >= 0);
+    if (journal < 0) return;
+    go_to(journal); press(BTN_A);
+    row = find_row("journalvisit", 1, ACT_PARK);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Y1 ") && strstr(label, "park"));
+    go_to(row); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "park") && strstr(box.text, "Y1 "));
+}
+
+TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
+{
+    int i, row;
+    char label[48];
+    town();
+    for (i = 0; i < 20; i++) {
+        doomo_town.day = (uint32_t)i * SIM_YEAR_DAYS;
+        talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    }
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    go_to(find_row("journal", -1, -1)); press(BTN_A);
+    row = find_row("journalolder", 1, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("journalvisit", 3, ACT_PARK), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Y1 ") != NULL);
+    CHECK_EQ(find_row("journalolder", -1, -1), -1);
+    row = find_row("journalnewer", 1, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("journalvisit", 0, ACT_PARK), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Y20 ") != NULL);
+    CHECK_EQ(find_row("journalnewer", -1, -1), -1);
+}
+
 TEST(talk_scene_history_reports_real_favor_progress)
 {
     TalkSceneDebug d;
