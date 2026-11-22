@@ -237,11 +237,13 @@ static void build_rows(void)
             (i != OPT_DRAW_DIST || input_feel()))
             O.rows[O.nrows++] = i;       /* draw distance: PS1 3D only; (SP8) Combat detail: every
                                           * platform (DECISIONS 2026-11-08; G7 showed it on the GBA only) */
+#ifdef DOOMO_HAS_TALK
+    if (O.page == OPTPAGE_SIM && O.nrows < ROWS_MAX)
+        O.rows[O.nrows++] = OPT_MEMORY_LAPSES;    /* keep Loss just above Reset page */
+#endif
     for (i = OPT_LOSS; i < OPT2_END && O.nrows < ROWS_MAX; i++)          /* U2: Loss (Life Sim), Rumble */
         if (doomo_option2_info[i - OPT2_FIRST].page == O.page &&
-#ifndef DOOMO_HAS_TALK
             i != OPT_MEMORY_LAPSES &&
-#endif
             (i != OPT_RUMBLE || (plat_features() & PLATF_RUMBLE)) &&
             (i != OPT_STICK_MODE || (input_pad() == PAD_DC && !(input_caps() & INPUT_CAP_RSTICK))) &&
             ROW_LV11(i))

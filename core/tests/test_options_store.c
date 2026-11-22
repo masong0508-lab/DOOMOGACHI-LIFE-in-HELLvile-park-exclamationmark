@@ -500,6 +500,11 @@ TEST(u2_loss_row_ends_the_life_sim_page)
     CHECK_EQ(opt_get(OPT_LOSS), 0);
     press(BTN_RIGHT);
     CHECK_EQ(opt_get(OPT_LOSS), 1);
+    press(BTN_UP);
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 0);
+    press(BTN_RIGHT);
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 1);
+    CHECK_EQ(opt_get(OPT_LOSS), 1);
 }
 
 TEST(u2_rumble_row_shows_only_with_a_motor)
@@ -915,6 +920,27 @@ TEST(lv11_notes_and_memorial_round_trip)
     e->reset();
     CHECK_EQ(opt_get(OPT_NOTES), 0);
     CHECK_EQ(opt_get(OPT_MEMORIAL), 1);
+}
+
+TEST(elder_recall_option_preserves_the_original_off_save_layout)
+{
+    const DoomoSaveExt *e = doomo_save_ext_opt2;
+    uint8_t off[SAVE_EXT_MAX_OPT2], on[SAVE_EXT_MAX_OPT2];
+    uint32_t off_size, on_size;
+    fresh(0);
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 0);
+    off_size = e->write(off, sizeof off);
+    opt_set(OPT_MEMORY_LAPSES, 1);
+    on_size = e->write(on, sizeof on);
+    CHECK_EQ(on_size, off_size + 1u);
+    CHECK_EQ(memcmp(off, on, off_size), 0);
+    CHECK(e->read(off, off_size, e->version));
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 0);
+    CHECK(e->read(on, on_size, e->version));
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 1);
+    CHECK(!e->read(on, 3, e->version));
+    e->reset();
+    CHECK_EQ(opt_get(OPT_MEMORY_LAPSES), 0);
 }
 
 TEST(lv11_notes_and_memorial_in_the_machine_record)

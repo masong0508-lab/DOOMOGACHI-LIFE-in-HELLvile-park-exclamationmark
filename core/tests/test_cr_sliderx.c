@@ -175,7 +175,8 @@ TEST(crsx_saved_in_opt2_and_an_old_save_reads_x1)
     test_reset();
     opt_set(OPT_SLIDER_RANGE, 2);
     n = ext->write(buf, sizeof(buf));
-    CHECK_EQ(n, 4u + (uint32_t)OPT2_COUNT);
+    /* The trailing elder recall option is only written when enabled. */
+    CHECK_EQ(n, 4u + (uint32_t)(OPT_MEMORY_LAPSES - OPT2_FIRST));
     CHECK(n <= SAVE_EXT_MAX_OPT2);
     CHECK_EQ(buf[4 + OPT_SLIDER_RANGE - OPT2_FIRST], 2); /* its own byte, in id order: the chunk only grew at its end */
     opt_set(OPT_SLIDER_RANGE, 0);
