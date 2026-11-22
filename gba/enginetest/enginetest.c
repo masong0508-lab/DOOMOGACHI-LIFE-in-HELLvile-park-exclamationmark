@@ -21,6 +21,7 @@
 #include "doomo/doomo.h"
 #include "enginetest.h"
 #include "iwram_ovl.h"
+#include "postfx.h"
 
 void doomo_palette_fallback(void);
 extern uint32_t r3d_dbg[4];
@@ -378,6 +379,30 @@ static int load_core_map(int id)
 }
 
 /* ------------------------------------------------------------------------ */
+static void et_postfx_test(void)
+{
+    uint16_t flash, fade;
+
+    /* A post-offset exposes the backdrop. Both whole-screen effects must
+     * select it as well as the layers that move over it. */
+    plat_post_offset(1, 0);
+    plat_post_blend(PAL_WHITE, 16);
+    postfx_vblank(0);
+    flash = REG_BLDCNT;
+
+    plat_post_offset(1, 0);
+    plat_post_blend(PAL_BLACK, 16);
+    postfx_vblank(1);
+    fade = REG_BLDCNT;
+
+    postfx_vblank(0);
+    if (flash == 0x00B4 && fade == 0x00F5 && REG_BLDCNT == 0)
+        gba_log("ET postfx backdrop ok");
+    else
+        gba_logf("ET postfx backdrop FAIL flash=%x fade=%x", (unsigned)flash, (unsigned)fade);
+}
+
+/* ------------------------------------------------------------------------ */
 void enginetest_main(void)
 {
     int save_test = (~REG_KEYINPUT & KEY_SELECT) != 0;
@@ -397,6 +422,7 @@ void enginetest_main(void)
     et_blit_test();
     et_blit2_test();
     et_upscale_test();
+    et_postfx_test();
     if (save_test) et_save_test();
     load_own_map();
     px = (int32_t)tour[0].x8 << 19;

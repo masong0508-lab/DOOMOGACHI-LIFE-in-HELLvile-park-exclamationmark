@@ -38,6 +38,12 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
             ps2/tests/indexed_present_test.c -o /tmp/ps2-indexed-present-test
           /tmp/ps2-indexed-present-test
+      - name: Check pixel coverage in both display modes
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections \
+            -Ips2/tests/mock -Ips2/src -Icore/include ps2/tests/game2d_present_test.c \
+            ps2/src/game2d.c -o /tmp/ps2-game2d-present-test
+          /tmp/ps2-game2d-present-test
       - name: Check cadence counters and phase peaks
         run: |
           cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=undefined -Ips2/src \

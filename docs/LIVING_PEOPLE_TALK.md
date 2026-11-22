@@ -604,7 +604,10 @@ household space and is saved with the rest of the family.
 **Family time** offers shared meals, game night, and story time. Choose
 a dish from the pantry and bring one serving for each guest. Residents
 at home use their usual food preferences. Younger children can listen
-to a story, and pets can join the play. Away residents keep their plans.
+to a story, and pets can join the play. Story time rotates through four
+short stories for younger groups and four for older groups. The island
+day picks the first story when you open Family. Away residents keep
+their plans.
 
 On Talk-enabled builds, **Talk together** starts a conversation with up
 to four available household members. **Talk to them** in a created or

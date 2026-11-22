@@ -1,5 +1,17 @@
 # Bone level legibility
 
+## Cross-port geometry pass
+
+The Cathedral entrance has two lower stone shoulders and a raised mosaic
+crown, with flagstones framing the approach. Capital puts taller carved
+piers along the avenue and raises the existing Ossuary Gate's ceiling.
+The authored floor elevations, solid cells, triggers and encounters match
+the previous maps. Both use the existing materials and open roof spans.
+
+The GBA's full 24-window census passed. The two Cathedral windows held
+15.9 drawn FPS. Capital held 17.4 in first person and rose from 17.8 to
+18.2 in third person. See the [GBA performance table](GBA.md#current-gba-performance-status).
+
 ## PS2 graphics pass
 
 Carved slab mortar and brighter bone friezes give the ossuary walls a

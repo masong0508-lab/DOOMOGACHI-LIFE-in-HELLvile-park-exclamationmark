@@ -839,7 +839,9 @@ GTE pipeline itself is `r3d.c`.
   vertex colours towards black from 4 cells away in dungeons and from 10
   cells away on outdoor maps, up to the 18-cell view distance.
 * **Sky** is a cylinder of strips behind everything, the 256x96 sky texture
-  wrapping once per 360 degrees and following the pitch.
+  wrapping once per 360 degrees and following the pitch. The edge fills
+  take the same lighting factor and clip to the viewport. A camera pointed
+  past the panorama uses a fill without uploading the sky texture.
 * **Billboards** are textured quads at their feet position, depth sorted in
   the same ordering table as the walls (so they hide correctly behind
   pillars), lit by their cell, flipped / semi-transparent as requested,

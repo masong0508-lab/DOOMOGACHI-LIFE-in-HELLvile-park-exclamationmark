@@ -157,6 +157,37 @@ TEST(fp_family_stories_care_for_babies_and_game_night_uses_energy)
     CHECK(family_bond(baby) > bond);
 }
 
+TEST(fp_family_story_time_rotates_compact_stories_for_each_audience)
+{
+    char stories[8][112];
+    int audience, i, j;
+    for (audience = 0; audience < 2; audience++) {
+        UiDialogDebug dlg;
+        test_reset();
+        town_new(TOWN_STORY, 31, TOWN_POP_PREMADE);
+        sim_init();
+        opt_set(OPT_TEXT_SPEED, 3);
+        CHECK(family_pool_add(FAMROLE_CHILD, audience ? LIFE_CHILD : LIFE_TEEN,
+                              5u, "Mochi", PRONOUN_THEY) >= FAMILY_POOL_FIRST);
+        scene_set(&SCENE_TITLE, 0);
+        scene_push(&SCENE_FAMILY, 0);
+        fam_frames(0, 3);
+        open_family_time();
+        for (i = 4 * audience; i < 4 * (audience + 1); i++) {
+            fam_press(BTN_DOWN); fam_press(BTN_DOWN); fam_press(BTN_A);
+            ui_dialog_debug(&dlg);
+            CHECK(dlg.text && dlg.text[0]);
+            if (!dlg.text) return;
+            CHECK_EQ(dlg.shown, strlen(dlg.text));  /* fits the 240px box on one page */
+            doomo_snprintf(stories[i], sizeof stories[i], "%s", dlg.text);
+            for (j = 0; j < i; j++) CHECK_MSG(strcmp(stories[i], stories[j]) != 0, "story repeated: %s", stories[i]);
+            fam_press(BTN_A);
+            CHECK(scene_top() == &SCENE_FAMILY);
+            if (i + 1 < 4 * (audience + 1)) fam_press(BTN_A);
+        }
+    }
+}
+
 TEST(fp_family_game_night_includes_an_adult_housemate)
 {
     int guest, bond;

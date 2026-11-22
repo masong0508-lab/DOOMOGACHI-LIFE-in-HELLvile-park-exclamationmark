@@ -7,7 +7,7 @@
  *   offset + scale  BG2X/Y and BG2PA/PD (mode 4 is an affine bitmap BG);
  *                   the whole screen moves, HUD included (the PS1 keeps
  *                   its HUD steady with a second E5)
- *   blend           white: BLDY brighten, black: BLDY darken (BG2 + OBJ);
+ *   blend           white: BLDY brighten, black: BLDY darken (including backdrop);
  *                   any other colour: a palette lerp toward it
  *   pal_lerp        palette RAM lerp (camfx_pal_entry, one formula on
  *                   every platform), written straight into BG and OBJ
@@ -147,7 +147,8 @@ void postfx_vblank(int tiles)
     /* blend: BLDY for white / black, the palette for any other colour */
     if (pf.set & PF_BLEND) {
         if (is_white(pf.blend_c) || is_black(pf.blend_c)) {
-            bldcnt = 0x0004 | 0x0010 | (is_white(pf.blend_c) ? 0x0080 : 0x00C0);   /* BG2 + OBJ */
+            /* Apply the same brightness to backdrop pixels exposed by shake or zoom. */
+            bldcnt = 0x0004 | 0x0010 | 0x0020 | (is_white(pf.blend_c) ? 0x0080 : 0x00C0);
             if (tiles) bldcnt |= 0x0001;         /* G5: + the canvas (BG0) */
             bldy = pf.blend_l;
         } else {

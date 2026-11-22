@@ -21,6 +21,16 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Bone-level geometry and display polish (2026-11-22):** Bone Cathedral
+  has a stepped stone entrance, and Bone Capital has taller carved piers
+  and a raised Ossuary Gate. Both use the existing material bank and
+  preserve floor routes, doors, lifts, and encounters. Story time rotates
+  through eight vignettes suited to the ages of the group.
+- **Console presentation (2026-11-22):** GBA brightness effects cover the
+  exposed backdrop during shake or zoom. PS1 clips and lights the skyline
+  fills and skips uploads when the panorama is out of view. Dreamcast
+  holds the geometry that fit in the last submitted frame. The PS2 draws
+  the side matte in 480i and lets the game picture cover the screen in 480p.
 - **Family starts and time at home (2026-11-22):** Adopt a child as an
   adult or elder, then spend time together through meals, games, stories,
   and family chats. Meals use pantry stock per guest. Household members

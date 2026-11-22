@@ -20,17 +20,18 @@ windows across 11 mapped Breach levels and the arena, in both cameras. In
 the latest local 3D run, **8/24** reached 22 FPS and **0/24** reached 29.5 FPS.
 Each window passed its 29 logic TPS floor.
 
-| Bone map and camera | Upstream `d8159f3c` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
+| Bone map and camera | Baseline `624fadfb` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 15.7 | 15.9 | 30.0 | 53.1 / 79.6 ms |
-| Cathedral, third person | 16.0 | 16.3 | 29.9 | 50.1 / 112.1 ms |
-| Capital, first person | 17.5 | 17.2 | 29.8 | 50.0 / 70.8 ms |
-| Capital, third person | 17.8 | 18.0 | 30.0 | 46.9 / 81.9 ms |
+| Cathedral, first person | 15.9 | 15.9 | 30.0 | 53.6 / 77.1 ms |
+| Cathedral, third person | 15.9 | 15.9 | 29.9 | 51.6 / 112.2 ms |
+| Capital, first person | 17.4 | 17.4 | 30.1 | 50.1 / 70.1 ms |
+| Capital, third person | 17.8 | 18.2 | 30.0 | 46.2 / 63.6 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
-The longer-term target is **30 drawn FPS**. Capital first person lost
-0.3 FPS against the upstream run. Both maps passed the existing
-15 FPS Cathedral and 17 FPS Capital regression floors.
+The longer-term target is **30 drawn FPS**. Both maps passed the existing
+15 FPS Cathedral and 17 FPS Capital regression floors. The final Capital
+geometry uses taller piers and changes the existing gate. A wider test
+arcade had dropped first person to 16.8 FPS in the same census.
 
 ### Current Bone rendering budget
 
@@ -48,13 +49,13 @@ The longer-term target is **30 drawn FPS**. Capital first person lost
   The renderer resolves the Bone map flag once per view and reuses it for
   distance, floor texture and actor lighting.
 - The Cathedral's brighter red approach and closer stained-glass windows
-  frame the arch. Capital keeps its brighter road surfaces and gate
-  landmarks. For visual checkpoints and caveats, see
+  frame the stepped arch. Capital's taller piers and raised Ossuary Gate
+  mark its approach. For visual checkpoints and caveats, see
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
-The measured game ROM uses 234,052 B of EWRAM and leaves 28,092 B free.
+The measured game ROM uses 235,420 B of EWRAM and leaves 26,724 B free.
 The IWRAM main stack reserve is 6,160 B against the 6,144 B minimum.
-Both values match the upstream build.
+Both values match the baseline build.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1
@@ -3808,9 +3809,10 @@ it.
   a transparent canvas pixel.
 * OBJs (squash actors, title figures) stay above everything, as in Mode 4.
   Since G6 the billboards are OBJs too, between the two BGs (section 6c).
-  A shake moves BG0 and BG2 by their offsets; window 0 cuts out what an
-  affine Mode 4 page would leave as backdrop. `plat_post_blend`'s BLDY
-  also targets BG0.
+  A shake moves BG0 and BG2 by their offsets. Window 0 cuts out what an
+  affine Mode 4 page would leave as backdrop. `plat_post_blend` applies
+  brightness changes to the backdrop in both display modes and includes
+  BG0 in tile mode. The engine test covers the flash, fade and reset.
 
 **VRAM.** Both BGs use charblock 0. `0x0000` SB 0 (canvas map), `0x0800`
 SB 1 (world map), `0x1000` the composites, `0x3400` the canvas pool (392

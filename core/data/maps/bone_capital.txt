@@ -57,6 +57,10 @@ cell 4 like=y fh=4 light=13
 cell 6 like=y fh=6 light=14
 cell 8 like=y fh=8 light=14
 cell u like=U fh=12 ch=28 light=13
+cell M wall=SKULL_MOSAIC ch=16                           # carved piers down the approach
+cell J wall=BONE_WALL ch=20                              # taller ribs approaching the market
+cell m wall=BLOOD_BRICK ch=32                            # jambs lining up with the gate's roof
+cell d like=D ch=18 light=15                             # raised crown on the existing Ossuary Gate
 
 grid
 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -94,7 +98,7 @@ FFFFFFFFFFFFFFFFFFFFFFFFyyyyDgggggggggyyyyyYyyyyyyyyyyyyyyPyFFFF
 FFFFFFFFFFFFFFFFFFFFFFFFyyyWygggggggggyyyyyyyyyyyyyyyyyyyyyyFFFF
 FFFFFFFFFFFFFFFgggggggggyYyyygggggggggggyyWyyFFFFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFFFgggggggggyyyyPgggggggggggyPyyyFFFFFFFFFFFFFFFFFFF
-FFFFFFFFFFFDFFFgggggggggyyyyygggggggggggTyyyyFFFFFFFFFFFFFFFFFFF
+FFFFFFFFFFmdmFFgggggggggyyyyygggggggggggTyyyyFFFFFFFFFFFFFFFFFFF
 FFFFYyyyygggggygggPgggYgyyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFF
 FFFFFyyyygggggygzzzgggggyyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFF
 FFFFFyyyygggggygzzzgPgggyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -110,11 +114,11 @@ FFFFFyyyygggggyyy~~~yyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFFFyyyyyyyyyyyy~~~yyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFyyyyy=gg+++g=yyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFKyyYyy=gg+++g=yyyyTyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-FFFWyyyP=gggggg=yyyPyyySFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFWyyyJ=gggggg=yyyJyyySFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFyyyyy=gggggg=yyyyyWyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFSyyyyy=gggggg=yyyyyyySFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFyyyyy=gggggg=yyyyyyyKFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-FFFyTyPy=gg+++g=yPyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+FFFyTyMy=gg+++g=yMyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFSyyyyy=gggggg=yyyyYyySFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFyyyyy=gggggg=yyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FFFyyyyyyyyyyyyyyyyyyyyFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF

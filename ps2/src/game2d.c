@@ -173,7 +173,13 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
         gsKit_texture_upload(gs,&picture);
         gs_upload_count++;
     }
-    gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
+    /* The opaque texture replaces every pixel in its viewport. Repaint
+     * only the 480i side gutters so both back buffers keep the same matte. */
+    if (picture_left > 0.0f) {
+        const u64 matte = GS_SETREG_RGBAQ(12,9,20,0x80,0);
+        gsKit_prim_sprite(gs,0.0f,0.0f,picture_left,picture_bottom,0,matte);
+        gsKit_prim_sprite(gs,picture_right,0.0f,(float)gs->Width,picture_bottom,0,matte);
+    }
     gsKit_prim_sprite_texture(gs,&picture,picture_left,0.0f,0.0f,0.0f,
                               picture_right,picture_bottom,(float)W,(float)H,1,tint);
 }

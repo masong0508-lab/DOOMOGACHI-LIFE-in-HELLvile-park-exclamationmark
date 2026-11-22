@@ -563,6 +563,7 @@ static void test_texcache(void)
 /* ---- held frame ------------------------------------------------------------------------------------ */
 static void test_hold(void)
 {
+    int captured_prims;
     frame_begin();
     plat_clear(4);
     plat_rect(10, 10, 100, 50, 11);
@@ -574,9 +575,13 @@ static void test_hold(void)
     frame_end();
     CHECK(dc2d_last()->nheld > 0, "hold: no backdrop submitted");
     CHECK(frame_diff(NULL) == 0, "hold: frame differs from the native held frame");
+    captured_prims = dc2d_last()->nheld + dc2d_last()->n;
+    CHECK(plat_hold_frame(1) == 1, "hold: could not capture the added rect");
+    CHECK(plat_hold_frame(1) == 1, "hold: could not recapture the same frame");
     plat_begin_frame();
     plat_rect(150, 150, 30, 30, 9);
     frame_end();
+    CHECK(dc2d_last()->nheld == captured_prims, "hold: recapture duplicated prims");
     CHECK(frame_diff(NULL) == 0, "hold: second frame differs");
     CHECK(plat_hold_frame(4) == 1, "hold: still held");
     plat_hold_frame(0);
@@ -730,6 +735,32 @@ static void test_budget(void)
     CHECK(dc2d_stats.vbytes <= DC2D_VBUF_BUDGET, "budget: %u bytes over %u", dc2d_stats.vbytes, DC2D_VBUF_BUDGET);
 }
 
+static void test_hold_budget(void)
+{
+    const int changing = DC2D_VBUF_BUDGET / 96 - 2;
+    const size_t sentinel = ((2u * 230u) * DC2D_W + 2u * 304u) * 3u;
+    int i;
+    frame_begin();
+    for (i = 0; i < changing; i++)
+        plat_rect(2 * (i % 100), 2 * (i / 100), 1, 1, i & 1 ? PAL_WHITE : PAL_BLACK);
+    plat_rect(300, 230, 1, 1, PAL_WHITE);     /* 64 B, reuses the previous header */
+    plat_pal_lerp(PAL_SEPIA, 16);
+    plat_rect(302, 230, 1, 1, PAL_WHITE);     /* 96 B, switches palette banks */
+    plat_rect(304, 230, 1, 1, PAL_WHITE);     /* 64 B, beyond the last 32 B of budget */
+    frame_end();
+    CHECK(dc2d_last()->n == changing + 2, "hold budget: initial sentinel was submitted");
+    swpvr_render(dc2d_last(), rgb);
+    CHECK(rgb[sentinel] == 0, "hold budget: initial sentinel was visible");
+
+    CHECK(plat_hold_frame(1), "hold budget: did not capture the submitted frame");
+    plat_begin_frame();
+    frame_end();                             /* the removed lerp frees one 32 B header */
+    swpvr_render(dc2d_last(), rgb);
+    CHECK(rgb[sentinel] == 0, "hold budget: a dropped rectangle became visible");
+    CHECK(dc2d_last()->nheld == changing + 2, "hold budget: captured dropped geometry");
+    plat_hold_frame(0);
+}
+
 /* ---- post effects -------------------------------------------------------------------------------------- */
 static void test_post(void)
 {
@@ -849,6 +880,7 @@ int main(void)
     test_stage();
     test_header();
     test_budget();
+    test_hold_budget();
     test_post();
     test_hd_text();
     printf("dc2d tests: %d checks, %d failed\n", checks, fails);

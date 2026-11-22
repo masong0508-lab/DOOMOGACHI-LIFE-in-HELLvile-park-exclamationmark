@@ -361,6 +361,14 @@ static void test_hold(void)
     swpvr_render(dc2d_last(), rgb2);
     CHECK(memcmp(rgb, rgb2, sizeof(rgb)) == 0, "hold: the held view changed after two frames");
     plat_begin_frame();
+    CHECK(dc3d_seg_begin(0, 0, 16, 16), "hold: could not start a second view");
+    dc3d_seg_end();
+    plat_end_frame();
+    CHECK(dc2d_hold_frame(1) == 1 && dc3d_batch(DC3D_HELD)->nseg == 2,
+          "hold: the new view was not captured with the old one");
+    CHECK(dc2d_hold_frame(1) == 1 && dc3d_batch(DC3D_HELD)->nseg == 2,
+          "hold: recapture duplicated a 3D segment");
+    plat_begin_frame();
     dc2d_shade_rect(0, 0, DC2D_LW, DC2D_LH, 10);  /* a full shade copies the held view */
     plat_end_frame();
     swpvr_render(dc2d_last(), rgb2);

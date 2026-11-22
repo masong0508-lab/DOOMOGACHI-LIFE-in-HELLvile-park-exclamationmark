@@ -781,18 +781,24 @@ static void sky_strip(int x0, int x1, int y0, int y1, const TexRef *t, int u0, i
     }
 }
 
-static void sky_fill(int x0, int y0, int x1, int y1, uint32_t rgb)
+static void sky_fill(int y0, int y1, uint8_t color, int bright)
 {
     TILE *t;
-    if (y1 <= y0 || x1 <= x0)
+    uint16_t rgb;
+    y0 = DOOMO_MAX(y0, g_cam.vy);
+    y1 = DOOMO_MIN(y1, g_cam.vy + g_cam.vh);
+    if (y1 <= y0)
         return;
     t = (TILE *)gfx_alloc(sizeof(TILE));
     if (!t)
         return;
+    /* Use the panorama's CLUT and Q7 light. A TILE takes eight-bit channels. */
+    rgb = g_pal15[color];
     setTile(t);
-    setColor0(t, rgb);
-    setXY0(t, x0, y0);
-    setWH(t, x1 - x0, y1 - y0);
+    setColor0(t, r3_rgb(((rgb & 31) * bright) >> 4, (((rgb >> 5) & 31) * bright) >> 4,
+                       (((rgb >> 10) & 31) * bright) >> 4));
+    setXY0(t, g_cam.vx, y0);
+    setWH(t, g_cam.vw, y1 - y0);
     addPrim(g_cam.ot + OT_LEN - 1, t);
 }
 
@@ -802,33 +808,40 @@ void r3_sky(int sky_id, uint16_t time, int bright)
     TexRef half[2];
     const uint8_t *pix;
     int span, ucenter, y_bottom, y_top, sky_px_h, x, u, seg;
-    int sp, cp;
-    uint32_t col = r3_rgb(bright, bright, bright);
-    if (!c->ot || !vram_sky(sky_id, time, &half[0], &half[1]))
+    int view_bottom = c->vy + c->vh, visible;
+    uint32_t col;
+    if (!c->ot)
         return;
     pix = core_sky_pixels(sky_id, time);
+    if (!pix)
+        return;
     /* horizontal: texels across the viewport for this projection */
     span = (c->hfov_a * SKY_W) >> 12;              /* 64 texels at 90 deg */
     if (span < 8) span = 8;
     if (span > 255) span = 255;
     ucenter = (c->ang * 256) >> 12;
     /* vertical: horizon line from the pitch */
-    sp = isin(c->pitch); cp = icos(c->pitch);
-    if (cp < 64) cp = 64;
     sky_px_h = (SKY_H * c->vw) / span;              /* square texels */
-    y_bottom = c->cy + (c->H * sp) / cp + c->vh / 10;
+    y_bottom = c->cy + (c->H * c->sp) / DOOMO_MAX(c->cp, 64) + c->vh / 10;
     y_top = y_bottom - sky_px_h;
+    /* The tilted overworld often needs only the lower edge colour. */
+    visible = y_top < view_bottom && y_bottom > c->vy;
+    if (visible && !vram_sky(sky_id, time, &half[0], &half[1]))
+        return;
+    bright = DOOMO_CLAMP(bright, 0, 255);
     /* fills above and below with the edge rows' colours */
-    if (pix) {
+    if (y_top >= c->vy || y_bottom <= view_bottom) {
         uint8_t topc, botc;
         if (!packart_sky_edges(pix, &topc, &botc)) {
             topc = pix[(SKY_W / 2)];
             botc = pix[(SKY_H - 1) * SKY_W + SKY_W / 2];
         }
-        uint32_t tr = g_rgb[topc], br = g_rgb[botc];
-        sky_fill(c->vx, c->vy, c->vx + c->vw, y_top + 1, tr);
-        sky_fill(c->vx, y_bottom - 1, c->vx + c->vw, c->vy + c->vh, br);
+        sky_fill(c->vy, y_top + 1, topc, bright);
+        sky_fill(y_bottom - 1, view_bottom, botc, bright);
     }
+    if (!visible)
+        return;
+    col = r3_rgb(bright, bright, bright);
     /* textured strips: split where the u range crosses a 128-texel half */
     u = (ucenter - span / 2) & 255;
     x = c->vx;

@@ -151,6 +151,36 @@ static void check_map(int id, const DoomoMapDef *d)
     (void)def_floor;
 }
 
+TEST(bone_arches_keep_standing_clearance_under_a_stepped_crown)
+{
+    int x;
+
+    map_load(MAPID_BONE_CATHEDRAL);
+    CHECK_EQ(map_ceil_z(&doomo_map, 22, 45), 18 * DOOMO_HEIGHT_STEP);
+    CHECK_EQ(map_ceil_z(&doomo_map, 21, 45), 12 * DOOMO_HEIGHT_STEP);
+    CHECK_EQ(map_ceil_z(&doomo_map, 23, 45), 12 * DOOMO_HEIGHT_STEP);
+    for (x = 21; x <= 23; x++) {
+        const DoomoCell *c = map_cell(&doomo_map, x, 45);
+        CHECK(c->wall == 0 && c->flags == 0 && c->floor_h == 0);
+        CHECK(map_ceil_z(&doomo_map, x, 45) > DOOMO_PLAYER_HEIGHT);
+    }
+
+    map_load(MAPID_BONE_CAPITAL);
+    CHECK_EQ(map_cell(&doomo_map, 6, 55)->wall, TEX_SKULL_MOSAIC);
+    CHECK_EQ(map_cell(&doomo_map, 17, 55)->wall, TEX_SKULL_MOSAIC);
+    CHECK_EQ(map_cell(&doomo_map, 6, 55)->ceil_h, 16);
+    CHECK_EQ(map_cell(&doomo_map, 7, 51)->ceil_h, 20);
+    for (x = 7; x <= 16; x++) {
+        const DoomoCell *c = map_cell(&doomo_map, x, 55);
+        CHECK(c->wall == 0 && c->flags == 0 && c->floor_h == 0);
+        CHECK_EQ(c->ceil_tex, DOOMO_TEX_SKY);
+    }
+    CHECK_EQ(map_cell(&doomo_map, 10, 35)->wall, TEX_BLOOD_BRICK);
+    CHECK_EQ(map_cell(&doomo_map, 12, 35)->wall, TEX_BLOOD_BRICK);
+    CHECK_EQ(map_ceil_z(&doomo_map, 11, 35), 18 * DOOMO_HEIGHT_STEP);
+    CHECK(map_cell(&doomo_map, 11, 35)->wall == 0);
+}
+
 TEST(maps_registered_and_valid)
 {
     int id, n = 0;

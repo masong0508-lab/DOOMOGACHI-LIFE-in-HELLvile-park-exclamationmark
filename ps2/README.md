@@ -318,6 +318,11 @@ changed frames per second this saves up to 3,180 KiB/s of GIF texture
 payload. The compact staging image saves 106 KiB in EE memory and the
 page-aligned texture saves 96 KiB in GS VRAM.
 
+The opaque game picture covers the entire progressive frame, so the GS
+can draw it without a background clear. Interlaced presentation repaints
+only the two matte side bars on both GS buffers. Nearest sampling and the
+game viewport sizes stay the same in both modes.
+
 The host test checks packed pixel order, random mutations, identical
 frames, and buffer guards. Play! produced pixel-identical viewport
 captures for all seven phases of the separate GS texture animation

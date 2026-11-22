@@ -19,7 +19,9 @@ static struct {
     int target;            /* member id the menu is about          */
     int kind;              /* wizard add-member choice               */
     int pick;              /* wizard: chosen resident id            */
-    int role, stage, pronoun, rolectx;   /* rolectx: 0 wizard, 1 change a role */
+    int role, stage, pronoun;
+    uint8_t rolectx;        /* 0 wizard, 1 change a role                  */
+    uint8_t story_next;     /* story rotation for this dashboard visit  */
     char name[DOOMO_NAME_LEN];
     int acts[6];           /* member menu: action codes             */
     const char *opts[6];
@@ -388,6 +390,20 @@ static int family_guests(int activity, uint16_t guests[FAMILY_MAX])
 
 static void family_activity(int activity, int item)
 {
+    static const char *const stories[2][4] = {
+        {
+            "You trade stories about the island. The ending with the runaway cake gets the biggest laugh.",
+            "An island ferry takes stories as fare. One tale lasts two crossings.",
+            "The town bell goes missing. The baker has been using it to keep a pie warm.",
+            "An old coat has pockets full of weather. The last one still holds yesterday's rain."
+        },
+        {
+            "You tell a story about a moth who hid the moon. A pillow plays the moon in the last scene.",
+            "A ghost loses its sheet. It borrows a napkin and haunts the bread bin.",
+            "A cloud gets stuck in a teacup. It escapes when an imp blows on the tea.",
+            "An imp leaves a boot out in the rain. By dawn a frog has lined it with moss."
+        }
+    };
     uint16_t guests[FAMILY_MAX];
     int n = family_guests(activity, guests), i;
     int cheat = opt_get(OPT_CHEAT_INFINITE_CANDY), young = 0;
@@ -421,8 +437,9 @@ static void family_activity(int activity, int item)
     audio_sfx(SFX_HAPPY);
     fp_fx_burst(fp_sw() / 2, 66, activity == FT_GAME ? FX_STAR : FX_HEART, 10);
     if (activity == FT_STORY) {
-        ui_say(-1, young ? "You tell a story about a moth who hid the moon. A pillow plays the moon in the last scene."
-                         : "You trade stories about the island. The ending with the runaway cake gets the biggest laugh.");
+        unsigned story = W.story_next % DOOMO_COUNTOF(stories[0]);
+        W.story_next++;
+        ui_say(-1, stories[young][story]);
     } else {
         if (activity == FT_MEAL) doomo_snprintf(line, sizeof line, "Served %s to %d at home.", doomo_items[item].name, n);
         else doomo_snprintf(line, sizeof line, "Game night with %d from the household!", n);
@@ -649,6 +666,7 @@ static void open_memorial(int idx)
 static void fam_enter(int arg)
 {
     memset(&W, 0, sizeof(W));
+    W.story_next = (uint8_t)doomo_town.day;
     if (arg == 1 && family_count() < family_cap()) add_member();   /* from a new house: build the family */
 }
 

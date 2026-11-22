@@ -31,14 +31,16 @@ cell o wall=RUST_METAL ch=20                                   # organ pipes (he
 cell H wall=HEDGE ch=3
 cell W wall=BONE_WALL ch=56                                    # the two bell-less towers of the facade
 cell Y wall=SKULL_MOSAIC ch=46                                 # facade buttresses
-cell Z wall=BLOOD_BRICK ch=40                                    # the arch posts (their top is the arch's roof)
+cell Z wall=BLOOD_BRICK ch=32                                  # jambs match the roof over the open span
 cell y floor=HELL_ROCK ceil=sky fh=0 light=11
 cell g floor=GORE_FLOOR ceil=sky fh=0 light=13                  # red approach to the arch
 cell = like=g floor=BLOOD_BRICK light=10                   # dark courtyard edging
 cell + like=g light=15                                     # reflected light under the rose windows
+cell - like== light=13                                         # flagstones framing the red threshold
 cell ~ floor=LAVA ceil=sky fh=-2 light=15 flags=lava           # the font of the damned
 cell z floor=INFECTED_GRASS ceil=sky fh=1 light=13 flags=secret # hidden nook
-cell D floor=GORE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=14  # the great arch (open)
+cell D floor=GORE_FLOOR ceil=BONE_WALL fh=0 ch=12 light=14    # great arch shoulders
+cell d like=D ceil=SKULL_MOSAIC ch=18 light=15                 # raised crown above the center lane
 cell n floor=PENTAGRAM_FLOOR ceil=SKULL_MOSAIC fh=0 ch=14 light=13
 cell s floor=BONE_WALL ceil=SKULL_MOSAIC fh=1 ch=22 light=10   # spiral steps (overlay)
 cell v floor=TILE_FLOOR ceil=SKULL_MOSAIC fh=0 ch=40 light=11
@@ -116,9 +118,9 @@ FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIInnnnnnnnnnnIIIsFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFsIIsnnnnnnnnnnnsIIsFFFFFFFFFFFFFFFF
 FFFFFFFFFFFFFssssnnnnnnnnnnnssssFFFFFFFFFFFFFFFF
-FFFFFFFFFFFFWWWWYKFSZDDDZSFKYWWWWFFFFFFFFFFFFFFF
-Fyyyyyyyyyyyyyyyy=gg+++++gg=yyyyyyyyyyyyyyyyyyyF
-FyyyyPyyyyyyyyPyy=gg+++++gg=yyPyyyyyyyyPyPPPPPPF
+FFFFFFFFFFFFWWWWYKFSZDdDZSFKYWWWWFFFFFFFFFFFFFFF
+Fyyyyyyyyyyyyyyyy=gg-+++-gg=yyyyyyyyyyyyyyyyyyyF
+FyyyyPyyyyyyyyPyy=gg-+++-gg=yyPyyyyyyyyPyPPPPPPF
 Fyyyyyyyyyyyyyyyy=ggggggggg=yyyyyyyyyyyyyPzzzzzF
 Fyyyyyyy~~~~yyyyy=ggggggggg=yyyyy~~~~yyyyPzzzzzF
 Fyyyyyyy~~~~yyyyy=ggggggggg=yyyyy~~~~yyyyyzHHHzF

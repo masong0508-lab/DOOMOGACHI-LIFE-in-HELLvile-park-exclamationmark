@@ -781,7 +781,7 @@ texture, palette bank or (sprite) colour change.
 | `plat_post_blend` | a translucent sprite at level/16 (16: solid) | the native runner uses a checker or a darken |
 | `plat_post_iris` | the weak default's exact black runs and rim, merged | yes |
 | `plat_pal_lerp` | palette bank 2 or 3 (alternating by frame, so the frame on the PVR keeps its palette) = `camfx_pal_entry()`; the prims drawn so far switch to it | the native runner does not do it |
-| `plat_hold_frame` (U4) | the last submitted list is kept and submitted under every new frame until released (it keeps no palette lerp) | yes |
+| `plat_hold_frame` (U4) | the submitted part of each draw list stays under new frames until release. Repeated holds of one frame reuse its captured geometry. Palette lerps are transient. | yes |
 
 **Exact shading.** The native runner shades by remapping every pixel
 through `doomo_colormap[level]` (each colour walks down its own shade

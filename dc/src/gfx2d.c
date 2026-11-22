@@ -73,13 +73,13 @@ DcStats dc2d_stats;
 
 static DcPrim  buf_a[DC2D_MAX_PRIMS], buf_b[DC2D_MAX_PRIMS], held_buf[DC2D_MAX_PRIMS];
 static DcPrim *cur = buf_a, *prev = buf_b;
-static int     ncur, nprev, nheld;
+static int     ncur, nheld;
 static int     seal;              /* no rect merges into prims before this     */
 static int     drawing;           /* inside a drawn tick                       */
-static int     held, cur_cleared, prev_on_held;
+static int     held, cur_cleared;
 static uint8_t bg_cur, bg_prev, bg_held;
 static uint8_t lerp_on, lerp_bank;
-static uint32_t frame_no;
+static uint32_t frame_no, held_frame;
 static DcFrame last_frame;
 static int     ncap = DC2D_MAX_PRIMS;    /* capacity of cur (the side frame's is smaller) */
 
@@ -235,7 +235,7 @@ void dc2d_init(void)
     dc2d_pal_init();
     dc2d_font_init();
     dc3d_init();
-    ncur = nprev = nheld = 0;
+    ncur = nheld = last_frame.n = last_frame.nheld = 0;
     n3d_cur = n3d_held = 0;
     held = drawing = 0;
 }
@@ -327,8 +327,6 @@ void dc2d_end(void)
     dc2d_be_submit(f);
     /* this frame becomes "the picture just shown" (plat_hold_frame) */
     tmp = prev; prev = cur; cur = tmp;
-    nprev = ncur;
-    prev_on_held = use_held;
     bg_prev = bg_cur;
     f->prims = prev;
 }
@@ -385,17 +383,19 @@ int DC2D_FN(hold_frame)(int on)
     int k;
     if (on == 4) return held;
     if (!on) { held = 0; return 0; }
+    if (held && held_frame == last_frame.frame) return 1;
     /* the picture just shown: its own backdrop (if it had one) + its prims */
     {
         int reset3d;
-        if (!(held && prev_on_held)) nheld = 0;
+        /* Use the submitted prefixes. The vertex budget may have cut either list. */
+        nheld = held ? last_frame.nheld : 0;
         /* a new backdrop starts the held batch again, unless the picture
          * itself shows held polygons (a full-screen shade copied them) */
         reset3d = nheld == 0;
-        for (k = 0; k < nprev && reset3d; k++)
+        for (k = 0; k < last_frame.n && reset3d; k++)
             if (prev[k].mode == DC2D_VIEW3D && dc3d_marker_slot(&prev[k]) == DC3D_HELD) reset3d = 0;
         held = 0;
-        for (k = 0; k < nprev && nheld < DC2D_MAX_PRIMS; k++) {
+        for (k = 0; k < last_frame.n && nheld < DC2D_MAX_PRIMS; k++) {
             DcPrim q = prev[k];
             if (q.mode == DC2D_VIEW3D && dc3d_marker_slot(&q) != DC3D_HELD) {
                 /* its polygons move to the held batch */
@@ -418,6 +418,7 @@ int DC2D_FN(hold_frame)(int on)
         if (held_buf[k].mode == DC2D_VIEW3D) { n3d_held++; box_add(&m3d_held, &held_buf[k]); }
     }
     bg_held = bg_prev;
+    held_frame = last_frame.frame;
     held = 1;
     return 1;
 }
