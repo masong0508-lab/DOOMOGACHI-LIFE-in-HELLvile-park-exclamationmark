@@ -1114,10 +1114,11 @@ TEST(family_birth_throws_a_welcome_party)
 {
     int a, p, baby, mood_a, mood_p, n0;
     fresh_free_play();
+    resident_set_stage(&doomo_town.player, LIFE_ADULT);
     a = first_free_play_adult();
-    if (a < 0) return;
+    CHECK(a >= 0);
     p = family_pool_add(FAMROLE_PARTNER, LIFE_ADULT, 11u, "Sol", PRONOUN_THEY);
-    if (p < 0) return;                                      /* the gate is closed in this setup */
+    CHECK(p >= 0);
     family_add(a, FAMROLE_HOUSEMATE, 0);                    /* a second grown-up, if the cap allows */
     mood_p = family_mood(p);
     mood_a = family_find(a) ? family_mood(a) : 0;
@@ -1129,6 +1130,71 @@ TEST(family_birth_throws_a_welcome_party)
     CHECK_EQ(family_mood(baby), 8);
     CHECK(sim_news_count() > n0);
     CHECK_EQ(family_stage_days_left(baby), family_stage_days(LIFE_BABY));
+}
+
+TEST(family_adopt_uses_existing_room_and_welcomes_a_child)
+{
+    int adult, pet, child;
+    fresh();
+    clear_tiers();
+    resident_set_stage(&doomo_town.player, LIFE_ADULT);
+    adult = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    pet = family_pool_add(FAMROLE_PET, LIFE_ADULT, 7u, "Bun", -1);
+    CHECK(adult >= 0 && pet >= 0);
+    ui_toast_clear();
+    sim_news_clear();
+    CHECK_EQ(family_birth("Pip", PRONOUN_XE), FAM_ERR_NOPARTNER);
+    CHECK_EQ(family_adopt(LIFE_ADULT, "Pip", PRONOUN_XE), FAM_ERR_STAGE);
+    CHECK_EQ(family_adopt(LIFE_COUNT, "Pip", PRONOUN_XE), FAM_ERR_STAGE);
+    CHECK_EQ(family_adopt(LIFE_BABY, "", PRONOUN_XE), FAM_ERR_NAME);
+    CHECK_EQ(family_count(), 2);
+    CHECK_EQ(sim_news_count(), 0);
+    CHECK(!ui_toast_pending());
+
+    child = family_adopt(LIFE_TODDLER, "Pip", PRONOUN_XE);
+    CHECK(child >= FAMILY_POOL_FIRST);
+    CHECK_EQ(family_find(child)->role, FAMROLE_CHILD);
+    CHECK_EQ(family_find(child)->stage, LIFE_TODDLER);
+    CHECK_EQ(family_identity(child)->pronoun, PRONOUN_XE);
+    CHECK_STR(family_identity(child)->name, "Pip");
+    CHECK_EQ(family_mood(adult), 11);
+    CHECK_EQ(family_mood(pet), 8);
+    CHECK_EQ(family_mood(child), 8);
+    CHECK(ui_toast_pending());
+    CHECK_EQ(sim_news_count(), 1);
+    CHECK(strstr(sim_news(0), "Pip") != NULL);
+
+    ui_toast_clear();
+    CHECK_EQ(family_adopt(LIFE_BABY, "Dot", PRONOUN_THEY), FAM_ERR_FULL);
+    CHECK_EQ(family_count(), 3);
+    CHECK_EQ(family_mood(adult), 11);
+    CHECK_EQ(sim_news_count(), 1);
+    CHECK(!ui_toast_pending());
+}
+
+TEST(family_adopt_requires_the_current_avatar_to_be_an_adult)
+{
+    int teen, elder, adopted;
+    fresh();
+    clear_tiers();
+    resident_set_stage(&doomo_town.player, LIFE_TEEN);
+    CHECK_EQ(family_adopt(LIFE_BABY, "Kit", PRONOUN_THEY), FAM_ERR_GUARDIAN);
+    CHECK_EQ(family_count(), 0);
+
+    teen = family_pool_add(FAMROLE_CHILD, LIFE_TEEN, 5u, "Pip", PRONOUN_THEY);
+    elder = family_pool_add(FAMROLE_PARENT, LIFE_ELDER, 7u, "Gran", PRONOUN_SHE);
+    CHECK(teen >= 0 && elder >= 0);
+    doomo_town.story.chapter = STORY_CH_DONE;
+    resident_set_stage(&doomo_town.player, LIFE_ADULT);
+    CHECK(playas_switch(teen, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(family_adopt(LIFE_CHILD, "Kit", PRONOUN_THEY), FAM_ERR_GUARDIAN);
+    CHECK_EQ(family_count(), 2);
+
+    resident_set_stage(&doomo_town.player, LIFE_TEEN);
+    CHECK(playas_switch(elder, PLAYAS_SWITCH_INSTANT));
+    adopted = family_adopt(LIFE_TEEN, "Kit", PRONOUN_THEY);
+    CHECK(adopted >= FAMILY_POOL_FIRST);
+    CHECK_EQ(family_find(adopted)->stage, LIFE_TEEN);
 }
 
 /* ---- S-HOUSE: New Game+ restarts the story and reaches household tier 2 -------------- */

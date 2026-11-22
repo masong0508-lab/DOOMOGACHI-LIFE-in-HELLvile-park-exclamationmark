@@ -240,17 +240,17 @@ static const char *opt_text(const DlgEntry *e, int i)
 
 /* ---------------------------------------------------------------------- */
 /* The resident a line's speaker draws as: a town resident, or (MP1) a family pool member / co-op housemate, whose record is made
- * from the family identity (refreshed once a frame). NULL when the speaker has none (a pet, an empty slot). */
+ * from the family identity when the dialogue queue changes. NULL when the speaker has none (a pet, an empty slot). */
 static const DoomoResident *dlg_res(int speaker)
 {
     static DoomoResident fr;
     static int fid = -1;
-    static uint32_t ffr = 0xFFFFFFFFu;
+    static uint16_t fgen;
     if (speaker < 0) return NULL;
     if (speaker < PLAYAS_ID_FAMILY_FIRST) return town_res(speaker);
-    if (fid != speaker || ffr != doomo_frame_count()) {
+    if (fid != speaker || fgen != d_gen) {
         if (!family_resident(speaker, &fr)) { fid = -1; return NULL; }
-        fid = speaker; ffr = doomo_frame_count();
+        fid = speaker; fgen = d_gen;
     }
     return &fr;
 }
@@ -549,6 +549,10 @@ static void dlg_prefetch(const DlgEntry *e, int talking)
 {
     if (dlg_res(e->speaker)->status == RES_POSSESSED) return;          /* its face is EXPR_POSSESSED */
     if (talking && e->expr != EXPR_TALK && !portrait_prefetch(e->speaker, EXPR_TALK)) return;
+    /* The pool portrait uses one materialized record. Keep it on this
+     * speaker until the next pool person's line begins. */
+    if (dq_n > 1 && e->speaker >= PLAYAS_ID_FAMILY_FIRST &&
+        dq[1].speaker >= PLAYAS_ID_FAMILY_FIRST && dq[1].speaker != e->speaker) return;
     if (dq_n > 1 && has_portrait(dq[1].speaker)) {
         if (!portrait_prefetch(dq[1].speaker, dq[1].expr)) return;
         (void)portrait_prefetch(dq[1].speaker, EXPR_TALK);

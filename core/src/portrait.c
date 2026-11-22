@@ -909,15 +909,20 @@ static const DoomoResident *res_of(int rid, int *status)
     static DoomoResident def;
     static uint8_t def_ready;
     static DoomoResident fam;
-    static int fam_id = -1;
-    static uint32_t fam_fr = 0xFFFFFFFFu;
+    static int fam_key = -1;
+    static uint32_t fam_seed;
     const DoomoResident *r = (rid >= 0 && rid <= DOOMO_PLAYER_ID) ? town_res(rid) : NULL;
     if (rid >= PLAYAS_ID_FAMILY_FIRST) {             /* MP1: a family pool member / co-op housemate has a face too */
-        if (fam_id != rid || fam_fr != doomo_frame_count()) {
-            fam_id = family_resident(rid, &fam) ? rid : -1;
-            fam_fr = doomo_frame_count();
+        const FamilyMember *m = family_find(rid);
+        if (m && m->role != FAMROLE_PET) {
+            const FamilyIdentity *f = family_identity(rid);
+            int key = rid | (m->stage << 16);
+            if (fam_key != key || fam_seed != f->seed) {
+                fam_key = family_resident(rid, &fam) ? key : -1;
+                fam_seed = f->seed;
+            }
+            if (fam_key == key) r = &fam;
         }
-        if (fam_id == rid) r = &fam;
     }
     if (!def_ready) { resident_default(&def); def.status = RES_ALIVE; def_ready = 1; }
     if (!r || r->status == RES_EMPTY) {

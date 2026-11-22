@@ -98,3 +98,29 @@ spare_key	roommate
 teamwork	chores
 truce	argument	trust
 trust	truce	promise
+
+# Making room for someone and keeping household traditions.
+adoption	child	family	moving_in	parenting
+bedtime_story	nightlight	parenting	tradition
+child	adoption
+dinner	tradition
+family	adoption	friend	household
+family_reunion	tradition
+friend	family
+game	game_night
+game_night	game	tradition
+grandparent	photo_album	recipe
+house_rules	sibling
+household	family	moving_in	parenting	pet
+housewarming	moving_in
+moving_in	adoption	household	housewarming	spare_room
+nightlight	bedtime_story
+parent	parenting
+parenting	adoption	bedtime_story	household	parent	teen
+pet	household
+photo_album	grandparent
+recipe	grandparent
+sibling	house_rules
+spare_room	moving_in
+teen	parenting
+tradition	bedtime_story	dinner	family_reunion	game_night

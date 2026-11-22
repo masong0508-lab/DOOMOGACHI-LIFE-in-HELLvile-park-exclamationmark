@@ -437,28 +437,52 @@ int family_age_daily(void)
     return aged_n_;
 }
 
-int family_birth(const char *name, int pronoun)
+static int child_arrives_(int stage, const char *name, int pronoun, int adoption)
 {
-    int id, r;
+    int i, id = family_pool_alloc(), r;
     char msg[64];
-    if (family_count_role(FAMROLE_PARTNER) < 1) return FAM_ERR_NOPARTNER;
-    if (!LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID))) return FAM_ERR_GATE;
-    id = family_pool_alloc();
+    const char *child_name;
     if (id < 0) return FAM_ERR_FULL;
-    r = family_pool_add(FAMROLE_CHILD, LIFE_BABY,
+    r = family_pool_add(FAMROLE_CHILD, stage,
                         default_seed(id) ^ ((uint32_t)doomo_town.day * 0x85EBCA6Bu), name, pronoun);
     if (r < 0) return r;
-    doomo_snprintf(msg, sizeof(msg), STR_ICON_HEART " It's a baby! Welcome, %s!", family_identity(r)->name);
+    child_name = family_identity(r)->name;
+    doomo_snprintf(msg, sizeof(msg), adoption ? STR_ICON_HEART " Welcome home, %s!"
+                                             : STR_ICON_HEART " It's a baby! Welcome, %s!", child_name);
     ui_toast(msg);
-    {   /* the welcome party: everyone who is not a pet is over the moon */
-        int i;
-        for (i = 0; i < fam_n_; i++)
-            if (fam_[i].id != r && fam_[i].role != FAMROLE_PET) mood_add_(i, 3);
-        doomo_snprintf(msg, sizeof(msg), "Baby %s has arrived! The whole house is glowing.", family_identity(r)->name);
-        sim_news_push(msg);
-    }
+    for (i = 0; i < fam_n_; i++)
+        if (fam_[i].id != r && fam_[i].role != FAMROLE_PET) mood_add_(i, 3);
+    doomo_snprintf(msg, sizeof(msg), adoption ? "%s joined the family!"
+                                             : "Baby %s has arrived! The whole house is glowing.", child_name);
+    sim_news_push(msg);
     audio_sfx(SFX_SPARKLE);
     return r;
+}
+
+int family_birth(const char *name, int pronoun)
+{
+    if (family_count_role(FAMROLE_PARTNER) < 1) return FAM_ERR_NOPARTNER;
+    if (!LIFE_IS_ADULT(sim_life_stage(DOOMO_PLAYER_ID))) return FAM_ERR_GATE;
+    return child_arrives_(LIFE_BABY, name, pronoun, 0);
+}
+
+int family_adopt_guardian_ok(void)
+{
+    int id = playas_avatar(), stage;
+    if (id <= DOOMO_PLAYER_ID) stage = sim_life_stage(id);
+    else {
+        const FamilyMember *m = family_find(id);
+        if (!m || m->role == FAMROLE_PET) return 0;
+        stage = m->stage;
+    }
+    return LIFE_IS_ADULT(stage);
+}
+
+int family_adopt(int stage, const char *name, int pronoun)
+{
+    if (stage < LIFE_BABY || stage > LIFE_TEEN) return FAM_ERR_STAGE;
+    if (!family_adopt_guardian_ok()) return FAM_ERR_GUARDIAN;
+    return child_arrives_(stage, name, pronoun, 1);
 }
 
 int family_aged_count(void) { return aged_n_; }

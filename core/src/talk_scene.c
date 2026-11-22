@@ -64,6 +64,7 @@ typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
 #define SHARED_PAGE (JOURNAL_PAGE / 2)
 #define JOURNAL_LAST 0xFFFFu
 #define TALK_ARG_HOME 0x400
+DOOMO_STATIC_ASSERT(FAMILY_POOL_LAST < TALK_ARG_HOME, talk_arg_reserves_home_bit);
 
 static struct TalkScn {
     TalkState s;
@@ -98,7 +99,7 @@ static struct TalkScn {
     char      followup_name[40];
 } T;
 
-static int extra_ids[TALK_PARTS_MAX], extra_n;       /* the others the caller wants in the room */
+static int extra_ids[TALK_PARTS_MAX - 1], extra_n;   /* the others the caller wants in the room */
 static uint32_t sessions;                            /* a new seed for every talk of a day      */
 
 /* ---- the text of the quick replies ------------------------------------------------------ */
@@ -224,9 +225,16 @@ typedef struct QCtx {
     const TalkState *s;
     uint32_t salt;
     uint16_t topic, fresh;               /* the topic the replies stay on; one to steer to        */
-    uint8_t  kid, sincere, n;
+    uint8_t  kid, sincere, pool, n;
     uint8_t  used[(TA_COUNT + 7) / 8];
 } QCtx;
+
+static int is_pool_id(int id) { return id >= FAMILY_POOL_FIRST && id <= FAMILY_POOL_LAST; }
+
+static int opens_resident_menu(int act)
+{
+    return act == TA_INVITE || act == TA_OFFER || act == TA_GIVE;
+}
 
 static int q_used(const QCtx *q, int act) { return (q->used[act >> 3] >> (act & 7)) & 1; }
 
@@ -261,6 +269,7 @@ static const char *q_text(const QCtx *q, int act, uint32_t h)
     int ng, nt, i;
     uint16_t tp;
     if (act <= TA_NONE || act >= TA_COUNT || TA_IS_ROMANCE(act) || TA_IS_SAFETY(act) || q_used(q, act)) return NULL;
+    if (q->pool && opens_resident_menu(act)) return NULL;
     if (q->sincere && !q_sincere_act(act)) return NULL;
     if (q->kid && (act == TA_TEASE || act == TA_DISMISS || act == TA_COMPLAIN)) return NULL;
     tp = q_topic_of(q, act);
@@ -552,6 +561,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     th = talk_quick_thread(s, &tslot);
     if (slot < 0 || slot >= s->nparts || (s->part[slot].flags & (TPF_LEFT | TPF_PET)))
         slot = tslot >= 0 && tslot < s->nparts ? tslot : 0;
+    q.pool = slot < s->nparts && is_pool_id(s->part[slot].id);
     if (th) act = th->act;
     q.kid = s->conv.aud.any_minor || (s->flags & TDF_KIDSAFE) ? 1 : 0;
     /* grief and sincerity: only comfort, and the topic is not picked up */
@@ -636,7 +646,37 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
 static const char *res_name(int id)
 {
     const DoomoResident *r = town_res(id);
-    return r ? r->name : "?";
+    const FamilyIdentity *f;
+    if (r) return r->name;
+    f = family_identity(id);
+    return f ? f->name : "?";
+}
+
+int talk_family_ready(int id)
+{
+    const FamilyMember *m;
+    if (!is_pool_id(id) || id == playas_avatar() || id == family_away_id()) return 0;
+    m = family_find(id);
+    return m && m->role != FAMROLE_PET &&
+           (LIFE_IS_ADULT(m->stage) || m->stage == LIFE_CHILD || m->stage == LIFE_TEEN);
+}
+
+static int can_join(int id)
+{
+    if ((unsigned)id >= DOOMO_MAX_RESIDENTS) return talk_family_ready(id);
+    return id != playas_avatar() && id != family_away_id() && town_alive(id);
+}
+
+static int party_has(int id)
+{
+    int i;
+    for (i = 0; i < T.n; i++) if (T.ids[i] == id) return 1;
+    return 0;
+}
+
+static int pool_target(void)
+{
+    return T.to >= 0 && T.to < T.n && is_pool_id(T.ids[T.to]);
 }
 
 static void topic_name(uint16_t c, char *out, int cap)
@@ -691,6 +731,7 @@ static int act_listed(int act)
 {
     if (needs_two(act) && T.n < 2) return 0;
     if (TA_IS_ROMANCE(act) && !romance_open()) return 0;
+    if (pool_target() && opens_resident_menu(act)) return 0;
     return 1;
 }
 
@@ -783,11 +824,13 @@ static void build_main(void)
     }
     /* Deliberate shared-life actions are below the old categories so the
      * classic quick-reply and four-press compliment budgets stay intact. */
-    if (!planned_place) add_row(K_OUT, 0, 0);
-    add_row(K_PLAY, 0, 0);
-    add_row(K_SHOW, 0, 0);
-    add_row(K_GIVE, 0, 0);
-    add_row(K_HELP, 0, 0);
+    if (!pool_target()) {
+        if (!planned_place) add_row(K_OUT, 0, 0);
+        add_row(K_PLAY, 0, 0);
+        add_row(K_SHOW, 0, 0);
+        add_row(K_GIVE, 0, 0);
+        add_row(K_HELP, 0, 0);
+    }
     /* Read-only schedule dialogue; the current ACT_* is the source, not
      * a made-up meeting promise. No per-frame activity scan or reward. */
     if (T.to >= 0 && T.to < T.n && T.ids[T.to] >= 0 &&
@@ -1371,16 +1414,16 @@ static void build_topics(void)
 
 static void build_invite(void)
 {
-    int i, k, best, pick[6], np = 0;
+    int i, k, best, pick[6], np = 0, away = family_away_id();
     T.page = PG_INVITE;
     T.nrows = 0;
     for (k = 0; k < 6; k++) {
         best = -1;
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            int j, used = (i == T.avatar) || !town_alive(i) || talk_safe_is_pet(i);
-            for (j = 0; j < T.n && !used; j++) if (T.ids[j] == i) used = 1;
-            for (j = 0; j < np && !used; j++) if (pick[j] == i) used = 1;
-            if (used) continue;
+            int j;
+            if (i == T.avatar || i == away || !town_alive(i) || party_has(i)) continue;
+            for (j = 0; j < np && pick[j] != i; j++) {}
+            if (j < np) continue;
             if (best < 0 || rel_value(T.ids[0], i) > rel_value(T.ids[0], best)) best = i;
         }
         if (best < 0) break;
@@ -2268,7 +2311,7 @@ static void invite(int id)
 {
     TalkOutcome o;
     char msg[40];
-    if (T.n >= TALK_PARTS_MAX) return;
+    if (T.n >= TALK_PARTS_MAX || !can_join(id) || party_has(id)) return;
     talk_outcome_end(&T.s, &o, NULL);            /* what the first talk did counts */
     T.ids[T.n++] = id;
     begin_talk();
@@ -2552,11 +2595,16 @@ static void talk_enter(int arg)
     memset(&T, 0, sizeof T);
     if (arg & TALK_ARG_HOME) T.place = TALK_PLACE_HOME;
     arg &= ~TALK_ARG_HOME;
+    if (!can_join(arg)) {
+        extra_n = 0;
+        scene_pop();
+        return;
+    }
     T.avatar = playas_avatar();
     T.ids[0] = arg;
     T.n = 1;
     for (i = 0; i < extra_n && T.n < TALK_PARTS_MAX; i++)
-        if (extra_ids[i] != arg && extra_ids[i] != T.avatar && town_alive(extra_ids[i])) T.ids[T.n++] = extra_ids[i];
+        if (can_join(extra_ids[i]) && !party_has(extra_ids[i])) T.ids[T.n++] = extra_ids[i];
     extra_n = 0;
     T.to = 0;
     T.topic = TC_NONE;
@@ -2942,9 +2990,9 @@ int home_talk_note(void)
 
 int home_talk_enter(int who)
 {
-    if (who < 0 || who >= DOOMO_MAX_RESIDENTS || !town_alive(who)) return 0;
-    if (who == playas_avatar() || !talk_ready()) return 0;
-    plat_scene_push_after_call(&SCENE_TALK, who | (scene_top() == &SCENE_HOME ? TALK_ARG_HOME : 0));
+    const DoomoScene *from = scene_top();
+    if (!can_join(who) || !talk_ready()) return 0;
+    plat_scene_push_after_call(&SCENE_TALK, who | (from == &SCENE_HOME || from == &SCENE_FAMILY ? TALK_ARG_HOME : 0));
     return 1;
 }
 

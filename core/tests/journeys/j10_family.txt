@@ -32,10 +32,7 @@ press DOWN
 press A
 wait 90
 shot wizard
-press DOWN
-press DOWN
-press DOWN
-press DOWN
+press UP
 press A
 wait 20
 expect-scene FAMILY

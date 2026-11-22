@@ -593,6 +593,27 @@ needs, or records a meeting. Native controller tests exercise both
 category paths, including no premature item consumption. The change
 uses no new resident save fields, persistent RAM, or per-frame work.
 
+## Family starts and time at home
+
+**Family > Add a member > Adopt a child** lets the adult or elder you
+are playing choose a baby, toddler, child, or teen and give them a name
+and pronouns. Adoption is available to solo parents. Birth uses its
+existing partner requirement. The new family member uses the usual
+household space and is saved with the rest of the family.
+
+**Family time** offers shared meals, game night, and story time. Choose
+a dish from the pantry and bring one serving for each guest. Residents
+at home use their usual food preferences. Younger children can listen
+to a story, and pets can join the play. Away residents keep their plans.
+
+On Talk-enabled builds, **Talk together** starts a conversation with up
+to four available household members. **Talk to them** in a created or
+adopted member's menu opens a private conversation from child age onward.
+These conversations use their real names, stages, and family roles.
+Child safety checks and the limits on resident-only activities still apply.
+The English Talk bank adds 108 replies and 23 two-way topic connections
+for adoption, parenting, living together, family traditions, and pets.
+
 ## PS1 disc-backed Talk integration
 
 Build the opt-in PS1 game disc with `-DDOOMO_PS1_TALK=ON`. CI publishes its
@@ -604,6 +625,8 @@ The overlay planner puts conversation-only code in the Talk group and
 keeps its shared save, simulation and story dependencies resident. Talk
 draws its own backdrop on PS1 so the resident card's overlay does not have
 to reload on every frame. Reply generation processes one line per tick.
+The Free Play overlay loads its own menu strings and callbacks, including
+Family time, to leave stack space for the intro FMV builds.
 
 The Talk variant loads the packed sprite stream into SPU RAM at boot.
 Sprites still decompress on a VRAM cache miss. The disc reader uses two

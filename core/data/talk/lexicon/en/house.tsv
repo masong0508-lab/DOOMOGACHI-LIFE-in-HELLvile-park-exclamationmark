@@ -115,6 +115,7 @@ housewarming	.	2	.	.	housewarming party	fun,new,busy	.
 sleepover	.	2	.	.	.	loud,late,fun	.
 neighbourhood	.	1	.	.	neighborhood,hood	quiet,nosy,local	.
 moving_day	.	-1	.	moving day	move house	tiring,messy,busy	.
+moving_in	.	1	.	.	move in	new,busy,exciting	gerund
 renovation	.	0	.	.	makeover	dusty,loud,expensive	.
 interior_design	.	1	.	interior design	decor	stylish,fancy,expensive	mass
 wallpaper	.	0	.	wallpaper	.	peeling,striped,old	mass

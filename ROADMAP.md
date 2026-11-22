@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Family starts and time at home (2026-11-22):** Adopt a child as an
+  adult or elder, then spend time together through meals, games, stories,
+  and family chats. Meals use pantry stock per guest. Household members
+  who are old enough to speak can also use Talk from their own menus.
 - **Shared topics and apologies in Talk (2026-11-22):** Browse saved topic
   pairs in **Our history**, then ask the selected resident about either
   subject. A clearly recalled date can lead to an apology for past hurt through

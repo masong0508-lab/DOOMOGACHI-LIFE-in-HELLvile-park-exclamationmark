@@ -318,14 +318,15 @@ static int couple_in_room(const TalkState *s)
  * to the speaker (the same venue counts more); the best by that score, ties to the lower id. -1 none. Pure on the state. */
 static int pick_call(const TalkState *s, int who)
 {
-    int id = res_id(s, who), i, k, best = -1, bs = 0, rmin = minor_room(s), couple;
+    int id = res_id(s, who), i, k, best = -1, bs = 0, rmin = minor_room(s), couple, away;
     const DoomoResident *sp = id >= 0 ? town_res(id) : NULL;
     if (!sp || s->nparts >= TALK_PARTS_MAX) return -1;
     couple = couple_in_room(s);
+    away = family_away_id();
     for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
         const DoomoResident *r = town_res(i);
         int sc, in_room = 0, cm;
-        if (!r || r->status != RES_ALIVE || i == s->conv.avatar || talk_safe_is_pet(i)) continue;
+        if (!r || r->status != RES_ALIVE || i == s->conv.avatar || i == away) continue;
         if (r->activity == ACT_SLEEPING || r->activity == ACT_HAUNTING || r->activity == ACT_HOSPITAL) continue;
         for (k = 0; k < s->nparts; k++) if (s->part[k].id == i) in_room = 1;
         if (in_room) continue;

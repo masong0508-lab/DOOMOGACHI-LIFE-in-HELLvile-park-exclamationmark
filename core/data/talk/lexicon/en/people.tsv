@@ -47,6 +47,9 @@ family_tree	.	1	.	.	.	big,old,twisty	.
 family_reunion	.	0	.	.	.	loud,awkward,big	.
 only_child	.	0	.	.	.	spoiled,quiet,lonely	minor
 firstborn	.	1	.	.	.	bossy,proud,responsible	.
+adoption	.	1	.	.	adopt,adopting,adopt a child,adopting a child	important,loving,new	mass
+parenting	.	1	.	.	raising children,raising a child	important,busy,tiring	mass
+tradition	.	2	.	.	family tradition,family traditions	old,important,loving	.
 @cat people.social
 friend	.	2	.	.	pal,buddy,mate,chum	loyal,fun,kind	.
 best_friend	.	3	.	.	bestie,bff,best mate	loyal,fun,kind	.

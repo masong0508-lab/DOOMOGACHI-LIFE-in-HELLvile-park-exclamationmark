@@ -243,7 +243,7 @@ MODAL_CALLBACKS = {
     # (RAM headroom 2026-11-12) mem_flowers: the memorial's ui_choice
     "fp_family": ("care_all", "care_top_pick", "do_remove", "do_renamed", "do_uplift", "member_act",
                   "role_done", "role_more", "will_pick", "wz_kind", "wz_named", "wz_pron",
-                  "wz_stage", "mem_flowers"),
+                  "wz_stage", "mem_flowers", "family_time_pick", "meal_pick"),
     "fp_graveyard": ("cb_grave",),
     "fp_island": ("cb_name_island", "cb_pet_name", "cb_title"),
     "fp_newisland": ("cb_ask_name", "cb_name", "cb_seed"),
@@ -360,15 +360,11 @@ SHARED_TAG = "+"                # what grp() says for a candidate section of a s
 # play gives 13.5 KB of resident RAM for +26 ms on each of its loads (314 -> 340 ms on PCSX-Redux),
 # the island 13.1 KB for +20 ms (206 -> 226). The cutscenes can load their
 # own table strings (+7 ms on that tree) to make room for the boot FMV.
-HOLD = ("freeplay", "island")
+HOLD = ("island",)
 #   object base -> function names
 HELD_CALLBACKS = {
     "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",
                       "draw_walkers_body", "draw_weather_body", "lr_tap"),
-    "fp_title": ("pc_pill", "pc_in", "pc_vile", "finished_pick", "fresh_world_go"),
-    "fp_family": ("mem_flowers", "wz_neighbour"),
-    "fp_resident": ("cb_manage", "cb_introduce"),
-    "playas_scene": ("pf_leave", "pf_renamed", "pf_join"),
 }
 # --- end RAM headroom ---
 

@@ -1,8 +1,8 @@
 /* fp_family.c - SCENE_FAMILY: the family dashboard, add-member wizard,
  * care-for-everyone and the memorial page (owner: freeplay, F2).
  *
- * Two pages (L / R): Household (every member, A opens that member's menu,
- * the last two rows are "Care for everyone" and "Add a member") and
+ * Two pages (L / R): Household (member menus, care, starting a family,
+ * and shared activities) and
  * Remembered (the memorials family_lose() leaves behind; A leaves flowers,
  * up to three posies each). Pets get their own sprite, Feed and Play (F5).
  * Replaces the weak K0 placeholder in weak_scenes.c.
@@ -11,12 +11,13 @@
 #include "fp_int.h"
 #include "doomo/family.h"
 #include "doomo/playas.h"
+#include "doomo/talk.h"
 
 static struct {
     int tab, sel, top, t;
     /* wizard / menu state */
     int target;            /* member id the menu is about          */
-    int kind;              /* wizard: 0 neighbour 1 person 2 pet 3 baby */
+    int kind;              /* wizard add-member choice               */
     int pick;              /* wizard: chosen resident id            */
     int role, stage, pronoun, rolectx;   /* rolectx: 0 wizard, 1 change a role */
     char name[DOOMO_NAME_LEN];
@@ -24,8 +25,10 @@ static struct {
     const char *opts[6];
 } W;
 
-enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS, MA_FEED, MA_PLAY, MA_UPLIFT };
+enum { WZ_NEIGHBOUR, WZ_PERSON, WZ_PET, WZ_BIRTH, WZ_ADOPT };
+enum { MA_CARE, MA_ROLE, MA_RENAME, MA_PROFILE, MA_REMOVE, MA_PLAYAS, MA_FEED, MA_PLAY, MA_UPLIFT, MA_TALK, MA_MANAGE };
 enum { CARE_PLAY, CARE_TALK, CARE_CLEAN, CARE_COMFORT };
+enum { FT_MEAL, FT_GAME, FT_STORY, FT_CHAT };
 
 static const char *const tabs[2] = { "Household", "Remembered" };
 static const char *const role_names[FAMROLE_COUNT] = {
@@ -38,10 +41,11 @@ static const char *const role_opts[6] = { "Partner", "Child", "Parent", "Sibling
 static const char *const role_opts2[3] = { "Grandparent", "Housemate", "Never mind" };
 static const uint8_t stage_pick[5] = { LIFE_ADULT, LIFE_TEEN, LIFE_CHILD, LIFE_TODDLER, LIFE_BABY };
 static const char *const stage_opts[6] = { "Adult", "Teen", "Child", "Toddler", "Baby", "Never mind" };
+static const char *const adopt_stage_opts[5] = { "Baby", "Toddler", "Child", "Teen", "Never mind" };
 static const char *const pron_opts[4] = { "they/them", "she/her", "he/him", "Never mind" };
 static const uint8_t pron_pick[3] = { PRONOUN_THEY, PRONOUN_SHE, PRONOUN_HE };
-static const char *const kind_opts[5] = { "A neighbour moves in", "A new person", "A new pet",
-                                          "A baby is born", "Never mind" };
+static const char *const kind_opts[6] = { "A neighbour moves in", "A new person", "A new pet",
+                                          "A baby is born", "Adopt a child", "Never mind" };
 static const char *const care_top[5] = { "Quick care", "Choose the care...",
                                          "Check on everyone", "Family free will...", "Never mind" };
 static const char *const will_opts[5] = { "Off", "Min", "Normal", "High", "Subconscious" };
@@ -52,8 +56,9 @@ static const char *const cause_names[FAMLOSS_COUNT] = {
     "Moved far away"
 };
 
-/* the last row ("Switch back") exists only while you play someone other than the hero (PA1) */
-static int rows(void) { return family_count() + 2 + (playas_is_hero() ? 0 : 1); }
+/* Keep the original care, add and switch-back rows in their usual order. */
+static int time_row(void) { return family_count() + 2 + !playas_is_hero(); }
+static int rows(void) { return time_row() + (family_count() > 0); }
 
 static int back_target(void)
 {
@@ -83,6 +88,7 @@ static const char *err_text(int e)
     case FAM_ERR_GATE: return "A partner must be an adult, and not family.";
     case FAM_ERR_NAME: return "That name won't do. Try 1 to 11 plain letters.";
     case FAM_ERR_NOPARTNER: return "A baby needs you to have a partner at home.";
+    case FAM_ERR_GUARDIAN: return "You must be an adult to adopt a child.";
     default: return "Something went wrong.";
     }
 }
@@ -99,10 +105,13 @@ static void result(int r, const char *ok)
 static void wz_finish(void)
 {
     int r;
-    uint32_t seed = (uint32_t)doomo_hash32((uint32_t)fp_t() * 2654435761u ^ (doomo_town.day << 8) ^
-                                            (uint32_t)family_count());
-    if (W.kind == 3) r = family_birth(W.name, W.pronoun);
-    else r = family_pool_add(W.role, W.stage, seed, W.name, W.pronoun);
+    if (W.kind == WZ_BIRTH) r = family_birth(W.name, W.pronoun);
+    else if (W.kind == WZ_ADOPT) r = family_adopt(W.stage, W.name, W.pronoun);
+    else {
+        uint32_t seed = (uint32_t)doomo_hash32((uint32_t)fp_t() * 2654435761u ^ (doomo_town.day << 8) ^
+                                                (uint32_t)family_count());
+        r = family_pool_add(W.role, W.stage, seed, W.name, W.pronoun);
+    }
     result(r, STR_ICON_HEART " Welcome to the family!");
 }
 
@@ -117,30 +126,38 @@ static void wz_ask_pron(void)
     ui_choice(-1, "How should we call them?", pron_opts, 4, wz_pron);
 }
 
+static void wz_ask_name(void);
+
 static void wz_stage(int c)
 {
     if (c < 0 || c > 4) return;
-    W.stage = stage_pick[c];
-    wz_ask_pron();
+    if (W.kind == WZ_ADOPT) {
+        if (c == 4) return;                            /* Never mind */
+        W.stage = LIFE_BABY + c;
+        wz_ask_name();
+    } else {
+        W.stage = stage_pick[c];
+        wz_ask_pron();
+    }
 }
 
 static void wz_named(int ok)
 {
     if (!ok) return;
-    if (W.kind == 2) { W.stage = LIFE_ADULT; wz_ask_pron(); }
-    else if (W.kind == 3) wz_ask_pron();
+    if (W.kind == WZ_PET) { W.stage = LIFE_ADULT; wz_ask_pron(); }
+    else if (W.kind == WZ_BIRTH || W.kind == WZ_ADOPT) wz_ask_pron();
     else ui_choice(-1, "How old are they?", stage_opts, 6, wz_stage);
 }
 static void wz_ask_name(void)
 {
-    ui_text_entry(W.kind == 2 ? "Pet's name?" : "Name?", W.name, DOOMO_NAME_LEN, wz_named);
+    ui_text_entry(W.kind == WZ_PET ? "Pet's name?" : "Name?", W.name, DOOMO_NAME_LEN, wz_named);
 }
 
 static void role_apply(int role)
 {
     W.role = role;
     if (W.rolectx) result(family_set_role(W.target, role), STR_ICON_HEART " Role changed.");
-    else if (W.kind == 0) result(family_add(W.pick, role, 0), STR_ICON_HEART " Moved in with you!");
+    else if (W.kind == WZ_NEIGHBOUR) result(family_add(W.pick, role, 0), STR_ICON_HEART " Moved in with you!");
     else wz_ask_name();
 }
 static void role_more(int c)
@@ -169,16 +186,20 @@ static void wz_neighbour(int id)
 
 static void wz_kind(int c)
 {
-    if (c < 0 || c > 3) return;                 /* 4 = never mind */
+    if (c < 0 || c > WZ_ADOPT) return;          /* last option cancels */
     W.kind = c;
     W.name[0] = 0;
     W.pronoun = -1;
     if (family_count() >= family_cap()) { result(FAM_ERR_FULL, ""); return; }
     switch (c) {
-    case 0: fp_pick("Who moves in?", PICK_LIVING, -1, wz_neighbour); break;
-    case 1: ask_role(0, "What are they to you?"); break;
-    case 2: W.role = FAMROLE_PET; wz_ask_name(); break;
-    default: W.role = FAMROLE_CHILD; wz_ask_name(); break;
+    case WZ_NEIGHBOUR: fp_pick("Who moves in?", PICK_LIVING, -1, wz_neighbour); break;
+    case WZ_PERSON: ask_role(0, "What are they to you?"); break;
+    case WZ_PET: W.role = FAMROLE_PET; wz_ask_name(); break;
+    case WZ_BIRTH: wz_ask_name(); break;
+    case WZ_ADOPT:
+        if (!family_adopt_guardian_ok()) result(FAM_ERR_GUARDIAN, "");
+        else ui_choice(-1, "How old are they?", adopt_stage_opts, 5, wz_stage);
+        break;
     }
 }
 
@@ -186,7 +207,7 @@ static void add_member(void)
 {
     char buf[48];
     doomo_snprintf(buf, sizeof(buf), "Add to the household (%d/%d)", family_count(), family_cap());
-    ui_choice(-1, buf, kind_opts, 5, wz_kind);
+    ui_choice(-1, buf, kind_opts, 6, wz_kind);
 }
 
 /* ---- care for everyone -------------------------------------------------- */
@@ -337,6 +358,151 @@ static void care_top_pick(int c)
     }
 }
 
+/* Snapshot the group on selection. A resident who is out or asleep stays
+ * where they are. The household's pool members live at home by design. */
+static int family_guests(int activity, uint16_t guests[FAMILY_MAX])
+{
+    int i, n = 0, avatar = playas_avatar(), away = family_away_id();
+    for (i = 0; i < family_count(); i++) {
+        int id = family_member(i);
+        const FamilyMember *m = family_find(id);
+        int stage;
+        if (!m || id == avatar || id == away) continue;
+        if (m->role == FAMROLE_PET && activity != FT_GAME) continue;
+        stage = m->stage;
+        if (id < DOOMO_MAX_RESIDENTS) {
+            const DoomoResident *r = town_res(id);
+            if (!r || r->status != RES_ALIVE || r->activity != ACT_HOME ||
+                (activity == FT_GAME && r->stat[STAT_ENERGY] < 15)) continue;
+            stage = sim_life_stage(id);
+        }
+#ifdef DOOMO_HAS_TALK
+        else if (activity == FT_CHAT && !talk_family_ready(id)) continue;
+#endif
+        if (activity != FT_STORY && stage == LIFE_BABY) continue;
+        if ((activity == FT_GAME || activity == FT_CHAT) && stage == LIFE_TODDLER) continue;
+        guests[n++] = (uint16_t)id;
+    }
+    return n;
+}
+
+static void family_activity(int activity, int item)
+{
+    uint16_t guests[FAMILY_MAX];
+    int n = family_guests(activity, guests), i;
+    int cheat = opt_get(OPT_CHEAT_INFINITE_CANDY), young = 0;
+    char line[74];
+    if (!n) { ui_say(-1, "Nobody is home and ready for that right now."); return; }
+    if (activity == FT_MEAL && !cheat && inv_count(item) < n) {
+        doomo_snprintf(line, sizeof line, "You need %d servings for everyone at the table.", n);
+        ui_say(-1, line);
+        return;
+    }
+    for (i = 0; i < n; i++) {
+        int id = guests[i];
+        if (activity == FT_MEAL) {
+            if (id < DOOMO_MAX_RESIDENTS) sim_feed(id, item);
+            else {
+                if (!cheat) inv_take(item, 1);
+                progress_add(PROG_MEALS_SERVED, 1);
+            }
+            family_care(id);
+        } else if (activity == FT_GAME && family_role(id) == FAMROLE_PET) {
+            family_pet_tend(id, FAMPET_PLAY);
+        } else if (activity == FT_GAME) {
+            care_one(id, CARE_PLAY);
+        } else {
+            int stage = id < DOOMO_MAX_RESIDENTS ? sim_life_stage(id) : family_find(id)->stage;
+            care_one(id, CARE_TALK);
+            family_mood_add(id, 2);
+            if (LIFE_IS_MINOR(stage) && stage != LIFE_TEEN) young = 1;
+        }
+    }
+    audio_sfx(SFX_HAPPY);
+    fp_fx_burst(fp_sw() / 2, 66, activity == FT_GAME ? FX_STAR : FX_HEART, 10);
+    if (activity == FT_STORY) {
+        ui_say(-1, young ? "You tell a story about a moth who hid the moon. A pillow plays the moon in the last scene."
+                         : "You trade stories about the island. The ending with the runaway cake gets the biggest laugh.");
+    } else {
+        if (activity == FT_MEAL) doomo_snprintf(line, sizeof line, "Served %s to %d at home.", doomo_items[item].name, n);
+        else doomo_snprintf(line, sizeof line, "Game night with %d from the household!", n);
+        ui_toast(line);
+    }
+}
+
+static void meal_page(int start);
+
+static void meal_pick(int c)
+{
+    int item = c >= 0 && c < (int)DOOMO_COUNTOF(W.acts) ? W.acts[c] : -1;
+    if (item == ITEM_NONE) meal_page(W.pick);
+    else if (item > ITEM_NONE) family_activity(FT_MEAL, item);
+}
+
+static void meal_page(int start)
+{
+    int item, n = 0, cheat = opt_get(OPT_CHEAT_INFINITE_CANDY);
+    uint16_t guests[FAMILY_MAX];
+    if (!family_guests(FT_MEAL, guests)) { ui_say(-1, "Nobody is home and ready to eat."); return; }
+    for (item = start; item < ITEM_COUNT; item++) {
+        if (doomo_items[item].category != ICAT_FOOD || (!cheat && !inv_count(item))) continue;
+        if (n == 4) break;
+        W.acts[n] = item;
+        W.opts[n++] = doomo_items[item].name;
+    }
+    if (!n) { ui_say(-1, "The pantry is empty. Bring home something to share."); return; }
+    if (item < ITEM_COUNT) {
+        W.pick = item;
+        W.acts[n] = ITEM_NONE;
+        W.opts[n++] = "More dishes...";
+    }
+    W.acts[n] = -1;
+    W.opts[n++] = "Never mind";
+    ui_choice(-1, "Choose one serving per guest.", W.opts, n, meal_pick);
+}
+
+#ifdef DOOMO_HAS_TALK
+static void open_family_talk(int id)
+{
+    if (!home_talk_enter(id)) {
+        talk_scene_party(NULL, 0);
+        if (!home_talk_note()) ui_say(-1, "You can try talking again in a little while.");
+    }
+}
+
+static void family_chat(void)
+{
+    uint16_t guests[FAMILY_MAX];
+    int ids[TALK_PARTS_MAX - 1], i, n = family_guests(FT_CHAT, guests);
+    if (!n) { ui_say(-1, "Nobody is home and ready to chat."); return; }
+    for (i = 1; i < n && i < TALK_PARTS_MAX; i++) ids[i - 1] = guests[i];
+    talk_scene_party(ids, i - 1);
+    open_family_talk(guests[0]);
+}
+#endif
+
+static void family_time_pick(int c)
+{
+    switch (c) {
+    case FT_MEAL: meal_page(ITEM_CUPCAKE); break;
+    case FT_GAME: case FT_STORY: family_activity(c, ITEM_NONE); break;
+#ifdef DOOMO_HAS_TALK
+    case FT_CHAT: family_chat(); break;
+#endif
+    default: break;
+    }
+}
+
+static void open_family_time(void)
+{
+    static const char *const opts[] = { "Share a meal", "Game night", "Story time",
+#ifdef DOOMO_HAS_TALK
+                                       "Talk together",
+#endif
+                                       "Never mind" };
+    ui_choice(-1, "Family time", opts, DOOMO_COUNTOF(opts), family_time_pick);
+}
+
 /* ---- member menu --------------------------------------------------------- */
 static void do_remove(int yes)
 {
@@ -395,6 +561,18 @@ static void member_act(int c)
         else if (!playas_can_be(W.target)) ui_say(-1, "You can't play as them right now.");
         else if (playas_switch(W.target, PLAYAS_SWITCH_TAGIN)) ui_toast(STR_ICON_STAR " Now playing as them!");
         break;
+#ifdef DOOMO_HAS_TALK
+    case MA_TALK:
+        talk_scene_party(NULL, 0);
+        open_family_talk(W.target);
+        break;
+    case MA_MANAGE:
+        W.acts[0] = MA_RENAME; W.opts[0] = "Rename";
+        W.acts[1] = MA_REMOVE; W.opts[1] = "Move out";
+        W.acts[2] = -1; W.opts[2] = "Never mind";
+        ui_choice(-1, "Manage this member", W.opts, 3, member_act);
+        break;
+#endif
     default: ui_confirm("Move them out of the household?", do_remove); break;
     }
 }
@@ -402,7 +580,7 @@ static void member_act(int c)
 static void open_member(int id)
 {
     const FamilyMember *m = family_find(id);
-    int n = 0;
+    int n = 0, can_talk = 0;
     char q[40], nm[DOOMO_NAME_LEN];
     if (!m) return;
     W.target = id;
@@ -415,16 +593,21 @@ static void open_member(int id)
         }
     } else {
         W.acts[n] = MA_CARE; W.opts[n++] = "Spend time together";
+#ifdef DOOMO_HAS_TALK
+        can_talk = talk_family_ready(id);
+        if (can_talk) { W.acts[n] = MA_TALK; W.opts[n++] = "Talk to them"; }
+#endif
         W.acts[n] = MA_ROLE; W.opts[n++] = "Change role";
     }
-    if (id >= FAMILY_POOL_FIRST) { W.acts[n] = MA_RENAME; W.opts[n++] = "Rename"; }
+    if (can_talk) { W.acts[n] = MA_MANAGE; W.opts[n++] = "Manage..."; }
+    else if (id >= FAMILY_POOL_FIRST) { W.acts[n] = MA_RENAME; W.opts[n++] = "Rename"; }
     else { W.acts[n] = MA_PROFILE; W.opts[n++] = "Open profile"; }
     if (id != playas_avatar() && m->role != FAMROLE_PET) {
         /* say up front when the story still locks it, instead of a dialog after the pick */
         W.acts[n] = MA_PLAYAS;
         W.opts[n++] = playas_available() ? "Play as them" : "Play as them (locked)";
     }
-    W.acts[n] = MA_REMOVE; W.opts[n++] = "Move out";
+    if (!can_talk) { W.acts[n] = MA_REMOVE; W.opts[n++] = "Move out"; }
     W.acts[n] = -1; W.opts[n++] = "Never mind";
     doomo_snprintf(q, sizeof(q), "%s (%s)", member_name(id, nm), role_names[m->role % FAMROLE_COUNT]);
     ui_choice(id < DOOMO_MAX_RESIDENTS ? id : -1, q, W.opts, n, member_act);
@@ -490,6 +673,7 @@ static void fam_update(void)
         if (W.sel < m) open_member(family_member(W.sel));
         else if (W.sel == m) ui_choice(-1, "Care for everyone", care_top, 5, care_top_pick);
         else if (W.sel == m + 1) add_member();
+        else if (W.sel == time_row()) open_family_time();
         else if (playas_switch(back_target(), PLAYAS_SWITCH_TAGIN)) ui_toast(STR_ICON_STAR " Switched back!");
         return;
     }
@@ -625,7 +809,9 @@ static void fam_draw(void)
             } else if (idx == m + 1) {
                 int full = family_count() >= family_cap();
                 draw_row(x, y, w, rh, sel, ICON_STAR, PAL_UI_GOLD, "Add a member",
-                         full ? "The household is full" : "Neighbour, new person, pet, baby");
+                         full ? "The household is full" : "Move in, adopt, baby or pet");
+            } else if (idx == time_row()) {
+                draw_row(x, y, w, rh, sel, ICON_SMILE, PAL_UI_GOLD, "Family time", "Share a meal, play, tell stories");
             } else {
                 member_name(back_target(), nm);
                 draw_row(x, y, w, rh, sel, ICON_SMILE, PAL_UI_GOLD, "Switch back", nm);

@@ -18,6 +18,7 @@
 #include "doomo/save.h"
 #include "doomo/sim.h"
 #include "doomo/playas.h"
+#include "doomo/family.h"
 #include "../src/fp_int.h"          /* Free Play achievement IDs */
 #include "../src/ui_internal.h"     /* UiDialogDebug */
 
@@ -1439,6 +1440,105 @@ TEST(talk_scene_turning_to_the_next_person_and_complimenting_is_four_presses)
     CHECK_EQ(d.to_id, steamy);
 }
 
+TEST(talk_scene_family_child_can_open_talk_and_answer_a_controller_question)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    const TalkMem *memory;
+    uint32_t tags[4];
+    uint16_t pie, wf;
+    int child, row, k;
+    town();
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 29u, "Clover", PRONOUN_THEY);
+    CHECK(child >= FAMILY_POOL_FIRST);
+    CHECK(open_talk(child));
+    CHECK(talk_scene_debug(&d) && d.to_id == child && d.nparts == 1);
+    CHECK(d.nlines > 0 && d.reply_act > TA_NONE);
+    CHECK_EQ(find_row("cat", talk_scene_act_cat(TA_FLIRT), -1), -1);
+    CHECK_EQ(find_row("dayplan", -1, -1), -1);
+    CHECK_EQ(find_row("out", -1, -1), -1);
+    CHECK_EQ(find_row("play", -1, -1), -1);
+    CHECK_EQ(find_row("give", -1, -1), -1);
+    CHECK_EQ(find_row("show", -1, -1), -1);
+    CHECK_EQ(find_row("help", -1, -1), -1);
+
+    go_to(find_row("cat", talk_scene_act_cat(TA_ASK_OPINION), -1)); press(BTN_A);
+    go_to(find_row("act", TA_ASK_OPINION, -1)); press(BTN_A);
+    CHECK(talk_lex_find("pie", &pie, &wf, tags) >= 0);
+    row = find_row("pick", 0, pie);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy && d.nlines > 0);
+    CHECK_EQ(d.gate, TG_PASS);
+    CHECK(strstr(d.you, "pie") != NULL);
+    ui_dialog_debug(&box);
+    CHECK(box.text && box.text[0]);
+    CHECK(read_talk_reply());
+    press(BTN_B);
+    for (k = 0; k < 40 && talk_scene_debug(&d); k++) { frames(0, 90); press(BTN_A); }
+    CHECK(!talk_scene_debug(&d));
+    memory = talk_mem_find(child);
+    CHECK(memory && memory->topic_a == pie);
+}
+
+TEST(talk_scene_family_party_keeps_unique_present_speakers_and_uses_their_names)
+{
+    TalkSceneDebug d;
+    char label[48];
+    int child, away, extras[3], row;
+    town();
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 29u, "Clover", PRONOUN_THEY);
+    away = family_pool_add(FAMROLE_HOUSEMATE, LIFE_TEEN, 30u, "Fennel", PRONOUN_HE);
+    CHECK(child >= FAMILY_POOL_FIRST && away > child);
+    family_bond_add(away, 5);
+    CHECK(family_away_start(away));
+    extras[0] = child; extras[1] = child; extras[2] = away;
+    talk_scene_party(extras, 3);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d));
+    CHECK_EQ(d.nparts, 2);
+    CHECK_EQ(d.ids[1], child);
+    CHECK_EQ(find_row("cat", talk_scene_act_cat(TA_FLIRT), -1), -1);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == child);
+    row = find_row("more", -1, -1);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK_STR(label, "Options (Clover) >");
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("to", -1, -1), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Clover") != NULL);
+}
+
+TEST(talk_scene_family_rejects_ineligible_targets)
+{
+    int id, pet, st;
+    town();
+    for (st = LIFE_BABY; st <= LIFE_TODDLER; st++) {
+        id = family_pool_add(FAMROLE_CHILD, st, 17u, "Clover", -1);
+        CHECK(id >= FAMILY_POOL_FIRST);
+        CHECK(!home_talk_enter(id));
+        CHECK(family_remove(id));
+    }
+    pet = family_pool_add(FAMROLE_PET, LIFE_ADULT, 80u, "Bramble", -1);
+    CHECK(pet >= FAMILY_POOL_FIRST);
+    CHECK(!home_talk_enter(pet));
+    CHECK(!home_talk_enter(TALK_PET_ID));
+    id = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 18u, "Fennel", -1);
+    CHECK(id >= FAMILY_POOL_FIRST);
+    family_bond_add(id, 5);
+    CHECK(family_away_start(id));
+    CHECK(!home_talk_enter(id));
+    family_away_return();
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH_DONE;
+    CHECK(playas_switch(id, PLAYAS_SWITCH_INSTANT));
+    CHECK(!home_talk_enter(id));
+    CHECK(playas_switch(DOOMO_PLAYER_ID, PLAYAS_SWITCH_INSTANT));
+    CHECK(family_remove(id));
+    CHECK(!home_talk_enter(id));
+    CHECK(!top_is(&SCENE_TALK));
+}
+
 TEST(talk_scene_saying_goodbye_ends_with_a_clean_toast)
 {
     TalkSceneDebug d;
@@ -1488,6 +1588,54 @@ static void type_line(const char *s)
     for (; *s; s++) { ui_text_entry_feed((unsigned char)*s); frames(0, 1); }
     ui_text_entry_feed('\n');
     frames(0, 3);
+}
+
+TEST(talk_scene_family_party_refuses_typed_romance_to_a_named_child)
+{
+    TalkSceneDebug d;
+    int child;
+    town();
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 29u, "Clover", PRONOUN_THEY);
+    CHECK(child >= FAMILY_POOL_FIRST);
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    type_line("Clover, will you be my girlfriend?");
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK_EQ(d.to_id, child);
+    CHECK_EQ(d.gate, TG_REFUSE_MINOR);
+    CHECK(!TA_IS_ROMANCE(d.reply_act));
+}
+
+TEST(talk_scene_family_adult_kin_deflect_romance)
+{
+    TalkSceneDebug d;
+    int sibling;
+    town();
+    sibling = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 29u, "Clover", PRONOUN_THEY);
+    CHECK(sibling >= FAMILY_POOL_FIRST);
+    CHECK(open_talk(sibling));
+    CHECK_EQ(find_row("cat", talk_scene_act_cat(TA_FLIRT), -1), -1);
+    type_line("will you be my girlfriend?");
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK_EQ(d.gate, TG_DEFLECT);
+    CHECK(!TA_IS_ROMANCE(d.reply_act));
+}
+
+TEST(talk_scene_family_quick_comfort_replies_can_be_said_to_a_pool_child)
+{
+    TalkSceneDebug d;
+    int child;
+    town();
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 29u, "Clover", PRONOUN_THEY);
+    CHECK(child >= FAMILY_POOL_FIRST);
+    CHECK(open_talk(child));
+    type_line("i want to hurt myself");
+    CHECK(talk_scene_debug(&d) && d.gate == TG_DISTRESS);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("quick", -1, TA_OFFER), -1);
+    CHECK_EQ(find_row("quick", -1, TA_GIVE), -1);
+    CHECK_EQ(find_row("quick", -1, TA_INVITE), -1);
+    CHECK(find_row("quick", -1, TA_COMFORT) >= 0);
 }
 
 TEST(talk_scene_a_typed_line_about_hurting_oneself_gets_care_and_the_talk_goes_on)

@@ -39,6 +39,7 @@
 #include "doomo/sim.h"
 #include "doomo/roster.h"
 #include "doomo/family.h"
+#include "doomo/playas.h"
 #include "doomo/story.h"
 #include "doomo/resident_acc.h"
 #include "doomo/portrait.h"
@@ -522,15 +523,28 @@ static int band_mood(int mood)
     }
 }
 
+static int live_family_person(int id)
+{
+    const DoomoResident *r;
+    int role = family_role(id);
+    if (role == FAMROLE_NONE || role == FAMROLE_PET) return 0;
+    if (id >= FAMILY_POOL_FIRST) return 1;
+    r = town_res(id);
+    return r && r->status == RES_ALIVE;
+}
+
 static int band_rel(int a, int b)
 {
-    int k, v;
+    int k, v, avatar;
     if (a < 0 || b < 0) return TRB_STRANGER;
     if (b == DOOMO_PLAYER_ID && family_role(a) != FAMROLE_NONE) return TRB_FAMILY;
     k = rel_kind(a, b);
     v = rel_value(a, b);
     if (k == REL_DATING || k == REL_MARRIED) return TRB_PARTNER;
     if (k == REL_FAMILY) return TRB_FAMILY;
+    avatar = playas_avatar();
+    if (avatar != DOOMO_PLAYER_ID && a != b && (avatar == a || avatar == b) &&
+        live_family_person(a) && live_family_person(b)) return TRB_FAMILY;
     if (k == REL_RIVAL || k == REL_NEMESIS || v < -30) return TRB_RIVAL;
     if (k == REL_BEST_FRIEND) return TRB_BEST;
     if (k == REL_FRIEND) return TRB_FRIEND;
@@ -1381,7 +1395,10 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
                 g->pers[k] = (uint8_t)(v < 0 ? 0 : v > 15 ? 15 : v);
             }
         }
-        g->mood = (uint8_t)band_mood(g->r->mood);
+        if (g->sid >= FAMILY_POOL_FIRST && g->sid <= FAMILY_POOL_LAST) {
+            int mood = family_mood(g->sid);
+            g->mood = (uint8_t)(mood <= 5 ? TMB_SAD : mood >= 11 ? TMB_HAPPY : TMB_OK);
+        } else g->mood = (uint8_t)band_mood(g->r->mood);
         for (k = 0; k < 5; k++) g->like[k] = talk_gen_like(g->sid, k);
         if (g->sid < DOOMO_MAX_RESIDENTS && !(g->r->flags & RF_CUSTOM))
             for (k = 0; k < g->h.ncast; k++)

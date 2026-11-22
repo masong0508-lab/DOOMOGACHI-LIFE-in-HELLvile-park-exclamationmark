@@ -48,7 +48,7 @@ enum {
     FAMROLE_COUNT
 };
 
-/* Results of family_add() / family_set_role() (0 or a member's slot is OK). */
+/* Errors from adding a member or changing their role. */
 enum {
     FAM_ERR_FULL = -1,      /* the household is at its cap                   */
     FAM_ERR_DUP = -2,       /* already a member                              */
@@ -57,7 +57,9 @@ enum {
                             /* or a second partner                           */
     FAM_ERR_GATE = -5,      /* the partner failed the LS0 life stage gate    */
     FAM_ERR_NAME = -6,      /* an empty, too long or undrawable name         */
-    FAM_ERR_NOPARTNER = -7  /* a birth needs the player's life partner (F4)  */
+    FAM_ERR_NOPARTNER = -7, /* a birth needs the player's life partner (F4)  */
+    FAM_ERR_GUARDIAN = -8,  /* the avatar is too young to adopt              */
+    FAM_ERR_STAGE = -9      /* adoption requires a baby, toddler, child or teen */
 };
 
 typedef struct FamilyMember {
@@ -176,8 +178,8 @@ int  family_stage_progress(int id);
  * an elder, a resident (the sim ages them) and a non-member. The dashboard shows it. */
 int  family_stage_days_left(int id);
 /* Growing up is a family event: a news line per stage ("took their first steps", "started
- * school", ...), the one who grew up +4 mood and every other non-pet member +2. A birth throws a
- * welcome party: everyone else +3 and a news line. Moods are saved with the bonds as before. */
+ * school", ...), the one who grew up +4 mood and every other non-pet member +2. Birth and adoption
+ * give other non-pet members +3 mood and make the news. Moods are saved with the bonds as before. */
 
 /* ---- F4 part 2: births and the growing-up toast ----------------------------
  * family_age_daily() shows one toast per member that grew up ("Mo grew up!
@@ -186,9 +188,12 @@ int  family_stage_days_left(int id);
  * LS0 gate already held), and the household needs room (family_cap(); a
  * pet counts as a member). name NULL = the generated one, pronoun -1 = the
  * generated one. Returns the pool id or FAM_ERR_* (nothing is changed on an
- * error); shows its own toast. Adopting stays family_pool_add() with any
- * stage and the CHILD role. */
+ * error); shows its own toast. */
 int  family_birth(const char *name, int pronoun);
+/* An adult or elder avatar can adopt a baby, toddler, child or teen without a partner.
+ * Same cap, identity defaults and return values as family_birth(). */
+int  family_adopt(int stage, const char *name, int pronoun);
+int  family_adopt_guardian_ok(void);
 
 /* ---- F6: loss ---------------------------------------------------------------
  * A pool member (a person or a pet) can be lost; a resident member is the

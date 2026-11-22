@@ -61,6 +61,58 @@ static void premade_town(void)
     town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
 }
 
+TEST(talk_gen_family_band_recognizes_the_active_household_member)
+{
+    int avatar, child;
+    premade_town();
+    avatar = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 37u, "Fern", PRONOUN_THEY);
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 38u, "Clover", PRONOUN_THEY);
+    CHECK(avatar >= FAMILY_POOL_FIRST && child > avatar);
+    CHECK(family_add(ID_NANA, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
+    CHECK_EQ(talk_gen_rel_band(child, DOOMO_PLAYER_ID), TRB_FAMILY);
+    CHECK_EQ(talk_gen_rel_band(child, avatar), TRB_STRANGER);
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH_DONE;
+    CHECK(playas_switch(avatar, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(talk_gen_rel_band(child, avatar), TRB_FAMILY);
+    CHECK_EQ(talk_gen_rel_band(avatar, child), TRB_FAMILY);
+    CHECK_EQ(talk_gen_rel_band(ID_NANA, avatar), TRB_FAMILY);
+    CHECK_EQ(talk_gen_rel_band(ID_RIVET, avatar), TRB_STRANGER);
+    town_res(ID_NANA)->status = RES_DEAD;
+    CHECK_EQ(talk_gen_rel_band(ID_NANA, avatar), TRB_STRANGER);
+}
+
+TEST(talk_gen_family_replies_use_the_household_mood)
+{
+    static const int changes[] = { 0, -8, 8 };
+    static const int moods[] = { TMB_OK, TMB_SAD, TMB_HAPPY };
+    int child, i;
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    child = family_pool_add(FAMROLE_CHILD, LIFE_CHILD, 38u, "Clover", PRONOUN_THEY);
+    CHECK(child >= FAMILY_POOL_FIRST);
+    for (i = 0; i < 3; i++) {
+        int k, seen = 0;
+        family_mood_add(child, changes[i]);
+        if (i == 2) for (k = 0; k < 3; k++) family_care(child);
+        for (k = 0; k < 64; k++) {
+            TalkConv c;
+            TalkLine reply;
+            TalkTrace trace;
+            TalkAltInfo info;
+            int j;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, &child, 1, (uint32_t)k);
+            if (!talk_gen_line(&c, 0, -1, TA_ASK_FEELING, TC_NONE, &reply, &trace) ||
+                !talk_gen_alt_info(trace.core_alt, &info)) continue;
+            for (j = 0; j < info.nterm; j++) if (info.term[2 * j] == TGP_MOOD) {
+                CHECK_EQ(info.term[2 * j + 1], moods[i]);
+                seen++;
+            }
+        }
+        CHECK(seen > 0);
+    }
+}
+
 static uint16_t concept(const char *key)
 {
     uint16_t c = 0, wf = 0;

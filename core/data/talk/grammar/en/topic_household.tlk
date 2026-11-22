@@ -101,3 +101,190 @@
   "A sharp line still hurts if it gets a laugh. Thanks for saying sorry."
   "Thanks for saying that. I'm leaving a pause here so we can both hear it."
   "I know what you said. I'd like to hear how you want to do it differently."
+
+# Belonging and welcoming someone. Talk has no move-in or parent-role fact.
+# Plans stay conditional, and people topics leave the exact relationship open.
+@rule core.ask_about.household_people guard: rel=family&fact.family&to_player&root=people act: answer
+  "{x:cap}? Tell me what you're thinking. I'll pull up a chair."
+  "About {x}, I'd like to hear your side. Let's take the long way home."
+  "What about {x} is on your mind? We can talk before we ask around."
+
+@rule core.ask_opinion.household_people guard: rel=family&fact.family&to_player&root=people act: answer
+  "On {x}, I'd hear what everyone at home thinks first."
+  "We can disagree on {x} and still sit at the same table."
+  "About {x}, have we heard from the quietest person in the house?"
+
+@rule core.ask_advice.household_new_arrival guard: rel=family&fact.family&to_player&!kid_speaker&root=house act: answer
+  "With {x}, think of what somebody needs on their first night."
+  "While we sort out {x}, let's leave an empty drawer for someone new."
+  "Start with {x}. What would someone new bring to make it theirs?"
+
+@rule core.tell.household_parenting guard: rel=family&fact.family&to_player&!kid_speaker&root=people act: backchannel
+  "{x:cap}? If a kid's involved, let's hear from them too."
+  "About {x}, can we agree what to tell the little ones first?"
+  "Go on about {x}. If it affects the kids, give them a say too."
+
+@rule core.tell.household_room guard: rel=family&fact.family&to_player&root=house act: backchannel
+  "Go on about {x}. If someone stayed with us, what could they choose?"
+  "With {x}, could we make a quiet corner for someone new?"
+  "Which bit of {x} would you keep? I'd leave one corner familiar."
+
+@rule core.ask_about.household_prepare guard: rel=family&fact.family&to_player&root=house&!kid_speaker act: answer
+  "About {x}: if we sort it out, let's keep things where everyone can reach."
+  "{x:cap}? Show me the part that takes two people. We'll start there."
+  "Before we change {x}, I'd ask whoever uses it first in the morning."
+
+# Age-specific replies speak for the actual speaker's stage and feelings.
+@rule core.ask_feeling.household_child_scared guard: rel=family&fact.family&to_player&kid_speaker&!teen&mood=scared tags: kid act: answer
+  "A bit scared. Can you sit where I can see you till I feel like getting up?" w=3
+  "I want to tell you, but can I hold the edge of your sleeve while I do?" w=3
+  "I want the hall light on. Could we leave it just until I feel better?" w=3
+
+@rule core.ask_feeling.household_child_happy guard: rel=family&fact.family&to_player&kid_speaker&!teen&mood=happy tags: kid act: answer
+  "Good! If I draw the best bit of my day, can we put it where everyone eats?" w=3
+  "Happy. Can I tell the good part of my day first at dinner?" w=3
+  "Can we have a cheer in the kitchen? Just a little one so I can hear yours." w=3
+
+@rule core.comfort.household_child_sad guard: rel=family&fact.family&to_player&kid_speaker&!teen&mood=sad tags: kid act: thank
+  "Thanks. Could you read to me? I just want to hear your voice." w=3
+  "Thanks for sitting with me. Can I put my blanket over your knees too?" w=3
+  "Thank you. Can we pick a cup I can hold with both hands?" w=3
+
+@rule core.ask_feeling.household_teen_sad guard: rel=family&fact.family&to_player&teen&mood=sad tags: kid act: answer
+  "Pretty low. Can we talk over dishes so I can look at the plates?" w=3
+  "I don't have the words yet. Can I sit in the kitchen with you for a bit?" w=3
+  "Rough day. Ask me here, please. I'd freeze if everybody asked at dinner." w=3
+
+@rule core.ask_feeling.household_teen_ok guard: rel=family&fact.family&to_player&teen&mood=ok tags: kid act: answer
+  "I'm okay. Could I choose one thing we do at home this week?" w=3
+  "I'm all right. Can I tell you one good thing before we talk chores?" w=3
+  "Fine, really. If you've got time, I want to talk while we fold the washing." w=3
+
+@rule core.tell.household_teen_school guard: rel=family&fact.family&to_player&teen&root=school tags: kid act: backchannel
+  "{x:cap}? Ask me after I get my shoes off. I'll have an answer then."
+  "Which part of {x}? I'll get a pencil and show you what I think."
+  "Go on about {x}. If we're talking school, can I ask about your day?"
+
+@rule core.comfort.household_teen guard: rel=family&fact.family&to_player&teen&mood=sad tags: kid act: answer
+  "Could we make toast and leave the big talk until I've eaten?"
+  "Can you stay here a minute? You can get on with what you were doing."
+  "Can I tell you the small part before we work out what to do?"
+
+@rule core.ask_feeling.household_elder_tired guard: rel=family&fact.family&to_player&elder&mood=tired act: answer
+  "I've had enough standing. Come tell me about your day while I sit." w=3
+  "Tired. Leave the heavy things for later and bring your chair over here." w=3
+  "I'm slowing down. There's still time for a cup of tea with you." w=3
+
+@rule core.ask_feeling.household_elder_happy guard: rel=family&fact.family&to_player&elder&mood=happy act: answer
+  "Good. Sit down. I'd like to hear what you'd change around here." w=3
+  "Rather pleased. I think there's room at this table for one of your ideas." w=3
+  "Happy to have company. Tell me a story while I get you a chair?" w=3
+
+@rule core.greet.household_elder_evening guard: rel=family&fact.family&to_player&elder&time=evening act: greet
+  "Evening. Tell me the bit of today that takes a cup of tea to explain." w=3
+  "Hello. Leave a chair facing out in case someone else wants to sit?" w=3
+  "Come in. I've got time to listen and one chair that doesn't wobble." w=3
+
+@rule core.ask_about.household_elder guard: rel=family&fact.family&to_player&elder&root=house act: answer
+  "With {x}, I can do the sitting-down part if you show me where to start."
+  "For {x}, I'll show you my way. Then I want to see yours."
+  "So how do you deal with {x} these days? I've got time to learn."
+
+# Things the family can choose to do together.
+@rule core.ask_opinion.household_meal guard: rel=family&fact.family&to_player&root=food&stance=neutral act: answer
+  "For {x}, I'd let each of us choose something to put on the table."
+  "If we have {x} at dinner, can we leave time for a story after?"
+  "{x:cap}? I'd set the table if I could choose where I sit."
+
+@rule core.ask_opinion.household_meal_liked guard: rel=family&fact.family&to_player&root=food&stance=pro act: opine_pos
+  "I like {x}. Should we pass it round and see who wants some?"
+  "I like {x} best from a dish we can all reach."
+  "If we're making {x}, I'd save a plate for anyone who gets home late."
+
+@rule core.ask_opinion.household_meal_decline guard: rel=family&fact.family&to_player&root=food&stance=con act: opine_neg
+  "I don't like {x}, but I'd still sit with you while you eat."
+  "I'd pass on {x} at dinner. I can take a turn washing up."
+  "You can have my share of {x}. I'd be happier with a piece of bread."
+
+@rule core.ask_about.household_meal_custom guard: rel=family&fact.family&to_player&root=food&time=evening act: answer
+  "{x:cap}? For an ordinary evening or a house full of guests?"
+  "For {x}, whose turn is it to decide what goes with it?"
+  "For {x}, do we write a recipe or let the next cook make it theirs?"
+
+@rule core.ask_opinion.household_pastime_custom guard: rel=family&fact.family&to_player&root=hobbies act: answer
+  "{x:cap}? Could everyone at home take a turn in charge?"
+  "For {x}, pick a night even the busiest one at home could join us."
+  "About {x}: try it once. If we want it again, we've got a tradition."
+
+@rule core.ask_about.household_child_play guard: rel=family&fact.family&to_player&kid_speaker&!teen&root=hobbies tags: kid act: answer
+  "{x:cap}? If we try it, can I go first and show you my part?"
+  "If we try {x}, can I make mistakes while I'm learning?"
+  "If we do {x} at home, can I show everybody where to sit?"
+
+@rule core.ask_feeling.household_game_choice guard: rel=family&fact.family&to_player&time=day&mood=ok act: answer
+  "Doing all right. Want to pick a game for when the chores are done?"
+  "I'm fine. Can we play at the table after we clear it?"
+  "Fine. Could we play a round of your choice and a round of mine?"
+
+@rule core.ask_feeling.household_story_choice guard: rel=family&fact.family&to_player&time=evening&mood=ok act: answer
+  "I'm fine. Up for a story? You pick where and I'll pick who walks in."
+  "Good. Could we let the youngest choose our story's ending tonight?"
+  "Glad you're here. Want to trade stories? The lost sock one counts."
+
+@rule core.continue.household_elder_story guard: rel=family&fact.family&to_player&elder&time=evening&!topic act: tell
+  "I'll keep going. If you know a funnier ending, I want to hear it."
+  "I'll tell another bit. Then I'd like to hear one of your stories."
+  "One more bit before the cups go away. You choose who opens the door."
+
+@rule core.farewell.household_child_evening guard: rel=family&fact.family&to_player&kid_speaker&!teen&time=evening tags: kid act: farewell
+  "See you later. Could you pick a short story for when we have a little time?"
+  "Bye. If you see a book with a good last page, could you show it to me later?"
+  "Goodnight if I don't see you. Can we leave the little light on?"
+
+# Different bids for help and room after a disagreement.
+@rule core.ask_feeling.household_angry guard: rel=family&fact.family&to_player&mood=angry act: complain
+  "I'm upset. Could we clear the dishes before we decide whose turn anything was?"
+  "Cross enough to slam a cupboard. Give me a minute before chores."
+  "I'm angry. Can we talk in the hall so nobody has to choose sides?"
+
+@rule core.complain.household_listen guard: rel=family&fact.family&to_player&root=house act: sympathize
+  "I can see how dealing with {x} every day would wear you down."
+  "{x:cap}? That's hard to put up with at home. Which part gets to you?"
+  "You sound fed up with {x}. Let's sit a minute before we fix it."
+
+@rule core.mediate.household_agree guard: rel=family&fact.family&to_player act: agree
+  "All right. Can we give each person at the table a turn to speak?"
+  "I can try that. I'd like each of us to say which part we're able to do."
+  "Let's try it. If somebody wants a minute away from the table, we'll wait."
+
+@rule core.promise.household_follow_through guard: rel=family&fact.family&to_player act: agree
+  "Okay. Let me know at supper if you need me to take a turn."
+  "Let's put it on the kitchen list so we can both see it."
+  "All right. Tell me if plans change before I get the house ready."
+
+@rule core.apologize.household_make_amends guard: fact.past_hurt&to_player&rel=family&fact.family&!mood=angry act: answer
+  "Thanks. If we get loud again, can we take a break from the table?" w=3
+  "I hear you. Could we set out the cups and try a quiet evening?" w=3
+  "I appreciate it. Can we agree where to go if we each need quiet?" w=3
+
+# `pet` reads the audience. `fact.pet` is the speaker's owned-pet flag.
+# Neither implies the speaker owns the household's named Boreagotchi.
+@rule core.ask_about.household_pet_present guard: rel=family&fact.family&to_player&pet&root=creatures act: answer
+  "{x:cap}? Let's talk softly so our little listener stays if they want." w=3
+  "About {x}: how different must home sound at the pet's height?" w=3
+  "{x:cap}? Leave the door open so the pet can wander off if they want." w=3
+
+@rule core.ask_feeling.household_pet_company guard: rel=family&fact.family&to_player&pet&mood=ok act: answer
+  "Doing fine. Can we sit still to see if the pet comes over?"
+  "I'm fine. Let's play something quiet while the pet settles beside us."
+  "Fine. Sit with me on the floor? We'll give the pet a way past."
+
+@rule core.tell.household_pet_owner guard: rel=family&fact.family&to_player&fact.pet&root=creatures act: backchannel
+  "Go on about {x}. I like to let my pet be the first to come over."
+  "{x:cap}? I try to leave one place in the house that's just for my pet."
+  "Tell me about {x}. My pet's made me notice little noises at home."
+
+@rule core.greet.household_pet_evening guard: rel=family&fact.family&to_player&pet&time=evening act: greet
+  "Evening. Pull the chair out gently so the pet stays if they want." w=3
+  "Hi. Leave a gap by the door so the pet can go where it's quiet." w=3
+  "Come sit. We can talk softly and give the little one a chance to settle." w=3

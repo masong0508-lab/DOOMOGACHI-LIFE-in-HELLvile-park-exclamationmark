@@ -1519,11 +1519,15 @@ int  talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text
 int  talk_scene_act_cat(int act);
 
 /* ---- the house hook (T8; weak in core/src/weak_talk.c) ---------------------
- * Start Talk with resident `who` in the room: 1 started, 0 not available
+ * Start Talk with resident or household person `who`: 1 started, 0 not available
  * (no PLATF_TALK, or not built: the default). The house reaches Talk only
  * through this and the feature test, so --gc-sections drops it all on the
  * GBA. */
 int  home_talk_enter(int who);
+#ifdef DOOMO_HAS_TALK
+/* Whether a present household pool person can be a speaker, independent of bank readiness. */
+int  talk_family_ready(int id);
+#endif
 /* DC10B: A on a housemate while the platform still stages the bank (TALK_DB_LOADING): shows "Talk is warming
  * up..." (once) and returns 1; 0 when Talk is ready, absent or failed (the caller's own fallback runs). */
 int  home_talk_note(void);

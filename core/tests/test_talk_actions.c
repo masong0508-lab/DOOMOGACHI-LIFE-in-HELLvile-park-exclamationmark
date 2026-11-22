@@ -453,6 +453,18 @@ TEST(action_minor_rules)
             printf("      call-over: the partner was called %d times with a child in the room and %d times in an adult room\n", partner_called, adult_partner_called);
             CHECK_EQ(partner_called, 0);
             CHECK(adult_partner_called >= 1);                         /* the rule is what stopped it, not luck */
+
+            CHECK(family_add(partner, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
+            family_bond_add(partner, 5);
+            CHECK(family_away_start(partner));
+            for (sess = 0; sess < 400; sess += 2) {
+                Tally tl;
+                memset(&tl, 0, sizeof tl);
+                talk_outcome_reset();
+                run_session(9000u + (uint32_t)sess, DOOMO_PLAYER_ID, &speaker, 1, 6, NULL, 0, &tl, &out, &sum, &s);
+                CHECK(sum.call_to != partner + 1);
+            }
+            family_away_return();
         }
         /* a minor who likes coffee gives and asks for nothing adult */
         {
