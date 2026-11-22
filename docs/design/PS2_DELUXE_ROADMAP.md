@@ -1,6 +1,6 @@
 # PlayStation 2 Deluxe Edition — implementation roadmap
 
-Status: **proposed; not a built PS2 port**. Owner: cross-platform. Canonical branch: `main`.
+Status: **PS2-0 bootstrap source started; build/boot validation pending**. Owner: cross-platform. Canonical branch: `main`.
 Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in HELLvile PARK that keeps the existing game's systems, personalities, and story intact while using PS2 capabilities for presentation and simulation.
 
 ## Hardware and toolchain baseline
@@ -227,3 +227,44 @@ procedural canvas. This adds no heap, image pool, framebuffer or
 serialized bytes. Dedicated host tests check cold prefetch promotion
 and rapid focus changes without any idle pumping; the GBA benchmark
 renames its completed-measurement windows correctly.
+
+## PS2-0 implementation checkpoint (Nov 21, 2026)
+
+The standalone `ps2/` tree now has a PS2SDK/gsKit EE project, an
+actual GS scene, double buffer/field presentation, PADMAN-backed
+DualShock 2 input and a 30Hz logic divider. The host padmap unit
+test exercises all 16 buttons and combinations. PS2-only GitHub CI
+uses the official ps2dev container to build and upload a homebrew ELF;
+it remains an unverified boot prototype until the job succeeds and
+PCSX2 runs it. The current debug screen is deliberately *not* a
+claimed substitute for the shared-core gameplay. Cross-port PR #5
+stays separate and must clear its console gates first.
+
+### PS2-0 first CI correction
+
+The upstream `ps2dev/ps2dev` image provides the EE GCC cross
+compiler, PS2SDK and gsKit but does not include CMake. The first PS2
+artifact job therefore exited before compilation. A native PS2SDK
+GNU Make build target (`ps2/Makefile`) has now been added and the
+workflow calls it directly. CMake remains optional for a local setup.
+Do not mistake this environment fix for verified GS boot: ELF link and
+PCSX2/hardware validation remain gates.
+
+### PS2-1: real, parity-checked world and first-person renderer
+
+The PS2 experimental game ELF now builds `ps2/src/ref_overworld.c`
+and `ps2/src/ref_view3d.c` from the same source algorithms as
+`core/native/overworld.c` and `core/native/raycast.c`.
+The renderer reads the live shared `DoomoMap` rather than drawing
+placeholder blocks: 16px world tiles, raised surfaces, proper feet
+and depth sorting, light/tint and low-wall occlusion are preserved.
+Its first-person view performs the original DDA with live step heights,
+floor/ceiling texture sampling, sky, depth-clipped sprites and fog.
+Static scratch arrays and the existing single indexed framebuffer are
+used; PS2 EE has enough headroom for the full reference state, though
+the cost must be measured before turning on higher resolution.
+CI checks exact source parity and ensures those two draw functions
+are not also defined by the old placeholder backend. Digital + analog
+disconnect handling and PS1-style button glyph selection are wired.
+**Actual EE game ELF build and PCSX2 on-screen proof remain separate
+gates**; no assertion of playable framerate until those pass.

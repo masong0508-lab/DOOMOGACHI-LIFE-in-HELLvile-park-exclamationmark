@@ -1,0 +1,494 @@
+name: PS2 EE bootstrap
+on:
+  push:
+    paths:
+      - 'ps2/**'
+      - '.github/workflows/ps2.yml'
+  pull_request:
+    paths:
+      - 'ps2/**'
+      - '.github/workflows/ps2.yml'
+  workflow_dispatch:
+
+# Many PS2 development commits can arrive while hosted runners are busy.
+# Only the newest commit on a branch needs its costly SDK+emulator gate;
+# never let superseded runs consume the entire pending queue.
+concurrency:
+  group: ps2-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  padmap-host:
+    name: PS2 pad semantics (host, 16 buttons)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and execute all pad mapping cases
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
+            ps2/src/padmap.c ps2/tests/padmap_test.c -o /tmp/ps2-padmap-test
+          /tmp/ps2-padmap-test
+      - name: Verify fast indexed sprites against the host oracle
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/indexed_blit_test.c -o /tmp/ps2-blit-test
+          /tmp/ps2-blit-test
+      - name: Check exact GS texture upload suppression and guard bytes
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
+            ps2/tests/indexed_present_test.c -o /tmp/ps2-indexed-present-test
+          /tmp/ps2-indexed-present-test
+      - name: Check dual-bank memory-card save journal and rollback
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/save_journal_test.c -o /tmp/ps2-save-journal-test
+          /tmp/ps2-save-journal-test
+      - name: Emulate PS2 libmc card saves, rollback, and removal
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/tests/mock -Ips2/src -Icore/include \
+            ps2/src/memcard.c ps2/tests/memcard_mock_test.c -o /tmp/ps2-memcard-test
+          /tmp/ps2-memcard-test
+      - name: Test real 30Hz SPU2 mixer and safe Talk CD paths
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
+            ps2/src/synth.c ps2/tests/synth_test.c -o /tmp/ps2-synth-test
+          /tmp/ps2-synth-test
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
+            ps2/tests/talk_path_test.c -o /tmp/ps2-talk-path-test
+          /tmp/ps2-talk-path-test
+      - name: Exercise Talk filesystem reads, block boundaries and missing media
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Ips2/src -Icore/include \
+            ps2/src/talkdisc.c ps2/tests/talkdisc_mock_test.c \
+            -o /tmp/ps2-talkdisc-mock-test
+          /tmp/ps2-talkdisc-mock-test
+      - name: Build genuine English Talk bank for disc
+        run: |
+          make -C core talk
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          bank = Path('core/build/talk/TALK_en.BIN').read_bytes()
+          assert len(bank)>1000 and bank[:4]==b'TALK'
+          assert struct.unpack_from('<I',bank,16)[0]==len(bank)
+          print('PS2 Talk bank valid:',len(bank),'bytes')
+          PY
+      - name: Reject malformed real PS2 BOOT2 paths before packaging
+        run: python3 -m unittest discover -s ps2/tests -p test_ps2_boot.py -v
+      - name: Prevent boot-order regressions (draw before blocking IOP calls)
+        run: python3 ps2/tests/test_boot_order.py
+      - name: Check isolated GS-only diagnostic has no IOP dependency
+        run: python3 ps2/tests/test_gs_only_isolation.py
+      - name: Test synthetic Start/Story navigation pulses and isolation
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -Icore/include -Ips2/src \
+            ps2/tests/scripted_story_test.c -o /tmp/ps2-scripted-story-test
+          /tmp/ps2-scripted-story-test
+          cc -std=c99 -O2 -Wall -Wextra -Werror -DPS2_STORY_IDLE_CONTROL=1 -Icore/include -Ips2/src \
+            ps2/tests/scripted_story_test.c -o /tmp/ps2-story-idle-test
+          /tmp/ps2-story-idle-test
+      - name: Prevent redundant DMA buffer swap after gsKit's automatic queue reset
+        run: python3 ps2/tests/test_gs_queue_recycle.py
+      - name: Verify Play! game-tick telemetry and emulator harness
+        run: |
+          python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py ps2/tools/check_story_progress.py ps2/tools/check_story_causality.py
+          python3 -m unittest discover -s ps2/tests -p test_story_causality.py -v
+          python3 -m unittest discover -s ps2/tests -p test_play_x11_keyscript.py -v
+          python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
+          python3 ps2/tools/pcsx2_visual_check.py --help >/dev/null
+          python3 ps2/tests/probe_log_test.py
+      - name: Verify PS2 real map rendering stays in sync with host
+        run: python3 ps2/tests/check_reference_parity.py
+
+  ps2-elf:
+    name: PS2 ELF (EE/gsKit/PADMAN)
+    runs-on: ubuntu-24.04
+    container:
+      image: ps2dev/ps2dev:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report toolchain and build a real PS2 EE ELF
+        run: |
+          set -eu
+          : "${PS2DEV:?PS2DEV is required}"
+          : "${PS2SDK:?PS2SDK is required}"
+          : "${GSKIT:?GSKIT is required}"
+          command -v mips64r5900el-ps2-elf-gcc
+          test -f "$PS2DEV/share/ps2dev.cmake" || test -f "$PS2SDK/ps2dev.cmake"
+          if test -f "$PS2DEV/share/ps2dev.cmake"; then
+            TC="$PS2DEV/share/ps2dev.cmake"
+          else
+            TC="$PS2SDK/ps2dev.cmake"
+          fi
+          # The upstream image's final stage is Alpine and deliberately
+          # includes only runtimes + cross tools (neither make nor cmake).
+          # Install a tiny native build driver, not a second EE toolchain.
+          apk add --no-cache make python3 xorriso
+          make -C ps2 -j2
+          # Isolate native GS output from all IOP startup, PADMAN, CD,
+          # audio and memory-card RPCs, for black-screen emulator triage.
+          make -C ps2 gs-probes
+          for elf in doomogachi_ps2_gs_only doomogachi_ps2_gs_ct16 doomogachi_ps2_gs_alpha doomogachi_ps2_gs_texture; do
+            test -s "ps2/build/$elf.elf"
+            mips64r5900el-ps2-elf-readelf -h "ps2/build/$elf.elf"
+          done
+          test -s ps2/build/doomogachi_ps2.elf
+          mips64r5900el-ps2-elf-readelf -h ps2/build/doomogachi_ps2.elf
+          printf 'commit=%s\nrepo=%s\nps2_phase=PS2-0\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" > ps2/build/BUILD_SOURCE.txt
+      - name: Linked shared-game ELF is required for the PS2 port
+        # PS2-0 diagnostics alone are no longer a green game-build verdict.
+        # Fail this job when the actual shared-core gameplay ELF fails.
+        run: |
+          set -eu
+          if make -C ps2 game -j2 > /tmp/ps2-game-link.log 2>&1; then
+            echo 'PS2 shared-core game: EE ELF linked' >> "$GITHUB_STEP_SUMMARY"
+            ls -lh ps2/build/doomogachi_ps2_game.elf
+          else
+            echo 'PS2 shared-core game link errors (prototype):' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 45 /tmp/ps2-game-link.log | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - name: Build synthetic Story navigation diagnostic without changing game ISO
+        # REQUIRED regression gate for scene progression; never shipped and
+        # never interpreted as proof of a physical DualShock controller.
+        run: |
+          make -C ps2 story-probe story-idle -j2
+      - name: Package PS2 gameplay ISO with the Talk bank and sound drivers
+        run: |
+          set -eu
+          make -C ps2 disc
+          test -s ps2/build/doomogachi_ps2_disc.elf
+          python3 ps2/tools/check_disc_elf.py \
+            ps2/build/doomogachi_ps2_game.elf ps2/build/doomogachi_ps2_disc.elf
+          ls -lh ps2/build/doomogachi_ps2_game.elf ps2/build/doomogachi_ps2_disc.elf
+          test -s ps2/build/doomogachi_ps2_game.iso
+          python3 ps2/tools/check_ps2_boot.py \
+            --iso ps2/build/doomogachi_ps2_game.iso --source ps2/SYSTEM.CNF
+          # xorriso may emit the file listing to stderr instead of
+          # stdout; retain both streams and fail on any command error.
+          set -o pipefail
+          xorriso -indev ps2/build/doomogachi_ps2_game.iso -find / -type f 2>&1 | \
+            tee /tmp/ps2-iso-manifest.txt
+          grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
+          grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
+          grep -q '/FREESD.IRX' /tmp/ps2-iso-manifest.txt
+          grep -q '/DOOMOG.ELF' /tmp/ps2-iso-manifest.txt
+      - name: Upload lossless gameplay ISO for emulator and hardware tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build/doomogachi_ps2_game.iso
+          # Compact images retain longer; the original ISO remains a
+          # short-lived compatibility and emulator smoke-test artifact.
+          retention-days: 3
+          if-no-files-found: error
+      - name: Build the progressive-scan gameplay ISO
+        run: make -C ps2 -j2 disc PS2_VIDEO=480p
+      - name: Upload progressive-scan gameplay ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-480p-iso
+          path: ps2/build/doomogachi_ps2_game_480p.iso
+          retention-days: 3
+          if-no-files-found: error
+      - name: Upload experimental game ELF only if linked
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-prototype
+          path: ps2/build/doomogachi_ps2_game.elf
+          if-no-files-found: ignore
+      - name: Upload optional scripted Story progression ELF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-story-probe-elf
+          path: ps2/build/doomogachi_ps2_story_probe.elf
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Upload non-shipping Story no-input control ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-story-idle-elf
+          path: ps2/build/doomogachi_ps2_story_idle.elf
+          retention-days: 3
+          if-no-files-found: error
+      - name: Upload PS2 ELF for PCSX2 and homebrew launchers
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-bootstrap-elf
+          path: |
+            ps2/build/doomogachi_ps2.elf
+            ps2/build/doomogachi_ps2_gs_only.elf
+            ps2/build/doomogachi_ps2_gs_ct16.elf
+            ps2/build/doomogachi_ps2_gs_alpha.elf
+            ps2/build/doomogachi_ps2_gs_texture.elf
+            ps2/build/BUILD_SOURCE.txt
+          if-no-files-found: error
+
+
+  compact-images:
+    name: PS2 compact ISO, CHD and archive (SHA256 verified)
+    runs-on: ubuntu-24.04
+    needs: [ps2-elf]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lossless disc compression and ISO verification tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mame-tools zstd xorriso
+          command -v chdman
+          command -v zstd
+          command -v xorriso
+      - name: Test compact-image tool against a synthetic ISO
+        run: |
+          set -eu
+          python3 -m py_compile ps2/tools/compact_iso.py ps2/tests/test_compact_iso.py
+          python3 -m unittest discover -s ps2/tests -p test_compact_iso.py -v
+      - name: Download exactly the gameplay ISO produced by this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build
+      - name: Build verified PS2 CHD and Zstandard archive
+        run: |
+          set -eu
+          python3 ps2/tools/compact_iso.py \
+            --iso ps2/build/doomogachi_ps2_game.iso \
+            --out-dir ps2/build/compact --zstd-level 15
+          cat ps2/build/compact/SIZE_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload compact PS2 files only after lossless roundtrip verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-compact-images
+          path: |
+            ps2/build/compact/*.chd
+            ps2/build/compact/*.iso.zst
+            ps2/build/compact/manifest.json
+            ps2/build/compact/SHA256SUMS.txt
+            ps2/build/compact/SIZE_REPORT.md
+          # Archive files are already compressed. Do not re-deflate them
+          # in the Actions artifact ZIP and consume unnecessary runner CPU.
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+
+  biosfree-play-smoke:
+    name: BIOS-free Play! PS2 boot capture
+    runs-on: ubuntu-24.04
+    needs: [ps2-elf]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Xvfb, Flatpak and screenshot tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick mesa-utils libgl1-mesa-dri xdotool
+          dbus-run-session -- bash -ec '
+            flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+            flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
+          '
+      - name: Retrieve game ISO compiled in this workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-iso
+          path: ps2/build
+      - name: Record Xvfb OpenGL capabilities and attempt game boot
+        timeout-minutes: 5
+        run: |
+          set -eu
+          python3 -m unittest discover -s ps2/tests -p test_play_frame_gate.py -v
+          python3 -m unittest discover -s ps2/tests -p test_story_visual_gate.py -v
+          test -s ps2/build/doomogachi_ps2_game.iso
+          mkdir -p ps2/build/play-smoke
+          LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
+            xvfb-run -a -s '-screen 0 1280x720x24' glxinfo -B \
+            | tee ps2/build/play-smoke/glxinfo.txt
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+            ps2/build/doomogachi_ps2_game.iso --seconds 35 --software-gl
+      # Unlike PS2_SCRIPTED_STORY_PROBE, these two ISO boots use the
+      # unmodified shipping ELF and Play!'s Qt virtual controller.
+      # Play!'s default keyboard mapping: Return=START and Z=CROSS.
+      # Both runs must use the same shipping ISO. Retain screenshots
+      # and provenance if controller navigation regresses.
+      - name: Capture the idle gameplay ISO as a controller control
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.iso \
+              --out ps2/build/play-pad-idle --seconds 34 --early-capture 9 --middle-capture 24 --software-gl
+      - name: Require Qt virtual-controller progression on the gameplay ISO
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/play-pad-idle/boot-3.png
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.iso \
+              --out ps2/build/play-pad-keys --seconds 34 --early-capture 9 --middle-capture 24 --software-gl \
+              --x11-key Return@12 --x11-key z@14 --x11-key z@16 --x11-key z@18 --x11-key z@20
+          python3 ps2/tools/check_story_causality.py \
+            --controller \
+            --scripted ps2/build/play-pad-keys/boot-1.png ps2/build/play-pad-keys/boot-2.png ps2/build/play-pad-keys/boot-3.png \
+            --idle ps2/build/play-pad-idle/boot-1.png ps2/build/play-pad-idle/boot-2.png ps2/build/play-pad-idle/boot-3.png \
+            --output ps2/build/play-pad-keys/pad-causality.json
+      - name: Retrieve the progressive-scan gameplay ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-480p-iso
+          path: ps2/build
+      - name: Check the progressive-scan game viewport in Play!
+        timeout-minutes: 4
+        run: |
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game_480p.iso --out ps2/build/play-480p \
+              --seconds 34 --early-capture 9 --middle-capture 24 --software-gl --require-motion \
+              --x11-key Return@12 --x11-key z@14 --x11-key z@16 --x11-key z@18 --x11-key z@20
+      - name: Retrieve independent PS2-0 hardware diagnostic ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-bootstrap-elf
+          path: ps2/build
+      - name: Retrieve directly linked game ELF for disc-vs-ELF isolation
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-prototype
+          path: ps2/build
+      - name: Try real game ELF without CD/DVD boot path (non-gating probe)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_game.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.elf --launch elf \
+              --out ps2/build/play-game-elf --seconds 25 --software-gl
+      - name: Retrieve optional synthetic Story progression ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-story-probe-elf
+          path: ps2/build
+      - name: Retrieve no-input Story comparison ELF
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-story-idle-elf
+          path: ps2/build
+      - name: Capture idle title as zero-button causal control
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_story_idle.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_story_idle.elf --launch elf \
+              --out ps2/build/play-story-idle --seconds 22 --early-capture 3 --software-gl
+      - name: Capture and prove shared-core Story transition with scripted input
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_story_probe.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_story_probe.elf --launch elf \
+              --out ps2/build/play-story-probe --seconds 22 --early-capture 3 --software-gl
+          python3 ps2/tools/check_story_progress.py \
+            ps2/build/play-story-probe/boot-1.png \
+            ps2/build/play-story-probe/boot-2.png \
+            ps2/build/play-story-probe/boot-3.png \
+            --output ps2/build/play-story-probe/story-progress.json
+          python3 ps2/tools/check_story_causality.py \
+            --scripted ps2/build/play-story-probe/boot-1.png ps2/build/play-story-probe/boot-2.png ps2/build/play-story-probe/boot-3.png \
+            --idle ps2/build/play-story-idle/boot-1.png ps2/build/play-story-idle/boot-2.png ps2/build/play-story-idle/boot-3.png \
+            --output ps2/build/play-story-probe/story-causality.json
+      - name: Try isolated GS/pad diagnostic ELF in the same Play! emulator
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2.elf --launch elf \
+              --out ps2/build/play-bootstrap --seconds 20 --software-gl
+      - name: Try pure GS animation without any IOP services
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_only.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_only.elf --launch elf \
+              --out ps2/build/play-gsonly --seconds 20 --software-gl --require-motion
+      - name: Test CT16 GS display path without IOP or alpha blending
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_ct16.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_ct16.elf --launch elf \
+              --out ps2/build/play-gs-ct16 --seconds 20 --software-gl --require-motion
+      - name: Try CT16 texture upload and sprite without any IOP services
+        if: always()
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_texture.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_texture.elf --launch elf \
+              --out ps2/build/play-gs-texture --seconds 20 --software-gl --require-motion
+      # Known failing negative control: the alpha-on probe produced a
+      # completely black Play! viewport while both alpha-off probes passed.
+      # Retain the screenshots/logs for diagnosis, but do not block a
+      # recovered real-game rendering job on this intentionally bad variant.
+      - name: Record alpha-on CT32 black-screen negative control (non-gating)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/doomogachi_ps2_gs_alpha.elf
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_gs_alpha.elf --launch elf \
+              --out ps2/build/play-gs-alpha --seconds 20 --software-gl --require-motion
+      - name: Preserve game and independent diagnostic boot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-play-biosfree-capture
+          path: |
+            ps2/build/play-smoke/
+            ps2/build/play-bootstrap/
+            ps2/build/play-gsonly/
+            ps2/build/play-gs-ct16/
+            ps2/build/play-gs-alpha/
+            ps2/build/play-gs-texture/
+            ps2/build/play-game-elf/
+            ps2/build/play-story-probe/
+            ps2/build/play-story-idle/
+            ps2/build/play-pad-idle/
+            ps2/build/play-pad-keys/
+            ps2/build/play-480p/
+          if-no-files-found: warn
