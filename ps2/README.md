@@ -193,6 +193,11 @@ confirmed meetup stays with the named resident in Story and Free Play.
 In Talk, **Options > Our history** can recall a completed visit and name
 its location using the saved Town News feed.
 
+Same-day meetup plans now survive a memory-card save and reload. They
+belong to the character who made them, and a guest's saved activity
+determines whether they are still there. A used plan still counts toward
+the day's invitation limit.
+
 The 320x240 indexed software surface is shared with 3D. Its RGB5551
 presentation texture uses 150 KiB of EE staging and 160 KiB of
 page-aligned GS VRAM. The prior 512x256 RGB5551 path used 256 KiB in

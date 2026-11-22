@@ -5,9 +5,11 @@
  * recently used first. Older completed entries are evicted before open
  * commitments. Its 4-byte header and entries occupy TALK_MEM_WORST bytes,
  * and the chunk is the same bytes written little endian:
- *   [u8 version = 1][u8 count][u16 day_of_last] then count x
+ *   [u8 payload version][u8 count][u16 day_of_last] then count x
  *   {u16 id; u16 day; u16 topic_a; u16 topic_b; u8 flags; u8 likes_known;
- *    u16 spare = 0}
+ *    u16 spare}
+ * Optional traits follow the table. Payload v5 ends with the fixed-size
+ * same-day invitation ledger after any traits.
  *
  * "Refused today" (K-5) is cleared when the town day is no longer
  * day_of_last: every public call checks first, so a save loaded on a later
@@ -23,7 +25,7 @@
  * only with -DDOOMO_HAS_TALK (core/Makefile: the native host; a console
  * port adds it when it gets Talk). Everywhere else doomo_save_ext_talk
  * stays the weak NULL, nothing references this file and --gc-sections
- * drops it whole: 0 B on the GBA and on the PS1 today.
+ * drops it whole on a port built without Talk.
  *
  * Loading: no chunk (an old save) or a chunk read() refuses (unknown
  * version, truncated, too long, a count over 24) leaves the table empty.
@@ -59,6 +61,7 @@ static struct {
 } mem;                                      /* 292 B */
 
 DOOMO_STATIC_ASSERT(sizeof(mem) == TALK_MEM_WORST, talk_mem_table_is_the_worst_case);
+DOOMO_STATIC_ASSERT(TALK_SAVE_WORST <= SAVE_EXT_MAX_TALK, talk_chunk_fits_budget);
 
 #define TMEM_SECRETS 0x3Cu                  /* TalkMem.spare bits 2-5: the secrets told today (TDEP_MEM_SECRET) */
 #define TMEM_DEPTH   0x3Fu                  /* bits 0-1 the level reached in the last talk, 2-5 the secrets told today */
@@ -348,22 +351,29 @@ void talk_mem_reset(void) { memset(&mem, 0, sizeof mem); talk_trait_reset(); tal
 static void put16(uint8_t *p, unsigned v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
 static unsigned get16(const uint8_t *p) { return (unsigned)p[0] | ((unsigned)p[1] << 8); }
 
+static void talk_save_reset(void)
+{
+    talk_mem_reset();
+    talk_outcome_reset();
+}
+
 /* nothing while the table is empty: like PLAY and PROF, an empty table is
  * a chunk of 0 bytes */
 static uint32_t talk_size(void)
 {
-    uint32_t tr = talk_trait_save_size();
-    return mem.count || tr ? (uint32_t)(TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY) + tr : 0u;
+    uint32_t tails = talk_trait_save_size() + talk_outcome_meet_save(NULL);
+    return mem.count || tails ? (uint32_t)(TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY) + tails : 0u;
 }
 
 static uint32_t talk_write(uint8_t *dst, uint32_t cap)
 {
-    uint32_t n = talk_size(), tr = talk_trait_save_size();
+    uint32_t n = talk_size(), tr = talk_trait_save_size(), at;
     int i;
     if (!n || cap < n) return 0;
     /* New payload versions distinguish actual event flags from stray bits
      * in legacy v1/v2 likes_known. Outer save chunk version stays 1. */
-    dst[0] = (uint8_t)(tr ? TALK_MEM_VERSION_EVENTS_TRAITS : TALK_MEM_VERSION_EVENTS);
+    dst[0] = talk_outcome_meet_save(NULL) ? TALK_MEM_VERSION_MEETUPS :
+             tr ? TALK_MEM_VERSION_EVENTS_TRAITS : TALK_MEM_VERSION_EVENTS;
     dst[1] = mem.count;
     put16(dst + 2, mem.day);
     for (i = 0; i < mem.count; i++) {
@@ -377,26 +387,29 @@ static uint32_t talk_write(uint8_t *dst, uint32_t cap)
         p[9] = e->likes_known;
         put16(p + 10, e->spare & TMEM_SPARE);                  /* TM2d: depth reached, secrets told today (an old chunk read 0) */
     }
-    if (tr) talk_trait_save_write(dst + TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY, tr);
+    at = (uint32_t)(TALK_MEM_HDR + mem.count * TALK_MEM_ENTRY);
+    if (tr) talk_trait_save_write(dst + at, tr);
+    if (dst[0] == TALK_MEM_VERSION_MEETUPS) talk_outcome_meet_save(dst + at + tr);
     return n;
 }
 
 static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
 {
-    int i, n;
-    talk_mem_reset();
+    uint32_t at, meets, traits;
+    int i, n, payload;
+    talk_save_reset();
     if (version != TALK_MEM_VERSION) return 0;               /* a later format: ignored */
     if (len == 0) return 1;                                   /* the empty chunk */
-    if (len < TALK_MEM_HDR ||
-        (src[0] != TALK_MEM_VERSION && src[0] != TALK_MEM_VERSION_TRAITS &&
-         src[0] != TALK_MEM_VERSION_EVENTS && src[0] != TALK_MEM_VERSION_EVENTS_TRAITS))
-        return 0;
+    if (len < TALK_MEM_HDR || len > TALK_SAVE_WORST) return 0;
+    payload = src[0];
+    if (payload < TALK_MEM_VERSION || payload > TALK_MEM_VERSION_MEETUPS) return 0;
     n = src[1];
-    if (n > TALK_MEM_MAX || len < (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
-    if ((src[0] == TALK_MEM_VERSION || src[0] == TALK_MEM_VERSION_EVENTS) &&
-        len != (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
-    if ((src[0] == TALK_MEM_VERSION_TRAITS || src[0] == TALK_MEM_VERSION_EVENTS_TRAITS) &&
-        len == (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY)) return 0;
+    at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);
+    meets = payload == TALK_MEM_VERSION_MEETUPS ? TALK_MEET_SAVE_BYTES : 0u;
+    if (n > TALK_MEM_MAX || len < at + meets) return 0;
+    traits = len - at - meets;
+    if ((payload == TALK_MEM_VERSION || payload == TALK_MEM_VERSION_EVENTS) && traits) return 0;
+    if ((payload == TALK_MEM_VERSION_TRAITS || payload == TALK_MEM_VERSION_EVENTS_TRAITS) && !traits) return 0;
     mem.day = (uint16_t)get16(src + 2);
     for (i = 0; i < n; i++) {
         const uint8_t *p = src + TALK_MEM_HDR + i * TALK_MEM_ENTRY;
@@ -412,21 +425,22 @@ static int talk_read(const uint8_t *src, uint32_t len, uint16_t version)
         /* Older payloads never wrote event bits; strip high noise rather
          * than inventing memories of invitations/playing/gifts. */
         e->likes_known = (uint8_t)(p[9] &
-            (src[0] >= TALK_MEM_VERSION_EVENTS ? MEMORY_MASK : LIKES_MASK));
+            (payload >= TALK_MEM_VERSION_EVENTS ? MEMORY_MASK : LIKES_MASK));
         e->spare = (uint16_t)(get16(p + 10) & TMEM_SPARE);
         if (TQB_KIND(e->spare) >= TQK_COUNT || (TQB_KIND(e->spare) == 0 && (e->spare & TMEM_QUEST)) ||
             (TQB_KIND(e->spare) && TQB_STATE(e->spare) == TQS_NONE))
             e->spare = (uint16_t)(e->spare & TMEM_DEPTH);                     /* a bad request field: none */
     }
-    if (src[0] == TALK_MEM_VERSION_TRAITS || src[0] == TALK_MEM_VERSION_EVENTS_TRAITS) { /* trait tail */
-        uint32_t at = (uint32_t)(TALK_MEM_HDR + n * TALK_MEM_ENTRY);
-        if (!talk_trait_save_read(src + at, len - at)) { talk_mem_reset(); return 0; }
+    if ((traits && !talk_trait_save_read(src + at, traits)) ||
+        (meets && !talk_outcome_meet_load(src + at + traits))) {
+        talk_save_reset();
+        return 0;
     }
     return 1;
 }
 
 static const DoomoSaveExt talk_ext = {
-    SAVE_EXT_TAG_TALK, TALK_MEM_VERSION, talk_size, talk_write, talk_read, talk_mem_reset, TALK_SAVE_WORST
+    SAVE_EXT_TAG_TALK, TALK_MEM_VERSION, talk_size, talk_write, talk_read, talk_save_reset, TALK_SAVE_WORST
 };
 const DoomoSaveExt *const doomo_save_ext_talk = &talk_ext;
 #endif /* DOOMO_HAS_TALK */

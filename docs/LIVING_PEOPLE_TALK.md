@@ -296,8 +296,8 @@ feature must be separately verified on each port that enables Talk.
 
 ## Physical-location meetup (first working town integration)
 
-An accepted Talk invitation records its destination in the unused
-`LedP.pad` byte of the existing **day-scoped** Talk outcome ledger.
+An accepted Talk invitation records the guest, inviter and destination in
+the **day-scoped** Talk outcome ledger.
 A player who walks to the matching physical building and opens its
 normal place menu can now choose **Meet up with [resident]**. The action
 is offered only when that NPC is still actually at the accepted venue,
@@ -316,14 +316,17 @@ shop, workshop, concert hall and vape shop for the six indoor venues.
 The Fun Fair and piers are **arrival proxies**, not an assertion that
 the player was standing at the exact pixel the NPC reached. Each
 requires entering a real place menu before the meeting can be claimed.
-The rendezvous currently expires on day rollover and does not survive
-loading a save partway through the day. Those remain honest limitations.
+Same-day plans survive a save and reload. Each plan belongs to the
+character who made it. Reloading keeps the guest's saved activity,
+including when they have already left the venue. The usual daily cap
+still applies, including to plans already used that day. Plans expire
+at day rollover.
 
 This is a *location-validated interaction*, not yet a scene with both
 characters visibly walking together, or full family/group outings.
 Future steps: exact outdoor interaction zones (rather than Fun Fair
-and pier proxies), place-aware NPC spawn presentation, saved pending
-appointments, and several activity choices per venue. The new native action test verifies the right
+and pier proxies), place-aware NPC spawn presentation, and several
+activity choices per venue. The native action test verifies the right
 venue, single-consumption behavior, changed needs and shared memory.
 No 3D raycasting, NPC arrays or per-frame work is added.
 
@@ -338,12 +341,14 @@ missing Leave option or a soft lock at a crowded building menu.
 
 ### Safe save migration for event memories
 
-The outer `TALK` save registry still uses version 1, and its 12-byte
-entry and maximum chunk length are unchanged. The **payload byte 0** now
-uses 3 for memory-only, or 4 when there is also an explicit-trait tail.
+The outer `TALK` save registry still uses version 1, with the same
+12-byte memory entries and declared chunk budget. **Payload byte 0**
+uses 3 for memory-only or 4 when there is also an explicit-trait tail.
+Payload 5 adds an 11-byte tail for the day's accepted invitations,
+including used ones, within the existing chunk budget.
 Old payloads 1 and 2 continue loading, but their high three
 `likes_known` bits are masked out, as in the earlier implementation.
-Only v3/v4 saves restore the new actual shared-event markers. This
+Payloads 3 through 5 restore the actual shared-event markers. This
 prevents uninitialized high bits in old saves from being mistaken for
 real meetings or gifts. Native round-trip and old-save tests cover the
 new version and unchanged-structure migration rules.
@@ -438,9 +443,8 @@ venue stays available across saves while the event is still in the feed.
 An accepted invitation remains a separate memory. Recalling a visit
 adds no relationship points, items, or headlines.
 
-The extra work runs only on a menu selection. It allocates no per-
-resident data, does not change the save format, and adds no 3D render
-overhead. The new story choice uses callback 131 and the menu reserves
+The activity itself runs on menu selection. It adds no per-resident
+data or 3D render overhead. The story choice uses callback 131 and the menu reserves
 its final slot for **Leave** even on crowded screens. Native action
 tests check insufficient café funds, real Hunger and money changes,
 retained pending invitations after refusal, and no duplicate rewards.

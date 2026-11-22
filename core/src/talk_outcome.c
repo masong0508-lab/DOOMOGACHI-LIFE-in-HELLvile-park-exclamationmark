@@ -18,8 +18,8 @@
  *                         caps would deny; the apply re-checks the minor rules and counts what it refuses
  *                         (TalkOutcome.skipped: a test fails on it)
  * A ledger of the day (keyed by town day and seed) keeps the caps across conversations,
- * so no number of talks farms more than the caps. It is not saved. Native builds only
- * reference this file (the console ports link no Talk): 0 B on GBA / PS1 / DC.
+ * so no number of talks farms more than the caps. The same-day invitations
+ * are saved. Other daily totals live in the current session.
  */
 #include <string.h>
 #include "doomo/doomo.h"
@@ -35,20 +35,21 @@
 #define LED_Q 64
 #define LPF_PROBLEM 0x01u          /* a problem was resolved today */
 #define LPF_CARE    0x02u          /* family_care was given today  */
-#define LPF_INVITE  0x04u          /* TM2e: an invitation was taken today */
 #define LPF_GIFT    0x08u          /* TM2e: the resident gave a gift today */
 #define LPF_ASK     0x10u          /* TM2e: the resident asked for an item today */
 #define LQF_MADE_UP 0x01u
 #define LQF_ASKED   0x02u          /* sim_confess was asked today  */
 
-typedef struct { uint16_t id; int8_t rel, mood; uint8_t social, level, flags, pad; } LedP;   /* 8 B */
+typedef struct { uint16_t id; int8_t rel, mood; uint8_t social, level, flags; } LedP;   /* 8 B */
 typedef struct { uint16_t a, b; int8_t d; uint8_t flags; } LedQ;                              /* 6 B */
+typedef struct { uint16_t guest, avatar; uint8_t venue; } LedMeet;   /* venue+1, or 0 if used */
 static struct {
     uint32_t day, seed;
     uint8_t  live, np, nq, rp, rq, news;
     uint8_t  invn, giftn;          /* TM2e: invitations taken and gifts given today (the town caps); in the struct's padding */
     LedP p[LED_P];
     LedQ q[LED_Q];
+    LedMeet meet[TALK_CAP_INVITE_TOWN];
 } led;
 
 void talk_outcome_reset(void) { memset(&led, 0, sizeof led); }
@@ -157,10 +158,93 @@ static int alive_resident(int id)
     return r && (r->status == RES_ALIVE);
 }
 
+static LedMeet *meet_find(int guest)
+{
+    int i;
+    for (i = 0; i < led.invn; i++) if (led.meet[i].guest == guest) return &led.meet[i];
+    return NULL;
+}
+
+static int meet_avatar_ok(int id)
+{
+    if (id >= FAMILY_POOL_FIRST && id <= FAMILY_POOL_LAST) {
+        const FamilyMember *m = family_find(id);
+        return m && m->role != FAMROLE_PET;
+    }
+    return (id == DOOMO_PLAYER_ID || resident_id(id)) && sim_alive_ok(town_res(id));
+}
+
+/* A u16 town day followed by three u24 records. The saved avatar can be
+ * the hero or a household member. The zero record leaves the slot empty. */
+#define MEET_AVATAR_MAX (FAMILY_POOL_FIRST + HOUSEHOLD_CAP_MAX - 1)
+DOOMO_STATIC_ASSERT(MEET_AVATAR_MAX < 1024, meet_avatar_fits);
+DOOMO_STATIC_ASSERT(ACT_COUNT < 16, meet_venue_fits);
+
+uint32_t talk_outcome_meet_save(uint8_t *dst)
+{
+    int i;
+    if (!led.live || !led.invn || led.day != doomo_town.day || led.seed != doomo_town.seed) return 0;
+    if (dst) {
+        memset(dst, 0, TALK_MEET_SAVE_BYTES);
+        dst[0] = (uint8_t)led.day;
+        dst[1] = (uint8_t)(led.day >> 8);
+        for (i = 0; i < led.invn; i++) {
+            const LedMeet *m = &led.meet[i];
+            uint32_t rec = m->guest | ((uint32_t)m->avatar << 10) | ((uint32_t)m->venue << 20);
+            uint8_t *p = dst + 2 + 3 * i;
+            p[0] = (uint8_t)rec;
+            p[1] = (uint8_t)(rec >> 8);
+            p[2] = (uint8_t)(rec >> 16);
+        }
+    }
+    return TALK_MEET_SAVE_BYTES;
+}
+
+int talk_outcome_meet_load(const uint8_t *src)
+{
+    int i;
+    roll();
+    led.invn = 0;
+    if (((unsigned)src[0] | (unsigned)src[1] << 8) != (uint16_t)doomo_town.day) return 1;
+    for (i = 0; i < TALK_CAP_INVITE_TOWN; i++) {
+        const uint8_t *p = src + 2 + 3 * i;
+        uint32_t rec = p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
+        int guest = rec & 1023u, avatar = (rec >> 10) & 1023u, venue = rec >> 20;
+        LedMeet *m;
+        if (!rec) continue;
+        if (guest >= DOOMO_MAX_RESIDENTS || avatar > MEET_AVATAR_MAX || guest == avatar ||
+            meet_find(guest) || (venue && !talk_act_invite_ok(TA_INVITE, venue - 1, 0, 12)))
+            return 0;
+        m = &led.meet[led.invn++];
+        m->guest = (uint16_t)guest;
+        m->avatar = (uint16_t)avatar;
+        m->venue = (uint8_t)venue;
+    }
+    return 1;
+}
+
+void talk_outcome_meet_capture(uint8_t *activities)
+{
+    int i;
+    roll();
+    for (i = 0; i < led.invn; i++) {
+        const LedMeet *m = &led.meet[i];
+        activities[i] = m->venue && alive_resident(m->guest) ? town_res(m->guest)->activity : ACT_COUNT;
+    }
+}
+
+void talk_outcome_meet_restore(const uint8_t *activities)
+{
+    int i;
+    for (i = 0; i < led.invn; i++) {
+        if (activities[i] < ACT_COUNT) town_res(led.meet[i].guest)->activity = activities[i];
+    }
+}
+
 /* ---- TM2e: the caps of the actions, asked at plan time and again at apply ---- */
 static int cap_flag(int kind)
 {
-    return kind == TEV_ACT_INVITE ? LPF_INVITE : kind == TEV_ACT_GIFT ? LPF_GIFT : kind == TEV_ACT_ASK ? LPF_ASK : 0;
+    return kind == TEV_ACT_GIFT ? LPF_GIFT : kind == TEV_ACT_ASK ? LPF_ASK : 0;
 }
 
 static int cap_town(int kind)
@@ -173,30 +257,35 @@ static int cap_town_max(int kind)
     return kind == TEV_ACT_INVITE ? TALK_CAP_INVITE_TOWN : kind == TEV_ACT_GIFT ? TALK_CAP_GIFT_TOWN : 1000;
 }
 
+static int capped_resident(int kind, int id)
+{
+    const LedP *lp;
+    if (kind == TEV_ACT_INVITE) return meet_find(id) != NULL;
+    lp = led_peek(id);
+    return lp && (lp->flags & cap_flag(kind));
+}
+
 /* A dead/missing resident must never appear able to offer a real action.
  * The apply path has always rejected them; keep the UI/plan gate in sync. */
 int talk_outcome_can(int kind, int id)
 {
-    const LedP *lp;
-    if (!cap_flag(kind) || !alive_resident(id)) return 0;
+    if ((kind != TEV_ACT_INVITE && !cap_flag(kind)) || !alive_resident(id)) return 0;
     roll();
-    lp = led_peek(id);
-    return !(lp && (lp->flags & cap_flag(kind))) && cap_town(kind) < cap_town_max(kind);
+    return !capped_resident(kind, id) && cap_town(kind) < cap_town_max(kind);
 }
 
 int talk_outcome_why_in(const TalkState *s, int kind, int id)
 {
     int k, mine = 0, all = 0;
-    const LedP *lp;
-    if (!s || !cap_flag(kind) || !alive_resident(id)) return TAW_RULE;
+    if (!s || (kind != TEV_ACT_INVITE && !cap_flag(kind)) || !alive_resident(id)) return TAW_RULE;
+    if (kind == TEV_ACT_INVITE && (s->conv.avatar == id || !meet_avatar_ok(s->conv.avatar))) return TAW_RULE;
     roll();
-    lp = led_peek(id);
     for (k = 0; k < s->nev && k < TALK_EVENTS_MAX; k++) {
         if (s->ev[k].kind != kind) continue;
         all++;
         if (s->ev[k].a < s->nparts && s->part[s->ev[k].a].id == id) mine++;
     }
-    if ((lp && (lp->flags & cap_flag(kind))) || mine) return TAW_CAP_DAY;
+    if (capped_resident(kind, id) || mine) return TAW_CAP_DAY;
     return cap_town(kind) + all >= cap_town_max(kind) ? TAW_CAP_TOWN : TAW_NONE;
 }
 
@@ -219,14 +308,13 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
     lp = led_p(ia);
     switch (e->kind) {
     case TEV_ACT_INVITE:
-        if (e->b < ACT_COUNT && talk_act_invite_ok(TA_INVITE, e->b, minor_room_of(sum), town_hour()) &&
+        if (sum->avatar != ia && meet_avatar_ok(sum->avatar) &&
+            talk_act_invite_ok(TA_INVITE, e->b, minor_room_of(sum), town_hour()) &&
             sim_nudge_activity(ia, e->b, 60)) {
-            lp->flags |= LPF_INVITE;
-            /* Existing 8-byte ledger entry has an unused pad. Encode the
-             * REAL accepted venue there for this game day (venue+1; zero
-             * means none/consumed). No new RAM or per-frame lookup. */
-            lp->pad = (uint8_t)(e->b + 1);
-            led.invn++;
+            LedMeet *m = &led.meet[led.invn++];
+            m->guest = (uint16_t)ia;
+            m->avatar = (uint16_t)sum->avatar;
+            m->venue = (uint8_t)(e->b + 1);
             out->invited++;
             /* An acceptance is a remembered *invitation*, not a
              * fabricated claim that the player already travelled. */
@@ -258,37 +346,39 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
 /* The day-scoped reservation belongs to a real person and real location.
  * Unlike meet_present, this reports a missed/pending appointment too, so the
  * Talk journal can explain why no guest appeared at the expected place.
- * No sim tick, heap, or new save data. */
+ * Queried only on menu construction and selection. */
 int talk_outcome_meet_plan(int guest_id)
 {
-    const LedP *p;
-    if (!resident_id(guest_id) || !alive_resident(guest_id)) return -1;
+    const LedMeet *m;
+    if (!alive_resident(guest_id)) return -1;
     roll();
-    p = led_peek(guest_id);
-    if (!p || !(p->flags & LPF_INVITE) ||
-        p->pad == 0 || p->pad > ACT_COUNT) return -1;
-    return (int)p->pad - 1;
+    m = meet_find(guest_id);
+    return m && m->avatar == playas_avatar() ? (int)m->venue - 1 : -1;
+}
+
+static int meet_present(const LedMeet *m, int venue, int avatar)
+{
+    return m && m->venue == venue + 1 && m->avatar == avatar && meet_avatar_ok(avatar) &&
+           alive_resident(m->guest) &&
+           town_res(m->guest)->activity == venue &&
+           talk_act_invite_ok(TA_INVITE, venue, minor_id(avatar) || minor_id(m->guest), town_hour());
 }
 
 int talk_outcome_meet_present(int guest_id, int venue)
 {
-    return venue >= 0 && venue < ACT_COUNT &&
-           talk_outcome_meet_plan(guest_id) == venue && town_res(guest_id)->activity == venue;
+    if (venue < 0 || venue >= ACT_COUNT) return 0;
+    roll();
+    return meet_present(meet_find(guest_id), venue, playas_avatar());
 }
 
 int talk_outcome_meet_guests(int venue, int *guests, int capacity)
 {
-    int i, count = 0;
+    int i, count = 0, avatar = playas_avatar();
     if (venue < 0 || venue >= ACT_COUNT) return 0;
     roll();
-    for (i = 0; i < led.np && count < capacity; i++) {
-        const LedP *p = &led.p[i];
-        const DoomoResident *r;
-        if (!(p->flags & LPF_INVITE) || p->pad != venue + 1 ||
-            !alive_resident(p->id))
-            continue;
-        r = town_res(p->id);
-        if (r->activity == venue) guests[count++] = p->id;
+    for (i = 0; i < led.invn && count < capacity; i++) {
+        const LedMeet *m = &led.meet[i];
+        if (meet_present(m, venue, avatar)) guests[count++] = m->guest;
     }
     return count;
 }
@@ -366,10 +456,14 @@ const char *talk_outcome_meet_reply(int guest_id, int venue, int kind)
 
 int talk_outcome_meet_kind(int id, int venue, int kind)
 {
-    int i, avatar;
+    LedMeet *meet;
+    int avatar, owner = playas_avatar();
     DoomoResident *r, *player;
     if (kind != TALK_MEET_CHAT && kind != TALK_MEET_ACTIVITY) return -1;
-    if (!talk_outcome_meet_present(id, venue)) return -1;
+    if (venue < 0 || venue >= ACT_COUNT) return -1;
+    roll();
+    meet = meet_find(id);
+    if (!meet_present(meet, venue, owner)) return -1;
     /* The café charges the player for two small snacks. Check before
      * consuming the appointment; the free conversation remains available.
      * No free item or money is created by simply selecting the menu. */
@@ -379,12 +473,7 @@ int talk_outcome_meet_kind(int id, int venue, int kind)
 
     /* This is a real meeting at an actual door or outdoor arrival point.
      * Consume the pending reservation once, before applying its effects. */
-    for (i = 0; i < led.np; i++) {
-        if (led.p[i].id == id) {
-            led.p[i].pad = 0;
-            break;
-        }
-    }
+    meet->venue = 0;
     if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE)
         doomo_town.money -= 6u;
     r = town_res(id);
@@ -414,7 +503,7 @@ int talk_outcome_meet_kind(int id, int venue, int kind)
      * fabricate another headline. */
 #ifdef DOOMO_HAS_TALK
     sim_news_rec(sim_favourite_venue(id) == venue ? NT_TALK_MEET_FAV : NT_TALK_MEET,
-                 venue, NEWS_IDS(id, avatar, NEWS_NONE));
+                 venue, NEWS_IDS(id, owner, NEWS_NONE));
 #endif
     return id;
 }

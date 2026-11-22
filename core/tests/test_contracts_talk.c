@@ -137,7 +137,7 @@ TEST(talk_contract_save_chunk)
     const DoomoSaveExt *e = doomo_save_ext_talk;
     int i;
     CHECK_EQ_U(SAVE_EXT_TAG_TALK, SAVE_EXT_TAG('T', 'A', 'L', 'K'));
-    CHECK_EQ(SAVE_EXT_MAX_TALK, TALK_SAVE_WORST + 11u);
+    CHECK_EQ(SAVE_EXT_MAX_TALK, TALK_SAVE_WORST);
     CHECK_EQ(TALK_MEM_WORST, TALK_MEM_HDR + TALK_MEM_MAX * TALK_MEM_ENTRY);
     CHECK(TALK_SAVE_WORST <= SAVE_EXT_MAX_TALK);
     CHECK_EQ(save_budget_declared_max(SAVE_EXT_TAG_TALK), SAVE_EXT_MAX_TALK);

@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Saved Talk appointments (2026-11-22):** Same-day plans keep their
+  guest, venue, current availability, and original inviter through a
+  reload. Used plans still count toward the daily limit. The optional
+  save tail fits the existing Talk chunk budget.
 - **Talk meetups and shared memories (2026-11-22):** Free Play gives each
   available guest their own choice. Story doors and Free Play confirm the
   named guest. Talk reports the selected resident's plans and recalls an

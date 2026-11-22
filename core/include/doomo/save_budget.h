@@ -99,7 +99,7 @@ uint32_t save_budget_declared_max(uint32_t tag);
 
 /* --- TALK save chunk capacity by platform. Each 12-byte memory entry is
  * persistent; the existing 24 explicit trait sets add up to 145 bytes.
- * 11 spare bytes allow headroom without changing the chunk wire format.
+ * The optional same-day appointment tail uses the existing 11-byte reserve.
  * Dreamcast's 128-entry history costs ~1.7 KiB worst case, subject to
  * VMU free-block checks at save time. --- */
 #if defined(DOOMO_PLATFORM_DC)

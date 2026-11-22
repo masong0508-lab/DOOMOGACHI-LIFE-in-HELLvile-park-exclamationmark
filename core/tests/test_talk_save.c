@@ -19,6 +19,7 @@
 #include "doomo/save.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
+#include "doomo/sim.h"
 
 #define ID_NANA  1
 #define ID_RIVET 13
@@ -523,6 +524,51 @@ TEST(talk_mem_chunk_bad_input)
     /* a refused chunk never leaves half a table: save.c resets after a 0 */
     ext()->reset();
     CHECK_EQ(talk_mem_count(), 0);
+}
+
+TEST(talk_mem_meetup_chunk_clears_stale_or_malformed_plans)
+{
+    uint8_t legacy[TALK_MEM_WORST], data[TALK_SAVE_WORST];
+    TalkSummary sum = {0};
+    TalkOutcome out;
+    uint32_t old_len, len, tail;
+    premade_town();
+    doomo_town.minute = 12 * 60;
+    sim_init();
+    talk_mem_note_topic(ID_NANA, 10);
+    old_len = ext()->write(legacy, sizeof legacy);
+    CHECK_EQ(legacy[0], TALK_MEM_VERSION_EVENTS);
+
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = sum.nev = 1;
+    sum.id[0] = ID_NANA;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = ACT_CAFE;
+    town_res(ID_NANA)->activity = ACT_HOME;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ(out.invited, 1);
+    len = ext()->write(data, sizeof data);
+    CHECK_EQ(data[0], TALK_MEM_VERSION_MEETUPS);
+    CHECK_EQ(len, old_len + TALK_MEET_SAVE_BYTES);
+
+    CHECK(ext()->read(legacy, old_len, TALK_MEM_VERSION));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, ID_NANA));
+    CHECK(talk_mem_find(ID_NANA) && talk_mem_find(ID_NANA)->topic_a == 10);
+    CHECK(ext()->read(data, len, TALK_MEM_VERSION));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), ACT_CAFE);
+    CHECK(!ext()->read(data, len - 1, TALK_MEM_VERSION));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+
+    doomo_town.day++;
+    CHECK(ext()->read(data, len, TALK_MEM_VERSION));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    doomo_town.day--;
+    tail = len - TALK_MEET_SAVE_BYTES;
+    memcpy(data + tail + 5, data + tail + 2, 3);  /* duplicate guest */
+    CHECK(!ext()->read(data, len, TALK_MEM_VERSION));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, ID_NANA));
 }
 
 TEST(talk_mem_chunk_stale_entries_are_harmless)

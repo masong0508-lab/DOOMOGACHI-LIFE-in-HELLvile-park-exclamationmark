@@ -26,6 +26,8 @@
 #include "doomo/items.h"
 #include "doomo/resident_acc.h"
 #include "doomo/playas.h"
+#include "doomo/save.h"
+#include "doomo/family.h"
 #include "../src/fp_int.h"
 #include "../src/fp_island.h"
 
@@ -512,6 +514,101 @@ TEST(action_meetup_plan_is_read_only_and_day_scoped)
     doomo_town.day++;
     CHECK_EQ(talk_outcome_meet_plan(a), -1);
     talk_db_close();
+}
+
+TEST(action_meetup_survives_reload_with_guest_activity_and_daily_caps)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    uint16_t cafe;
+    int a, b, c, money, news;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult >= 4);
+    a = adults[0];
+    b = adults[1];
+    c = adults[2];
+    cafe = concept("brimstone bites");
+    CHECK(cafe != TC_NONE);
+
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK(try_invite(b, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK(try_invite(c, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    town_res(b)->activity = ACT_HOME;   /* a guest who left before the save */
+    CHECK_EQ(talk_outcome_meet_kind(c, ACT_CAFE, TALK_MEET_CHAT), c);
+    money = (int)doomo_town.money;
+    CHECK(save_game(1));
+
+    talk_outcome_reset();              /* a clean boot, then the normal load + sim setup */
+    CHECK(load_game(1));
+    sim_init();
+    CHECK_EQ(talk_outcome_meet_plan(a), ACT_CAFE);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a);
+    CHECK_EQ(talk_outcome_meet_plan(b), ACT_CAFE);
+    CHECK_EQ(town_res(b)->activity, ACT_HOME);
+    CHECK(!talk_outcome_meet_present(b, ACT_CAFE));
+    CHECK_EQ(talk_outcome_meet_plan(c), -1);
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, c));
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, adults[3]));
+    CHECK(!talk_mem_shared(a, TALK_SHARED_PLAYED));
+
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, TALK_MEET_ACTIVITY), a);
+    CHECK_EQ((int)doomo_town.money, money - 6);
+    CHECK(save_game(1));
+    talk_outcome_reset();
+    CHECK(load_game(1));
+    sim_init();
+    news = sim_news_count();
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, TALK_MEET_ACTIVITY), -1);
+    CHECK_EQ((int)doomo_town.money, money - 6);
+    CHECK_EQ(sim_news_count(), news);
+    CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, adults[3]));
+    doomo_town.day++;
+    CHECK_EQ(talk_outcome_meet_plan(b), -1);
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, a));
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, adults[3]));
+    talk_db_close();
+}
+
+TEST(action_meetup_follows_the_inviting_character)
+{
+    TalkOutcome out;
+    TalkSummary sum = {0};
+    int guest, inviter;
+    premade_town();
+    people();
+    CHECK(nadult > 0);
+    guest = adults[0];
+    inviter = family_pool_add(FAMROLE_SIBLING, LIFE_ADULT, 5u, "Ann", PRONOUN_SHE);
+    CHECK(inviter > DOOMO_PLAYER_ID);
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH_DONE;
+    CHECK(playas_switch(inviter, PLAYAS_SWITCH_INSTANT));
+    sum.avatar = inviter;
+    sum.n = sum.nev = 1;
+    sum.id[0] = guest;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = ACT_CAFE;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ(out.invited, 1);
+    CHECK_EQ(talk_outcome_meet_plan(guest), ACT_CAFE);
+    CHECK(playas_switch(PLAYAS_ID_HERO, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(talk_outcome_meet_plan(guest), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_kind(guest, ACT_CAFE, TALK_MEET_CHAT), -1);
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, guest));
+    CHECK(playas_switch(inviter, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), guest);
+    CHECK_EQ(talk_outcome_meet_kind(guest, ACT_CAFE, TALK_MEET_CHAT), guest);
+    CHECK_EQ_U(sim_news_record(0)->v, NEWS_IDS(guest, inviter, NEWS_NONE));
+    CHECK(strstr(sim_news(0), "Ann") != NULL);
 }
 
 TEST(action_meetup_requires_a_real_matching_place)

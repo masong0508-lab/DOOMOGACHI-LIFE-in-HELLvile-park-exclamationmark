@@ -12,6 +12,7 @@
  * templates so the ticker always has something to say.
  */
 #include "doomo/playas.h"
+#include "doomo/family.h"
 #include "fp_int.h"
 #include "sim_int.h"
 
@@ -476,6 +477,12 @@ void sim_news_format(const DoomoNewsRec *r, char *out, int cap)
         case 'a': case 'b': case 'c':
             id = (int)((r->v >> (10 * (t->k[i] - 'a'))) & 0x3FFu);
             arg[i] = id == (int)NEWS_NONE ? "Someone" : sim_name(id);
+#ifdef DOOMO_HAS_TALK
+            if ((r->tmpl == NT_TALK_MEET || r->tmpl == NT_TALK_MEET_FAV) && id > DOOMO_PLAYER_ID) {
+                const char *name = family_name(id);
+                if (name[0]) arg[i] = name;
+            }
+#endif
             break;
         case 'p':
             id = (int)((r->v >> 10) & 0x3FFu);

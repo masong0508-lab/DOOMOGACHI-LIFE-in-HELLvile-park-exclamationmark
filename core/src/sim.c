@@ -21,6 +21,9 @@
 #include "doomo/ending.h"
 #include "doomo/life_events.h"
 #include "doomo/plat_ext.h"             /* plat_busy_step (S2-10) */
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 SimState sim_s;
 
@@ -883,6 +886,10 @@ void sim_init(void)
     int i;
     uint16_t now16;
     ResIn in;
+#ifdef DOOMO_HAS_TALK
+    uint8_t meet_activities[TALK_CAP_INVITE_TOWN];
+    talk_outcome_meet_capture(meet_activities);
+#endif
     memset(&sim_s, 0, sizeof(sim_s));
     sim_s.inited = 1;
     sim_s.town_seed = doomo_town.seed;
@@ -908,6 +915,9 @@ void sim_init(void)
         sim_mood_of(i);
         plat_busy_step(i, DOOMO_MAX_RESIDENTS);   /* S2-10: a picture when one is due (plat_ext.h) */
     }
+#ifdef DOOMO_HAS_TALK
+    talk_outcome_meet_restore(meet_activities);
+#endif
     sim_events_reset();
     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
 #if DOOMO_RES_SLOTS

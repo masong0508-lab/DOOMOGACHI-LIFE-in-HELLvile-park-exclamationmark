@@ -731,7 +731,9 @@ int talk_scene_person_x(int i);
 #define TALK_MEM_VERSION_TRAITS 2     /* legacy payload with a trait tail: high likes bits were unused */
 #define TALK_MEM_VERSION_EVENTS 3     /* memory-only payload, with shared-event flags in likes_known */
 #define TALK_MEM_VERSION_EVENTS_TRAITS 4 /* memory and traits, with shared events; outer registry stays v1 */
-#define TALK_SAVE_WORST (TALK_MEM_WORST + 1 + 6 * 24)   /* + the trait tail: 1 + 6 x TALK_TRAIT_CUSTOM_MAX */
+#define TALK_MEM_VERSION_MEETUPS 5    /* memory, optional traits, and today's invitations */
+#define TALK_MEET_SAVE_BYTES (2u + 3u * TALK_CAP_INVITE_TOWN)
+#define TALK_SAVE_WORST (TALK_MEM_WORST + 1 + 6 * 24 + TALK_MEET_SAVE_BYTES)
 typedef struct TalkMem {
     uint16_t id;                  /* a resident, the hero or a pool id            */
     uint16_t day;                 /* the town day (low 16 bits) of the last talk  */
@@ -1304,16 +1306,24 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 /* Apply a summary to the sim under the daily caps. Never sets a crush or a
  * dating edge: a yes to CONFESS / ASK_OUT only asks sim_confess. */
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out);
-/* Forget today's ledger (a new town does it by itself: the ledger is keyed by day and town seed). */
+/* Forget today's ledger. The save module resets it on new town and load. */
 void talk_outcome_reset(void);
+/* Same-day invitations, including used ones, stay in the TALK chunk.
+ * A NULL output only reports the number of bytes to write. */
+uint32_t talk_outcome_meet_save(uint8_t *dst);
+int talk_outcome_meet_load(const uint8_t *src);
+/* Sim initialization may choose new routines. Preserve the pending
+ * guests' current activities, including when they have already left. */
+void talk_outcome_meet_capture(uint8_t *activities);
+void talk_outcome_meet_restore(const uint8_t *activities);
 /* Day-scoped real rendezvous: an accepted invite becomes a pending
  * meeting, not a teleported player or an imaginary completed outing.
  * The story-place interaction passes its concrete venue when the player
  * physically uses that location's door/menu. Returns guest ID, or -1. */
 int talk_outcome_meet_ready(int venue);
 int talk_outcome_meet_guests(int venue, int *guests, int capacity);
-/* The still-pending venue of this particular resident, or -1 if no
- * invitation is outstanding today. A plan may be temporarily unavailable
+/* The still-pending venue for the current avatar and the named guest,
+ * or -1 if no invitation is outstanding today. A plan may be unavailable
  * after the resident's schedule changes; use meet_present to confirm they
  * are actually present before offering an on-site action. Read-only. */
 int talk_outcome_meet_plan(int resident_id);
