@@ -24,3 +24,10 @@ uint32_t ps2_buttons_to_core(uint16_t p)
     if (p & PS2_KEY_SELECT)   b |= BTN_SELECT;
     return b;
 }
+
+int ps2_pad_has_sticks(uint8_t mode, unsigned packet_bytes)
+{
+    /* A basic digital reply (0x41, four bytes) ends before the sticks.
+     * Accept the analog pad and DualShock replies, including pressure mode. */
+    return packet_bytes >= 8 && (mode == 0x53 || mode == 0x73 || mode == 0x79);
+}

@@ -14,4 +14,5 @@ enum {
     PS2_KEY_CROSS=0x4000, PS2_KEY_SQUARE=0x8000
 };
 uint32_t ps2_buttons_to_core(uint16_t pressed);
+int ps2_pad_has_sticks(uint8_t mode, unsigned packet_bytes);
 #endif

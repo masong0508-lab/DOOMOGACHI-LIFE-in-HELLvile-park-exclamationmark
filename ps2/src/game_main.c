@@ -41,8 +41,10 @@ static uint32_t read_pad(void)
 {
     struct padButtonStatus st;
     int state,lx,ly,rx,ry;
-    uint32_t stick;
+    unsigned len;
+    uint32_t buttons,stick;
     static unsigned retry_tick;
+    static int analog_checked;
     /* A disconnected or resynchronizing DualShock must also release
      * its previous analog vector. Otherwise a scene can keep walking
      * after unplugging the controller, despite zero digital buttons. */
@@ -55,15 +57,31 @@ static uint32_t read_pad(void)
         goto absent;
     }
     state=padGetState(0,0);
+    if(state==PAD_STATE_DISCONN)analog_checked=0;
     if(state!=PAD_STATE_STABLE && state!=PAD_STATE_FINDCTP1)goto absent;
-    if(!padRead(0,0,&st))goto absent;
+    len=padRead(0,0,&st);
+    if(len<4)goto absent;
+    buttons=ps2_buttons_to_core((uint16_t)~st.btns);
+    if(!ps2_pad_has_sticks(st.mode,len)){
+        if(!analog_checked && state==PAD_STATE_STABLE && st.mode==0x41){
+            int i,modes=padInfoMode(0,0,PAD_MODETABLE,-1);
+            analog_checked=1;  /* do not keep reconfiguring a digital-only pad */
+            for(i=0;i<modes && i<16;i++){
+                if(padInfoMode(0,0,PAD_MODETABLE,i)!=PAD_TYPE_DUALSHOCK)continue;
+                (void)padSetMainMode(0,0,PAD_MMODE_DUALSHOCK,PAD_MMODE_LOCK);
+                break;         /* PADMAN applies the request asynchronously */
+            }
+        }
+        input_set_analog(0,0,0,0,0,0);
+        return buttons;
+    }
     lx=(int)st.ljoy_h-128; ly=(int)st.ljoy_v-128;
     rx=(int)st.rjoy_h-128; ry=(int)st.rjoy_v-128;
     stick=input_stick_dpad(lx,ly);
     /* Report which digital directions are stick-generated so the core
      * can distinguish analog walking from D-pad presses. */
     input_set_analog(1,lx,ly,rx,ry,stick);
-    return ps2_buttons_to_core((uint16_t)~st.btns) | stick;
+    return buttons | stick;
 absent:
     input_set_analog(0,0,0,0,0,0);
     return 0;

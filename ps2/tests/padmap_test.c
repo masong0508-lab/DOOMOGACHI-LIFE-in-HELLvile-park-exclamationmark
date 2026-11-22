@@ -26,6 +26,13 @@ int main(void)
     assert(ps2_buttons_to_core(0xffffu) == 0xffffu);
     assert(ps2_buttons_to_core(PS2_KEY_CROSS | PS2_KEY_DOWN | PS2_KEY_R1) ==
            (BTN_A | BTN_DOWN | BTN_R));
+    assert(!ps2_pad_has_sticks(0x41, 4));
+    assert(!ps2_pad_has_sticks(0x41, 32));
+    assert(!ps2_pad_has_sticks(0x73, 7));
+    assert(!ps2_pad_has_sticks(0x63, 8));
+    assert(ps2_pad_has_sticks(0x53, 8));
+    assert(ps2_pad_has_sticks(0x73, 8));
+    assert(ps2_pad_has_sticks(0x79, 20));
     puts("PS2 padmap: all 16 buttons, active-low inversion and chords PASS");
     return 0;
 }

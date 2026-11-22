@@ -21,6 +21,8 @@ export PS2SDK="$PS2DEV/ps2sdk"
 export GSKIT="$PS2DEV/gsKit"
 export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2SDK/bin"
 make -C ps2 -j2
+# Gameplay ISO with the generated Talk bank and audsrv module.
+make -C ps2 -j2 disc
 # Optional, if CMake is installed:
 # cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
 # cmake --build ps2/build --parallel
@@ -105,7 +107,9 @@ If PADMAN reports a disconnected controller or an unready pad, the
 new EE game loop releases its analog vector as well as its digital
 buttons. The core receives the generated left-stick D-pad mask, allowing
 its existing analog movement/camera damping to distinguish a stick from
-the physical D-pad. Temporary on-screen button labels reuse the PS1
+the physical D-pad. Digital-only or short PADMAN replies supply no axes.
+On a stable digital reply from a capable DualShock, the game requests
+analog mode asynchronously. Temporary on-screen button labels reuse the PS1
 DualShock convention (Cross / Circle / Square / Triangle).
 
 ## PS2-2 experimental memory-card persistence
