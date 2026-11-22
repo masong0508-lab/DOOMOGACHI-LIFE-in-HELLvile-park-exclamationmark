@@ -422,6 +422,22 @@ restrictions and single-use, same-day appointment gate still apply.
 The action is committed only once **at the physical location**,
 not at invitation time or while the options are merely visible.
 
+Free Play shows each invited resident who is still at the venue as an
+individual meetup choice. Story doors show a single meetup choice when
+the place menu has room. Both keep the named guest through confirmation.
+If the guest leaves before the player confirms, another resident at the
+same venue keeps their appointment. In Talk, **Meet today** checks the
+resident you are speaking with and names the actual destination.
+
+After a completed meetup, **Our history** offers **Remember our visit**
+with the venue name. The response reflects the resident's current mood
+and personality. The shortcut **Remember when we...?** also uses the
+completed visit when available. The game reads the most recent matching
+event for these two people from the saved Town News feed. The specific
+venue stays available across saves while the event is still in the feed.
+An accepted invitation remains a separate memory. Recalling a visit
+adds no relationship points, items, or headlines.
+
 The extra work runs only on a menu selection. It allocates no per-
 resident data, does not change the save format, and adds no 3D render
 overhead. The new story choice uses callback 131 and the menu reserves

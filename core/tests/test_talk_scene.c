@@ -17,6 +17,7 @@
 #include "doomo/items.h"
 #include "doomo/save.h"
 #include "doomo/sim.h"
+#include "doomo/playas.h"
 #include "../src/fp_int.h"          /* Free Play achievement IDs */
 #include "../src/ui_internal.h"     /* UiDialogDebug */
 
@@ -564,6 +565,71 @@ TEST(talk_scene_history_only_recalls_real_events_and_favors)
     ui_dialog_debug(&box);
     CHECK(box.text != NULL && (strstr(box.text, "gift") != NULL ||
                                 strstr(box.text, "present") != NULL));
+}
+
+TEST(talk_scene_history_names_a_completed_meetup_after_reloading)
+{
+    TalkSummary sum = {0};
+    TalkOutcome outcome;
+    UiDialogDebug box;
+    char label[48];
+    int row, avatar, other, cash, news, bond, i, found = 0;
+    town();
+    talk_outcome_reset();
+    doomo_town.minute = 12 * 60;
+    avatar = playas_slot();
+    other = roster_find("Steamy");
+    CHECK(other >= 0 && other != ID_NANA);
+    sum.avatar = avatar;
+    sum.n = 1;
+    sum.nev = 1;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = ACT_CAFE;
+    sum.id[0] = other;
+    town_res(other)->activity = ACT_HOME;
+    talk_outcome_apply(&sum, &outcome);
+    CHECK_EQ(outcome.invited, 1);
+    sum.id[0] = ID_NANA;
+    town_res(ID_NANA)->activity = ACT_HOME;
+    talk_outcome_apply(&sum, &outcome);
+    CHECK_EQ(outcome.invited, 1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), other);
+
+    /* A visit with somebody else is not this avatar's experience. */
+    sim_news_rec(NT_TALK_MEET, ACT_PARK, NEWS_IDS(ID_NANA, ID_PIP, NEWS_NONE));
+    CHECK(open_talk(ID_NANA));
+    row = find_row("meetplan", 0, ACT_CAFE);
+    CHECK(row >= 0);
+    go_to(row); press(BTN_A);
+    for (i = 0; ui_toast_text(i); i++)
+        if (strstr(ui_toast_text(i), "Visit Brimstone Bites")) found = 1;
+    CHECK(found); /* both guests are still there */
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    CHECK(find_row("historyevent", TALK_SHARED_INVITED, -1) >= 0);
+    CHECK_EQ(find_row("meetmemory", -1, -1), -1);
+    scene_set(&SCENE_TITLE, 0);
+
+    CHECK_EQ(talk_outcome_meet_kind(ID_NANA, ACT_CAFE, TALK_MEET_CHAT), ID_NANA);
+    CHECK(save_game(1));
+    sim_news_clear();
+    CHECK(load_game(1));
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    row = find_row("meetmemory", 0, ACT_CAFE);
+    CHECK(row >= 0);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Brimstone Bites") != NULL);
+    cash = (int)doomo_town.money;
+    news = sim_news_count();
+    bond = rel_value(ID_NANA, avatar);
+    go_to(row); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "Brimstone Bites") != NULL);
+    CHECK_EQ((int)doomo_town.money, cash);
+    CHECK_EQ(sim_news_count(), news);
+    CHECK_EQ(rel_value(ID_NANA, avatar), bond);
 }
 
 TEST(talk_scene_history_reports_real_favor_progress)

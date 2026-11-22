@@ -136,6 +136,7 @@ static char menu_q[64];
 static char talk_label[32];
 #ifdef DOOMO_HAS_TALK
 static char meet_label[48];
+static int16_t meet_guest;
 /* Three bounded menu choices; the player can always leave without
  * consuming the invitation, and the free chat never costs H$. */
 static const char *meet_choices[3] = {
@@ -331,15 +332,14 @@ static void menu_pick(int c)
 #ifdef DOOMO_HAS_TALK
     case OPT_MEET: {
         int venue = meeting_venue(menu_place);
-        int id = venue < 0 ? -1 : talk_outcome_meet_ready(venue);
-        if (id < 0) {
+        if (!talk_outcome_meet_present(meet_guest, venue)) {
             story_say(-1, "Your friend isn't here right now.");
             break;
         }
         meet_choices[1] = meet_activity_label(venue);
         /* No effects until the player chooses an actual shared action.
          * Callback 131 validates the meeting again and commits it once. */
-        story_choice_id(id, "What should we do together?", meet_choices, 3,
+        story_choice_id(meet_guest, "What should we do together?", meet_choices, 3,
                         131 /* meet_pick */);
         break;
     }
@@ -353,13 +353,17 @@ static void meet_pick(int choice)
 {
     int venue = meeting_venue(menu_place), id, kind;
     if (choice == 2 || choice < 0 || choice > 2 || venue < 0) return;
+    if (!talk_outcome_meet_present(meet_guest, venue)) {
+        story_say(-1, "Your friend isn't here right now.");
+        return;
+    }
     kind = choice == 1 ? TALK_MEET_ACTIVITY : TALK_MEET_CHAT;
     if (kind == TALK_MEET_ACTIVITY && venue == ACT_CAFE &&
         doomo_town.money < 6u) {
         story_say(-1, "A shared snack costs 6 H$. You can still chat for free!");
         return;  /* the invitation is not consumed */
     }
-    id = talk_outcome_meet_kind(venue, kind);
+    id = talk_outcome_meet_kind(meet_guest, venue, kind);
     if (id < 0) {
         story_say(-1, "Your friend isn't available for that activity now.");
         return;
@@ -407,6 +411,7 @@ static void open_menu(int p)
          * button, no unselectable seventh row on GBA/PS1. */
         if (guest >= 0 && menu_n < MENU_MAX - 1) {
             const DoomoResident *friend = town_res(guest);
+            meet_guest = (int16_t)guest;
             doomo_snprintf(meet_label, sizeof meet_label, "Meet up with %s", friend->name);
             add_opt(meet_label, OPT_MEET);
         }

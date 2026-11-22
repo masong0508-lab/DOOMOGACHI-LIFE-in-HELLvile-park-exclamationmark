@@ -433,16 +433,15 @@ static void build_menu(const Loc *L)
      * Query only on menu construction (and its existing 32-frame refresh),
      * never during island rendering or in the population scan. */
     if (L->act != NOLOC && L->act < ACT_COUNT) {
-        int guest = talk_outcome_meet_ready(L->act);
-        if (guest >= 0) {
-            const DoomoResident *friend = town_res(guest);
+        int guests[TALK_CAP_INVITE_TOWN], i;
+        int count = talk_outcome_meet_guests(L->act, guests, TALK_CAP_INVITE_TOWN);
+        for (i = 0; i < count && I.nent < MENU_MAX - 1; i++) {
+            const DoomoResident *friend = town_res(guests[i]);
             char label[30];
-            if (friend) {
-                doomo_snprintf(label, sizeof label, "Meet %s here!", friend->name);
-                e = add(E_MEET, ICON_HEART, label,
-                        "Your friend arrived! Chat or share an activity.");
-                if (e) e->arg = (int16_t)L->act;
-            }
+            doomo_snprintf(label, sizeof label, "Meet %s here!", friend->name);
+            e = add(E_MEET, ICON_HEART, label,
+                    "Your friend arrived! Chat or share an activity.");
+            if (e) e->arg = (int16_t)guests[i];
         }
     }
 #endif
@@ -770,6 +769,7 @@ static void atlas_load(int side)
 static const char *meet_options[3] = {
     "Catch up (free)", "Spend time together", "Maybe later"
 };
+static int16_t meet_guest;
 
 static const char *meet_activity_name(int venue)
 {
@@ -790,12 +790,11 @@ static const char *meet_activity_name(int venue)
 
 static void meet_pick(int choice)
 {
-    int venue = I.mloc ? I.mloc->act : -1, guest, kind, done;
+    int venue = I.mloc ? I.mloc->act : -1, guest = meet_guest, kind, done;
     if (choice < 0 || choice >= 2 || venue < 0 || venue >= ACT_COUNT) return;
     kind = choice == 0 ? TALK_MEET_CHAT : TALK_MEET_ACTIVITY;
-    guest = talk_outcome_meet_ready(venue);
-    if (guest < 0) {
-        ui_toast("Your guest has left. Invite them again another day.");
+    if (!talk_outcome_meet_present(guest, venue)) {
+        ui_toast("Your selected guest isn't here right now.");
         I.menu_dirty = 1;
         return;
     }
@@ -803,7 +802,7 @@ static void meet_pick(int choice)
         ui_say(guest, "We can still talk for free. Two snacks cost 6 H$.");
         return; /* not charged, not consumed */
     }
-    done = talk_outcome_meet_kind(venue, kind);
+    done = talk_outcome_meet_kind(guest, venue, kind);
     if (done < 0) {
         ui_toast("The planned meetup is no longer available.");
         I.menu_dirty = 1;
@@ -815,14 +814,15 @@ static void meet_pick(int choice)
     ui_say(done, talk_outcome_meet_reply(done, venue, kind));
 }
 
-static void open_meet(int venue)
+static void open_meet(int guest)
 {
-    int guest = talk_outcome_meet_ready(venue);
-    if (guest < 0) {
+    int venue = I.mloc ? I.mloc->act : -1;
+    if (!talk_outcome_meet_present(guest, venue)) {
         ui_toast("Your invited friend isn't here now.");
         I.menu_dirty = 1;
         return;
     }
+    meet_guest = (int16_t)guest;
     meet_options[1] = meet_activity_name(venue);
     ui_choice(guest, "What shall we do together?", meet_options, 3, meet_pick);
 }
@@ -1192,7 +1192,6 @@ static void menu_update(void)
     I.menu_t++;
     /* (perf) the pop-in is over and a full frame was shown: keep it as the backdrop (docs/ISLAND_SPEED.md I6) */
     if (!I.hold && I.hold_full && plat_hold_frame(2)) I.hold = 2;
-    if ((I.menu_t & 31) == 0) { int s = I.esel; build_menu(I.mloc); I.esel = DOOMO_MIN(s, I.nent - 1); }
     /* CL4: the Town Hall card; the tick it shows, nothing of this tick's press reaches the menu */
     if (I.mloc && I.mloc->kind == LOC_TOWN_HALL && I.menu_t > 8 && tip_once(TIP_TOWN_HALL)) return;
     if (btn_repeat(BTN_UP)) { I.esel = (I.esel + I.nent - 1) % I.nent; audio_sfx(SFX_CURSOR); }
@@ -1201,7 +1200,9 @@ static void menu_update(void)
     if (I.esel >= I.etop + vis) I.etop = I.esel - vis + 1;
     if (btn_pressed(BTN_A)) { run_entry(&isl()->ent[I.esel]); return; }
     if (btn_pressed(BTN_START) && I.mloc == &menu_loc && fp_is_freeplay()) { quick_save(); return; }
-    if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); }
+    if (btn_pressed(BTN_B)) { I.menu_open = 0; audio_sfx(SFX_CANCEL); return; }
+    /* Act on the row the player saw before refreshing the live guest list. */
+    if ((I.menu_t & 31) == 0) { int s = I.esel; build_menu(I.mloc); I.esel = DOOMO_MIN(s, I.nent - 1); }
 }
 
 /* Make sure the scratch is ours and an open menu has its entries. */

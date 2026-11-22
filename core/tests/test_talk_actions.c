@@ -622,6 +622,67 @@ TEST(action_meetup_is_reachable_and_one_shot_from_freeplay_hub)
     talk_db_close();
 }
 
+TEST(action_meetup_keeps_the_selected_guest_when_another_is_present)
+{
+    TalkState s;
+    TalkOutcome o;
+    TalkSummary sum;
+    char first[30], second[30];
+    uint16_t cafe;
+    int a, b, tries, money;
+    premade_town();
+    CHECK(open_en());
+    people();
+    prime();
+    CHECK(nadult >= 2);
+    a = adults[0];
+    b = adults[1];
+    cafe = concept("brimstone bites");
+    CHECK(cafe != TC_NONE);
+    CHECK(try_invite(a, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+    CHECK(try_invite(b, 12000u, 150, &s, &o, &sum, cafe));
+    CHECK_EQ(o.invited, 1);
+
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    meetup_frames(0, 5);
+    fp_island_select_kind(LOC_CAFE);
+    for (tries = 0; tries < 3 && !fp_island_menu_open(); tries++) {
+        meetup_press(BTN_A);
+        meetup_frames(0, 3);
+    }
+    CHECK(fp_island_menu_open());
+    doomo_snprintf(first, sizeof first, "Meet %s here!", town_res(a)->name);
+    doomo_snprintf(second, sizeof second, "Meet %s here!", town_res(b)->name);
+    CHECK(fp_island_menu_select(second));
+    CHECK(fp_island_menu_select(first));
+    meetup_press(BTN_A);
+    CHECK(ui_dialog_active());
+
+    /* The guest shown on the choice leaves. The other guest is still at
+     * the cafe and must keep their appointment and their own turn. */
+    town_res(a)->activity = ACT_HOME;
+    money = (int)doomo_town.money;
+    for (tries = 0; tries < 12 && ui_dialog_active(); tries++) {
+        meetup_frames(0, 15);
+        meetup_press(BTN_A);
+    }
+    CHECK(!ui_dialog_active());
+    CHECK_EQ((int)doomo_town.money, money);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), b);
+    CHECK(!talk_mem_shared(b, TALK_SHARED_PLAYED));
+    meetup_frames(0, 3);
+    CHECK(fp_island_menu_select(second));
+    meetup_press(BTN_A);
+    for (tries = 0; tries < 12 && ui_dialog_active(); tries++) {
+        meetup_frames(0, 15);
+        meetup_press(BTN_A);
+    }
+    CHECK_EQ(talk_outcome_meet_plan(b), -1);
+    CHECK(talk_mem_shared(b, TALK_SHARED_PLAYED));
+    talk_db_close();
+}
+
 /* Favorites, moods and identity affect the *same* reaction in the
  * Story place menu and the Free Play City Map. Reading is non-mutating. */
 TEST(action_meetup_reactions_reflect_real_guest_traits)
@@ -663,19 +724,19 @@ TEST(action_meetup_activity_is_real_and_cannot_be_farmed)
     town_res(a)->stat[STAT_HUNGER] = 24;
     if (town_res(av)) town_res(av)->stat[STAT_HUNGER] = 40;
     doomo_town.money = 0;
-    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), -1);
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, TALK_MEET_ACTIVITY), -1);
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), a); /* no money spent, still invited */
     doomo_town.money = 20;
     initial = doomo_town.money;
     before = town_res(a)->stat[STAT_HUNGER];
-    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), a);
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, TALK_MEET_ACTIVITY), a);
     CHECK_EQ(doomo_town.money, initial - 6);
     CHECK(town_res(a)->stat[STAT_HUNGER] > before);
     CHECK(talk_mem_shared(a, TALK_SHARED_PLAYED));
-    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, TALK_MEET_ACTIVITY), -1);
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, TALK_MEET_ACTIVITY), -1);
     CHECK_EQ(doomo_town.money, initial - 6);
     CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
-    CHECK_EQ(talk_outcome_meet_kind(ACT_CAFE, 99), -1);
+    CHECK_EQ(talk_outcome_meet_kind(a, ACT_CAFE, 99), -1);
     talk_db_close();
 }
 

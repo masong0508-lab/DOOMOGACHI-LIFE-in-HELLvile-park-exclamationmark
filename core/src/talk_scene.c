@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -801,6 +801,27 @@ static void build_more(void)
     list_reset();
 }
 
+/* The saved news ring already records actual visits with both people.
+ * Scan it only on opening History or recalling an event. Use daytime
+ * rules here to keep adult venues out of a room with minors. */
+static int last_meet_venue(int id)
+{
+    int i, count, minor;
+    uint32_t people;
+    if (T.to < 0 || T.to >= T.s.nparts || (T.s.part[T.to].flags & TPF_LEFT) ||
+        id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id)) return -1;
+    minor = T.s.conv.aud.any_minor || talk_safe_minor(id) || talk_safe_minor(T.avatar);
+    people = NEWS_IDS(id, T.avatar, NEWS_NONE);
+    count = sim_news_count();
+    for (i = 0; i < count; i++) {
+        const DoomoNewsRec *news = sim_news_record(i);
+        if ((news->tmpl == NT_TALK_MEET || news->tmpl == NT_TALK_MEET_FAV) &&
+            news->v == people && talk_act_invite_ok(TA_INVITE, news->arg8, minor, 12))
+            return news->arg8;
+    }
+    return -1;
+}
+
 /* No new save bytes or heap allocations: this page presents the recorded
  * per-person facts already in TALK. Counts are snapshotted on entering,
  * not recomputed each video frame. Nothing here invents an outing. */
@@ -834,6 +855,8 @@ static void build_history(void)
     {
         int venue = talk_outcome_meet_plan(id);
         if (venue >= 0) add_row(K_MEET_PLAN, 1, venue);
+        venue = last_meet_venue(id);
+        if (venue >= 0) add_row(K_MEET_MEMORY, 0, venue);
     }
     if (m) {
         /* Knowledge is revealed only by a real earlier conversation.
@@ -1238,7 +1261,7 @@ static const char *row_text(int index, char *buf)
         break;
     case K_HISTORY_EVENT:
         doomo_snprintf(buf, 48, "%s",
-                       r->arg == TALK_SHARED_PLAYED ? "Recall playing together" :
+                       r->arg == TALK_SHARED_PLAYED ? "Recall spending time together" :
                        r->arg == TALK_SHARED_GIFTED ? "Recall their gift" :
                        "Recall an invitation");
         break;
@@ -1266,7 +1289,10 @@ static const char *row_text(int index, char *buf)
     }
     case K_MEET_PLAN:
         doomo_snprintf(buf, 48, "Meet today: %s >", r->v < ACT_COUNT ?
-                       doomo_activity_names[r->v] : "unknown place");
+                       sim_venue_name(r->v) : "unknown place");
+        break;
+    case K_MEET_MEMORY:
+        doomo_snprintf(buf, 48, "Remember our visit: %s", sim_venue_name(r->v));
         break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
@@ -1776,6 +1802,20 @@ static void concern_action(void)
     }
 }
 
+static void recall_meetup(int id, int venue)
+{
+    const DoomoResident *r = town_res(id);
+    const char *ending = "I'd like to catch up again sometime.";
+    char line[128];
+    if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
+        ending = "I'm glad we had that time together.";
+    else if (RES_PERSONA(r, PERS_EXPRESSION) >= 10)
+        ending = "I'd circle that day on my calendar!";
+    doomo_snprintf(T.you, sizeof T.you, "Remember when we met at %s?", sim_venue_name(venue));
+    doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", sim_venue_name(venue), ending);
+    show_scene_reply(id, line, TC_NONE);
+}
+
 static void reminisce(unsigned selected)
 {
     int target = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
@@ -1787,14 +1827,16 @@ static void reminisce(unsigned selected)
     /* Existing one-tap callback chooses the first known memory; History
      * supplies a specific event, which is rechecked at activation time. */
     if (!selected) {
+        int venue = last_meet_venue(target);
+        if (venue >= 0) { recall_meetup(target, venue); return; }
         if (talk_mem_shared(target, TALK_SHARED_PLAYED)) selected = TALK_SHARED_PLAYED;
         else if (talk_mem_shared(target, TALK_SHARED_GIFTED)) selected = TALK_SHARED_GIFTED;
         else if (talk_mem_shared(target, TALK_SHARED_INVITED)) selected = TALK_SHARED_INVITED;
     }
     if (selected == TALK_SHARED_PLAYED && talk_mem_shared(target, selected))
         reply = RES_PERSONA(r, PERS_SPEECH) >= 10
-            ? "That day we played together? I still remember the fun!"
-            : "I remember playing together. That was nice.";
+            ? "The time we spent together? I still remember the fun!"
+            : "I remember spending time together. That was nice.";
     else if (selected == TALK_SHARED_GIFTED && talk_mem_shared(target, selected))
         reply = RES_PERSONA(r, PERS_EXPRESSION) >= 9
             ? "That gift you gave me! I remember it so clearly!"
@@ -2043,14 +2085,20 @@ static void activate(int i)
         venue = id >= 0 ? talk_outcome_meet_plan(id) : -1;
         if (venue < 0) {
             ui_toast("This invitation is no longer active.");
-        } else if (talk_outcome_meet_ready(venue) != id) {
-            ui_toast("They have moved on; try another invitation tomorrow.");
+        } else if (!talk_outcome_meet_present(id, venue)) {
+            ui_toast("They aren't at the meetup spot right now.");
         } else {
             doomo_snprintf(hint, sizeof(hint),
                            "Visit %s on the City Map today.",
-                           doomo_activity_names[venue]);
+                           sim_venue_name(venue));
             ui_toast(hint);
         }
+        break;
+    }
+    case K_MEET_MEMORY: {
+        int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+        if (last_meet_venue(id) == r->v) recall_meetup(id, r->v);
+        else build_history();
         break;
     }
     case K_CONCERN: build_concern(); break;
@@ -2405,7 +2453,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

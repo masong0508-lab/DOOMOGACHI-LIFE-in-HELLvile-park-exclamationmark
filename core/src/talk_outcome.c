@@ -256,7 +256,7 @@ static void apply_action(const TalkSummary *sum, const TalkEvent *e, int ia, Tal
 }
 
 /* The day-scoped reservation belongs to a real person and real location.
- * Unlike meet_ready, this reports a missed/pending appointment too, so the
+ * Unlike meet_present, this reports a missed/pending appointment too, so the
  * Talk journal can explain why no guest appeared at the expected place.
  * No sim tick, heap, or new save data. */
 int talk_outcome_meet_plan(int guest_id)
@@ -270,21 +270,33 @@ int talk_outcome_meet_plan(int guest_id)
     return (int)p->pad - 1;
 }
 
-int talk_outcome_meet_ready(int venue)
+int talk_outcome_meet_present(int guest_id, int venue)
 {
-    int i;
-    if (venue < 0 || venue >= ACT_COUNT) return -1;
+    return venue >= 0 && venue < ACT_COUNT &&
+           talk_outcome_meet_plan(guest_id) == venue && town_res(guest_id)->activity == venue;
+}
+
+int talk_outcome_meet_guests(int venue, int *guests, int capacity)
+{
+    int i, count = 0;
+    if (venue < 0 || venue >= ACT_COUNT) return 0;
     roll();
-    for (i = 0; i < led.np; i++) {
+    for (i = 0; i < led.np && count < capacity; i++) {
         const LedP *p = &led.p[i];
         const DoomoResident *r;
         if (!(p->flags & LPF_INVITE) || p->pad != venue + 1 ||
             !alive_resident(p->id))
             continue;
         r = town_res(p->id);
-        if (r && r->activity == venue) return p->id;
+        if (r->activity == venue) guests[count++] = p->id;
     }
-    return -1;
+    return count;
+}
+
+int talk_outcome_meet_ready(int venue)
+{
+    int guest;
+    return talk_outcome_meet_guests(venue, &guest, 1) ? guest : -1;
 }
 
 /* Spending time at a real place should feel different to merely chatting.
@@ -352,13 +364,12 @@ const char *talk_outcome_meet_reply(int guest_id, int venue, int kind)
     }
 }
 
-int talk_outcome_meet_kind(int venue, int kind)
+int talk_outcome_meet_kind(int id, int venue, int kind)
 {
-    int id, i, avatar;
+    int i, avatar;
     DoomoResident *r, *player;
     if (kind != TALK_MEET_CHAT && kind != TALK_MEET_ACTIVITY) return -1;
-    id = talk_outcome_meet_ready(venue);
-    if (id < 0) return -1;
+    if (!talk_outcome_meet_present(id, venue)) return -1;
     /* The café charges the player for two small snacks. Check before
      * consuming the appointment; the free conversation remains available.
      * No free item or money is created by simply selecting the menu. */
@@ -410,7 +421,7 @@ int talk_outcome_meet_kind(int venue, int kind)
 
 int talk_outcome_meet(int venue)
 {
-    return talk_outcome_meet_kind(venue, TALK_MEET_CHAT);
+    return talk_outcome_meet_kind(talk_outcome_meet_ready(venue), venue, TALK_MEET_CHAT);
 }
 
 void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
