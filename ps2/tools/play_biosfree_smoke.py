@@ -19,6 +19,48 @@ from probe_log import summarize
 from check_play_frames import inspect
 
 
+# Play!'s Qt frontend binds Return=START and Z=CROSS by default when
+# no user pad bindings exist. These X11 events enter the UNMODIFIED
+# game ISO through Play!'s real virtual PADMAN; never confuse them with
+# direct PS2_SCRIPTED_STORY_PROBE input in the test-only ELF.
+X11_TEST_KEYS = frozenset(("Return", "z", "x", "Up", "Down", "Left", "Right"))
+
+
+def parse_x11_key_events(raw, duration):
+    events = []
+    previous = -1
+    for item in raw:
+        key, sep, seconds = item.partition("@")
+        if not sep or key not in X11_TEST_KEYS or not seconds.isdecimal():
+            raise ValueError("Invalid --x11-key; expected Return@6 or z@8")
+        when = int(seconds)
+        if when <= 0 or when >= duration or when <= previous:
+            raise ValueError("X11 keys must be strictly increasing, after start and before capture end")
+        events.append((when, key))
+        previous = when
+    return events
+
+
+def send_x11_key(key):
+    """Deliver a Qt keyboard event to Play!'s visible main window, not the root."""
+    result = subprocess.run(["xdotool", "search", "--onlyvisible", "--name", "Play"],
+                            text=True, capture_output=True, timeout=8)
+    windows = result.stdout.split() if result.returncode == 0 else []
+    if not windows:
+        raise RuntimeError("No visible Play! Qt window for X11 keyboard input")
+    last_error = ""
+    for wid in reversed(windows):
+        try:
+            subprocess.run(["xdotool", "windowfocus", "--sync", wid],
+                           capture_output=True, check=True, timeout=8)
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "--delay", "120", key],
+                           capture_output=True, check=True, timeout=8)
+            return wid
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            last_error = str(exc)
+    raise RuntimeError("Could not focus/send X11 key to Play!: " + last_error)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("iso", type=Path, help="Game ISO or diagnostic EE ELF")
@@ -32,7 +74,13 @@ def main():
                    help="For GS animation diagnostics, require changed viewport pixels")
     p.add_argument("--early-capture", type=int, default=0, metavar="SECOND",
                    help="Optional extra early PNG before the normal 12s and final captures")
+    p.add_argument("--x11-key", action="append", default=[], metavar="KEY@SECOND",
+                   help="EXPERIMENTAL Play! Qt keyboard injection (Return=START, z=CROSS); repeat for more keys")
     args = p.parse_args()
+    try:
+        key_events = parse_x11_key_events(args.x11_key, args.seconds)
+    except ValueError as exc:
+        p.error(str(exc))
     iso = args.iso.resolve()
     if not iso.is_file() or iso.stat().st_size < 4096:
         raise SystemExit("Missing or unusually small PS2 boot image")
@@ -44,7 +92,7 @@ def main():
         raise SystemExit("--early-capture must be between 1 and 11 seconds")
     if not os.environ.get("DISPLAY"):
         raise SystemExit("DISPLAY is unset: run with xvfb-run (or an X11 desktop)")
-    for binary in ("flatpak", "import"):
+    for binary in (("flatpak", "import", "xdotool") if key_events else ("flatpak", "import")):
         if not shutil.which(binary):
             raise SystemExit(f"Missing {binary}")
     out = args.out.resolve()
@@ -71,13 +119,29 @@ def main():
         started = time.monotonic()
         try:
             offsets = (args.early_capture, 12, args.seconds) if args.early_capture else (12, args.seconds)
-            for index, offset in enumerate(offsets, 1):
+            # Combine X11 key deliveries and screenshots on the SAME
+            # monotonic clock. No input is injected into the game code.
+            events = [(when, 0, "screenshot", i) for i, when in enumerate(offsets, 1)]
+            events += [(when, 1, "x11_key", key) for when, key in key_events]
+            for offset, _, kind, value in sorted(events):
                 delay = started + offset - time.monotonic()
                 if delay > 0:
                     time.sleep(delay)
                 if proc.poll() is not None:
                     print(f"Play! exited early ({proc.returncode}); see {logs}", file=sys.stderr)
                     return 1
+                if kind == "x11_key":
+                    try:
+                        wid = send_x11_key(value)
+                    except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                        print(f"FAIL: X11 keyboard injection: {exc}", file=sys.stderr)
+                        return 1
+                    print("PLAY_X11_KEY " + json.dumps({
+                        "at_seconds": offset, "key": value, "target_window": wid,
+                        "proof": "X11 event sent; PS2 pad response not yet verified",
+                    }), flush=True)
+                    continue
+                index = value
                 png = out / f"boot-{index}.png"
                 shot = subprocess.run(
                     ["import", "-window", "root", str(png)],
@@ -100,11 +164,13 @@ def main():
                 "boot_image_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
                 "seconds_observed": args.seconds,
                 "capture_offsets_seconds": list(offsets),
+                "x11_key_events": [{"seconds": t, "key": k} for t, k in key_events],
                 "pngs": [s.name for s in shots],
-                "result": "emulator process and two screenshots captured",
+                "result": f"emulator process and {len(shots)} screenshots captured",
                 "limitations": [
                     "Not a proof that the game rendered rather than the emulator UI",
-                    "No controller, Talk, SPU2, 3D or save/reload playthrough verified",
+                    ("X11 keyboard events sent to Play! Qt; PADMAN response requires independent scene comparison" if key_events
+                     else "No controller input, Talk, SPU2, 3D or save/reload playthrough verified"),
                 ],
             }
             (out / "report.json").write_text(
@@ -137,7 +203,7 @@ def main():
             ):
                 print("FAIL: EE console reported invalid or stalled simulation ticks.")
                 return 1
-            print("PASS: visible game viewport in 2 frames; gameplay functionality NOT verified.")
+            print(f"PASS: visible game viewport in {len(shots)} frames; gameplay functionality NOT verified.")
             return 0
         finally:
             if proc.poll() is None:

@@ -94,6 +94,7 @@ jobs:
         run: |
           python3 -m py_compile ps2/tools/play_biosfree_smoke.py ps2/tools/probe_log.py ps2/tools/pcsx2_visual_check.py ps2/tools/check_story_progress.py ps2/tools/check_story_causality.py
           python3 -m unittest discover -s ps2/tests -p test_story_causality.py -v
+          python3 -m unittest discover -s ps2/tests -p test_play_x11_keyscript.py -v
           python3 ps2/tools/play_biosfree_smoke.py --help >/dev/null
           python3 ps2/tools/pcsx2_visual_check.py --help >/dev/null
           python3 ps2/tests/probe_log_test.py
@@ -276,7 +277,7 @@ jobs:
       - name: Install Xvfb, Flatpak and screenshot tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick mesa-utils libgl1-mesa-dri
+          sudo apt-get install -y --no-install-recommends flatpak xvfb xauth imagemagick mesa-utils libgl1-mesa-dri xdotool
           dbus-run-session -- bash -ec '
             flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
             flatpak install --user --noninteractive --assumeyes flathub org.purei.Play
@@ -300,6 +301,37 @@ jobs:
           dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
             python3 ps2/tools/play_biosfree_smoke.py \
             ps2/build/doomogachi_ps2_game.iso --seconds 35 --software-gl
+      # Unlike PS2_SCRIPTED_STORY_PROBE, these two ISO boots use the
+      # unmodified shipping ELF and Play!'s Qt virtual controller.
+      # Play!'s default keyboard mapping: Return=START and Z=CROSS.
+      # Do not gate the ISO release until Play! keyboard routing proves
+      # reliable on hosted Xvfb; preserve both screenshots on failure.
+      - name: Capture normal game ISO with no X11 keys (non-gating)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.iso \
+              --out ps2/build/play-pad-idle --seconds 22 --early-capture 3 --software-gl
+      - name: Deliver Qt/X11 START and CROSS to real game ISO (non-gating)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          set -eu
+          test -s ps2/build/play-pad-idle/boot-3.png
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game.iso \
+              --out ps2/build/play-pad-keys --seconds 22 --early-capture 3 --software-gl \
+              --x11-key Return@6 --x11-key z@8 --x11-key z@10
+          python3 ps2/tools/check_story_causality.py \
+            --scripted ps2/build/play-pad-keys/boot-1.png ps2/build/play-pad-keys/boot-2.png ps2/build/play-pad-keys/boot-3.png \
+            --idle ps2/build/play-pad-idle/boot-1.png ps2/build/play-pad-idle/boot-2.png ps2/build/play-pad-idle/boot-3.png \
+            --output ps2/build/play-pad-keys/pad-causality.json
       - name: Retrieve independent PS2-0 hardware diagnostic ELF
         if: always()
         uses: actions/download-artifact@v4
@@ -434,4 +466,6 @@ jobs:
             ps2/build/play-game-elf/
             ps2/build/play-story-probe/
             ps2/build/play-story-idle/
+            ps2/build/play-pad-idle/
+            ps2/build/play-pad-keys/
           if-no-files-found: warn
