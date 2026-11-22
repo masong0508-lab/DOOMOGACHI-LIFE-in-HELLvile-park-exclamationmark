@@ -21,6 +21,7 @@
  * buttons are labelled beside them.
  */
 #include "fp_island.h"
+#include "doomo/ending.h"
 #include "doomo/game.h"
 #include "doomo/plat_ext.h"
 #include "doomo/library.h"
@@ -1347,6 +1348,11 @@ static void island_update(void)
     if (btn_pressed(BTN_R)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_ROSTER, 0); return; }
     if (btn_pressed(BTN_L)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_NEWS, 0); return; }
     if (btn_pressed(BTN_SELECT)) { audio_sfx(SFX_SELECT); scene_push(&SCENE_FAMILY, 0); return; }
+    if (fp_is_freeplay() && !btn_down(0xFFFFFFFFu) && ending_pending() != ENDING_NONE &&
+        scene_top() == &SCENE_ISLAND && !tip_active()) {
+        hold_drop();
+        scene_push(&SCENE_ENDING_CARD, ending_take_pending());
+    }
 }
 
 /* ====================================================================== */

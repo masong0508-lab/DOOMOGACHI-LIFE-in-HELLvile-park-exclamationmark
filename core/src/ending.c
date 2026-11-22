@@ -95,6 +95,12 @@ void ending_check_sparkles(void)
     if (e10_ok_() && !ending_seen(ENDING_E10)) ending_reach(ENDING_E10);
 }
 
+void ending_check_suitcase(void)
+{
+    if (ending_pending() == ENDING_NONE && !ending_seen(ENDING_E11) &&
+        e11_ok_() && story_episode_done(BEAT_E2)) ending_reach(ENDING_E11);
+}
+
 /* ---- E4: the romance routes and the sexy endings (E12 Grumbleguts, E13 Vex, E14 any premade adult) ----
  * A route is COMMITTED or MARRIED when the story's route scripts (CB_ROUTE_*) or the life sim's
  * partner say so. Every participant passes mature_adult_ok (R10) and PA9's two-way gate, and the
@@ -287,14 +293,17 @@ void ending_finale_reached(void)
 /* E09 "Bonejangles Bows": the Feast is over (any outcome) and the machine-heart piece is found. */
 void ending_check_bonejangles(void)
 {
-    if (story_flag(SF_FEAST_DONE) && story_flag(SF_BONE_HEART)) ending_reach(ENDING_E09);
+    if (story_flag(SF_FEAST_DONE) && story_flag(SF_BONE_HEART) &&
+        ending_pending() == ENDING_NONE && !ending_seen(ENDING_E09))
+        ending_reach(ENDING_E09);
 }
 
 /* E04 "Family Portrait": a partner, a household and an ETERNAL house room. */
 void ending_check_family(void)
 {
     int r;
-    if (ending_partner() < 0 || family_count() < 1) return;
+    if (ending_pending() != ENDING_NONE || ending_seen(ENDING_E04) ||
+        ending_partner() < 0 || family_count() < 1) return;
     for (r = 0; r < HOME_ROOM_COUNT; r++)
         if (home_grade(r) == HG_ETERNAL) { ending_reach(ENDING_E04); return; }
 }

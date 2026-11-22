@@ -9,7 +9,9 @@
 #include "../src/story_int.h"
 #include "../src/story_ch34.h"
 #include "../src/overworld_int.h"
+#include "../src/ui_internal.h"
 #include "doomo/beat.h"
+#include "doomo/ending.h"
 #include "doomo/exorcism.h"
 #include "doomo/unlock_ids.h"
 #include "doomo/home.h"
@@ -72,6 +74,26 @@ TEST(story_ch34_length_budget)
     CHECK_MSG(m3 >= 189 && m3 <= 231, "chapter 3 declares %d minutes", m3);
     CHECK_MSG(m4 >= 189 && m4 <= 231, "chapter 4 declares %d minutes", m4);
     CHECK_MSG(me >= 25, "the epilogue declares %d minutes", me);
+}
+
+TEST(story_epilogue_vex_remembers_whether_the_jar_rained)
+{
+    int lost;
+    for (lost = 0; lost <= 1; lost++) {
+        UiDialogDebug dialog;
+        story_town(31);
+        story_debug_jump(0, BEAT_E2);
+        story_set_flag(SF_SMOG_LOST, lost);
+        frames(3, 0);
+        story_interact_npc(ID_VEX);
+        frames(2, 0);
+        CHECK(scene_top() == &SCENE_DIALOG);
+        ui_dialog_debug(&dialog);
+        CHECK(dialog.text != NULL);
+        CHECK_MSG(strstr(dialog.text, lost ? "jar stayed dry.\nI watered" : "jar rained") != NULL,
+                  "Smog loss %d gave Vex: %s", lost, dialog.text);
+    }
+    story_debug_autowin(0);
 }
 
 /* ---- every episode: done bits, objective, target, cast on reachable cells ------------- */
@@ -191,6 +213,58 @@ TEST(story_ch34_playthrough_through_the_new_scripts)
     frames(120, 0);
     CHECK(scene_top() == &SCENE_STORY);
     CHECK(!story_talking());
+    story_debug_autowin(0);
+}
+
+TEST(story_ch34_new_game_plus_ending_follows_the_suitcase)
+{
+    int i;
+    story_town(4343);
+    story_debug_jump(0, BEAT_C4_STAGE);
+    story_set_flag(SF_NGPLUS, 1);
+    story_set_flag(SF_BOTTLE_SEEN, 1);
+    CHECK(play_until_done(BEAT_E1, 8000));
+    CHECK(!story_flag(SF_SUITCASE_OPEN));
+    CHECK(!ending_seen(ENDING_E11));
+    CHECK(ending_seen(ENDING_E01));
+    for (i = 0; i < 30; i++) frame(0);
+    if (scene_top() == &SCENE_ENDING_CARD) press(BTN_A);
+
+    story_enter_place(PLACE_HOME);
+    for (i = 0; i < 500 && scene_top() != &SCENE_ENDING_CARD; i++) press(BTN_A);
+    CHECK(story_episode_done(BEAT_E2));
+    CHECK(story_flag(SF_SUITCASE_OPEN));
+    CHECK(scene_top() == &SCENE_ENDING_CARD);
+    CHECK_EQ(ending_state()->last, ENDING_E11);
+    CHECK_EQ(ending_state()->times[ENDING_E11], 1);
+    story_debug_autowin(0);
+}
+
+TEST(story_ch34_old_new_game_plus_save_gets_e11_after_its_pending_card)
+{
+    story_town(4343);
+    story_debug_jump(0, BEAT_E2);
+    story_episode_set_done(BEAT_E2, 1);
+    story_set_flag(SF_NGPLUS, 1);
+    story_set_flag(SF_BOTTLE_SEEN, 1);
+    story_set_flag(SF_SUITCASE_OPEN, 1);
+    ending_reach(ENDING_E01);
+    ow_sync_to_save();
+    CHECK(save_game(0));
+    CHECK(load_game(0));
+    scene_set(&SCENE_STORY, STORY_ARG_CONTINUE);
+
+    frames(30, 0);
+    CHECK(scene_top() == &SCENE_ENDING_CARD);
+    CHECK(!ending_seen(ENDING_E11));
+    press(BTN_A);
+    frames(30, 0);
+    CHECK(scene_top() == &SCENE_ENDING_CARD);
+    CHECK_EQ(ending_state()->last, ENDING_E11);
+    press(BTN_A);
+    frames(30, 0);
+    CHECK(scene_top() == &SCENE_STORY);
+    CHECK_EQ(ending_state()->times[ENDING_E11], 1);
     story_debug_autowin(0);
 }
 

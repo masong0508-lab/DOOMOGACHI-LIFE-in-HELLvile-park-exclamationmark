@@ -397,6 +397,7 @@ static int auto_events(void)
 {
     int b = story_beat();
     if (!playas_is_hero()) return 0;     /* PA4: plot offers itself only to the hero */
+    if (b == BEAT_DONE && !story_talking()) ending_check_suitcase();
     if (ending_pending() != ENDING_NONE) {   /* E1: an ending was reached; show its card now */
         scene_push(&SCENE_ENDING_CARD, ending_take_pending());
         return 1;

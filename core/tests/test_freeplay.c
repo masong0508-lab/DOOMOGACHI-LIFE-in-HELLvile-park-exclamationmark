@@ -2,8 +2,10 @@
  * freeplay). Everything is driven through the real scenes with button
  * presses, like a player would. */
 #include "test.h"
+#include "doomo/ending.h"
 #include "../src/fp_int.h"
 #include "../src/fp_island.h"
+#include "../src/story_int.h"
 #include "../src/ui_internal.h"
 
 /* fp_island.c test hooks */
@@ -42,6 +44,58 @@ static void premade_island(void)
     fp_new_island(TOWN_POP_PREMADE, 4242);
     scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
     frames(0, 3);
+}
+
+TEST(freeplay_island_shows_endings_after_the_menu_and_subscene_close)
+{
+    premade_island();
+    CHECK(fp_island_select_kind(LOC_CAFE) >= 0);
+    story_set_flag(SF_FEAST_DONE, 1);
+    story_set_flag(SF_BONE_HEART, 1);
+    ending_daily();
+    CHECK_EQ(ending_pending(), ENDING_E09);
+
+    press(BTN_START);
+    CHECK(top_is(&SCENE_ISLAND) && fp_island_menu_open());
+    scene_push(&SCENE_OPTIONS, 0);
+    ui_say(-1, "Options are open.");
+    frames(0, 3);
+    CHECK(top_is(&SCENE_DIALOG));
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    close_dialogs();
+    CHECK(top_is(&SCENE_OPTIONS));
+    frames(0, 3);
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    scene_pop();
+    frames(0, 3);
+    CHECK(top_is(&SCENE_ISLAND) && fp_island_menu_open());
+    CHECK_EQ(ending_pending(), ENDING_E09);
+
+    press(BTN_B);
+    CHECK(top_is(&SCENE_ENDING_CARD));
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    frames(0, 21);
+    press(BTN_A);
+    CHECK(top_is(&SCENE_ISLAND));
+    press(BTN_A);
+    CHECK(fp_island_menu_open());
+    CHECK_STR(fp_island_menu_label(0), "Order treats");
+}
+
+TEST(freeplay_island_shows_a_saved_pending_ending_on_load)
+{
+    premade_island();
+    ending_reach(ENDING_E09);
+    CHECK(save_game(1));
+    CHECK_EQ(ending_take_pending(), ENDING_E09);
+    CHECK(load_game(1));
+    CHECK_EQ(ending_pending(), ENDING_E09);
+    scene_set(&SCENE_ISLAND, FP_ISLAND_ARG_RETURN);
+    frames(0, 1);
+    CHECK(top_is(&SCENE_ENDING_CARD));
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    CHECK_EQ(ending_state()->times[ENDING_E09], 1);
+    plat_save_erase(1);
 }
 
 static int first_alive(int from)

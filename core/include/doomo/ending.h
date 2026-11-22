@@ -141,6 +141,9 @@ void ending_daily(void);
  * when a sparkle is found; the finale too. The finale itself resolves to E10 / E11 when they
  * hold (secret outranks the rest); E11 needs SF_NGPLUS, SF_BOTTLE_SEEN and SF_SUITCASE_OPEN. */
 void ending_check_sparkles(void);
+/* E11 normally becomes eligible after the suitcase scene in the epilogue.
+ * The idle story overworld checks it here so completed saves can catch up. */
+void ending_check_suitcase(void);
 
 /* ---- the adult gate (R10; E1 strong, weak refuses everyone) -------------
  * 1 only if resident `id` may appear in a mature or romance scene: life

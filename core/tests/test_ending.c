@@ -7,6 +7,7 @@
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/ending.h"
+#include "doomo/family.h"
 #include "doomo/life.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
@@ -17,6 +18,8 @@
 #include "doomo/resident.h"
 #include "doomo/playas.h"
 #include "doomo/map.h"
+#include "../gen/furn_ids.h"
+#include "../src/home_int.h"
 #include "../src/story_int.h"
 
 static void fresh(void) { doomo_save_ext_endings->reset(); }
@@ -312,16 +315,26 @@ TEST(adult_gate_kid_cast_matches_the_file)
 TEST(e12_daily_check_lets_bonejangles_bow_late)
 {
     fresh();
+    doomo_town.mode = TOWN_STORY;
+    doomo_town.story.chapter = STORY_CH_DONE;
     story_set_flag(SF_FEAST_DONE, 1);
     story_set_flag(SF_BONE_HEART, 0);
     ending_daily();                                     /* the Feast is over, no heart: nothing */
     CHECK(!ending_seen(ENDING_E09));
     story_set_flag(SF_BONE_HEART, 1);                   /* found afterwards, with no cutscene to check it */
+    ending_reach(ENDING_E01);
+    ending_daily();
+    CHECK(!ending_seen(ENDING_E09));
+    CHECK_EQ(ending_take_pending(), ENDING_E01);
     ending_daily();
     CHECK(ending_seen(ENDING_E09));
-    CHECK_EQ(ending_pending(), ENDING_E09);
-    ending_daily();                                     /* a second day does not count it twice */
-    CHECK_EQ(ending_count_seen(), 1);
+    CHECK_EQ(ending_take_pending(), ENDING_E09);
+    ending_daily();
+    CHECK_EQ(ending_state()->times[ENDING_E09], 1);
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    ending_reach(ENDING_E01);
+    ending_check_bonejangles();
+    CHECK_EQ(ending_pending(), ENDING_E01);
     story_set_flag(SF_FEAST_DONE, 0);
     story_set_flag(SF_BONE_HEART, 0);
 }
@@ -339,7 +352,43 @@ TEST(e12_daily_check_waits_for_the_story_but_not_free_play)
     doomo_town.mode = TOWN_FREEPLAY;
     ending_daily();
     CHECK(ending_seen(ENDING_E09));
+    CHECK_EQ(ending_take_pending(), ENDING_E09);
+    ending_daily();
+    CHECK_EQ(ending_state()->times[ENDING_E09], 1);
+    CHECK_EQ(ending_pending(), ENDING_NONE);
     doomo_town.mode = mode; doomo_town.story.chapter = ch;
     story_set_flag(SF_FEAST_DONE, 0);
     story_set_flag(SF_BONE_HEART, 0);
+}
+
+TEST(e12_daily_check_records_family_portrait_once_in_free_play)
+{
+    static const int furniture[] = { FURN_PENTAGRAM_RUG, FURN_IMP_STOOL, FURN_BONE_THRONE, FURN_VAPOR_TANK };
+    HomeEdit room;
+    int i;
+    fresh();
+    CHECK_EQ(doomo_town.mode, TOWN_FREEPLAY);
+    CHECK_EQ(family_add(PLAYAS_ID_FAMILY_FIRST, FAMROLE_PARTNER, LIFE_ADULT), 0);
+    home_move_in();
+    home_edit_begin(&room, HOME_ROOM_LIVING);
+    for (i = 0; i < DOOMO_COUNTOF(furniture); i++) {
+        CHECK(home_grant(furniture[i]));
+        CHECK(home_edit_place(&room, furniture[i], i + 1, 3, 0, -1, -1) >= 0);
+    }
+    home_room_store(HOME_ROOM_LIVING, &room.room);
+    home_refresh_cache(NULL, -1);
+    CHECK_EQ(home_grade(HOME_ROOM_LIVING), HG_ETERNAL);
+
+    ending_reach(ENDING_E01);
+    ending_daily();
+    CHECK(!ending_seen(ENDING_E04));
+    CHECK_EQ(ending_take_pending(), ENDING_E01);
+    ending_daily();
+    CHECK_EQ(ending_take_pending(), ENDING_E04);
+    ending_daily();
+    CHECK_EQ(ending_state()->times[ENDING_E04], 1);
+    CHECK_EQ(ending_pending(), ENDING_NONE);
+    ending_reach(ENDING_E01);
+    ending_check_family();
+    CHECK_EQ(ending_pending(), ENDING_E01);
 }

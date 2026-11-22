@@ -33,6 +33,20 @@ dialogue style.
 | 4 Hellvile | C4_GATE, PRISONERS, HELP, MAYOR, FESTIVAL, STAGE | Through the Wall, Hellvile's prisoners, redemption / befriending / exorcism, the Mayor crosses over, the Wall comes down, the festival in `MAPID_PARK_UNITED`. |
 | End | DONE | `SCENE_CREDITS`: a parade of all 1000 citizens by name plus the dev credits, then free play (United Park, Hellvile Visits, New Game+ unlocked). |
 
+The epilogue keeps the results of the Chapter 4 routes. Vex recalls rain
+only on the route where the jar rained. In New Game+, **One More Time**
+can appear after the suitcase scene finishes if the bottle requirement
+is met. Eligible older saves can receive the card after any earlier card.
+Automatic checks for **Family Portrait** and **Bonejangles Bows** record
+each discovery once and wait for any earlier card. In Free Play the
+island hub shows the card when the player returns to normal navigation.
+
+Two festival routes still need a continuity pass before the cutscene
+rewrite. Hattie's performance needs to acknowledge the ghost established
+by her side quest when she lost her soul. The **Empty Parade** route
+needs crowd staging that agrees with the ending. Verify both against
+their corresponding successful routes and a save resumed before the festival.
+
 `story_debug_jump(chapter, beat)` sets up any beat (flags, items, pet,
 weapon, possessions, map, position). `story_debug_autowin(1)` makes
 combat / exorcism / pet / workshop resolve instantly (tests only);

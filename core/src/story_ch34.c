@@ -26,6 +26,7 @@
 #include "doomo/unlock_ids.h"
 #include "doomo/family.h"
 #include "doomo/ending.h"
+#include "doomo/lang.h"
 
 #define NAR (-1)
 
@@ -689,7 +690,12 @@ static int npc(int id)
         }
         if (id == ROSTER_ID_GRUMBLEGUTS && !story_grumble_dead()) return idle(id, SCR_SE_GRUMBLE);
         if (id == ID_MAYOR) return idle(id, SCR_SE_MAYOR);
-        if (id == ID_VEX) return idle(id, SCR_SE_VEX);
+        if (id == ID_VEX) {
+            if (!has(SF_SMOG_LOST)) return idle(id, SCR_SE_VEX);
+            if (!side_npc(id))
+                story_say(id, lang_tr("The jar stayed dry.\nI watered the sunflowers.\nThe can owes me overtime."));
+            return 1;
+        }
         break;
     default: break;
     }
