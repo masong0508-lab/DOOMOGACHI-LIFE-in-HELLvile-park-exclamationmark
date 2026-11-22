@@ -1454,7 +1454,7 @@ static void lower_codes(char *s)
 static int same_thread(uint16_t a, uint16_t b);
 
 /* TM2d: the player's act is a topic act: a question or a statement about the topic (the census' Q8b set) */
-static int topic_act(int a)
+int talk_gen_topic_act(int a)
 {
     switch (a) {
     case TA_ASK_ABOUT: case TA_ASK_OPINION: case TA_TELL: case TA_OPINE_POS: case TA_OPINE_NEG: case TA_CHANGE_TOPIC:
@@ -1534,7 +1534,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
                 use[4] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HANDOFF), 0, &parts[4]);
         }
         /* TM2d: a topic act answered by a line that names nothing: the line names the topic (Q8b; reason.name) */
-        if (optional && !lower && g->topic && !g->grief && topic_act(g->act) && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL))) {
+        if (optional && !lower && g->topic && !g->grief && talk_gen_topic_act(g->act) && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL))) {
             int named = (parts[1].flags & AF_TOPIC) != 0 || alt_topicy(&ai), q;
             for (q = 0; q < parts[1].tr.nsaid && !named; q++) named = same_thread(g->topic, parts[1].tr.said[q]);
             if (!named && !(g->plan.kind && g->plan.depth >= 1 && stance_act(ai.act) && !strchr(parts[1].text, '?'))) {

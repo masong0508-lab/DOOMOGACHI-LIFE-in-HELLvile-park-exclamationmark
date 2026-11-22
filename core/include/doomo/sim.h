@@ -25,6 +25,7 @@ extern const char *const doomo_mood_names[MOOD_COUNT];
 extern const char *const doomo_stat_names[8];
 extern const char *const doomo_activity_names[ACT_COUNT];
 extern const char *const doomo_death_names[DEATH_COUNT];
+const char *sim_venue_name(int act);  /* Place name for prose, e.g. "the park". */
 
 /* "Problems" residents raise for the player to solve (thought bubbles). */
 enum { PROB_NONE, PROB_HUNGRY, PROB_DIRTY, PROB_BORED, PROB_SICK,

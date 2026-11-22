@@ -1726,7 +1726,15 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
             action_after(s, who, L);                         /* TM2e: the action this reply carries, a line right after it */
             if (s->nplan == n0) quest_after(s, who, L);      /* TQ: or, in a calm exchange, a request (one extra line a reply at most) */
         }
-        if (who >= 0 && who < s->nparts) { s->part[who].flags |= TPF_SPOKE; s->conv.spoke |= (uint8_t)(1u << who); }
+        if (who >= 0 && who < s->nparts) {
+            s->part[who].flags |= TPF_SPOKE;
+            s->conv.spoke |= (uint8_t)(1u << who);
+            /* Greetings and thanks can carry the active topic as context. */
+            if (kind == DK_ANSWER && s->gate == TG_PASS && L->act &&
+                !(L->flags & (TLF_SAFE | TLF_FALLBACK)) && talk_gen_topic_act(s->in.act[0]) &&
+                talk_gen_concept_ok(s->in.topic[0], &s->conv.aud))
+                s->answered_topic[who] = s->in.topic[0];
+        }
         hist_push(s, who, L->act, hf, to, L->topic);
         if (kind == DK_EXCUSE) {                            /* walks out */
             s->part[who].flags |= TPF_LEFT;

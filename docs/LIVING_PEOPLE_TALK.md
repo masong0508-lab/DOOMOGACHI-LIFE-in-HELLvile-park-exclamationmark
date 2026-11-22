@@ -65,6 +65,40 @@ they survive later editorial review and reach the shipped bank. Validate
 them with `make -C core talk-check` and the controller path in
 `core/tests/scripts/home_talk_basic.txt`. See the [Talk authoring guide](TALK.md#4-the-word-network-t1).
 
+### Test an everyday conversation from its opening to the next visit
+
+Start with the resident's day in the simulation. Where are they going?
+What do they need? Who did they see? Give the player a chance to notice
+the activity, ask about it, and see how a choice affects later visits.
+Residents should keep their routines and relationships when the player
+leaves. They can have a bad day, decline a plan, or change their mind
+for reasons the game can show.
+
+The SNES Fact Book reference groups alternate spellings and names under
+one topic. DOOMOGACHI already has stable concept IDs, synonyms, and a
+streamed dialogue bank. Use that lookup to understand which subject the
+player means. Let the simulation and what each resident knows decide
+what they can say. Link a follow-up when their answer gives the player a
+reason to ask it. Two residents can know different things about the same
+event because they were in different places or heard it from someone.
+
+Start with **Ask about their day** and a resident visiting the park.
+The reply names where they actually are. A plant lover might tell the
+player they like tending the garden, giving the player a reason to ask
+about watering or propose a park visit through the existing outing menu.
+Try the same opening with a tired resident who prefers a quieter day.
+Return after the scheduled time in two runs, one with a completed outing
+and one where it was missed. Save, reload, and verify that each response
+follows what happened. In a group conversation, ask one resident about
+gardening and another about fishing and verify each recalls their own
+subject. Revisit the park after their schedules change and confirm that
+the residents' locations, choices, and remarks agree.
+
+Run the route with the PS2 controller from a cold and warm Talk bank.
+Track first-reply and follow-up latency, total disc reads, and worst
+frame time while the dialogue opens and scrolls. The story and relationship
+gates still apply to the linked choices.
+
 ## Next milestones, in priority order
 
 1. **Coherence/fact tests**: 10+ turn scripted conversations with explicit

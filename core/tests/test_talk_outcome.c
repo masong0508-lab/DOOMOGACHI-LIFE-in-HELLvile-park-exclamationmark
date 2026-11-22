@@ -520,7 +520,43 @@ TEST(talk_outcome_no_farming_100_sessions)
     talk_db_close();
 }
 
-/* the talk memory is written back, and an ordinary end locks nobody out */
+/* A resident who answered an earlier question keeps that subject when
+ * the player then directs a different question to somebody else. */
+TEST(talk_outcome_remembers_who_answered_each_topic)
+{
+    static const int ids[2] = { ID_NANA, ID_RIVET };
+    TalkState s;
+    const TalkMem *m;
+    uint16_t pie, song;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    song = concept("song");
+    CHECK(pie && song && pie != song);
+    talk_outcome_begin(&s, HERO, ids, 2, 4242u);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    CHECK(s.nlines && s.line[0].who == 0);
+    CHECK(!(s.line[0].flags & TLF_FALLBACK));
+    CHECK_EQ(s.topic_stack[0], pie);
+    play(&s, TA_ASK_ABOUT, song, 1);
+    CHECK(s.nlines && s.line[0].who == 1);
+    CHECK_EQ(s.topic_stack[0], song);
+    /* Generic quick replies can carry the room's topic in their input. */
+    play(&s, TA_THANK, song, 0);
+    talk_outcome_end(&s, NULL, NULL);
+    m = talk_mem_find(ID_NANA);
+    CHECK(m != NULL);
+    CHECK_EQ(m->topic_a, pie);
+    m = talk_mem_find(ID_RIVET);
+    CHECK(m != NULL);
+    CHECK_EQ(m->topic_a, song);
+    talk_outcome_begin(&s, HERO, ids, 2, 4243u);
+    CHECK_EQ(s.conv.mem_topic[0], pie);
+    CHECK_EQ(s.conv.mem_topic[1], song);
+    talk_db_close();
+}
+
+/* The talk memory is written back, and an ordinary end locks nobody out. */
 TEST(talk_outcome_memory_written_back)
 {
     static const int ids[2] = { ID_NANA, ID_RIVET };

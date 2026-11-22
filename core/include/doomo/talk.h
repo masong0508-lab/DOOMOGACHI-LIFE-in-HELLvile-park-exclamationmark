@@ -1004,6 +1004,8 @@ int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
 int  talk_gen_stance(int id, uint16_t topic);
 /* May this concept be said in this room (age class, register, a child here)? */
 int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
+/* May the act ask or say something about the current topic? */
+int  talk_gen_topic_act(int act);
 /* acts.tsv: may `reply` answer `act`; the act's class (TAC_*). */
 int  talk_gen_adjacent(int act, int reply);
 int  talk_gen_act_class(int act);
@@ -1188,6 +1190,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over (TEV_ACT_CALL), 0 none; the scene lets them in */
     struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
     uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
+    uint16_t  answered_topic[TALK_PARTS_MAX]; /* latest accepted question or remark each resident answered */
     TalkHist  hist[TALK_HIST];      /* newest first                                   */
     int8_t    pair_d[6];            /* resident pairs (0,1) (0,2) (0,3) (1,2) (1,3) (2,3) */
     TalkEvent ev[TALK_EVENTS_MAX];

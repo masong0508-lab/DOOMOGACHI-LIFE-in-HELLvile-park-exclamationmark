@@ -132,7 +132,7 @@ TEST(talk_scene_day_plan_tracks_actual_activity_without_reward)
     CHECK(talk_scene_debug(&d) && d.busy);
     memset(&box, 0, sizeof box);
     ui_dialog_debug(&box);
-    CHECK(box.text != NULL && strstr(box.text, doomo_activity_names[ACT_CAFE]) != NULL);
+    CHECK(box.text != NULL && strstr(box.text, "Brimstone Bites") != NULL);
     CHECK_EQ(r->activity, ACT_CAFE);
     CHECK_EQ((int)doomo_town.money, cash);
     CHECK_EQ(sim_problem_count(), problems);

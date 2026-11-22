@@ -1,6 +1,8 @@
 # PlayStation 2 Deluxe Edition — implementation roadmap
 
-Status: **PS2-0 bootstrap source started; build/boot validation pending**. Owner: cross-platform. Canonical branch: `main`.
+The shared-core PS2 build produces 480i and 480p gameplay ISOs. CI and
+Play! cover boot and controller progression. The PCSX2 and hardware
+walkthroughs and sustained 60 fps target are still open.
 Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in HELLvile PARK that keeps the existing game's systems, personalities, and story intact while using PS2 capabilities for presentation and simulation.
 
 ## Hardware and toolchain baseline
@@ -40,7 +42,11 @@ Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in H
 1. PS2 GS render backend: 3D world geometry with stable perspective, consistent town map-to-world transitions, skeletal/pose animation where practical, dynamic lighting and clear portraits.
 2. Bigger rooms, recognizable city vistas and seamless camera continuity in cutscenes; reuse landmarks so events actually occur in the visible world.
 3. Richer character expressions, gestures and voice snippets, with streamed music and environmental audio. Precompute and stream from disc; keep GS textures resident only as needed.
-4. Performance targets: 60 Hz 2D and 30 drawn FPS for demanding 3D scenes first, then optional 60 FPS profiles where supported. Measure worst 1% frame time and simulation TPS separately.
+4. Target a new image at each NTSC refresh during motion across gameplay,
+   menus, and Studio, with gameplay and audio advancing at nominal 30 Hz.
+   Establish the baseline in both video modes, then prototype render-only
+   motion between logic ticks in 480p combat. Use the [frame cadence
+   walkthrough](../../ps2/tests/PCSX2_PLAYTHROUGH.md#60-fps-acceptance).
 **Exit:** repeatable scene captures and frame traces for representative worst-case hubs, crowds, Talk and combat; no unbounded load-time spikes.
 
 ### PS2-3: Deluxe social systems
@@ -61,7 +67,9 @@ Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in H
 ## Cross-port compatibility rules
 
 - GBA, PS1 and Dreamcast remain supported and independently benchmarked. Shared semantic behavior; different renderer, memory and text-input profiles.
-- Talk caps in current source are GBA 32, PS1 64, Dreamcast 128, host 48. PS2 target 192 requires adding a distinct `DOOMO_PLATFORM_PS2` branch and corresponding save-budget checks when development starts.
+- Talk caps in current source are GBA 32, PS1 64, Dreamcast 128, and PS2
+  and native 48. The proposed PS2 cap of 192 requires a distinct platform
+  budget and save compatibility checks.
 - Save payload keeps current 12-byte per-resident format and version. Smaller ports may import a larger PS2 save only with a documented priority order: protect active favors first, then newest meaningful histories, then older casual chats; never silently truncate.
 - Add explicit save-size/VMU and memory-card capacity assertions, endian/CRC tests and fuzzed load tests. Do not expand the existing GBA story save sectors or overrun PS1 memory cards to meet a marketing number.
 - Memory itself must be useful: measure number of distinct residents that can recall the player, fulfilled/failed promises remembered after reboot, no memory eviction while active, and per-turn CPU/IO overhead. Caps aren't performance results.
@@ -71,7 +79,9 @@ Goal: a richer, performant, genuinely playable version of BOREagotchi LIFE! in H
 - Verify the new per-port Talk cap in real console builds and native tests. Record resulting .bss, serialized chunk size and slot free space.
 - Add port-specific over-cap import tests and an explicit result when all memory slots are pinned.
 - Add on-device memory-status UI and meaningful callbacks for invitations and promises.
-- Create PS2-0 skeleton once toolchain availability and shared-core ABI are confirmed.
+- Count actual VBlanks and changed images in an opt-in timing build. Use
+  a moving marker to calibrate both output modes, then record frame costs
+  for combat, overworld, Talk, Studio, and menu motion.
 
 ## Pre-PS2 optimization and stability gate (November 21, 2026)
 

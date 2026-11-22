@@ -610,11 +610,9 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
          * bystander does not inherit someone else's insult, and a person
          * who walked out still remembers what they heard before leaving. */
         if (s->mem_to[k]) talk_mem_set_flags(id, s->mem_to[k]);
-        /* Topic recall needs participation; someone who left doesn't
-         * gain unrelated experience from the room continuing to talk. */
-        if ((s->part[k].flags & TPF_LEFT) == 0 &&
-            s->topic_stack[0] && (s->part[k].flags & TPF_SPOKE))
-            talk_mem_note_topic(id, s->topic_stack[0]);
+        /* Keep the topic they answered before the room moved on. */
+        if (s->answered_topic[k])
+            talk_mem_note_topic(id, s->answered_topic[k]);
     }
     talk_mem_end(&s->conv);
     talk_dm_end(s, sum);

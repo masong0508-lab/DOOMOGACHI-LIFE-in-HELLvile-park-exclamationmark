@@ -106,7 +106,6 @@ void bit_set(uint8_t *b, int i, int on);
 void sim_ensure_init(void);
 extern const uint8_t doomo_hobby_venue[];       /* where a hobby is practised (ACT_*), HOBBY_COUNT entries (sim.c) */
 const char *sim_name(int id);            /* resident name or "Someone"     */
-const char *sim_venue_name(int act);     /* "the park"                     */
 
 /* ---- sim_social.c ---- */
 void sim_social_init(void);              /* rebuild taken / crush bitsets  */

@@ -19,8 +19,8 @@ checks below track the remaining release validation.
 - Optional Linux startup probe: `sh ps2/tools/pcsx2_boot_smoke.sh
   ps2/build/doomogachi_ps2_game.iso`. Its exit status never proves
   rendering, audio, controller control or save reliability.
-- Capture a native-resolution frame (320x240 logical output, scaled to
-  640x448 NTSC interlaced) plus an FPS/timing capture for each scenario.
+- Capture the 320x240 game image in both display modes, 640x448 interlaced
+  and 640x480 progressive, with timing for each scenario below.
 
 ## Acceptance walkthrough (not performed by the build)
 
@@ -56,6 +56,39 @@ checks below track the remaining release validation.
 9. **Stress** — Play at least 20 minutes, switching scenes, Talk, saves,
    portraits, 3D view and sound. Record average/worst frame time, resident
    count and memory; compare with the previous 32-bit GS texture build.
+
+## 60 fps acceptance
+
+Use the same save, controller sequence, scene settings, and ISO revision
+for repeat runs. Record the ISO SHA-256, video mode, console or emulator
+version, and emulation speed. Use 10-second motion samples and the
+20-minute mixed walkthrough. In 480p, capture each progressive refresh.
+In 480i, preserve field order and account for line parity when comparing
+images. A moving test marker that updates once per refresh can validate
+the capture and timing tools before measuring gameplay.
+
+Report display refreshes, logic ticks, changed images reaching scanout,
+and gaps between those images. Record the median, 95th and 99th percentile,
+and maximum time for update and draw, audio, palette conversion, GIF
+transfer, and GS submission. Include missed refreshes and link the capture
+where they occur. PS2 NTSC uses about 59.94 refreshes per second, with about
+16.68 ms available between refreshes. During scripted motion, the target
+is a new image at every refresh. A paused or stationary screen can hold
+its image. Verify clocks, input repeat, and audio beat timing against the
+nominal 30 Hz simulation over the same route.
+
+| Scenario | Motion and clarity checks |
+| --- | --- |
+| Title, menus, roster, Creator | Boot animations, selection repeat, portrait swaps, scrolling, and modal transitions |
+| Story and Free Play | Walk, run, pan the camera, enter dense rooms, and check sprite occlusion and day/night transitions |
+| Bone Cathedral, Bone Capital, and other combat maps | First- and third-person turning, moving doors, crowded fights, damage tint, and HUD readability |
+| Talk | Opening a cold and warm language bank, scrolling replies, reading a line, following a topic, and returning to History |
+| Music Studio | Editor playhead, full choir performance, curtain transitions, and audio alignment with beat and mouth motion |
+| Disc and card operations | Measure loading, saving, and reload stalls alongside the mixed walkthrough |
+
+The current Play! CI gate verifies that the game boots, the controller
+changes the screen, and the viewport shows motion. Establish the sustained
+cadence on PCSX2 at normal emulation speed and on a physical console.
 
 ## Release criteria
 

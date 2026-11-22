@@ -1620,20 +1620,22 @@ static void tell_day_plan(void)
     }
     if (act == ACT_SLEEPING)
         doomo_snprintf(line, sizeof line, "I'm trying to get some rest. Could we talk later?");
-    else if (act == ACT_HOME)
-        doomo_snprintf(line, sizeof line, "I'm at home right now. It's good to have a familiar place.");
-    else if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
-        doomo_snprintf(line, sizeof line, "I'm at %s for now. It's been a difficult day.",
-                       doomo_activity_names[act]);
-    else if (r->mood == MOOD_ANGRY)
-        doomo_snprintf(line, sizeof line, "I'm at %s. I need a little space today.",
-                       doomo_activity_names[act]);
-    else if (sim_favourite_venue(id) == act)
-        doomo_snprintf(line, sizeof line, "I'm at %s! You know it's one of my favorite places.",
-                       doomo_activity_names[act]);
-    else
-        doomo_snprintf(line, sizeof line, "I'm spending some time at %s. I might go elsewhere later.",
-                       doomo_activity_names[act]);
+    else {
+        const char *action = "at ";
+        const char *place = sim_venue_name(act);
+        const char *ending = "I might go somewhere else later.";
+        if (act == ACT_WANDERING || act == ACT_HAUNTING) {
+            action = act == ACT_WANDERING ? "wandering around town" : "haunting the streets";
+            place = "";
+        } else if (act == ACT_HOME) {
+            ending = "It's good to have a familiar place.";
+        } else if (sim_favourite_venue(id) == act) {
+            ending = "It's one of my favorite places.";
+        }
+        if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED) ending = "It's been a difficult day.";
+        else if (r->mood == MOOD_ANGRY) ending = "I need a little space today.";
+        doomo_snprintf(line, sizeof line, "I'm %s%s. %s", action, place, ending);
+    }
     doomo_snprintf(T.you, sizeof T.you, "How's your day going?");
     ui_say(id, line);
     T.busy = 1;
