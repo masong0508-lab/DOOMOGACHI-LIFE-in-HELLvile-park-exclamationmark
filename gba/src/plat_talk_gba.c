@@ -11,6 +11,8 @@
 extern const uint8_t gba_talk_bin[];
 extern const uint8_t gba_talk_bin_end[];
 
+const uint8_t *plat_talk_image(void) { return gba_talk_bin; }
+
 uint32_t plat_talk_load(const char *code)
 {
     if (!code || code[0] != 'e' || code[1] != 'n' || code[2]) return 0;

@@ -9,8 +9,8 @@
  * of the database is resident (the PS1 keeps it in SPU RAM, TP1).
  *
  * RAM: the directory (~250 B), and a single 256 B read-through window
- * on non-GBA targets. The large language file remains platform-backed,
- * never loaded into heap RAM here. The GBA builds omit this cache.
+ * for platforms without a built-in sector cache or ROM mapping. The
+ * language file stays platform-backed.
  * Per call: at most 128 B of stack for a string's stream.
  */
 #include "doomo/doomo.h"
@@ -32,11 +32,9 @@ static struct {
     TalkBank bank[TB_COUNT];
 } db;
 
-/* Fixed-memory streaming window: frequent 8/16 B concept and association
- * reads from the same neighborhood share one platform read. The aligned
- * 256 B window amortizes calls without allocating a model-sized blob.
- * On GBA we preserve its tight RAM budget and use the direct read path. */
-#if !defined(DOOMO_PLATFORM_GBA)
+/* GBA reads the ROM directly. PS2 already has an aligned sector cache,
+ * so reads there go straight to the requested bytes. */
+#if !defined(DOOMO_PLATFORM_GBA) && !defined(DOOMO_PLATFORM_PS2)
 #define TALK_STREAM_BYTES 256u
 static struct {
     uint32_t base;
@@ -58,7 +56,7 @@ static int rd(uint32_t off, void *dst, uint32_t len)
     if (len == 0) return 1;
     if (off > db.size || len > db.size - off) return 0;
     if (db.mem) { memcpy(dst, db.mem + off, len); return 1; }
-#if !defined(DOOMO_PLATFORM_GBA)
+#ifdef TALK_STREAM_BYTES
     if (len <= 128u) {
         uint32_t delta;
         if (stream_window.valid && off >= stream_window.base) {
@@ -121,7 +119,7 @@ uint32_t talk_crc32(uint32_t crc, const uint8_t *p, uint32_t len)
 void talk_db_close(void)
 {
     memset(&db, 0, sizeof(db));
-#if !defined(DOOMO_PLATFORM_GBA)
+#ifdef TALK_STREAM_BYTES
     /* Never reuse cache contents across language/database changes. */
     stream_window.valid = 0;
 #endif
@@ -203,6 +201,7 @@ int talk_db_open(int lang)
     if (size == PLAT_TALK_LOADING) return TALK_DB_LOADING;
     if (size == 0) return TALK_DB_NONE;
     db.size = size;
+    db.mem = plat_talk_image();
     return finish(parse());
 }
 

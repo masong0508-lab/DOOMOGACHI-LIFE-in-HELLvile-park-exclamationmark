@@ -310,6 +310,9 @@ uint8_t *plat_mslot_script_buf(uint32_t *cap);
 #define PLAT_TALK_LOADING 0xFFFFFFFFu
 uint32_t plat_talk_load(const char *code);
 uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len);
+/* Optional read-only image of the successfully loaded bank. It stays
+ * valid until the next platform load. NULL selects the read transport. */
+const uint8_t *plat_talk_image(void);
 /* Where a point of the room is on the screen this frame: tile space x, y
  * (16.16, the DoomoRoomActor convention), height z in px, to screen
  * pixels. Talk anchors its speech bubbles with it (the core cannot know

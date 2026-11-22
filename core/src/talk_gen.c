@@ -424,6 +424,21 @@ int talk_gen_fact(int id, int cb, uint16_t *val)
 #define KF_KIND 1
 #define KF_COOL 2
 #define KF_STANCE 4
+
+typedef struct PartTrace {
+    uint16_t alt[TALK_TRACE_ALTS];
+    TalkFill fill[TALK_TRACE_FILLS];
+    uint8_t nalt, nfill;
+} PartTrace;
+
+typedef struct Part {
+    char text[PART_MAX];
+    int alt;                    /* its top alternative, -1 none */
+    uint16_t said[4];            /* the topic bridge also needs these during play */
+    uint8_t face, flags, nsaid;
+    PartTrace *trace;
+} Part;
+
 typedef struct Gen {
     GHdr h;
     TalkConv *c;
@@ -455,14 +470,13 @@ typedef struct Gen {
     /* the part being written */
     char *buf;
     int len, cap, fail, depth;
-    TalkTrace *tr;
-    TalkTrace part_tr;            /* fills of the part being written */
+    Part *part;
 } Gen;
 
 static void push_fill(Gen *g, int off, int len, int kind, int cat)
 {
-    TalkTrace *t = &g->part_tr;
-    if (t->nfill < TALK_TRACE_FILLS && len > 0 && off < 255) {
+    PartTrace *t = g->part->trace;
+    if (t && t->nfill < TALK_TRACE_FILLS && len > 0 && off < 255) {
         t->fill[t->nfill].off = (uint8_t)off;
         t->fill[t->nfill].len = (uint8_t)(len > 255 ? 255 : len);
         t->fill[t->nfill].kind = (uint8_t)kind;
@@ -473,17 +487,17 @@ static void push_fill(Gen *g, int off, int len, int kind, int cat)
 
 static void push_said(Gen *g, uint16_t concept)
 {
-    TalkTrace *t = &g->part_tr;
+    Part *p = g->part;
     int i;
     if (!concept) return;
-    for (i = 0; i < t->nsaid; i++) if (t->said[i] == concept) return;
-    if (t->nsaid < 4) t->said[t->nsaid++] = concept;
+    for (i = 0; i < p->nsaid; i++) if (p->said[i] == concept) return;
+    if (p->nsaid < 4) p->said[p->nsaid++] = concept;
 }
 
 static void push_alt(Gen *g, int alt)
 {
-    TalkTrace *t = &g->part_tr;
-    if (t->nalt < TALK_TRACE_ALTS) t->alt[t->nalt++] = (uint16_t)alt;
+    PartTrace *t = g->part->trace;
+    if (t && t->nalt < TALK_TRACE_ALTS) t->alt[t->nalt++] = (uint16_t)alt;
 }
 
 static void emit(Gen *g, const char *s, int n)
@@ -772,10 +786,10 @@ static int stance_clash(const Gen *g, int act)
     return (g->stance == TST_PRO && side < 0) || (g->stance == TST_CON && side > 0);
 }
 
-static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
+static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt *selected)
 {
     uint8_t s[4];
-    int i, best[3] = { -1, -1, -1 }, lv;
+    int i, best = -1, best_level = 3;
     uint32_t tot[3] = { 0, 0, 0 };
     if (sym < 0 || sym >= g->h.nsyms || !talk_db_read(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, s, 4)) return -1;
     for (i = 0; i < le16(s + 2); i++) {
@@ -793,6 +807,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
         for (a = r.alt_first; a < r.alt_first + r.nalt; a++) {
             GAlt al;
             uint32_t w;
+            int lv;
             if (avoided(avoid, navoid, a) || !rd_alt(&g->h, a, &al)) continue;
             if ((al.flags & AF_SWEAR) && g->c->swears) continue;                    /* K-9 */
             if ((al.flags & AF_JMAT) && !pred(g, TGP_JMAT, 0)) continue;           /* K-6 */
@@ -800,11 +815,16 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid)
             w = al.weight * ((al.flags & AF_CAST) ? 8u : 1u);                      /* the cast's own lines win */
             lv = novelty ? recent(g, a) : 0;
             tot[lv] += w;
-            if ((uint32_t)rng_range(&g->rng, (int)(tot[lv] > 65536u ? 65536u : tot[lv])) < w) best[lv] = a;
+            /* Every eligible candidate still draws from the RNG, even after a fresher one wins. */
+            if ((uint32_t)rng_range(&g->rng, (int)(tot[lv] > 65536u ? 65536u : tot[lv])) < w && lv <= best_level) {
+                best = a;
+                best_level = lv;
+                *selected = al;
+            }
         }
     }
     /* the freshest that is possible: not said lately, else not by this speaker lately */
-    return best[0] >= 0 ? best[0] : best[1] >= 0 ? best[1] : best[2];
+    return best;
 }
 
 static int entry_sym(const Gen *g, int table, int idx)
@@ -1032,42 +1052,37 @@ static void expand_str(Gen *g, int str)
     }
 }
 
-static void expand_alt(Gen *g, int alt)
+static void expand_alt(Gen *g, int alt, const GAlt *a)
 {
-    GAlt a;
-    if (!rd_alt(&g->h, alt, &a)) { g->fail = 1; return; }
     push_alt(g, alt);
-    expand_str(g, a.str);
+    expand_str(g, a->str);
 }
 
 /* a sub-rule: an alternative whose filling fails is set aside and another picked */
 static void expand_sym(Gen *g, int sym)
 {
     int avoid[AVOID_MAX], navoid = 0, len = g->len;
-    uint8_t nalt = g->part_tr.nalt, nfill = g->part_tr.nfill, nsaid = g->part_tr.nsaid;
+    Part *p = g->part;
+    PartTrace *t = p->trace;
+    uint8_t nalt = t ? t->nalt : 0, nfill = t ? t->nfill : 0, nsaid = p->nsaid;
     if (++g->depth > MAX_DEPTH) { g->fail = 1; g->depth--; return; }
     for (;;) {
-        int alt = pick(g, sym, 0, avoid, navoid);
+        GAlt selected;
+        int alt = pick(g, sym, 0, avoid, navoid, &selected);
         if (alt < 0) { g->fail = 1; break; }
         g->fail = 0;
-        expand_alt(g, alt);
+        expand_alt(g, alt, &selected);
         if (!g->fail || navoid >= AVOID_MAX) break;
         avoid[navoid++] = alt;                               /* undo it and try another */
         g->len = len;
         g->buf[len] = 0;
-        g->part_tr.nalt = nalt; g->part_tr.nfill = nfill; g->part_tr.nsaid = nsaid;
+        p->nsaid = nsaid;
+        if (t) { t->nalt = nalt; t->nfill = nfill; }
     }
     g->depth--;
 }
 
 /* ---- one part --------------------------------------------------------- */
-typedef struct Part {
-    char text[PART_MAX];
-    int alt;                    /* its top alternative, -1 none */
-    uint8_t face, flags;
-    TalkTrace tr;
-} Part;
-
 /* one part from symbol sym: an alternative whose filling fails (a filler the
  * room may not hear, a name the lint refuses) is set aside and another picked */
 static int make_part_avoid(Gen *g, int sym, int novelty, Part *p, const int *pre, int npre)
@@ -1080,21 +1095,22 @@ static int make_part_avoid(Gen *g, int sym, int novelty, Part *p, const int *pre
     p->face = 0;
     p->flags = 0;
     if (sym < 0) return 0;
+    g->part = p;
     while (navoid < AVOID_MAX * 2) {
-        p->alt = pick(g, sym, novelty, avoid, navoid);
-        if (p->alt < 0 || !rd_alt(&g->h, p->alt, &a)) { p->alt = -1; return 0; }
-        memset(&g->part_tr, 0, sizeof g->part_tr);
+        p->alt = pick(g, sym, novelty, avoid, navoid, &a);
+        if (p->alt < 0) return 0;
+        p->nsaid = 0;
+        if (p->trace) { p->trace->nalt = 0; p->trace->nfill = 0; }
         g->buf = p->text;
         g->len = 0;
         g->cap = PART_MAX;
         g->fail = 0;
         g->depth = 0;
         p->text[0] = 0;
-        expand_alt(g, p->alt);
+        expand_alt(g, p->alt, &a);
         if (!g->fail && p->text[0]) {
             p->face = a.face;
             p->flags = a.flags;
-            p->tr = g->part_tr;
             return 1;
         }
         avoid[navoid++] = p->alt;
@@ -1196,9 +1212,11 @@ static void join(char *out, int cap, const Part *parts, const int *use, int np, 
     if (tr) memset(tr, 0, sizeof *tr);
     for (k = 0; k < np; k++) {
         int n, f, base, pi = np == 7 ? PART_ORDER[k] : k;
+        const Part *p = &parts[pi];
+        const PartTrace *t = p->trace;
         char tmp[PART_MAX];
-        if (!use[pi] || !parts[pi].text[0]) continue;
-        strcpy(tmp, parts[pi].text);
+        if (!use[pi] || !p->text[0]) continue;
+        strcpy(tmp, p->text);
         if (!lower && (len == 0 || ends_sentence(out))) cap_first(tmp);
         n = (int)strlen(tmp);
         if (len + (len ? 1 : 0) + n >= cap) continue;
@@ -1208,16 +1226,16 @@ static void join(char *out, int cap, const Part *parts, const int *use, int np, 
         len += n;
         if (!tr) continue;
         tr->parts |= (uint8_t)(1u << pi);
-        for (f = 0; f < parts[pi].tr.nalt && tr->nalt < TALK_TRACE_ALTS; f++) tr->alt[tr->nalt++] = parts[pi].tr.alt[f];
-        for (f = 0; f < parts[pi].tr.nfill && tr->nfill < TALK_TRACE_FILLS; f++) {
-            tr->fill[tr->nfill] = parts[pi].tr.fill[f];
+        for (f = 0; f < t->nalt && tr->nalt < TALK_TRACE_ALTS; f++) tr->alt[tr->nalt++] = t->alt[f];
+        for (f = 0; f < t->nfill && tr->nfill < TALK_TRACE_FILLS; f++) {
+            tr->fill[tr->nfill] = t->fill[f];
             tr->fill[tr->nfill].off = (uint8_t)(tr->fill[tr->nfill].off + base);
             tr->nfill++;
         }
-        for (f = 0; f < parts[pi].tr.nsaid; f++) {
+        for (f = 0; f < p->nsaid; f++) {
             int j, dup = 0;
-            for (j = 0; j < tr->nsaid; j++) dup |= tr->said[j] == parts[pi].tr.said[f];
-            if (!dup && tr->nsaid < 4) tr->said[tr->nsaid++] = parts[pi].tr.said[f];
+            for (j = 0; j < tr->nsaid; j++) dup |= tr->said[j] == p->said[f];
+            if (!dup && tr->nsaid < 4) tr->said[tr->nsaid++] = p->said[f];
         }
     }
 }
@@ -1397,6 +1415,7 @@ static void safe_line(Gen *g, TalkLine *out, TalkTrace *tr)
     uint8_t adj = g->adj;
     out->text[0] = 0;
     g->adj = 0;                                  /* the safe bank answers anything */
+    p.trace = NULL;                              /* the fallback trace records just the top alternative */
     ok = make_part(g, sym, 0, &p);
     g->adj = adj;
     if (ok) {
@@ -1495,14 +1514,17 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
 {
     TalkConv *c = g->c;
     Part parts[7];               /* opener, core, callback, tag, hand-off, reason, hook */
+    PartTrace traces[tr ? 7 : 1]; /* only the census and debug callers record fills and sub-rules */
     int use[7], try_, k, ok = 0, bridge_short = 0, swears, lower = 0, too_long[AVOID_MAX], ntoo = 0;
     char line[TALK_LINE_MAX + PART_MAX];
-    TalkAltInfo ai;
+    TalkAltInfo ai = {0};
+    int have_core_info = 0;
     int relaxed = 0;             /* every core was set aside for a hook or a bridge: they are no longer required */
     memset(out, 0, sizeof *out);
     out->who = (int8_t)g->who;
     out->to = (int8_t)g->to;
     out->stance = g->stance;
+    for (k = 0; k < 7; k++) parts[k].trace = tr ? &traces[k] : NULL;
     for (try_ = 0; try_ < TRIES && !ok; try_++) {
         int r = rng_range(&g->rng, 100), loud = g->pers[PERS_EXPRESSION], got, hook_req = 0, bridge_req = 0;
         memset(use, 0, sizeof use);
@@ -1524,7 +1546,8 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         if (!got && ntoo && !relaxed) { ntoo = 0; relaxed = 1; try_--; continue; }    /* the shorter cores ran out: any core, nothing required */
         if (!got) continue;
         use[1] = 1;
-        lower = talk_gen_alt_info(parts[1].alt, &ai) && (ai.rflags & RF_LOWER);
+        have_core_info = talk_gen_alt_info(parts[1].alt, &ai);
+        lower = have_core_info && (ai.rflags & RF_LOWER);
         if (optional && !lower) {
             if (r < 30 + (loud >= 10 ? 15 : 0) - (loud <= 5 ? 15 : 0))
                 use[0] = make_part(g, entry_sym(g, ENT_FIXED, TGE_OPEN), 0, &parts[0]);
@@ -1536,7 +1559,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         /* TM2d: a topic act answered by a line that names nothing: the line names the topic (Q8b; reason.name) */
         if (optional && !lower && g->topic && !g->grief && talk_gen_topic_act(g->act) && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL))) {
             int named = (parts[1].flags & AF_TOPIC) != 0 || alt_topicy(&ai), q;
-            for (q = 0; q < parts[1].tr.nsaid && !named; q++) named = same_thread(g->topic, parts[1].tr.said[q]);
+            for (q = 0; q < parts[1].nsaid && !named; q++) named = same_thread(g->topic, parts[1].said[q]);
             if (!named && !(g->plan.kind && g->plan.depth >= 1 && stance_act(ai.act) && !strchr(parts[1].text, '?'))) {
                 uint8_t d = g->dlvl;
                 g->dlvl = 0;
@@ -1702,7 +1725,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     if (!lower) cap_first(line);
     copy_cap(out->text, line, TALK_LINE_MAX);
     /* what the line does and is about */
-    if (talk_gen_alt_info(parts[1].alt, &ai)) {
+    if (have_core_info) {
         out->act = ai.act;
         if (ai.rflags & RF_SINCERE) out->flags |= TLF_SINCERE;
     }

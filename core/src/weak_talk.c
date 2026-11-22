@@ -25,6 +25,8 @@ WEAK uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)
     return 0;
 }
 
+WEAK const uint8_t *plat_talk_image(void) { return NULL; }
+
 WEAK int talk_text_hd(void)
 {
     return 0;

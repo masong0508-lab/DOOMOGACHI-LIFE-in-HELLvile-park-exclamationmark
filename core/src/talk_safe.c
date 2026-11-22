@@ -177,29 +177,35 @@ uint64_t talk_safe_hash(const char *word)
     return fnv64(&h, s, n);
 }
 
-int talk_safe_hate_word(const char *word, int fuzzy)
+static int hate_word(const SafHdr *h, const char *word, int fuzzy)
 {
-    SafHdr h;
     char s[TALK_TOK_LEN * 2], d[TALK_TOK_LEN * 2];
+    uint64_t hash;
     int n, i;
-    if (!word || !saf_hdr(&h)) return 0;
     n = squeeze(word, s, (int)sizeof s);
     if (n < 3) return 0;
-    if (in_set(h.exact_off, h.nexact, fnv64(&h, s, n))) return 1;
+    hash = fnv64(h, s, n);
+    if (in_set(h->exact_off, h->nexact, hash)) return 1;
     /* edit distance 1 after the first letter (only unknown words reach here):
      * a letter added to a listed word of 4+ letters (a typo that breaks a
      * double letter squeezes to this); a letter left out, changed or two
      * swapped in a listed word of 5+ letters (the deletion hashes hold every
      * one-letter deletion of those, after the first) */
     if (!fuzzy || n < 4) return 0;
-    if (in_set(h.del_off, h.ndel, fnv64(&h, s, n))) return 1;                 /* a letter left out (4+ letters) */
+    if (in_set(h->del_off, h->ndel, hash)) return 1;                         /* a letter left out (4+ letters) */
     for (i = 1; i < n; i++) {
         memcpy(d, s, (size_t)i);
         memcpy(d + i, s + i + 1, (size_t)(n - i));
-        if (n - 1 >= 4 && in_set(h.exact_off, h.nexact, fnv64(&h, d, n - 1))) return 1;  /* one added */
-        if (n >= 5 && in_set(h.del_off, h.ndel, fnv64(&h, d, n - 1))) return 1;          /* one changed, or two swapped */
+        if (n - 1 >= 4 && in_set(h->exact_off, h->nexact, fnv64(h, d, n - 1))) return 1;  /* one added */
+        if (n >= 5 && in_set(h->del_off, h->ndel, fnv64(h, d, n - 1))) return 1;          /* one changed, or two swapped */
     }
     return 0;
+}
+
+int talk_safe_hate_word(const char *word, int fuzzy)
+{
+    SafHdr h;
+    return word && saf_hdr(&h) && hate_word(&h, word, fuzzy);
 }
 
 /* ---- S1: typed input --------------------------------------------------- */
@@ -419,12 +425,31 @@ uint32_t talk_safe_lint_hits(void) { return lint_hits; }
 
 static int lint_fail(int r) { lint_hits++; return r; }
 
+/* A matching two-byte prefix must also be present in the normalized line.
+ * Hash collisions keep extra rules in the scan and cannot rule out matches. */
+static unsigned lint_pair(char a, char b)
+{
+    return ((33u * (uint8_t)a) ^ (uint8_t)b) & 255u;
+}
+
+static void lint_pairs(uint8_t pairs[32], const char *line)
+{
+    memset(pairs, 0, 32);
+    for (; line[0] && line[1]; ++line) {
+        unsigned k = lint_pair(line[0], line[1]);
+        pairs[k >> 3] |= (uint8_t)(1u << (k & 7u));
+    }
+}
+
 /* strict (the probe): any register word is a problem, nothing is counted */
 static int lint_core(const char *line, const TalkAudience *aud, int *swears, int strict)
 {
     SafHdr h;
     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
-    int i, o = 0, nsw = 0, k;
+    uint8_t pairs[32], rules[4 * 8];
+    char strings[64];
+    uint32_t string_at = 0, string_size = 0;
+    int i, o = 0, nsw = 0, k, first = 0, next = 0;
     if (!line || !aud) return TL_NO_DB;
     if (!saf_hdr(&h)) return TL_NO_DB;
     /* the visible text: line codes ([R4], {.}) out, '/' a space, lower case */
@@ -437,23 +462,55 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
         v[o++] = c;
     }
     v[o] = 0;
+    lint_pairs(pairs, v);
     for (k = 0; k < (int)h.nreg; k++) {
-        uint8_t r[8];
+        const uint8_t *r;
         char w[48];
-        uint32_t so;
-        int n, len = 0;
-        if (!talk_db_read(TB_SAFETY, h.reg_off + 8u * (uint32_t)k, r, 8)) return TL_NO_DB;
+        const char *s;
+        uint32_t so, len, available;
+        int n;
+        if (k == next) {
+            int batch = DOOMO_MIN(4, (int)h.nreg - k);
+            uint32_t off = h.reg_off + 8u * (uint32_t)k;
+            /* Recover the original small read if prefetch crosses an
+             * unreadable stretch. Fail only when the requested rule fails. */
+            if (!talk_db_read(TB_SAFETY, off, rules, 8u * (uint32_t)batch)) {
+                if (batch == 1 || !talk_db_read(TB_SAFETY, off, rules, 8)) return TL_NO_DB;
+                batch = 1;
+            }
+            first = k;
+            next = k + batch;
+        }
+        r = rules + 8 * (k - first);
         so = le32(r);
         if (so >= h.str_len) return TL_NO_DB;
-        len = (int)(h.str_len - so < sizeof w - 1 ? h.str_len - so : sizeof w - 1);
-        if (!talk_db_read(TB_SAFETY, h.str_off + so, w, (uint32_t)len)) return TL_NO_DB;
+        available = h.str_len - so;
+        len = DOOMO_MIN(available, (uint32_t)sizeof w - 1);
+        if (so < string_at || so - string_at > string_size || len > string_size - (so - string_at)) {
+            uint32_t window = DOOMO_MIN(available, (uint32_t)sizeof strings);
+            if (!talk_db_read(TB_SAFETY, h.str_off + so, strings, window)) {
+                if (window == len || !talk_db_read(TB_SAFETY, h.str_off + so, strings, len)) return TL_NO_DB;
+                window = len;
+            }
+            string_at = so;
+            string_size = window;
+        }
+        s = strings + (so - string_at);
+        if (!(r[5] & SR_ALLOW) && len >= 2 && s[0] && s[1]) {
+            unsigned pair = lint_pair(s[0], s[1]);
+            if (!(pairs[pair >> 3] & (1u << (pair & 7u)))) continue;
+        }
+        memcpy(w, s, len);
         w[len] = 0;
         if (r[5] & SR_ALLOW) {
             /* blank the allowed phrase out of the text before the checks */
-            int p, l = (int)strlen(w);
-            for (p = 0; v[p]; p++)
-                if ((p == 0 || !wordch_at(v, p - 1)) && strncmp(v + p, w, (size_t)l) == 0 && !wordch_at(v, p + l))
+            int p, l = (int)strlen(w), blanked = 0;
+            for (p = 0; l && v[p]; p++)
+                if ((p == 0 || !wordch_at(v, p - 1)) && strncmp(v + p, w, (size_t)l) == 0 && !wordch_at(v, p + l)) {
                     memset(v + p, ' ', (size_t)l);
+                    blanked = 1;
+                }
+            if (blanked) lint_pairs(pairs, v);
             continue;
         }
         n = count_word(w, r[5] & SR_HEAD, r[5] & SR_TAIL, v);
@@ -476,7 +533,7 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
         while (v[i] && (wordc(v[i]) || v[i] == '-') && l < (int)sizeof word - 1) word[l++] = v[i++];
         while (v[i] && (wordc(v[i]) || v[i] == '-')) i++;
         word[l] = 0;
-        if (l && talk_safe_hate_word(word, 0)) return TL_HATE;
+        if (l && hate_word(&h, word, 0)) return TL_HATE;
     }
     if (talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) > TALK_BUBBLE_LINES) return TL_LENGTH;
     if (nsw) {

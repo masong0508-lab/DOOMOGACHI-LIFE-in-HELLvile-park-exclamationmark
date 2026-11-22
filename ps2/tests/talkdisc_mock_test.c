@@ -45,7 +45,7 @@ int main(void)
     uint8_t dst[96];
     int fd;
     if (!mkdtemp(dir) || chdir(dir) < 0) return 1;
-    for (i = 0; i < sizeof bank; i++) bank[i] = (uint8_t)(i * 73u + (i >> 3));
+    for (i = 0; i < sizeof bank; i++) bank[i] = (uint8_t)(i * 73u + (i >> 3) + i / BLOCK);
 
     ps2_talk_disc_init();
     CHECK((plat_features() & PLATF_TALK) == 0);
@@ -66,6 +66,22 @@ int main(void)
     CHECK(plat_talk_read(BANK_BYTES - 1, dst, 2) == 0);
     CHECK(plat_talk_read(BANK_BYTES, dst, 1) == 0);
     CHECK(plat_talk_read(0, NULL, 2) == 0);
+
+    /* Lookups alternate between table records and text in different
+     * sectors. Confirm that both hot sectors remain readable without
+     * another transfer, even for sectors with the same parity. */
+    verify_read(12, 16);
+    verify_read(2 * BLOCK + 12, 16);
+    fd = open(path, O_WRONLY);
+    CHECK(fd >= 0);
+    if (fd >= 0) {
+        CHECK(ftruncate(fd, 0) == 0);
+        CHECK(close(fd) == 0);
+    }
+    verify_read(12, 16);
+    verify_read(2 * BLOCK + 12, 16);
+    write_bank();
+    ps2_talk_disc_init();
 
     /* A short read must never re-use bytes from a different cached block. */
     fd = open(path, O_WRONLY);

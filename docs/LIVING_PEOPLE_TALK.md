@@ -460,14 +460,14 @@ loads keep the newest compatible records within the destination budget.
 
 | Platform | Outings per save | Approximate span at one outing per game week across the island | Maximum payload |
 |---|---:|---:|---:|
-| GBA | 112 | 2.3 years | 627 bytes |
+| GBA | 144 | 3 years | 787 bytes |
 | PS1 Talk profile | 384 | 8 years | 2,051 bytes |
-| Dreamcast | 768 | 16 years | 4,099 bytes |
-| PS2 and native | 1,536 | 32 years | 7,939 bytes |
+| Dreamcast | 960 | 20 years | 5,059 bytes |
+| PS2 and native | 1,584 | 33 years | 8,179 bytes |
 
 One game year is 336 days. The span depends on how often the town
 records outings. A daily-outing stress test retains an early trip for
-8 years in the PS1 profile, 16 on Dreamcast, and 32 on PS2. The archive
+8 years in the PS1 profile, 20 on Dreamcast, and 33 on PS2. The archive
 preserves samples of those older months as the island gets busier.
 Outing dates cover the first 195 game years.
 
@@ -483,6 +483,17 @@ record, and the simulation updates recall only during relevant actions.
 Moving the Talk cursor, changing speakers, and clicking a choice restart
 the pause timer. A resident can start a spontaneous exchange after a
 full quiet window. The conversation's limit on idle remarks still applies.
+
+The reply checker reads batches of register rules and skips a word scan
+when the checked line lacks the rule's opening character pair. The generator
+reuses the selected grammar alternative and reserves detailed traces only
+when requested. The GBA reads the bank directly from ROM. The PS2
+uses two disc sectors, enough to keep a rule and its text ready together.
+Across a 17,000-line host test with the PS2 reader, the validation results
+matched and sector reads fell from 7,700,974 to 132,077.
+On the same mGBA Talk run, the longest conversation frame fell from
+493 ms to 246 ms and the main-stack peak fell from 5,492 B to 4,720 B.
+The larger GBA archive leaves 27,036 B of EWRAM free.
 
 The activity itself runs on menu selection. It adds no per-resident
 data or 3D render overhead. The story choice uses callback 131 and the menu reserves
