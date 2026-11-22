@@ -325,6 +325,7 @@ static inline int combat_view_draw(const DoomoView3D *v, int still, uint32_t sal
 }
 /* tests: the next story fight (SCENE_COMBAT | COMBAT_ARG_CARD) shows its card again, as after power-on */
 void combat_scene_card_reset(void);
+void combat_scene_encounter(int cx, int cy, int pack);
 
 /* (perf, X5) the billboard cull + nearest-first order of combat_build_view: the AF_USED actors in front of the eye
  * (ex, ey) looking along (fx, fy) and within 30 cells, nearest first exactly as an insertion sort by fx_dist()

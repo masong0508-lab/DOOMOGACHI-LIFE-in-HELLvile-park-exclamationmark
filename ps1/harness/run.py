@@ -17,6 +17,7 @@ when a scene renders below 30 fps:
     scene NAME [ARG]   scene_set()   } run inside the game between two
     push NAME [ARG]    scene_push()  } frames through the g_hcmd mailbox
     expect-scene NAME  fail unless the top scene is NAME   (src/hcmd.c),
+    dismiss-dialog NAME [MAX]  press A only while dialogue is open, until NAME
     save N / load N / expect-save N  save_game() / load_game() / save_exists()
     type "text"        feed the open text entry, 1 char/frame (\n = OK)
     log TEXT           print TEXT on the game's TTY
@@ -285,6 +286,8 @@ def compile_script(lines, lockstep=True):
             cmds.append(hcmd(op, num(2, 0), arg))
         elif op == "expect-scene":
             cmds.append(hcmd(op, 0, arg))
+        elif op == "dismiss-dialog":
+            cmds.append("dismiss-dialog %s %d" % (arg, num(2, 8)))
         elif op in ("save", "load", "expect-save"):
             cmds.append(hcmd(op, num(1, 1)))
         elif op == "type":

@@ -585,7 +585,12 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
         case TEV_ULTIMATUM:                                  /* a big row: the bond falls (rel_adjust demotes to rival by itself) */
             if (ia >= 0 && ib >= 0 && alive_resident(ia) && alive_resident(ib)) {
                 int d = take_signed(&led_q(ia, ib)->d, -3, TALK_CAP_PAIR_DAY), pk = pair_index(e->a, e->b);
-                if (d) rel_adjust(ia, ib, d);
+                if (d) {
+                    rel_adjust(ia, ib, d);
+#ifdef DOOMO_HAS_TALK
+                    talk_event_note(TALK_EV_ARGUMENT, ia, ib, TALK_PLACE_UNKNOWN);
+#endif
+                }
                 if (pk >= 0) out->pair[pk] = (int8_t)(out->pair[pk] + d);
                 if (news_row < 0) news_row = ev;
             }
@@ -711,6 +716,15 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
          * bystander does not inherit someone else's insult, and a person
          * who walked out still remembers what they heard before leaving. */
         if (s->mem_to[k]) talk_mem_set_flags(id, s->mem_to[k]);
+#ifdef DOOMO_HAS_TALK
+        if (alive_resident(id)) {
+            int shift;
+            for (shift = 4; shift >= 0; shift -= 2) {
+                int tone = (s->memory_order[k] >> shift) & 3;
+                if (tone) talk_event_note(TALK_EV_PRAISE + tone - 1, id, s->conv.avatar, s->place);
+            }
+        }
+#endif
         /* Keep the topic they answered before the room moved on. */
         if (s->answered_topic[k])
             talk_mem_note_topic(id, s->answered_topic[k]);

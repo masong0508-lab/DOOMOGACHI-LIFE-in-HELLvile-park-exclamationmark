@@ -736,4 +736,193 @@ static const DoomoSaveExt visit_ext = {
     SAVE_EXT_TAG_TVIS, 2, visit_size, visit_write, visit_read, visit_reset, SAVE_EXT_MAX_TVIS
 };
 const DoomoSaveExt *const doomo_save_ext_tvis = &visit_ext;
+
+/* TEVT v1 is a count followed by six-byte rows, newest first. The key
+ * holds two 10-bit IDs, a five-bit place and a four-bit event kind. */
+#define TEVT_REC 6u
+static uint8_t event_rows[SAVE_TEVT_EVENTS][TEVT_REC];
+static uint8_t event_count;
+
+DOOMO_STATIC_ASSERT(SAVE_TEVT_WIRE_EVENTS <= 255 && SAVE_TEVT_EVENTS <= SAVE_TEVT_WIRE_EVENTS,
+                    event_count_fits);
+DOOMO_STATIC_ASSERT((int)ACT_COUNT < TALK_PLACE_NEST_PLAZA && TALK_PLACE_COUNT <= 32 && TALK_EV_COUNT <= 16,
+                    event_fields_fit);
+
+static uint32_t event_key(const uint8_t *row)
+{
+    return get16(row) | ((uint32_t)get16(row + 2) << 16);
+}
+
+static int event_kind(uint32_t key) { return (int)(key >> 25); }
+static int event_place(uint32_t key) { return (key >> 20) & 31u; }
+static int event_is_private(int kind) { return kind >= TALK_EV_PRAISE && kind <= TALK_EV_APOLOGY; }
+static int event_is_world(int kind) { return kind >= TALK_EV_BATTLE_LOST; }
+
+static int event_valid(uint32_t key)
+{
+    int a = key & NEWS_NONE, b = (key >> 10) & NEWS_NONE;
+    int kind = event_kind(key), place = event_place(key);
+    if (kind <= 0 || kind >= TALK_EV_COUNT) return 0;
+    if (event_is_world(kind))
+        return a == NEWS_NONE && b == NEWS_NONE && place >= TALK_PLACE_NEST_PLAZA &&
+               place < TALK_PLACE_COUNT && (kind != TALK_EV_RESCUED || place < TALK_PLACE_UNDERBELLY);
+    if (place > ACT_COUNT || a == b || !person_ok(a) || !person_ok(b)) return 0;
+    return event_is_private(kind) ? visit_guest_ok(a) : a < b && visit_guest_ok(a) && visit_guest_ok(b);
+}
+
+static int event_priority(int kind)
+{
+    if (kind >= TALK_EV_BATTLE_WON) return 3;
+    if (kind == TALK_EV_BATTLE_LOST || kind == TALK_EV_RECONCILED || kind == TALK_EV_FRIENDSHIP) return 2;
+    return event_is_private(kind) || kind == TALK_EV_FIGHT ? 1 : 0;
+}
+
+static int event_index(uint32_t key, uint32_t day)
+{
+    int i, one_off = event_kind(key) >= TALK_EV_BATTLE_WON;
+    for (i = 0; i < event_count; i++) {
+        uint32_t saved_day = get16(event_rows[i] + 4);
+        if (!one_off && saved_day < day) break;
+        if ((one_off || saved_day == day) && key == event_key(event_rows[i])) return i;
+    }
+    return -1;
+}
+
+/* Prefer older events of the lowest priority when the journal is full.
+ * When loading a larger console's journal, equal-priority rows keep the
+ * newer date. The four chapter rescues cannot be crowded out by spats. */
+static int event_room(int kind, int importing)
+{
+    int i, victim = -1, priority = event_priority(kind) + !importing;
+    if (event_count < SAVE_TEVT_EVENTS) return event_count++;
+    for (i = event_count - 1; i >= 0; i--) {
+        int old = event_priority(event_kind(event_key(event_rows[i])));
+        if (old < priority) { priority = old; victim = i; }
+        if (priority == 0) break;
+    }
+    return victim;
+}
+
+void talk_event_note(int kind, int person, int other, int place)
+{
+    uint32_t key, day = visit_today();
+    int at, pos = 0;
+    if (kind <= 0 || kind >= TALK_EV_COUNT || place < 0 || place >= TALK_PLACE_COUNT) return;
+    if (event_is_world(kind)) {
+        if (person != -1 || other != -1) return;
+        person = other = NEWS_NONE;
+    } else {
+        if (person < 0 || person >= (int)NEWS_NONE || other < 0 || other >= (int)NEWS_NONE) return;
+        if (!event_is_private(kind) && person > other) { int swap = person; person = other; other = swap; }
+    }
+    key = NEWS_IDS(person, other, place) | ((uint32_t)kind << 25);
+    if (!event_valid(key)) return;
+    at = event_index(key, day);
+    if (at >= 0 && kind >= TALK_EV_BATTLE_WON) return;
+    if (at < 0) at = event_room(kind, 0);
+    if (at < 0) return;
+    if (event_count > 1 && day < get16(event_rows[0] + 4)) {
+        memmove(event_rows + at, event_rows + at + 1, TEVT_REC * (unsigned)(event_count - at - 1));
+        at = event_count - 1;
+        while (pos < at && day < get16(event_rows[pos] + 4)) pos++;
+    }
+    memmove(event_rows + pos + 1, event_rows + pos, TEVT_REC * (unsigned)(at - pos));
+    put16(event_rows[pos], key & 0xFFFFu);
+    put16(event_rows[pos] + 2, key >> 16);
+    put16(event_rows[pos] + 4, day);
+}
+
+/* Return the other participant, or NEWS_NONE for a public record. */
+static int event_other(uint32_t key, int guest, int avatar)
+{
+    int a = key & NEWS_NONE, b = (key >> 10) & NEWS_NONE;
+    int kind = event_kind(key);
+    if (event_is_world(kind)) return guest == -1 ? (int)NEWS_NONE : -1;
+    if (event_is_private(kind)) return guest == a && avatar == b ? b : -1;
+    return guest == a ? b : guest == b ? a : -1;
+}
+
+int talk_event_page(int guest, int avatar, int offset, TalkMemoryEvent *page, int capacity)
+{
+    int i, count = 0;
+    if (guest != -1 && (!visit_guest_ok(guest) || !town_alive(guest))) return 0;
+    for (i = 0; i < event_count && count < capacity; i++) {
+        uint32_t key = event_key(event_rows[i]);
+        int other = event_other(key, guest, avatar);
+        if (other < 0) continue;
+        if (offset > 0) { offset--; continue; }
+        if (page) {
+            page[count].day = (uint16_t)get16(event_rows[i] + 4);
+            page[count].other = (uint16_t)other;
+            page[count].kind = (uint8_t)event_kind(key);
+            page[count].place = (uint8_t)event_place(key);
+        }
+        count++;
+    }
+    return count;
+}
+
+int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event)
+{
+    int i;
+    if (!event || (guest != -1 && (!visit_guest_ok(guest) || !town_alive(guest)))) return 0;
+    for (i = 0; i < event_count; i++) {
+        uint32_t key = event_key(event_rows[i]);
+        unsigned day = get16(event_rows[i] + 4);
+        if (day < event->day) break;
+        if (day == event->day && event_kind(key) == event->kind && event_place(key) == event->place &&
+            event_other(key, guest, avatar) == event->other) return 1;
+    }
+    return 0;
+}
+
+int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind)
+{
+    int i;
+    for (i = 0; i < event_count && get16(event_rows[i] + 4) >= event->day; i++) {
+        uint32_t key = event_key(event_rows[i]);
+        int row_kind = event_kind(key);
+        if (event_other(key, guest, avatar) != event->other) continue;
+        if (row_kind == event->kind && event_place(key) == event->place &&
+            get16(event_rows[i] + 4) == event->day) break;
+        if (row_kind == kind) return 1;
+    }
+    return 0;
+}
+
+static void event_reset(void) { event_count = 0; }
+static uint32_t event_size(void) { return event_count ? 1u + event_count * TEVT_REC : 0; }
+
+static uint32_t event_write(uint8_t *dst, uint32_t cap)
+{
+    uint32_t size = event_size();
+    if (!size || cap < size) return 0;
+    dst[0] = event_count;
+    memcpy(dst + 1, event_rows, size - 1);
+    return size;
+}
+
+static int event_read(const uint8_t *src, uint32_t len, uint16_t version)
+{
+    uint32_t i, last = visit_today();
+    event_reset();
+    if (version != 1 || !len || src[0] > SAVE_TEVT_WIRE_EVENTS || len != 1u + src[0] * TEVT_REC) return 0;
+    for (i = 0; i < src[0]; ++i) {
+        const uint8_t *row = src + 1 + i * TEVT_REC;
+        uint32_t key = event_key(row), day = get16(row + 4);
+        int at;
+        if (day > last || !event_valid(key) || event_index(key, day) >= 0) continue;
+        last = day;
+        at = event_room(event_kind(key), 1);
+        if (at < 0) continue;
+        memmove(event_rows + at, event_rows + at + 1, TEVT_REC * (unsigned)(event_count - at - 1));
+        memcpy(event_rows[event_count - 1], row, TEVT_REC);
+    }
+    return 1;
+}
+
+static const DoomoSaveExt event_ext = {
+    SAVE_EXT_TAG_TEVT, 1, event_size, event_write, event_read, event_reset, SAVE_EXT_MAX_TEVT
+};
+const DoomoSaveExt *const doomo_save_ext_tevt = &event_ext;
 #endif /* DOOMO_HAS_TALK */

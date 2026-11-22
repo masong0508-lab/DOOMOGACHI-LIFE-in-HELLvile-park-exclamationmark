@@ -9,6 +9,7 @@
 #include "../src/story_int.h"
 #include "../src/story_ch34.h"
 #include "../src/overworld_int.h"
+#include "../src/combat_int.h"
 #include "../src/ui_internal.h"
 #include "doomo/beat.h"
 #include "doomo/ending.h"
@@ -16,6 +17,7 @@
 #include "doomo/unlock_ids.h"
 #include "doomo/home.h"
 #include "doomo/house_api.h"
+#include "doomo/talk.h"
 
 static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
 static void frames(int n, uint32_t b) { while (n-- > 0) frame(b); }
@@ -181,6 +183,7 @@ TEST(story_ch34_every_episode_lands_consistent_and_reachable)
 TEST(story_ch34_playthrough_through_the_new_scripts)
 {
     int k;
+    TalkMemoryEvent events[12];
     story_town(4343);
     doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T1 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T1 & 7));
     doomo_town.unlocks[UL_LIFE_HOUSEHOLD_T2 >> 3] &= (uint8_t)~(1u << (UL_LIFE_HOUSEHOLD_T2 & 7));
@@ -203,6 +206,17 @@ TEST(story_ch34_playthrough_through_the_new_scripts)
     CHECK(story_flag(SF_HOUSE_PLATED));
     CHECK(story_flag(SF_C3_EXO0) && story_flag(SF_C3_EXO0 + 1));
     CHECK_EQ(story_stry()->nests & 15, 15);
+    {
+        unsigned won = 0, rescued = 0;
+        int count = talk_event_page(-1, DOOMO_PLAYER_ID, 0, events, DOOMO_COUNTOF(events));
+        for (k = 0; k < count; k++) {
+            unsigned location = 1u << (events[k].place - TALK_PLACE_NEST_PLAZA);
+            if (events[k].kind == TALK_EV_BATTLE_WON) won |= location;
+            if (events[k].kind == TALK_EV_RESCUED) rescued |= location;
+        }
+        CHECK_EQ(won, 31);        /* four surface battles and the Underbelly */
+        CHECK_EQ(rescued, 15);
+    }
     CHECK(story_flag(SF_C4_SOOTKIN) && story_flag(SF_C4_LADY_SMOG) && story_flag(SF_C4_RIVET_HOME));
     CHECK(story_flag(SF_WISP_AWAKE) && story_flag(SF_VAPULA_PLUSH) && story_flag(SF_SUITCASE_OPEN));
     CHECK(story_flag(SF_MASCOTTY_HEAD_OFF) && story_flag(SF_FOUNTAIN_TWOWAY));
@@ -214,6 +228,38 @@ TEST(story_ch34_playthrough_through_the_new_scripts)
     CHECK(scene_top() == &SCENE_STORY);
     CHECK(!story_talking());
     story_debug_autowin(0);
+}
+
+TEST(story_ch34_defeat_is_kept_when_the_player_retries)
+{
+    TalkMemoryEvent event;
+    int demons;
+    fix16 x, y;
+    story_town(4343);
+    story_debug_autowin(0);
+    story_debug_jump(0, BEAT_EP3_3);
+    script_nest_encounter(2);
+    CHECK(scene_top() == &SCENE_COMBAT);
+    demons = combat_demons_alive();
+    CHECK(demons > 0);
+    x = doomo_player.x;
+    y = doomo_player.y;
+    CHECK_EQ(combat_set_result_quit(), -2);
+    CHECK_EQ(talk_event_page(-1, DOOMO_PLAYER_ID, 0, NULL, 1), 0);
+    frames(20, 0);
+    press(BTN_A);                  /* close the first-combat control card */
+    doomo_player.hp = 0;
+    frames(60, 0);
+    CHECK_EQ(combat_finished(), -1);
+    frames(20, 0);
+    press(BTN_A);                  /* Try again */
+    CHECK_EQ(combat_last_result(), 0);
+    CHECK_EQ(combat_demons_alive(), demons);
+    CHECK_EQ(doomo_player.x, x);
+    CHECK_EQ(doomo_player.y, y);
+    CHECK_EQ(talk_event_page(-1, DOOMO_PLAYER_ID, 0, &event, 1), 1);
+    CHECK_EQ(event.kind, TALK_EV_BATTLE_LOST);
+    CHECK_EQ(event.place, TALK_PLACE_NEST_FUN_FAIR);
 }
 
 TEST(story_ch34_new_game_plus_ending_follows_the_suitcase)

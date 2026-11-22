@@ -27,7 +27,7 @@ Codec (the core's save codec, save.c): control byte c < 0x80: c+1 literal
 bytes follow; c >= 0x80: copy (c & 0x7F) + 3 bytes from distance d (u16
 LE that follows), 1 <= d <= bytes already produced in the frame.
 
-usage: packart.py core/gen/art_data.c OUT_DIR
+usage: packart.py core/gen/art_data.c OUT_DIR [--sprites-spu]
 Stdlib only, deterministic output.
 """
 import os
@@ -185,7 +185,8 @@ def c_bytes(data, indent="    "):
 
 
 def main(argv):
-    if len(argv) != 3:
+    sprites_spu = argv[3:] == ["--sprites-spu"]
+    if len(argv) != 3 and not sprites_spu:
         print(__doc__)
         return 2
     src, out_dir = argv[1], argv[2]
@@ -244,9 +245,28 @@ def main(argv):
     o.append("const uint32_t ps1_pack_spr_ofs[%d] = {" % len(ofs))
     o.append("    " + ",".join(str(v) for v in ofs))
     o.append("};")
-    o.append("const uint8_t ps1_pack_spr[%d] = {" % ofs[-1])
-    o.append(c_bytes(b"".join(blobs)))
-    o.append("};")
+    sprites = b"".join(blobs)
+    if sprites_spu:
+        # CD sectors and SPU transfers both require padding. Offsets still
+        # describe the unpadded compressed frames.
+        sector = 2048
+        padded = (len(sprites) + sector - 1) & ~(sector - 1)
+        checksum = 2166136261
+        for byte in sprites:
+            checksum = ((checksum ^ byte) * 16777619) & 0xffffffff
+        with open(os.path.join(out_dir, "SPRITES.BIN"), "wb") as f:
+            f.write(sprites)
+            f.write(bytes(padded - len(sprites)))
+        transfer_max = (max(map(len, blobs)) + 7 + 63) & ~63
+        o.append('#include "ps1.h"')
+        o.append("typedef char packed_sprites_fit_in_spu[%du <= SPU_PARTS_BASE - SPU_SPRITES_BASE ? 1 : -1];" % padded)
+        o.append("const uint32_t ps1_pack_spr_hash = 0x%08xu;" % checksum)
+        o.append("const uint32_t ps1_pack_spr_lz_cap = %du;" % transfer_max)
+        o.append("uint8_t ps1_pack_spr_lz[%d] __attribute__((aligned(4)));" % transfer_max)
+    else:
+        o.append("const uint8_t ps1_pack_spr[%d] = {" % ofs[-1])
+        o.append(c_bytes(sprites))
+        o.append("};")
     o.append("/* one decoded sprite frame (the biggest is %d bytes) */" % biggest)
     o.append("uint8_t ps1_pack_spr_buf[%d] __attribute__((aligned(4)));" % ((biggest + 3) & ~3))
     o.append("")

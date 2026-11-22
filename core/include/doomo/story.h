@@ -34,6 +34,9 @@
 int  story_flag(int f);
 void story_set_flag(int f, int on);
 void story_new_game(void);           /* after the player made their citizen */
+#ifdef DOOMO_HAS_TALK
+void story_record_combat_defeat(void); /* the combat result is final, even if the player retries */
+#endif
 /* Called by the overworld when the player presses A on an NPC / object or
  * steps on a CELL_TRIGGER cell with `tag`. */
 void story_interact_npc(int resident_id);

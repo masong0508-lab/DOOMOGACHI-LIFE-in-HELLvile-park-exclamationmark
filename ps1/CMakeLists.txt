@@ -50,24 +50,30 @@ file(GLOB PS1_SRCS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
                                      ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s)
 list(SORT PS1_SRCS)
 
-# Talk on PS1: compile a language bank once and put it in the ISO root.
-# PS1 stores only one CD sector in RAM; the ~MB bank must never become EXE
-# data or a 2 MB main-RAM allocation. Engine-test discs retain their
-# minimal launch footprint; this feature is for the regular game disc.
+# Compile the Talk bank into the disc. Two RAM sectors and an SPU cache
+# back the reader. This build option applies only to the game disc.
 set(DOOMO_PS1_TALK_ON OFF)
 set(DOOMO_ISO_TALK "")
 set(DOOMO_TALK_DEP "")
 if(DOOMO_CORE AND DOOMO_PS1_TALK AND NOT DOOMO_ENGINE_TEST)
+    if(NOT DOOMO_PACK_ART OR NOT DOOMO_OVERLAYS)
+        message(FATAL_ERROR "PS1 Talk requires packed art and scene overlays to fit in 2 MB")
+    endif()
     set(DOOMO_PS1_TALK_ON ON)
     file(GLOB_RECURSE DOOMO_TALK_DATA CONFIGURE_DEPENDS ${CORE_DIR}/data/talk/*)
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
         COMMAND ${Python3_EXECUTABLE} ${CORE_DIR}/tools/talkc.py --bin --lang en
-                --out ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
+                --out ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN_FULL.BIN
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/talk_controller.py
+                ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN_FULL.BIN ${CORE_DIR}/src/talk_scene.c
+                ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
+        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN_FULL.BIN
         DEPENDS ${DOOMO_TALK_DATA} ${CORE_DIR}/tools/talkc.py
                 ${CORE_DIR}/tools/talkc_parse.py ${CORE_DIR}/tools/talkc_safe.py
                 ${CORE_DIR}/tools/talkc_gen.py ${CORE_DIR}/include/doomo/talk.h
                 ${CORE_DIR}/gen/txt_dict.c ${CORE_DIR}/data/story/register.tsv
+                ${CMAKE_CURRENT_SOURCE_DIR}/tools/talk_controller.py ${CORE_DIR}/src/talk_scene.c
         COMMENT "Preparing PS1 disc-streamed Talk bank (TALK_EN.BIN)"
         VERBATIM)
     set(DOOMO_TALK_DEP ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN)
@@ -186,14 +192,22 @@ message(STATUS "doomogachi: ${_ncore} core sources")
 # LZ-compressed (~80 KB). art_data.c is compiled without those two arrays,
 # whose symbols become virtual addresses (--defsym below, outside RAM).
 set(DOOMO_PACKED_ART OFF)
+set(DOOMO_SPRITES_DEP "")
+set(DOOMO_ISO_SPRITES "")
 if(DOOMO_PACK_ART AND DOOMO_CORE AND EXISTS ${CORE_DIR}/gen/art_data.c)
 	set(DOOMO_PACKED_ART ON)
 	list(FILTER CORE_SRCS EXCLUDE REGEX "/gen/art_data\\.c$")
 	set(_pack_out ${CMAKE_CURRENT_BINARY_DIR}/packed)
+	set(_pack_args "")
+	if(DOOMO_PS1_TALK_ON)
+		set(_pack_args --sprites-spu)
+		set(DOOMO_SPRITES_DEP ${_pack_out}/SPRITES.BIN)
+		set(DOOMO_ISO_SPRITES "<file name=\"SPRITES.BIN\" type=\"data\" source=\"packed/SPRITES.BIN\" />")
+	endif()
 	add_custom_command(
-		OUTPUT  ${_pack_out}/art_data_ps1.c ${_pack_out}/packed_art.c
+		OUTPUT  ${_pack_out}/art_data_ps1.c ${_pack_out}/packed_art.c ${DOOMO_SPRITES_DEP}
 		COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/packart.py
-		        ${CORE_DIR}/gen/art_data.c ${_pack_out}
+		        ${CORE_DIR}/gen/art_data.c ${_pack_out} ${_pack_args}
 		DEPENDS ${CORE_DIR}/gen/art_data.c ${CMAKE_CURRENT_SOURCE_DIR}/tools/packart.py
 		COMMENT "Packing textures and skies (tools/packart.py)"
 		VERBATIM)
@@ -290,7 +304,7 @@ foreach(_t doomo_objs ${DOOMO_EXE_NAME})
 	target_compile_options(${_t} PRIVATE -O2 -Wall -Wextra)
 	target_compile_definitions(${_t} PRIVATE DOOMO_PLATFORM_PS1=1)
     if(DOOMO_PS1_TALK_ON)
-        target_compile_definitions(${_t} PRIVATE DOOMO_HAS_TALK=1)
+        target_compile_definitions(${_t} PRIVATE DOOMO_HAS_TALK=1 TALK_NO_UNK=1 DOOMO_SPRITES_SPU=1)
     endif()
 	# CR10: the part-script VM is built in (it was off while the PS1 had no room: PS1-RAM landed). The part scripts
 	# and the packed part icons are RAW bytes in SPU RAM (PARTS.BIN, src/partstore.c, core/src/part_lru.c), a script
@@ -408,7 +422,8 @@ add_custom_command(
 	        -c ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue
 	        ${DOOMO_ISO_XML}
 	DEPENDS ${DOOMO_EXE_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/system.cnf
-	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_TALK_DEP} ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
+	        ${CMAKE_CURRENT_BINARY_DIR}/TEXT.BIN ${DOOMO_SFX_DEP} ${DOOMO_TALK_DEP} ${DOOMO_SPRITES_DEP}
+	        ${DOOMO_PACK_FILE} ${DOOMO_INTRO_DEP}
 	        ${CMAKE_CURRENT_SOURCE_DIR}/iso.xml
 	        ${CMAKE_CURRENT_SOURCE_DIR}/README.md
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

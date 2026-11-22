@@ -29,6 +29,7 @@
 --                     expect-scene, save, load, expect-save, type, log
 --                     (HEX = string argument); waits for the reply,
 --                     failures are logged as "HARNESS: FAIL: ..."
+--   dismiss-dialog SCENE MAX press Cross while DIALOG is active, then verify SCENE
 --   mark TEXT         log a marker line (run.py: no-stubs checkpoints)
 --   quit              exit the emulator (also done after the last command)
 -- Legacy (no mailbox): `wait N` (vsyncs), `waitframe N` (absolute loop
@@ -245,18 +246,25 @@ local function step()
       prof = nil
     elseif c.op == 'mark' then
       log('mark ' .. c.arg)
-    elseif c.op == 'hcmd' then
-      local name, iarg, hex = c.arg:match('^(%S+)%s+(%-?%d+)%s*(%x*)$')
+    elseif c.op == 'hcmd' or c.op == 'dismiss-dialog' then
+      local name, iarg, arg, presses
+      if c.op == 'dismiss-dialog' then
+        arg, presses = c.arg:match('^(%S+)%s+(%d+)$')
+        name, iarg, presses = 'expect-scene', 0, tonumber(presses)
+      else
+        local hex
+        name, iarg, hex = c.arg:match('^(%S+)%s+(%-?%d+)%s*(%x*)$')
+        arg = unhex(hex or '')
+      end
       if not mailbox_ready() then
         log('FAIL: hcmd ' .. (name or c.arg) .. ': no g_hcmd mailbox in this build')
       else
-        local arg = unhex(hex or '')
         hput(H_CMD, 16, name)
         hput(H_ARG, 64, arg)
         ffi.cast('int32_t*', ram(hcmd_addr + H_IARG))[0] = tonumber(iarg)
         local req = hu32(H_REQ)[0] + 1
         hu32(H_REQ)[0] = req
-        pending = { name = name, arg = arg, req = req, since = vsyncs }
+        pending = { name = name, arg = arg, req = req, since = vsyncs, presses = presses }
         return true
       end
     elseif c.op == 'quit' then
@@ -370,8 +378,16 @@ local function on_vsync()
     end
     local ok = ffi.cast('int32_t*', ram(hcmd_addr + H_STATUS))[0] ~= 0
     local shown = pending.arg:gsub('\n', '\\n'):gsub('[%c]', '?')
-    log(string.format('%shcmd %s %s -> %s', ok and '' or 'FAIL: ', pending.name, shown,
-                      hstr(H_REPLY, 64)))
+    local reply = hstr(H_REPLY, 64)
+    if not ok and pending.presses and pending.presses > 0 and reply == 'top DIALOG' then
+      table.insert(cmds, idx, { op = 'dismiss-dialog', arg = pending.arg .. ' ' .. (pending.presses - 1) })
+      table.insert(cmds, idx, { op = 'waitf', arg = '1' })
+      table.insert(cmds, idx, { op = 'up', arg = 'CROSS' })
+      table.insert(cmds, idx, { op = 'waitf', arg = '1' })
+      table.insert(cmds, idx, { op = 'down', arg = 'CROSS' })
+    else
+      log(string.format('%shcmd %s %s -> %s', ok and '' or 'FAIL: ', pending.name, shown, reply))
+    end
     pending = nil
   elseif lock then
     -- wait until the game stopped at the frame the script is at

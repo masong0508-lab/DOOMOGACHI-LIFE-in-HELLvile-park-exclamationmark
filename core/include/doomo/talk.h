@@ -790,6 +790,27 @@ int talk_visit_page(int guest, int avatar, int minor, int offset, TalkVisit *pag
 int talk_visit_has(int guest, int avatar, int minor, const TalkVisit *visit);
 enum { TALK_RECALL_CLEAR, TALK_RECALL_HAZY, TALK_RECALL_LAPSE };
 int talk_visit_recall(int guest, int cue);
+/* Journal wire IDs. Append new kinds and story places without renumbering. */
+enum {
+    TALK_EV_ARGUMENT = 1, TALK_EV_FIGHT, TALK_EV_RECONCILED,
+    TALK_EV_PRAISE, TALK_EV_HURT, TALK_EV_APOLOGY, TALK_EV_FRIENDSHIP,
+    TALK_EV_BATTLE_LOST, TALK_EV_BATTLE_WON, TALK_EV_RESCUED, TALK_EV_COUNT
+};
+enum {
+    TALK_PLACE_UNKNOWN, TALK_PLACE_HOME,     /* activities use ACT_* + 1 */
+    TALK_PLACE_NEST_PLAZA = 16, TALK_PLACE_NEST_BEACH, TALK_PLACE_NEST_FUN_FAIR,
+    TALK_PLACE_NEST_GRAVEYARD, TALK_PLACE_UNDERBELLY, TALK_PLACE_COUNT
+};
+typedef struct TalkMemoryEvent {
+    uint16_t day, other;
+    uint8_t kind, place;
+} TalkMemoryEvent;
+/* Personal events take real participant IDs. Island milestones use -1, -1.
+ * Pass guest = -1 for island history. A null page only counts matches. */
+void talk_event_note(int kind, int person, int other, int place);
+int talk_event_page(int guest, int avatar, int offset, TalkMemoryEvent *page, int capacity);
+int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event);
+int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte
@@ -1214,6 +1235,8 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     TalkEvent ev[TALK_EVENTS_MAX];
     TalkLine  line[TALK_EXCHANGE_MAX];       /* the lines of the current exchange      */
     TalkUtter in;                   /* the player's utterance (after the gate)        */
+    uint8_t   place;                /* journal site, zero when the caller has no physical location */
+    uint8_t   memory_order[TALK_PARTS_MAX]; /* up to three distinct 2-bit tones, newest in low bits */
 } TalkState;
 
 /* What a session did, for T6-OUT (talk_outcome.c applies it to the sim with

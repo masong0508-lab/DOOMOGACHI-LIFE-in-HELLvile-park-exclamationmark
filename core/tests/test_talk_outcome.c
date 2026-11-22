@@ -399,10 +399,12 @@ TEST(talk_outcome_social_memory_is_personal_not_room_wide)
     TalkState s;
     TalkOutcome o;
     const TalkMem *m;
+    TalkMemoryEvent event[2];
     premade_town();
     CHECK(open_db());
 
     talk_outcome_begin(&s, HERO, ids, 2, 7031u);
+    s.place = TALK_PLACE_HOME;
     play(&s, TA_COMPLIMENT, TC_NONE, 0);
     CHECK(s.mem_to[0] & TMF_COMPLIMENTED);
     CHECK_EQ(s.mem_to[1], 0);
@@ -411,6 +413,10 @@ TEST(talk_outcome_social_memory_is_personal_not_room_wide)
     CHECK(m != NULL && (m->flags & TMF_COMPLIMENTED));
     m = talk_mem_find(ID_RIVET);
     CHECK(m == NULL || !(m->flags & TMF_COMPLIMENTED));
+    CHECK_EQ(talk_event_page(ID_NANA, HERO, 0, event, 2), 1);
+    CHECK_EQ(event[0].kind, TALK_EV_PRAISE);
+    CHECK_EQ(event[0].place, TALK_PLACE_HOME);
+    CHECK_EQ(talk_event_page(ID_RIVET, HERO, 0, event, 2), 0);
 
     talk_outcome_begin(&s, HERO, ids, 2, 7032u);
     play(&s, TA_INSULT, TC_NONE, 1);
@@ -419,6 +425,18 @@ TEST(talk_outcome_social_memory_is_personal_not_room_wide)
     talk_outcome_end(&s, &o, NULL);
     m = talk_mem_find(ID_RIVET);
     CHECK(m != NULL && (m->flags & TMF_INSULTED));
+    CHECK_EQ(talk_event_page(ID_RIVET, HERO, 0, event, 2), 1);
+    CHECK_EQ(event[0].kind, TALK_EV_HURT);
+    CHECK_EQ(event[0].place, TALK_PLACE_UNKNOWN);
+
+    doomo_town.day++;
+    talk_outcome_begin(&s, HERO, ids, 2, 7035u);
+    play(&s, TA_APOLOGIZE, TC_NONE, 1);
+    talk_outcome_end(&s, &o, NULL);
+    CHECK_EQ(talk_event_page(ID_RIVET, HERO, 0, event, 2), 2);
+    CHECK_EQ(event[0].kind, TALK_EV_APOLOGY);
+    CHECK_EQ(event[1].kind, TALK_EV_HURT);
+    CHECK_EQ(event[0].day - event[1].day, 1);
 
     /* Speaking to everyone is different from addressing one listener. */
     talk_outcome_begin(&s, HERO, ids, 2, 7033u);

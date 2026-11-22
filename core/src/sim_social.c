@@ -20,6 +20,15 @@
  */
 #include "doomo/part_meta.h"
 #include "sim_int.h"
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+
+static int memory_venue(const DoomoResident *a, const DoomoResident *b)
+{
+    int act = a->activity;
+    return act == b->activity && act >= ACT_PARK && act <= ACT_VAPE_SHOP ? act + 1 : TALK_PLACE_UNKNOWN;
+}
+#endif
 
 static int is_taken(int id) { return bit_get(sim_s.taken, id); }
 
@@ -429,6 +438,14 @@ const char *sim_make_up(int a, int b)
     k = rel_kind(a, b);
     c = sim_compat(a, b);
     if (k < 0) return "We don't even know each other!";
+#ifdef DOOMO_HAS_TALK
+    {
+        const DoomoProblem *pa = sim_problem(sim_problem_find(a, PROB_FIGHT));
+        const DoomoProblem *pb = sim_problem(sim_problem_find(b, PROB_FIGHT));
+        if (k == REL_NEMESIS || k == REL_RIVAL || (pa && pa->other == b) || (pb && pb->other == a))
+            talk_event_note(TALK_EV_RECONCILED, a, b, TALK_PLACE_UNKNOWN);
+    }
+#endif
     if ((pi = sim_problem_find(a, PROB_FIGHT)) >= 0) sim_problem_remove(pi);
     if ((pi = sim_problem_find(b, PROB_FIGHT)) >= 0) sim_problem_remove(pi);
     if (sim_transient(a) == TR_ANGRY) sim_set_transient(a, TR_NONE, 0);
@@ -584,6 +601,9 @@ static void romance_step(DoomoEdge *e, int a, int b, DoomoResident *ra, DoomoRes
         sim_set_transient(b, TR_SAD, 4);
         if (sim_s.rough_day < 2) {
             sim_s.rough_day++;
+#ifdef DOOMO_HAS_TALK
+            talk_event_note(TALK_EV_FIGHT, a, b, memory_venue(town_res(a), town_res(b)));
+#endif
             sim_news_rec(NT_BIG_FIGHT, 0, NEWS_IDS(a, b, NEWS_NONE));
         }
         return;
@@ -688,10 +708,19 @@ static int visit_edge(int index)
             sim_stat_add(rb, STAT_HAPPY, -6);
             sim_s.stats.arguments++;
             k = rel_kind(a, b);
-            if (rel_value(a, b) < 25 && sim_problem_find(a, -1) < 0 && sim_chance(50))
-                sim_problem_raise(a, PROB_FIGHT, b, 0);
+            if (rel_value(a, b) < 25 && sim_problem_find(a, -1) < 0 && sim_chance(50)) {
+                int problem = sim_problem_raise(a, PROB_FIGHT, b, 0);
+#ifdef DOOMO_HAS_TALK
+                if (problem >= 0) talk_event_note(TALK_EV_ARGUMENT, a, b, memory_venue(ra, rb));
+#else
+                (void)problem;
+#endif
+            }
             if (k != before && (k == REL_RIVAL || k == REL_NEMESIS) && sim_s.args_hour < 2) {
                 sim_s.args_hour++;
+#ifdef DOOMO_HAS_TALK
+                talk_event_note(TALK_EV_ARGUMENT, a, b, memory_venue(ra, rb));
+#endif
                 if (k == REL_NEMESIS)
                     sim_news_rec(NT_NEMESES, 0, NEWS_IDS(a, b, NEWS_NONE));
                 else
@@ -705,6 +734,10 @@ static int visit_edge(int index)
             sim_stat_add(ra, STAT_SOCIAL, 3);
             sim_stat_add(rb, STAT_SOCIAL, 3);
             k = rel_kind(a, b);
+#ifdef DOOMO_HAS_TALK
+            if (k == REL_BEST_FRIEND && before != REL_BEST_FRIEND)
+                talk_event_note(TALK_EV_FRIENDSHIP, a, b, memory_venue(ra, rb));
+#endif
             if (k == REL_BEST_FRIEND && before != REL_BEST_FRIEND && sim_chance(40)) {
                 if (cross(a, b))
                     sim_news_rec(NT_BFF_CROSS, 0, NEWS_IDS(a, b, NEWS_NONE));

@@ -16,6 +16,9 @@
 #include <psxetc.h>
 #include <hwregs_c.h>
 #include "ps1.h"
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 void plat_begin_frame(void)
 {
@@ -109,6 +112,9 @@ static void plat_init_hw(void)
 #if defined(DOOMO_HAVE_CORE) && defined(DOOMO_PARTS_SPU) && !defined(DOOMO_ENGINE_TEST)
     partstore_boot();         /* CR10: PARTS.BIN (the part scripts) -> SPU RAM above the effects */
 #endif
+#ifdef DOOMO_SPRITES_SPU
+    packart_boot();
+#endif
     dbg("ps1: hardware ready (%s)\n", plat_name());
 }
 
@@ -133,6 +139,9 @@ int main(void)
         }
     }
     core_doomo_init();
+#ifdef DOOMO_HAS_TALK
+    talk_scene_slice(1);
+#endif
     core_input_feel(1);      /* eased turning, trigger buffer, aim friction */
     /* debug mode: hold SELECT during boot -> cutscene viewer (cutview.c) */
     if (pad_read() & BTN_SELECT)

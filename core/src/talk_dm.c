@@ -1185,14 +1185,23 @@ static void mem_acts(TalkState *s, int act, int to)
     unsigned flag = act == TA_COMPLIMENT || act == TA_PRAISE_OTHER ? TMF_COMPLIMENTED :
                     act == TA_INSULT || act == TA_MOCK ? TMF_INSULTED :
                     act == TA_PROMISE ? TMF_PROMISED : 0;
-    if (!flag) return;
+    unsigned tone = flag == TMF_COMPLIMENTED ? 1 : flag == TMF_INSULTED ? 2 : act == TA_APOLOGIZE ? 3 : 0;
+    if (!flag && !tone) return;
     s->mem_earned |= (uint8_t)flag; /* legacy aggregate summary */
     /* A directed act belongs to its actual listener, NOT the entire room.
      * Broadcast acts legitimately affect every present, non-pet resident.
      * This is bounded by four participants; no per-frame work or save change. */
-    for (k = 0; k < s->nparts; k++)
-        if (talker(s, k) && (to < 0 || to == k))
-            s->mem_to[k] |= (uint8_t)flag;
+    for (k = 0; k < s->nparts; k++) {
+        unsigned prior, packed = tone, shift = 2;
+        if (!talker(s, k) || (to >= 0 && to != k)) continue;
+        s->mem_to[k] |= (uint8_t)flag;
+        if (!tone) continue;
+        for (prior = s->memory_order[k]; prior; prior >>= 2) {
+            unsigned older = prior & 3u;
+            if (older != tone) { packed |= older << shift; shift += 2; }
+        }
+        s->memory_order[k] = (uint8_t)packed;
+    }
 }
 
 /* K-11: TDF_CARE mirrors the turns of care still to come */

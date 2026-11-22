@@ -471,8 +471,30 @@ records outings. A daily-outing stress test retains an early trip for
 preserves samples of those older months as the island gets busier.
 Outing dates cover the first 195 game years.
 
+**Options > Our history > Personal memories** lists dated experiences from
+the selected resident's life. Serious arguments and big fights can be
+followed by making peace. Becoming best friends is a separate milestone.
+Compliments, hurtful remarks and apologies reflect who actually received
+them. Private exchanges stay with the specific avatar who spoke.
+The journal includes a place when the game recorded one, such as a café
+argument or a conversation during a home visit.
+
+**Island history** tracks the Chapter 3 nest battles, defeats and rescues,
+and the Underbelly battle. Residents can discuss these from the public
+journal even when they were elsewhere. The journal keeps a defeat when
+you try the battle again. Clearing the surface fight and freeing the people behind the nest
+are distinct events. The journal shows the recorded island date for each.
+
+The optional `TEVT` extension keeps 32 events on GBA, 64 on PS1, 96 on
+Dreamcast and 128 on PS2 and native. Each record uses six bytes. This
+leaves the outing archive's capacity intact. Repeating the same event
+with the same people and place on one day uses one entry. When space fills,
+the journal favors major milestones over recurring arguments. Older saves
+start adding these entries as new events occur.
+
 **Options > Life Sim > Elder memory lapses** is off by default. When
-enabled, some elders develop occasional difficulty recalling outings.
+enabled, some elders develop occasional difficulty recalling outings and
+personal experiences.
 The game tracks progression from their first shared outing or memory
 conversation with the option enabled. Over time, residents can recall an
 outing clearly, remember part of it, or ask for help placing it. The
@@ -522,25 +544,28 @@ uses no new resident save fields, persistent RAM, or per-frame work.
 
 ## PS1 disc-backed Talk integration
 
-The experimental PS1 game disc uses `-DDOOMO_PS1_TALK=ON`: the shared
-`SCENE_TALK` is compiled with `DOOMO_HAS_TALK`, and the existing
-PS1 overlay planner groups its scene code instead of forcing the
-entire interface to stay resident during combat. The compiled
-`TALK_EN.BIN` language database is placed at the ISO root. A new
-`ps1/src/talkdisc.c` implements the shared Talk storage hooks with
-one aligned **2048-byte CD sector** in main RAM; it supports reads
-across sector boundaries and fails safely if the disc file is missing.
-No giant Talk bank is linked into the 2 MB PS1 RAM. Typed/keyboard
-input remains disabled on PS1; the controller uses contextual quick
-replies, topic pickers, creator traits, gifts, care and outings.
+Build the opt-in PS1 game disc with `-DDOOMO_PS1_TALK=ON`. CI publishes its
+CUE and BIN as `doomogachi-ps1-talk` with a build-source record and checksums.
+Talk uses contextual quick replies, topic pickers, creator traits, gifts,
+care, outings and saved history through the controller.
 
-Default PS1 game and engine-test discs exclude Talk. The linker hotfix
-combines feature advertising in one `plat_features` definition and uses
-the regular progress bar on PS1. CI linked the Talk-enabled ELF at
-`478299a4`, then the disc packer rejected its image and BSS end address
-of `0x8020ea10`. It needs at least 125,456 B less to reach the 64 KB
-stack reserve. Budget work and a controller playthrough remain open.
-[Talk-enabled PS1 build log](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/runs/44870223640/job/136743009926)
+The overlay planner puts conversation-only code in the Talk group and
+keeps its shared save, simulation and story dependencies resident. Talk
+draws its own backdrop on PS1 so the resident card's overlay does not have
+to reload on every frame. Reply generation processes one line per tick.
+
+The Talk variant loads the packed sprite stream into SPU RAM at boot.
+Sprites still decompress on a VRAM cache miss. The disc reader uses two
+2048-byte sectors in main RAM and up to 80 cached sectors in SPU RAM for
+the English Talk bank. The standard game and engine-test discs use their
+existing sprite storage and omit Talk.
+
+With the intro FMV, the Talk game disc leaves **84,928 B** below the stack
+top and the standard game leaves **74,848 B**. Both exceed the 73,728 B
+project gate. The PS1 bank keeps 34 controller lookup words and the full
+conversation banks, reducing it from **913,148 B to 633,852 B**. In
+PCSX-Redux the worst frame when opening Talk fell from **6,900 ms to
+about 1,100 ms**, and the dialogue window averaged **30.00 fps**.
 
 ## Dreamcast functionality checks extended
 

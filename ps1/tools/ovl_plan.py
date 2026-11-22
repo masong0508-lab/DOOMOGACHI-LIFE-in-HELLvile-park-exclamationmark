@@ -85,10 +85,10 @@ GROUPS = [
     ("gallery",  r"ui_gallery$"),
     # --- H4 (for H3, SPEC C3/C6): the dream house; house_api.c stays resident ---
     ("home",     r"home(_\w+)?$|room_ref$|furn_data$"),
-    # PS1 Talk (disc bank reader is resident; the scene itself has an
-    # overlay group). Do not let 50+ KB of conversation UI bloat the
-    # always-resident 2 MB RAM footprint when the player is in combat.
-    ("talk",     r"talk_scene$"),
+    # Keep conversation-only sections in the Talk scene's slot. The
+    # planner still traces resident callers such as saves, the sim and
+    # the story quest log, and keeps their dependencies resident.
+    ("talk",     r"talk_(act|db|dm|gen|lex|outcome|plan|quest|safe|save|scene|traits)$"),
     # --- end H4 ---
 ]
 OVL_KINDS = (".text", ".rodata")
@@ -349,8 +349,7 @@ SHARED_TAG = "+"                # what grp() says for a candidate section of a s
 # --- RAM headroom 2026-11-12: HOLD. What a group takes out of resident RAM is read with it from
 # then on: about 2 ms of its load per KB at the drive's 2x speed (docs/PS1.md "RAM headroom
 # 2026-11-12", the cost table). The groups named here are the ones the player crosses all the
-# time (the title and the free-play screens, the island hub), or their reads are inside a measured
-# load window (the cutscenes after "New story"). They take NOTHING new, so their loads are as long
+# time (the title and the free-play screens, the island hub). They take NOTHING new, so their loads are as long
 # as before:
 #   * their callbacks in HELD_CALLBACKS stay resident. Each is also listed in LOCAL_CALLBACKS /
 #     MODAL_CALLBACKS / PICK_CALLBACKS above, reviewed against its call sites, so the hold is the
@@ -359,8 +358,9 @@ SHARED_TAG = "+"                # what grp() says for a candidate section of a s
 #   * they take no part of a shared file, like SHARED_NOT's.
 # Taking a group off HOLD is all it needs to release it. Measured on the 2026-11-12 tree: free
 # play gives 13.5 KB of resident RAM for +26 ms on each of its loads (314 -> 340 ms on PCSX-Redux),
-# the island 13.1 KB for +20 ms (206 -> 226), the cutscenes 3.7 KB for +7 ms (348 -> 355).
-HOLD = ("freeplay", "island", "cutscene")
+# the island 13.1 KB for +20 ms (206 -> 226). The cutscenes can load their
+# own table strings (+7 ms on that tree) to make room for the boot FMV.
+HOLD = ("freeplay", "island")
 #   object base -> function names
 HELD_CALLBACKS = {
     "fp_island_gfx": ("draw_glints_body", "draw_land_body", "draw_patches_body", "draw_roads_body",

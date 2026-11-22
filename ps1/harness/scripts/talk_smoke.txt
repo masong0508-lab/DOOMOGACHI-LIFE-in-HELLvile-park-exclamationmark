@@ -2,19 +2,66 @@
 # overlay. Never run for the engine-test (which omits Talk).
 wait 150
 expect-scene TITLE
-# Nana Puddin is the fixed story resident at roster ID 1.
-scene TALK 1
-wait 60
+expect-log sprites: loaded
+expect-log effects (all)
+seed 1208
+# Start the Classic island so roster ID 1 (Nana Puddin) is alive.
+scene NEW_ISLAND
+wait 10
+press A
+wait 20
+press A
+wait 2
+press A
+wait 10
+expect-scene ISLAND
+scene RESIDENT 1
+expect-scene RESIDENT
+# SELECT is the resident card's normal Talk shortcut.
+fps talk_entry
+press SELECT
 expect-log talkps1: TALK_EN.BIN available
-shot talk_01_greeting
-# A dismisses the opening speech. These screenshots capture the
-# Talk screen and the response UI on real emulated hardware.
+expect-log ovl: talk
+wait 30
+fpsend talk_entry
+expect-gap 2000 talk_entry
+expect-scene DIALOG
+fps talk_dialogue
+wait 45
+fpsend talk_dialogue
+expect-fps 29.0 talk_dialogue
+shot talk_01_opening
+# The first four replies precede Chat and Be nice. Compliment is its first action.
+dismiss-dialog TALK
+press DOWN
+press DOWN
+press DOWN
+press DOWN
+press DOWN
 press A
-wait 25
-shot talk_02_after_first_press
 press A
-wait 25
-shot talk_03_after_second_press
+wait 30
+expect-scene DIALOG
+shot talk_02_compliment
+# Leave the conversation, then round-trip the memory card before reopening it.
+scene RESIDENT 1
+save 1
+expect-save 1
+load 1
+scene RESIDENT 1
+press SELECT
+wait 75
+expect-scene DIALOG
+dismiss-dialog TALK
+press UP
+press UP
 press A
-wait 25
-shot talk_04_after_third_press
+press UP
+press A
+press UP
+press A
+shot talk_03_personal_memories
+press A
+expect-scene DIALOG
+wait 35
+shot talk_04_recall

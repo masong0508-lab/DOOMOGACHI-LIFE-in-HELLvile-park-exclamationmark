@@ -132,6 +132,19 @@ uint32_t save_budget_declared_max(uint32_t tag);
 #endif
 #define SAVE_EXT_MAX_TVIS (3u + SAVE_TVIS_VISITS * 5u + SAVE_TVIS_ELDERS * 4u)
 #define SAVE_BUDGET_TVIS_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TVIS) + SAVE_BUDGET_CHUNK_HDR)
+/* Significant dated personal and island events, independent of outing capacity. */
+#define SAVE_TEVT_WIRE_EVENTS 128u
+#if defined(DOOMO_PLATFORM_GBA)
+#define SAVE_TEVT_EVENTS 32u
+#elif defined(DOOMO_PLATFORM_PS1)
+#define SAVE_TEVT_EVENTS 64u
+#elif defined(DOOMO_PLATFORM_DC)
+#define SAVE_TEVT_EVENTS 96u
+#else
+#define SAVE_TEVT_EVENTS SAVE_TEVT_WIRE_EVENTS
+#endif
+#define SAVE_EXT_MAX_TEVT (1u + SAVE_TEVT_EVENTS * 6u)
+#define SAVE_BUDGET_TEVT_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TEVT) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 
 /* --- LV0 (levels plan 8.5): 'BRCH', the newer levels' records and the

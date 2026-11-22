@@ -870,6 +870,48 @@ TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
     CHECK_EQ(find_row("journalnewer", -1, -1), -1);
 }
 
+TEST(talk_scene_event_journals_distinguish_personal_and_island_history)
+{
+    UiDialogDebug box;
+    char label[48];
+    int row;
+    town();
+    doomo_town.day = 8;
+    talk_event_note(TALK_EV_ARGUMENT, ID_NANA, 13, ACT_CAFE + 1);
+    rel_set_kind(ID_NANA, 13, REL_RIVAL);
+    sim_make_up(ID_NANA, 13);
+    doomo_town.day += SIM_YEAR_DAYS;
+    talk_event_note(TALK_EV_BATTLE_LOST, -1, -1, TALK_PLACE_NEST_FUN_FAIR);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    row = find_row("journal", 1, -1);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK_STR(label, "Personal memories >");
+    go_to(row); press(BTN_A);
+    row = find_row("journalvisit", 1, TALK_EV_ARGUMENT);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Y1 4/9 Argument") != NULL);
+    go_to(row); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "Rivet") && strstr(box.text, "Brimstone Bites") && strstr(box.text, "Y1 4/9"));
+    CHECK(box.text && strstr(box.text, "talked it through later"));
+    CHECK(read_talk_reply());
+    press(BTN_B);
+    row = find_row("journal", 2, -1);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK_STR(label, "Island history >");
+    go_to(row); press(BTN_A);
+    row = find_row("journalvisit", 0, TALK_EV_BATTLE_LOST);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Y2 4/9 Battle lost") && strstr(label, "Fun Fair"));
+    go_to(row); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "island journal") && strstr(box.text, "Fun Fair"));
+}
+
 TEST(talk_scene_history_reports_real_favor_progress)
 {
     TalkSceneDebug d;

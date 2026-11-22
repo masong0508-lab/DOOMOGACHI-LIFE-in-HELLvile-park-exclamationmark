@@ -15,6 +15,8 @@ enum { CS_PLAY, CS_PAUSE, CS_WEAPONS, CS_DONE, CS_DEAD, CS_CARD };
 
 static int cs_state, cs_map, cs_t, cs_sel, cs_wsel, cs_top;
 static uint32_t cs_rewarded;
+static int16_t cs_encounter_x, cs_encounter_y;
+static int8_t cs_encounter_pack;
 /* (clarity C10) the story's first fight after power-on waits on the control card; the fights after it start
  * at once, as before (the nests come four in a row). Not saved: a new session explains it again. */
 static uint8_t cs_card_shown;
@@ -22,11 +24,86 @@ void combat_scene_card_reset(void) { cs_card_shown = 0; }
 
 static int style_now(void) { return combat_s.hell >= 128 ? WIN_HELL : WIN_CUTE; }
 
+/* Demons that make up a chapter-3 nest / an ambush. */
+static const uint8_t nest_demons[][4] = {
+    { THING_IMPLING, THING_IMPLING, THING_PUFF_DEMON, THING_IMPLING },          /* plaza     */
+    { THING_HELLHOUND_PUP, THING_SLIME_BELCHER, THING_HELLHOUND_PUP, 0 },       /* beach     */
+    { THING_BONE_JESTER, THING_IMPLING, THING_CYBER_PIGGY, THING_IMPLING },     /* park      */
+    { THING_VAPE_WRAITH, THING_GARGOYLE, THING_VAPE_WRAITH, 0 },               /* graveyard */
+    { THING_BRUTE, THING_IMPLING, THING_IMPLING, 0 },                           /* hunt      */
+    { THING_CLOUD_SPIDER, THING_PUFF_DEMON, THING_GARGOYLE, THING_IMPLING }     /* hunt 2    */
+};
+
+static int spot_open(int cx, int cy)
+{
+    const DoomoCell *c = map_cell_safe(&doomo_map, cx, cy);
+    return !c->wall && !(c->flags & (CELL_WATER | CELL_LAVA));
+}
+
+/* The overworld maps are dressed with more props (trees, lamps, benches)
+ * than the combat actor pool holds, which would leave no room for the
+ * encounter's demons and their effects. Keep the props nearest the fight
+ * and drop the far ones (out in the fog anyway). Bounded: one pass of at
+ * most ACTOR_MAX x ACTOR_MAX steps, once per encounter. */
+#define STORY_KEEP_PROPS 72
+static void make_room_for_demons(int cx, int cy)
+{
+    int i, n = 0;
+    for (i = 0; i < ACTOR_MAX; i++) {
+        const DoomoActor *a = &doomo_actors[i];
+        if ((a->flags & AF_USED) && a->type >= THING_PROP_TREE && a->type <= THING_VAPE_PORTAL) n++;
+    }
+    while (n > STORY_KEEP_PROPS) {
+        int far = -1;
+        int32_t fd = -1;
+        for (i = 0; i < ACTOR_MAX; i++) {
+            const DoomoActor *a = &doomo_actors[i];
+            int32_t dx, dy, d;
+            if (!(a->flags & AF_USED) || a->type < THING_PROP_TREE || a->type > THING_VAPE_PORTAL) continue;
+            dx = FIX2INT(a->x) / DOOMO_CELL_UNITS - cx;
+            dy = FIX2INT(a->y) / DOOMO_CELL_UNITS - cy;
+            d = dx * dx + dy * dy;
+            if (d > fd) { fd = d; far = i; }
+        }
+        if (far < 0) break;
+        doomo_actors[far].flags = 0;
+        n--;
+    }
+}
+
+static void restart_encounter(void)
+{
+    int cx = cs_encounter_x, cy = cs_encounter_y, nest = cs_encounter_pack;
+    int i, k = 0;
+    static const int8_t off[8][2] = { { 0, -3 }, { 2, -3 }, { -2, -3 }, { 3, -1 },
+                                      { -3, -1 }, { 1, -4 }, { -1, -4 }, { 0, -5 } };
+    combat_start_at(cs_map, CGOAL_KILL_ALL, cx, cy, 3072);
+    make_room_for_demons(cx, cy);
+    if (nest < 0 || nest >= (int)DOOMO_COUNTOF(nest_demons)) return;
+    for (i = 0; i < 4; i++) {
+        int t = nest_demons[nest][i], tries;
+        if (!t) continue;
+        for (tries = 0; tries < 8; tries++, k++) {
+            int x = cx + off[k & 7][0], y = cy + off[k & 7][1];
+            if (spot_open(x, y)) { combat_spawn(t, x, y, 1); k++; break; }
+        }
+    }
+}
+
+void combat_scene_encounter(int cx, int cy, int pack)
+{
+    cs_encounter_x = (int16_t)cx;
+    cs_encounter_y = (int16_t)cy;
+    cs_encounter_pack = (int8_t)pack;
+    restart_encounter();
+}
+
 static void combat_enter(int arg)
 {
     int card = arg >= 0 && (arg & COMBAT_ARG_CARD);
     if (arg >= 0) arg &= ~COMBAT_ARG_CARD;
     cs_map = (arg >= 0 && arg < MAPID_COUNT) ? arg : MAPID_VAPE_CELLAR;
+    cs_encounter_x = -1;
     combat_start(cs_map);
     cs_state = card && !cs_card_shown && !combat_autopilot_on() ? CS_CARD : CS_PLAY;
     cs_t = 0;
@@ -263,8 +340,12 @@ static void combat_update(void)
         if (btn_pressed(BTN_UP) || btn_pressed(BTN_DOWN)) { cs_sel ^= 1; audio_sfx(SFX_CURSOR); }
         if (btn_pressed(BTN_A)) {
             audio_sfx(SFX_SELECT);
-            if (cs_sel == 0) { combat_start(cs_map); cs_state = CS_PLAY; cs_t = 0; }
-            else leave_scene();
+            if (cs_sel == 0) {
+                if (cs_encounter_x >= 0) restart_encounter();
+                else combat_start(cs_map);
+                cs_state = CS_PLAY;
+                cs_t = 0;
+            } else leave_scene();
         }
         break;
     default: break;

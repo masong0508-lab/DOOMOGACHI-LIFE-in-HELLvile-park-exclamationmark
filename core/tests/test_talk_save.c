@@ -51,6 +51,63 @@ static void premade_town(void)
     town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
 }
 
+TEST(talk_events_keep_real_participants_places_and_days_after_save)
+{
+    TalkMemoryEvent events[4];
+    premade_town();
+    sim_init();
+    doomo_town.day = 23;
+    talk_event_note(TALK_EV_ARGUMENT, ID_NANA, ID_RIVET, ACT_CAFE + 1);
+    talk_event_note(TALK_EV_ARGUMENT, ID_RIVET, ID_NANA, ACT_CAFE + 1);
+    doomo_town.day += SIM_YEAR_DAYS * 3;
+    talk_event_note(TALK_EV_PRAISE, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    talk_event_note(TALK_EV_BATTLE_LOST, -1, -1, TALK_PLACE_NEST_FUN_FAIR);
+    doomo_town.day++;
+    talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_NEST_FUN_FAIR);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, events, 4), 2);
+    CHECK_EQ(events[0].kind, TALK_EV_PRAISE);
+    CHECK_EQ(events[0].place, TALK_PLACE_HOME);
+    CHECK_EQ(events[1].day, 23);
+    CHECK_EQ(events[1].place, ACT_CAFE + 1);
+    CHECK_EQ(events[1].other, ID_RIVET);
+    CHECK(talk_event_has(ID_NANA, DOOMO_PLAYER_ID, &events[1]));
+    CHECK(!talk_event_has(ID_VEX, DOOMO_PLAYER_ID, &events[1]));
+    CHECK_EQ(talk_event_page(ID_NANA, ID_RIVET, 0, events, 4), 1);
+    CHECK_EQ(talk_event_page(ID_RIVET, DOOMO_PLAYER_ID, 0, events, 4), 1);
+    CHECK_EQ(events[0].other, ID_NANA);
+    CHECK_EQ(talk_event_page(-1, DOOMO_PLAYER_ID, 0, events, 4), 2);
+    CHECK_EQ(events[0].kind, TALK_EV_BATTLE_WON);
+    CHECK_EQ(events[1].kind, TALK_EV_BATTLE_LOST);
+    CHECK_EQ(events[0].place, TALK_PLACE_NEST_FUN_FAIR);
+    CHECK_EQ(events[0].day - events[1].day, 1);
+}
+
+TEST(talk_events_keep_battle_milestones_under_social_churn)
+{
+    const DoomoSaveExt *ext = doomo_save_ext_tevt;
+    TalkMemoryEvent event;
+    uint8_t bytes[SAVE_EXT_MAX_TEVT];
+    uint32_t size, day;
+    premade_town();
+    sim_init();
+    talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_NEST_PLAZA);
+    for (day = 1; day <= SAVE_TEVT_EVENTS * 3; day++) {
+        doomo_town.day = day;
+        talk_event_note(TALK_EV_ARGUMENT, ID_NANA, ID_RIVET, ACT_PARK + 1);
+    }
+    talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_NEST_PLAZA);
+    size = ext->write(bytes, sizeof bytes);
+    CHECK_EQ(size, SAVE_EXT_MAX_TEVT);
+    CHECK(!ext->read(bytes, size - 1, ext->version));
+    CHECK_EQ(ext->size(), 0);
+    CHECK(ext->read(bytes, size, ext->version));
+    CHECK_EQ(talk_event_page(-1, DOOMO_PLAYER_ID, 0, &event, 1), 1);
+    CHECK_EQ(event.day, 0);
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, NULL, SAVE_TEVT_EVENTS), SAVE_TEVT_EVENTS - 1);
+}
+
 TEST(talk_visit_archive_imports_legacy_news_and_filters_by_participant)
 {
     int venues[ACT_COUNT], i;

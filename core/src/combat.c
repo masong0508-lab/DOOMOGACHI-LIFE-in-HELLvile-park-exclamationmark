@@ -11,6 +11,7 @@
 #include "combat_int.h"
 #include "doomo/family.h"
 #include "doomo/ending.h"
+#include "doomo/story.h"
 
 DoomoPlayerState  doomo_player;
 CombatSession     combat_s;
@@ -1382,6 +1383,9 @@ static void player_dead_tick(void)
     if (combat_px.dead_t > 50 && !combat_s.finished) {
         combat_s.finished = -1;
         last_result = -1;
+#ifdef DOOMO_HAS_TALK
+        story_record_combat_defeat();
+#endif
     }
 }
 

@@ -32,7 +32,11 @@
 
 #define SPU_WAVE_BASE   0x1000
 #define SPU_SFX_BASE    0x2000
+#ifdef DOOMO_SPRITES_SPU
+#define SPU_SFX_END     SPU_TALK_BASE       /* Talk cache and sprites occupy the rest before the part store. */
+#else
 #define SPU_SFX_END     SPU_PARTS_BASE      /* CR10: the part store (partstore.c) is above the effects */
+#endif
 #define TONE_VOICES     4
 #define SFX_VOICE0      4
 #define SFX_VOICES      20

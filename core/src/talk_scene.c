@@ -43,12 +43,14 @@
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL };
 enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL, K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
+enum { JOURNAL_OUTINGS, JOURNAL_PERSONAL, JOURNAL_ISLAND };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
 #define TROWS 40
 #define TSTOCK 24
 #define JOURNAL_PAGE 8
 #define JOURNAL_LAST 0xFFFFu
+#define TALK_ARG_HOME 0x400
 
 static struct TalkScn {
     TalkState s;
@@ -60,9 +62,13 @@ static struct TalkScn {
     uint16_t  topic, idle, followup;     /* transient subject offered by a live reply */
     int       nrows, nstock;
     TRow      row[TROWS];
-    TalkVisit journal[JOURNAL_PAGE + 1];
+    union {
+        TalkVisit visits[JOURNAL_PAGE + 1];
+        TalkMemoryEvent events[JOURNAL_PAGE + 1];
+    } journal;
     char      journal_date[JOURNAL_PAGE][16];
     uint16_t  journal_offset;
+    uint8_t   journal_mode, place;
     uint16_t  stock[TSTOCK];
     TalkSugg  quick[TALK_QUICK_MAX];     /* the replies to what was just said (top of the main page) */
     uint8_t   nquick, followup_place;    /* outing index + 1 from the last day-plan reply */
@@ -905,6 +911,10 @@ static void build_history(void)
             add_row(K_HISTORY_REPEAT, TALK_SHARED_INVITED, 0);
         }
     }
+    if (meet_memory_minor(id) >= 0) {
+        if (talk_event_page(id, T.avatar, 0, NULL, 1)) add_row(K_JOURNAL, JOURNAL_PERSONAL, 0);
+        if (talk_event_page(-1, T.avatar, 0, NULL, 1)) add_row(K_JOURNAL, JOURNAL_ISLAND, 0);
+    }
     list_reset();
 }
 
@@ -917,24 +927,35 @@ static void visit_date_label(char *buf, size_t cap, uint32_t day)
                         (unsigned)(calendar % SIM_MONTH_DAYS + 1u));
 }
 
-static void build_journal(int offset)
+static int journal_page(int mode, int id, int minor, int offset, int peek)
+{
+    int capacity = peek ? JOURNAL_PAGE + 1 : SAVE_TVIS_VISITS;
+    if (mode == JOURNAL_OUTINGS)
+        return talk_visit_page(id, T.avatar, minor, offset, peek ? T.journal.visits : NULL, capacity);
+    return talk_event_page(mode == JOURNAL_ISLAND ? -1 : id, T.avatar, offset,
+                           peek ? T.journal.events : NULL, capacity);
+}
+
+static void build_journal(int mode, int offset)
 {
     int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
     int minor = meet_memory_minor(id), count, i;
     if (minor < 0) { build_history(); return; }
     if (offset == JOURNAL_LAST) {
-        int total = talk_visit_page(id, T.avatar, minor, 0, NULL, SAVE_TVIS_VISITS);
+        int total = journal_page(mode, id, minor, 0, 0);
         offset = total > 0 ? ((total - 1) / JOURNAL_PAGE) * JOURNAL_PAGE : 0;
     }
-    count = talk_visit_page(id, T.avatar, minor, offset, T.journal, JOURNAL_PAGE + 1);
+    count = journal_page(mode, id, minor, offset, 1);
     if (!count) { build_history(); return; }
     T.page = PG_JOURNAL;
+    T.journal_mode = (uint8_t)mode;
     T.journal_offset = (uint16_t)offset;
     T.nrows = 0;
     if (offset > 0) add_row(K_JOURNAL_NEWER, 0, offset - JOURNAL_PAGE);
     for (i = 0; i < count && i < JOURNAL_PAGE; i++) {
-        visit_date_label(T.journal_date[i], sizeof T.journal_date[i], T.journal[i].day);
-        add_row(K_JOURNAL_VISIT, i, T.journal[i].venue);
+        uint32_t day = mode == JOURNAL_OUTINGS ? T.journal.visits[i].day : T.journal.events[i].day;
+        visit_date_label(T.journal_date[i], sizeof T.journal_date[i], day);
+        add_row(K_JOURNAL_VISIT, i, mode == JOURNAL_OUTINGS ? T.journal.visits[i].venue : T.journal.events[i].kind);
     }
     if (count > JOURNAL_PAGE) {
         add_row(K_JOURNAL_OLDER, 0, offset + JOURNAL_PAGE);
@@ -942,6 +963,38 @@ static void build_journal(int offset)
     }
     if (offset > JOURNAL_PAGE) add_row(K_JOURNAL_NEWER, 1, 0);
     list_reset();
+}
+
+static const char *journal_title(int mode)
+{
+    if (mode == JOURNAL_ISLAND) return "Island history";
+    return mode == JOURNAL_PERSONAL ? "Personal memories" : "Outing journal";
+}
+
+static const char *event_place_name(int place)
+{
+    static const char *const nest[] = { "Town Plaza", "the Beach", "the Fun Fair", "the Graveyard", "the Underbelly" };
+    if (place == TALK_PLACE_HOME) return "Home visit";
+    if (place >= TALK_PLACE_NEST_PLAZA) return nest[place - TALK_PLACE_NEST_PLAZA];
+    return place == TALK_PLACE_UNKNOWN ? "" : sim_venue_name(place - 1);
+}
+
+static const char *event_label(int kind)
+{
+    static const char *const names[TALK_EV_COUNT] = {
+        [TALK_EV_ARGUMENT] = "Argument", [TALK_EV_FIGHT] = "Big fight",
+        [TALK_EV_RECONCILED] = "Made peace", [TALK_EV_PRAISE] = "Kind words",
+        [TALK_EV_HURT] = "Hurt feelings", [TALK_EV_APOLOGY] = "Apology",
+        [TALK_EV_FRIENDSHIP] = "Best friends", [TALK_EV_BATTLE_LOST] = "Battle lost",
+        [TALK_EV_BATTLE_WON] = "Battle won", [TALK_EV_RESCUED] = "Rescue"
+    };
+    return names[kind];
+}
+
+static const char *event_person(int id)
+{
+    const DoomoResident *r = (unsigned)id < NEWS_NONE ? town_res(id) : NULL;
+    return r && r->status != RES_EMPTY && r->name[0] ? r->name : "someone";
 }
 
 /* One resident's actual outstanding thought: two obvious choices, with
@@ -1375,11 +1428,25 @@ static const char *row_text(int index, char *buf)
     case K_MEET_MEMORY:
         doomo_snprintf(buf, 48, "Our visit to %s", sim_venue_name(r->v));
         break;
-    case K_JOURNAL: doomo_snprintf(buf, 48, "Outing journal >"); break;
-    case K_JOURNAL_NEWER: doomo_snprintf(buf, 48, "%s", r->arg ? "<< Newest outings" : "< Newer outings"); break;
-    case K_JOURNAL_OLDER: doomo_snprintf(buf, 48, "%s", r->arg ? "Oldest outings >>" : "Older outings >"); break;
+    case K_JOURNAL: doomo_snprintf(buf, 48, "%s >", journal_title(r->arg)); break;
+    case K_JOURNAL_NEWER:
+        doomo_snprintf(buf, 48, r->arg ? "<< Newest%s" : "< Newer%s",
+                       T.journal_mode == JOURNAL_OUTINGS ? " outings" : "");
+        break;
+    case K_JOURNAL_OLDER:
+        doomo_snprintf(buf, 48, r->arg ? "Oldest%s >>" : "Older%s >",
+                       T.journal_mode == JOURNAL_OUTINGS ? " outings" : "");
+        break;
     case K_JOURNAL_VISIT:
-        doomo_snprintf(buf, 48, "%s - %s", T.journal_date[r->arg], sim_venue_name(r->v));
+        if (T.journal_mode == JOURNAL_OUTINGS) {
+            doomo_snprintf(buf, 48, "%s - %s", T.journal_date[r->arg], sim_venue_name(T.journal.visits[r->arg].venue));
+        } else {
+            const TalkMemoryEvent *event = &T.journal.events[r->arg];
+            const char *detail = event_place_name(event->place);
+            if (event->other != NEWS_NONE && event->other != T.avatar) detail = event_person(event->other);
+            doomo_snprintf(buf, 48, "%s %s%s%s", T.journal_date[r->arg], event_label(event->kind),
+                           *detail ? " - " : "", detail);
+        }
         break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
@@ -1515,6 +1582,7 @@ static void begin_talk(void)
 {
     uint32_t seed = talk_gen_seed(T.avatar, T.ids, T.n) + (++sessions) * 2654435761u;
     talk_outcome_begin(&T.s, T.avatar, T.ids, T.n, seed);
+    T.s.place = T.place;
     if (T.to >= T.n) T.to = 0;
     T.busy = T.after = T.leaving = T.pending = T.gen = 0;
     T.followup = TC_NONE;
@@ -1891,25 +1959,29 @@ static void concern_action(void)
     }
 }
 
+static int recall_needs_cue(int id, int cue)
+{
+    int recall = talk_visit_recall(id, cue);
+    if (recall == TALK_RECALL_CLEAR) return 0;
+    show_scene_reply(id, recall == TALK_RECALL_HAZY
+        ? "That sounds familiar. The details are a little hazy today."
+        : cue ? "I can't quite place it today. I'm glad you kept it in the journal."
+              : "I can't quite place it today. Would you look in the journal with me?", TC_NONE);
+    return 1;
+}
+
 static void recall_meetup(int id, int venue, int cue, uint32_t day)
 {
     const DoomoResident *r = town_res(id);
     const char *ending = "I'd like to catch up again sometime.";
     const char *place = sim_venue_name(venue);
-    int recall = talk_visit_recall(id, cue);
     char line[128], date[16];
     if (day == TALK_VISIT_UNDATED) doomo_snprintf(T.you, sizeof T.you, "Remember when we met at %s?", place);
     else {
         visit_date_label(date, sizeof date, day);
         doomo_snprintf(T.you, sizeof T.you, "Remember %s on %s?", place, date);
     }
-    if (recall != TALK_RECALL_CLEAR) {
-        show_scene_reply(id, recall == TALK_RECALL_HAZY
-            ? "That sounds familiar. The details are a little hazy today."
-            : cue ? "I can't quite place it today. I'm glad you kept it in the journal."
-                  : "I can't quite place it today. Would you look in the journal with me?", TC_NONE);
-        return;
-    }
+    if (recall_needs_cue(id, cue)) return;
     if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED)
         ending = "I'm glad we had that time together.";
     else if (RES_PERSONA(r, PERS_EXPRESSION) >= 10)
@@ -1918,6 +1990,62 @@ static void recall_meetup(int id, int venue, int cue, uint32_t day)
         doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", place, ending);
     else
         doomo_snprintf(line, sizeof line, "I remember our %s outing to %s. %s", date, place, ending);
+    show_scene_reply(id, line, TC_NONE);
+}
+
+static void recall_event(int id, const TalkMemoryEvent *event)
+{
+    const char *place = event_place_name(event->place);
+    const char *other = event->other == T.avatar ? "you" : event_person(event->other);
+    const char *where = event->place == TALK_PLACE_HOME ? " during a home visit" : "";
+    char date[16], site[48], line[144];
+    if (*place && !*where) {
+        doomo_snprintf(site, sizeof site, " at %s", place);
+        where = site;
+    }
+    visit_date_label(date, sizeof date, event->day);
+    if (event->kind >= TALK_EV_BATTLE_LOST)
+        doomo_snprintf(T.you, sizeof T.you, "What happened%s on %s?", where, date);
+    else {
+        doomo_snprintf(T.you, sizeof T.you, "Remember %s?", date);
+        if (recall_needs_cue(id, 1)) return;
+    }
+    switch (event->kind) {
+    case TALK_EV_ARGUMENT:
+    case TALK_EV_FIGHT:
+        doomo_snprintf(line, sizeof line, "I remember the %s with %s%s on %s. %s",
+                       event->kind == TALK_EV_FIGHT ? "fight" : "argument", other, where, date,
+                       talk_event_after(id, T.avatar, event, TALK_EV_RECONCILED) ?
+                       "We talked it through later." : "That was a rough day.");
+        break;
+    case TALK_EV_RECONCILED:
+        doomo_snprintf(line, sizeof line, "I made peace with %s%s on %s. I'm glad we talked.", other, where, date);
+        break;
+    case TALK_EV_PRAISE:
+        doomo_snprintf(line, sizeof line, "You said something kind to me%s on %s. It stayed with me.", where, date);
+        break;
+    case TALK_EV_HURT:
+        doomo_snprintf(line, sizeof line, "I remember what you said%s on %s. %s", where, date,
+                       talk_event_after(id, T.avatar, event, TALK_EV_APOLOGY) ?
+                       "I remember your apology too." : "It hurt.");
+        break;
+    case TALK_EV_APOLOGY:
+        doomo_snprintf(line, sizeof line, "You apologized%s on %s. I remember you making the effort.", where, date);
+        break;
+    case TALK_EV_FRIENDSHIP:
+        doomo_snprintf(line, sizeof line, "On %s, %s and I became best friends%s.", date, other, where);
+        break;
+    case TALK_EV_BATTLE_LOST:
+        doomo_snprintf(line, sizeof line, "The island journal records a defeat%s on %s. It was a hard day.", where, date);
+        break;
+    case TALK_EV_BATTLE_WON:
+        doomo_snprintf(line, sizeof line, "The island journal says the battle%s was won on %s.", where, date);
+        break;
+    case TALK_EV_RESCUED:
+        doomo_snprintf(line, sizeof line, "The island journal says the people%s were freed on %s.", where, date);
+        break;
+    default: return;
+    }
     show_scene_reply(id, line, TC_NONE);
 }
 
@@ -2214,16 +2342,29 @@ static void activate(int i)
         else build_history();
         break;
     }
-    case K_JOURNAL: case K_JOURNAL_NEWER: case K_JOURNAL_OLDER:
-        build_journal(r->v);
+    case K_JOURNAL:
+        build_journal(r->arg, 0);
+        break;
+    case K_JOURNAL_NEWER: case K_JOURNAL_OLDER:
+        build_journal(T.journal_mode, r->v);
         break;
     case K_JOURNAL_VISIT: {
         int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
         int minor = meet_memory_minor(id);
-        const TalkVisit *visit = &T.journal[r->arg];
-        if (minor >= 0 && talk_visit_has(id, T.avatar, minor, visit))
-            recall_meetup(id, visit->venue, 1, visit->day);
-        else build_journal(T.journal_offset);
+        if (minor >= 0 && T.journal_mode == JOURNAL_OUTINGS) {
+            const TalkVisit *visit = &T.journal.visits[r->arg];
+            if (talk_visit_has(id, T.avatar, minor, visit)) {
+                recall_meetup(id, visit->venue, 1, visit->day);
+                break;
+            }
+        } else if (minor >= 0) {
+            const TalkMemoryEvent *event = &T.journal.events[r->arg];
+            if (talk_event_has(T.journal_mode == JOURNAL_ISLAND ? -1 : id, T.avatar, event)) {
+                recall_event(id, event);
+                break;
+            }
+        }
+        build_journal(T.journal_mode, T.journal_offset);
         break;
     }
     case K_CONCERN: build_concern(); break;
@@ -2277,6 +2418,8 @@ static void talk_enter(int arg)
 {
     int i;
     memset(&T, 0, sizeof T);
+    if (arg & TALK_ARG_HOME) T.place = TALK_PLACE_HOME;
+    arg &= ~TALK_ARG_HOME;
     T.avatar = playas_avatar();
     T.ids[0] = arg;
     T.n = 1;
@@ -2464,7 +2607,7 @@ static const char *panel_title(char *buf, int cap)
     case PG_FEED: t = "Offer what food?"; break;
     case PG_HEAL: t = "Choose a treatment"; break;
     case PG_HISTORY: t = "Our history"; break;
-    case PG_JOURNAL: t = "Outing journal"; break;
+    case PG_JOURNAL: t = journal_title(T.journal_mode); break;
     case PG_CONCERN: t = "What's on their mind?"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
@@ -2494,6 +2637,11 @@ static void talk_draw(void)
     int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw = 0;
     char ttl[48];
     const char *mood = mood_word();
+#ifdef DOOMO_PLATFORM_PS1
+    /* Talk and the scene below it share the CD overlay slot. Paint our
+     * own background so drawing never swaps their code every frame. */
+    plat_clear(st->fill);
+#endif
     ui_glint_hold(1);
     /* the people: a name and (for who you speak to) how much they are into it */
     ui_window(0, 0, sw, 24, WIN_CUTE);
@@ -2564,7 +2712,13 @@ int talk_scene_person_x(int i)
 }
 #endif
 
-const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw, 1 };
+const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, talk_draw,
+#ifdef DOOMO_PLATFORM_PS1
+    0
+#else
+    1
+#endif
+};
 
 /* ---- the runner's eyes (DOOMO_TALK_DEBUG: native host and tests only; TALK_DESIGN T8, docs/TALK.md 6k) ----
  * Read-only views of the screen so scripts can press the pad the way a player does (talk-quick, talk-say,
@@ -2653,7 +2807,7 @@ int home_talk_enter(int who)
 {
     if (who < 0 || who >= DOOMO_MAX_RESIDENTS || !town_alive(who)) return 0;
     if (who == playas_avatar() || !talk_ready()) return 0;
-    scene_push(&SCENE_TALK, who);
+    scene_push(&SCENE_TALK, who | (scene_top() == &SCENE_HOME ? TALK_ARG_HOME : 0));
     return 1;
 }
 

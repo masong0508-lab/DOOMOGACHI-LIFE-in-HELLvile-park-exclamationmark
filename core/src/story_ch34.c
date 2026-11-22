@@ -27,6 +27,9 @@
 #include "doomo/family.h"
 #include "doomo/ending.h"
 #include "doomo/lang.h"
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 #define NAR (-1)
 
@@ -324,6 +327,9 @@ static void nest_heart(int nest)
 {
     DoomoStry *st = story_stry();
     if (nest < 0 || nest >= STORY_NESTS) return;
+#ifdef DOOMO_HAS_TALK
+    talk_event_note(TALK_EV_RESCUED, -1, -1, TALK_PLACE_NEST_PLAZA + nest);
+#endif
     st->nests = (uint8_t)(st->nests | (1u << nest));
     nest_line(nest);
     /* after Fuzz Goes Dark, the bell rings at the wrong time: bedtime (stage bit 2) */
@@ -344,6 +350,9 @@ static void breach_won(int lv)
     int e = ep();
     if (lv == BR_UNDERBELLY) {
         if (e != E45) return;
+#ifdef DOOMO_HAS_TALK
+        talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_UNDERBELLY);
+#endif
         story_set_step(2);
         conv(SCR_S45_FED);
         conv(SCR_S45_PUMP);
@@ -355,6 +364,18 @@ static void breach_won(int lv)
     conv_cb(lv == BR_SEWERS ? SCR_S33_PLAZA_WON : lv == BR_FACTORY ? SCR_S33_SPEECH : SCR_S33_GRAVE_WON,
             CB_C34_HEART);
 }
+
+#ifdef DOOMO_HAS_TALK
+void story_record_combat_defeat(void)
+{
+    const StoryPending *p = &story_pending;
+    if (doomo_town.mode != TOWN_STORY || p->kind != PEND_COMBAT) return;
+    if (p->ctx == CTX_NEST && p->extra >= 0 && p->extra < STORY_NESTS)
+        talk_event_note(TALK_EV_BATTLE_LOST, -1, -1, TALK_PLACE_NEST_PLAZA + p->extra);
+    else if (p->ctx == CTX_BEAT && p->extra == (X_BREACH | BR_UNDERBELLY))
+        talk_event_note(TALK_EV_BATTLE_LOST, -1, -1, TALK_PLACE_UNDERBELLY);
+}
+#endif
 
 static void e1_start(void)
 {
@@ -837,6 +858,10 @@ void ch34_resume(const StoryPending *p, int result)
     case PEND_COMBAT:
         if (p->ctx == CTX_NEST) {                   /* an overworld nest (script_nest_encounter) */
             int nest = p->extra & 3;
+#ifdef DOOMO_HAS_TALK
+            if (result == 1)
+                talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_NEST_PLAZA + nest);
+#endif
             if (result <= 0) { conv(SCR_S33_RETREAT); break; }
             story_set_flag(SF_NEST0 + nest, 1);
             story_reward(40, ITEM_SCRAP, 2, USTORY_NONE);

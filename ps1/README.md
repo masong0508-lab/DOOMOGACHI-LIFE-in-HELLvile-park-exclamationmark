@@ -35,6 +35,20 @@ The disc opens with the Dippinn Productions ident (`trailer/assets/dippinn_logo.
 ready-made one: `cmake -DDOOMO_INTRO_STR=/path/INTRO.STR ...`. No psxavenc and no file:
 the intro is left out (a warning; `-DDOOMO_INTRO_REQUIRED=ON` makes it an error, CI uses that). `-DDOOMO_INTRO_FMV=OFF` disables it (harness runs).
 
+### Talk game disc
+
+```sh
+cmake --preset ps1 -B build-talk -DDOOMO_PS1_TALK=ON -DDOOMO_INTRO_REQUIRED=ON
+cmake --build build-talk
+python3 harness/run.py --cue build-talk/doomogachi.cue \
+    --script harness/scripts/talk_smoke.txt --out /tmp/talk-smoke
+```
+
+The Talk variant includes controller conversations and their saved history.
+Launch the CUE with its BIN so the game can read `TALK_EN.BIN`, `SPRITES.BIN`
+and the scene overlays from the disc. The default preset still builds the
+standard game disc. CI publishes Talk separately as `doomogachi-ps1-talk`.
+
 ## Run
 
 ```sh

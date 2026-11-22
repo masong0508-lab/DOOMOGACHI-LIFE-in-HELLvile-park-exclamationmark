@@ -136,6 +136,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
     case SAVE_EXT_TAG_PROF: return SAVE_EXT_MAX_PROF;
     case SAVE_EXT_TAG_TALK: return SAVE_EXT_MAX_TALK;      /* T0 */
     case SAVE_EXT_TAG_TVIS: return SAVE_EXT_MAX_TVIS;
+    case SAVE_EXT_TAG_TEVT: return SAVE_EXT_MAX_TEVT;
     case SAVE_EXT_TAG_BRCH: return SAVE_EXT_MAX_BRCH;      /* LV0 */
     default: return 0;
     }

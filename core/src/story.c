@@ -10,7 +10,7 @@
 #include "doomo/family.h"
 #include "doomo/platform.h"
 #include "story_int.h"
-#include "combat_int.h"     /* AF_USED (read only: actor slots) */
+#include "combat_int.h"
 #include "overworld_int.h"  /* the VM host: ownpc_cast / ownpc_act / ow_cam / ow_run_beat */
 #include "doomo/txt.h"
 #include "doomo/house_api.h"
@@ -639,53 +639,6 @@ void story_push_scene(const DoomoScene *s, int arg, int pend, int ctx, int extra
     scene_push(s, arg);
 }
 
-/* Demons that make up a chapter-3 nest / an ambush. */
-static const uint8_t nest_demons[STORY_NESTS + 2][4] = {
-    { THING_IMPLING, THING_IMPLING, THING_PUFF_DEMON, THING_IMPLING },          /* plaza     */
-    { THING_HELLHOUND_PUP, THING_SLIME_BELCHER, THING_HELLHOUND_PUP, 0 },       /* beach     */
-    { THING_BONE_JESTER, THING_IMPLING, THING_CYBER_PIGGY, THING_IMPLING },     /* park      */
-    { THING_VAPE_WRAITH, THING_GARGOYLE, THING_VAPE_WRAITH, 0 },               /* graveyard */
-    { THING_BRUTE, THING_IMPLING, THING_IMPLING, 0 },                           /* hunt      */
-    { THING_CLOUD_SPIDER, THING_PUFF_DEMON, THING_GARGOYLE, THING_IMPLING }     /* hunt 2    */
-};
-
-static int spot_open(int cx, int cy)
-{
-    const DoomoCell *c = map_cell_safe(&doomo_map, cx, cy);
-    return !c->wall && !(c->flags & (CELL_WATER | CELL_LAVA));
-}
-
-/* The overworld maps are dressed with more props (trees, lamps, benches)
- * than the combat actor pool holds, which would leave no room for the
- * encounter's demons and their effects. Keep the props nearest the fight
- * and drop the far ones (out in the fog anyway). Bounded: one pass of at
- * most ACTOR_MAX x ACTOR_MAX steps, once per encounter. */
-#define STORY_KEEP_PROPS 72
-static void make_room_for_demons(int cx, int cy)
-{
-    int i, n = 0;
-    for (i = 0; i < ACTOR_MAX; i++) {
-        const DoomoActor *a = &doomo_actors[i];
-        if ((a->flags & AF_USED) && a->type >= THING_PROP_TREE && a->type <= THING_VAPE_PORTAL) n++;
-    }
-    while (n > STORY_KEEP_PROPS) {
-        int far = -1;
-        int32_t fd = -1;
-        for (i = 0; i < ACTOR_MAX; i++) {
-            const DoomoActor *a = &doomo_actors[i];
-            int32_t dx, dy, d;
-            if (!(a->flags & AF_USED) || a->type < THING_PROP_TREE || a->type > THING_VAPE_PORTAL) continue;
-            dx = FIX2INT(a->x) / DOOMO_CELL_UNITS - cx;
-            dy = FIX2INT(a->y) / DOOMO_CELL_UNITS - cy;
-            d = dx * dx + dy * dy;
-            if (d > fd) { fd = d; far = i; }
-        }
-        if (far < 0) break;
-        doomo_actors[far].flags = 0;
-        n--;
-    }
-}
-
 void story_push_combat(int map_id, int ctx, int extra, int cx, int cy, int nest)
 {
     set_pending(PEND_COMBAT, ctx, map_id, extra);
@@ -696,23 +649,7 @@ void story_push_combat(int map_id, int ctx, int extra, int cx, int cy, int nest)
         return;
     }
     scene_push(&SCENE_COMBAT, map_id | COMBAT_ARG_CARD);   /* C10: the first fight after power-on explains itself */
-    if (cx >= 0 && cy >= 0) {
-        int i, k = 0;
-        static const int8_t off[8][2] = { { 0, -3 }, { 2, -3 }, { -2, -3 }, { 3, -1 },
-                                          { -3, -1 }, { 1, -4 }, { -1, -4 }, { 0, -5 } };
-        combat_start_at(map_id, CGOAL_KILL_ALL, cx, cy, 3072);
-        make_room_for_demons(cx, cy);
-        if (nest >= 0 && nest < STORY_NESTS + 2) {
-            for (i = 0; i < 4; i++) {
-                int t = nest_demons[nest][i], tries;
-                if (!t) continue;
-                for (tries = 0; tries < 8; tries++, k++) {
-                    int x = cx + off[k & 7][0], y = cy + off[k & 7][1];
-                    if (spot_open(x, y)) { combat_spawn(t, x, y, 1); k++; break; }
-                }
-            }
-        }
-    }
+    if (cx >= 0 && cy >= 0) combat_scene_encounter(cx, cy, nest);
 }
 
 void story_push_exorcism(int resident_id, int ctx, int extra)
