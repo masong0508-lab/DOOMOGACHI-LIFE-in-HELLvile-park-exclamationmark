@@ -595,8 +595,9 @@ enum { TGE_OPEN = 0, TGE_CB, TGE_TAG, TGE_HANDOFF, TGE_SAFE, TGE_END_K7, TGE_PET
 
 /* Guard predicates (talkc_gen.py reads this enum: a guard term "kid_present"
  * is TGP_KID_PRESENT, "fact.job" TGP_FACT_JOB, "x.countable"
- * TGP_X_COUNTABLE; from TGP_FIRST_VALUED on a term carries a value:
- * "stance=pro", "speaker=grumbleguts", "mood=sad"). Add-only. */
+ * TGP_X_COUNTABLE. Valued terms start at TGP_FIRST_VALUED, such as
+ * "stance=pro", "speaker=grumbleguts" and "mood=sad". Later Boolean
+ * terms are appended to preserve on-disc IDs. */
 enum {
     TGP_NONE = 0,
     /* the room (talk_safe_ctx) */
@@ -640,6 +641,7 @@ enum {
     TGP_UNK,                         /* TM2d: how an unknown line is answered, TU_* (unk=name) */
     TGP_QKIND,                       /* TQ: the request's kind, TQK_* (qkind=fetch) */
     TGP_QPHASE,                      /* TQ: the phase of the request, TQP_* (qphase=ask) */
+    TGP_FACT_PAST_HURT,               /* Boolean: the addressed avatar left unaddressed hurt */
     TGP_COUNT
 };
 
@@ -811,6 +813,10 @@ void talk_event_note(int kind, int person, int other, int place);
 int talk_event_page(int guest, int avatar, int offset, TalkMemoryEvent *page, int capacity);
 int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event);
 int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind);
+/* Whether this avatar hurt the resident since the last recorded apology. */
+int talk_event_pending_hurt(int guest, int avatar);
+/* Release personal records before a resident or family pool ID is reused. */
+void talk_forget_departed(int id);
 /* Shared topics earn a symmetric link when one resident actually answers both.
  * Notes are committed once per conversation. Suggestions require two chats. */
 #define TALK_LINK_REHEARSED 2
@@ -818,6 +824,9 @@ int talk_link_topic_safe(uint16_t topic);
 void talk_link_note(int resident, int avatar, uint16_t a, uint16_t b);
 int talk_link_weight(int resident, int avatar, uint16_t a, uint16_t b);
 uint16_t talk_link_pick(int resident, int avatar, uint16_t topic, uint16_t avoid);
+typedef struct TalkTopicPair { uint16_t a, b; } TalkTopicPair;
+/* Learned, clean pairs in newest-use order. A null page only counts. */
+int talk_link_page(int resident, int avatar, int offset, TalkTopicPair *page, int capacity);
 void talk_link_forget(int resident_or_avatar);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
@@ -1363,6 +1372,7 @@ void talk_outcome_reset(void);
  * A NULL output only reports the number of bytes to write. */
 uint32_t talk_outcome_meet_save(uint8_t *dst);
 int talk_outcome_meet_load(const uint8_t *src);
+void talk_outcome_meet_forget(int id);
 /* Sim initialization may choose new routines. Preserve the pending
  * guests' current activities, including when they have already left. */
 void talk_outcome_meet_capture(uint8_t *activities);

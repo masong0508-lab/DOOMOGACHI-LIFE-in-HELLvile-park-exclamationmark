@@ -11,18 +11,28 @@
 #include "doomo/plat_ext.h"
 
 #define TALK_SECTOR 2048u
-#define TALK_CACHE_SECTORS ((SPU_SPRITES_BASE - SPU_TALK_BASE) / TALK_SECTOR)
+#define TALK_BASE_SECTORS ((SPU_SPRITES_BASE - SPU_TALK_BASE) / TALK_SECTOR)
+#define TALK_TAIL_SECTORS 24u
 #define TALK_PREWARM_SECTORS 72u
+#define TALK_STREAM_SECTORS 24u
 #define TALK_DISC_LIMIT (4u * 1024u * 1024u)
-DOOMO_STATIC_ASSERT(TALK_PREWARM_SECTORS < TALK_CACHE_SECTORS, talk_prewarm_leaves_cache_space);
+DOOMO_STATIC_ASSERT(TALK_PREWARM_SECTORS < TALK_BASE_SECTORS, talk_prewarm_leaves_cache_space);
 
 static uint32_t s_page[2][TALK_SECTOR / 4u];  /* DMA-aligned */
 static uint32_t s_length;
 static int s_lba = -1;                    /* -1 unopened, -2 absent/error */
 static int s_sector[2] = { -1, -1 };
 static unsigned s_recent = 1;
-static uint16_t s_spu_tag[TALK_CACHE_SECTORS];   /* file sector + 1, zero = empty */
-static unsigned s_spu_next;
+static uint16_t s_spu_tag[TALK_BASE_SECTORS + TALK_TAIL_SECTORS];   /* file sector + 1, zero = empty */
+static uint32_t s_spu_tail;
+static unsigned s_spu_slots = TALK_BASE_SECTORS;
+static unsigned s_spu_next, s_spu_pinned;
+
+static uint32_t spu_page_address(unsigned slot)
+{
+    if (slot < TALK_BASE_SECTORS) return SPU_TALK_BASE + slot * TALK_SECTOR;
+    return s_spu_tail + (slot - TALK_BASE_SECTORS) * TALK_SECTOR;
+}
 
 static int read_sectors(int lba, unsigned count, uint32_t *page)
 {
@@ -49,25 +59,25 @@ static const uint8_t *talk_page(unsigned sector)
     if (s_sector[slot] != (int)sector) {
         size_t bytes = 0;
         s_sector[slot] = -1;
-        for (i = 0; i < TALK_CACHE_SECTORS; i++)
+        for (i = 0; i < s_spu_slots; i++)
             if (s_spu_tag[i] == tag) break;
-        if (i < TALK_CACHE_SECTORS) {
-            SpuSetTransferStartAddr(SPU_TALK_BASE + i * TALK_SECTOR);
+        if (i < s_spu_slots) {
+            SpuSetTransferStartAddr(spu_page_address(i));
             bytes = SpuRead(page, TALK_SECTOR);
             SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
         }
         if (bytes != TALK_SECTOR) {
             if (!read_sectors(s_lba + (int)sector, 1, page))
                 return NULL;
-            cache = i < TALK_CACHE_SECTORS ? i : s_spu_next;
+            cache = i < s_spu_slots ? i : s_spu_next;
             s_spu_tag[cache] = 0;
-            SpuSetTransferStartAddr(SPU_TALK_BASE + cache * TALK_SECTOR);
+            SpuSetTransferStartAddr(spu_page_address(cache));
             bytes = SpuWrite(page, TALK_SECTOR);
             SpuIsTransferCompleted(SPU_TRANSFER_WAIT);
             if (bytes == TALK_SECTOR) {
                 s_spu_tag[cache] = tag;
-                if (i == TALK_CACHE_SECTORS)
-                    s_spu_next = (s_spu_next + 1u) % TALK_CACHE_SECTORS;
+                if (i == s_spu_slots && ++s_spu_next == s_spu_slots)
+                    s_spu_next = s_spu_pinned;
             }
         }
         s_sector[slot] = (int)sector;
@@ -95,8 +105,8 @@ uint32_t plat_talk_load(const char *code)
 }
 
 /* At boot the display lists are idle. Stage the prefix assembled by
- * talk_controller.py there and seed the normal SPU cache in bulk. The
- * drive's ordinary on-demand reader handles any pages we couldn't warm. */
+ * talk_controller.py there. When the parts leave enough space for demand
+ * reads, retain the prewarmed grammar and safety pages in SPU RAM. */
 void talkdisc_prewarm(void)
 {
     uint32_t cap = 0, start = timer_us();
@@ -109,6 +119,20 @@ void talkdisc_prewarm(void)
     buf = (uint32_t *)plat_save_scratch(&cap);
     chunk = cap / TALK_SECTOR;
     if (!buf || !chunk) return;
+#ifdef DOOMO_PARTS_SPU
+    {
+        uint32_t end = partstore_spu_end();
+        if (end >= SPU_PARTS_BASE && end <= SPU_REVERB_BASE && end % TALK_SECTOR == 0) {
+            unsigned tail = (SPU_REVERB_BASE - end) / TALK_SECTOR;
+            if (tail > TALK_TAIL_SECTORS) tail = TALK_TAIL_SECTORS;
+            /* Keep normal rolling eviction when the parts leave too little room. */
+            if (TALK_BASE_SECTORS + tail >= TALK_PREWARM_SECTORS + TALK_STREAM_SECTORS) {
+                s_spu_tail = end;
+                s_spu_slots = TALK_BASE_SECTORS + tail;
+            }
+        }
+    }
+#endif
     total = (s_length + TALK_SECTOR - 1u) / TALK_SECTOR;
     if (total > TALK_PREWARM_SECTORS) total = TALK_PREWARM_SECTORS;
     for (sectors = 0; sectors < total; ) {
@@ -124,7 +148,9 @@ void talkdisc_prewarm(void)
         sectors += n;
     }
     s_spu_next = sectors;
-    dbg("talk-prewarm: %u sectors in %u ms\n", sectors, (unsigned)((timer_us() - start) / 1000u));
+    s_spu_pinned = s_spu_slots > TALK_BASE_SECTORS ? sectors : 0;
+    dbg("talk-prewarm: %u sectors in %u ms (%u streaming slots)\n", sectors,
+        (unsigned)((timer_us() - start) / 1000u), s_spu_slots - s_spu_pinned);
 }
 
 uint32_t plat_talk_read(uint32_t off, void *dst, uint32_t len)

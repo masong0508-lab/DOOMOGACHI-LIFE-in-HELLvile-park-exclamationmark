@@ -165,6 +165,14 @@ static LedMeet *meet_find(int guest)
     return NULL;
 }
 
+void talk_outcome_meet_forget(int id)
+{
+    int i;
+    /* Cancel the booking while keeping the invitations already counted today. */
+    for (i = 0; i < led.invn; i++)
+        if (led.meet[i].guest == id || led.meet[i].avatar == id) led.meet[i].venue = 0;
+}
+
 static int meet_avatar_ok(int id)
 {
     if (id >= FAMILY_POOL_FIRST && id <= FAMILY_POOL_LAST) {
@@ -210,6 +218,7 @@ int talk_outcome_meet_load(const uint8_t *src)
         const uint8_t *p = src + 2 + 3 * i;
         uint32_t rec = p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
         int guest = rec & 1023u, avatar = (rec >> 10) & 1023u, venue = rec >> 20;
+        const DoomoResident *owner;
         LedMeet *m;
         if (!rec) continue;
         if (guest >= DOOMO_MAX_RESIDENTS || avatar > MEET_AVATAR_MAX || guest == avatar ||
@@ -218,7 +227,10 @@ int talk_outcome_meet_load(const uint8_t *src)
         m = &led.meet[led.invn++];
         m->guest = (uint16_t)guest;
         m->avatar = (uint16_t)avatar;
-        m->venue = (uint8_t)venue;
+        /* An older save may still hold a booking for a vacant ID. */
+        owner = town_res(avatar);
+        m->venue = town_res(guest)->status != RES_EMPTY &&
+                   (owner ? owner->status != RES_EMPTY : family_find(avatar) != NULL) ? (uint8_t)venue : 0;
     }
     return 1;
 }

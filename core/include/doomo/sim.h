@@ -158,6 +158,10 @@ enum {
 void sim_news_rec(int tmpl, int arg8, uint32_t v);
 /* The record behind sim_news(index), or NULL. */
 const DoomoNewsRec *sim_news_record(int index);
+#ifdef DOOMO_HAS_TALK
+void sim_news_forget_meetups(int id);
+void sim_news_prune_meetups(void);
+#endif
 /* Format a record (sim_news does this; tests compare). */
 void sim_news_format(const DoomoNewsRec *r, char *out, int cap);
 /* The feed's 'LIFE' section (life.c): exact size, write, read, clear. */

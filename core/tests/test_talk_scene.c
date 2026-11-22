@@ -890,6 +890,45 @@ TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
     CHECK_EQ(find_row("journalnewer", -1, -1), -1);
 }
 
+TEST(talk_scene_personal_journal_can_apologize_for_saved_hurt)
+{
+    TalkSceneDebug d;
+    TalkMemoryEvent saved[3] = {{0}};
+    int row;
+    town();
+    doomo_town.day = 8;
+    talk_event_note(TALK_EV_HURT, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    doomo_town.day = 10;
+    talk_event_note(TALK_EV_HURT, ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE + 1);
+    doomo_town.day = 12;
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    go_to(find_row("journal", 1, -1)); press(BTN_A);
+    go_to(find_row("journalvisit", 1, TALK_EV_HURT)); press(BTN_A);
+    CHECK(read_talk_reply());
+    row = find_row("journalrepair", -1, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy && d.gate == TG_PASS);
+    CHECK(strstr(d.you, "times I hurt you") && strstr(d.you, "Y1 4/9"));
+    CHECK(read_talk_reply());
+    scene_pop();
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, saved, 3), 3);
+    CHECK_EQ(saved[0].kind, TALK_EV_APOLOGY);
+    CHECK_EQ(saved[0].day, 12);
+    CHECK(talk_event_after(ID_NANA, DOOMO_PLAYER_ID, &saved[1], TALK_EV_APOLOGY));
+    CHECK(talk_event_after(ID_NANA, DOOMO_PLAYER_ID, &saved[2], TALK_EV_APOLOGY));
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    go_to(find_row("journal", 1, -1)); press(BTN_A);
+    go_to(find_row("journalvisit", 1, TALK_EV_HURT)); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("journalrepair", -1, -1), -1);
+}
+
 TEST(talk_scene_event_journals_distinguish_personal_and_island_history)
 {
     UiDialogDebug box;
@@ -1210,6 +1249,88 @@ TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
     go_to(row); press(BTN_A);
     CHECK(talk_scene_debug(&d) && d.busy);
     CHECK(strstr(d.you, "weather") != NULL);
+}
+
+TEST(talk_scene_shared_topics_reopen_saved_pairs_for_their_partner)
+{
+    TalkSceneDebug d;
+    uint16_t pie = 0, song = 0, weather = 0;
+    int row, other = roster_find("Steamy");
+    char label[48] = {0};
+    town();
+    CHECK(other >= 0);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("pie", &pie, NULL, NULL) >= 0);
+    CHECK(talk_lex_find("song", &song, NULL, NULL) >= 0);
+    CHECK(talk_lex_find("weather", &weather, NULL, NULL) >= 0);
+    talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
+    talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
+    talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, song);
+    scene_pop();
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    row = find_row("sharedtopics", -1, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.nrows == 1);
+    row = find_row("sharedpair", 0, -1);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "pie") && strstr(label, "weather"));
+    go_to(row); press(BTN_A);
+    CHECK(find_row("sharedask", -1, pie) >= 0);
+    CHECK(find_row("sharedask", -1, weather) >= 0);
+    CHECK_EQ(find_row("sharedask", -1, song), -1);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_EQ(find_row("sharedask", -1, weather), -1);
+    CHECK_EQ(find_row("sharedtopics", -1, -1), -1);
+    press(BTN_SELECT);
+    press(BTN_SELECT);
+    if (find_row("history", -1, -1) >= 0) {
+        go_to(find_row("history", -1, -1)); press(BTN_A);
+    }
+    go_to(find_row("sharedtopics", -1, -1)); press(BTN_A);
+    go_to(find_row("sharedpair", 0, -1)); press(BTN_A);
+    go_to(find_row("sharedask", -1, weather)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy && d.to_id == ID_NANA);
+    CHECK(strstr(d.you, "weather") != NULL);
+}
+
+TEST(talk_scene_shared_topics_can_reopen_an_older_page)
+{
+    static const char *const keys[] = { "weather", "song", "food", "band", "coffee" };
+    uint16_t pie = 0, topic = 0;
+    char label[48] = {0};
+    size_t i;
+    int row;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("pie", &pie, NULL, NULL) >= 0);
+    for (i = 0; i < DOOMO_COUNTOF(keys); i++) {
+        CHECK(talk_lex_find(keys[i], &topic, NULL, NULL) >= 0);
+        talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, topic);
+        talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, topic);
+    }
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    go_to(find_row("sharedtopics", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("sharedpair", 0, -1), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "coffee") != NULL);
+    row = find_row("sharedpage", 1, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("sharedpair", 0, -1), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "weather") != NULL);
+    CHECK_EQ(find_row("sharedpage", 1, -1), -1);
+    go_to(find_row("sharedpage", 0, -1)); press(BTN_A);
+    CHECK(talk_scene_row_debug(find_row("sharedpair", 0, -1), NULL, NULL, NULL, label));
+    CHECK(strstr(label, "coffee") != NULL);
 }
 
 TEST(talk_scene_history_repeat_play_really_changes_simulation)

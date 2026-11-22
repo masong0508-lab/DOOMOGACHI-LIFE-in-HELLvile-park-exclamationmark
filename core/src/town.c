@@ -113,7 +113,7 @@ void town_free(int id)
     int i, n;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
 #ifdef DOOMO_HAS_TALK
-    talk_link_forget(id);
+    talk_forget_departed(id);
 #endif
     town_unbind(id);
     rel_remove_all(id);
@@ -169,7 +169,7 @@ void town_free(int id)
     int i, n;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
 #ifdef DOOMO_HAS_TALK
-    talk_link_forget(id);
+    talk_forget_departed(id);
 #endif
     memset(&doomo_town.res[id], 0, sizeof(DoomoResident));
     rel_remove_all(id);

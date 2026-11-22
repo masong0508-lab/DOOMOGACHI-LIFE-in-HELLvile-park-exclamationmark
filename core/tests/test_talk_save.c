@@ -16,6 +16,7 @@
 #include "doomo/talk.h"
 #include "doomo/roster.h"
 #include "doomo/family.h"
+#include "doomo/playas.h"
 #include "doomo/save.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
@@ -68,6 +69,209 @@ TEST(talk_links_keep_a_rehearsed_pair_and_drop_a_departed_avatar)
     CHECK_EQ(replacement, avatar);
     CHECK_EQ(talk_link_weight(ID_NANA, replacement, 1, 2), 0);
     CHECK_EQ(doomo_save_ext_tlnk->size(), 0);
+}
+
+TEST(talk_archive_resident_reuse_does_not_inherit_memories)
+{
+    DoomoResident *replacement;
+    TalkMemoryEvent event;
+    premade_town();
+    sim_init();
+    doomo_town.day = 23;
+    talk_mem_note_topic(ID_NANA, 12);
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    talk_visit_note(ID_RIVET, ID_NANA, ACT_CAFE);
+    sim_news_rec(NT_TALK_MEET, ACT_PARK, NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET_FAV, ACT_CAFE, NEWS_IDS(ID_RIVET, ID_NANA, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET, ACT_SHOP, NEWS_IDS(ID_RIVET, DOOMO_PLAYER_ID, NEWS_NONE));
+    talk_event_note(TALK_EV_PRAISE, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    talk_event_note(TALK_EV_HURT, ID_RIVET, ID_NANA, ACT_CAFE + 1);
+    talk_event_note(TALK_EV_ARGUMENT, ID_NANA, ID_RIVET, ACT_PARK + 1);
+    talk_event_note(TALK_EV_PRAISE, ID_RIVET, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    talk_event_note(TALK_EV_BATTLE_WON, -1, -1, TALK_PLACE_NEST_PLAZA);
+
+    town_free(ID_NANA);
+    CHECK(town_bind(ID_NANA) >= 0);
+    replacement = town_res(ID_NANA);
+    resident_generate(replacement, 123u);
+    CHECK(town_alive(ID_NANA));
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, NULL, 3), 0);
+    CHECK(talk_mem_find(ID_NANA) == NULL);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_visit_page(ID_RIVET, ID_NANA, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_event_page(ID_RIVET, ID_NANA, 0, NULL, 3), 0);
+
+    /* With an empty visit archive, the old newspaper importer runs on load. */
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    sim_init();
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_visit_page(ID_RIVET, ID_NANA, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_visit_page(ID_RIVET, DOOMO_PLAYER_ID, 0, 0, NULL, 1), 1);
+    CHECK_EQ(talk_event_page(ID_RIVET, DOOMO_PLAYER_ID, 0, &event, 2), 1);
+    CHECK_EQ(event.kind, TALK_EV_PRAISE);
+    CHECK_EQ(talk_event_page(-1, DOOMO_PLAYER_ID, 0, &event, 1), 1);
+    CHECK_EQ(event.kind, TALK_EV_BATTLE_WON);
+}
+
+TEST(talk_archive_pool_reuse_does_not_inherit_memories)
+{
+    int avatar, replacement;
+    premade_town();
+    avatar = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 7u, "Sam", -1);
+    CHECK(avatar >= FAMILY_POOL_FIRST);
+    talk_mem_note_topic(avatar, 12);
+    talk_visit_note(ID_NANA, avatar, ACT_PARK);
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    talk_event_note(TALK_EV_PRAISE, ID_NANA, avatar, TALK_PLACE_HOME);
+    talk_event_note(TALK_EV_PRAISE, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+
+    CHECK(family_remove(avatar));
+    replacement = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 13u, "Alex", -1);
+    CHECK_EQ(replacement, avatar);
+    CHECK_EQ(talk_visit_page(ID_NANA, replacement, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_event_page(ID_NANA, replacement, 0, NULL, 1), 0);
+    CHECK(talk_mem_find(replacement) == NULL);
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 2), 1);
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, NULL, 2), 1);
+}
+
+TEST(talk_archive_elder_reuse_starts_recall_at_the_new_resident)
+{
+    DoomoResident *replacement;
+    unsigned day;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 10, TOWN_POP_PREMADE);
+    RES_SET_STAGE(town_res(ID_NANA), LIFE_ELDER);
+    opt_set(OPT_MEMORY_LAPSES, 1);
+    doomo_town.day = 1700;
+    CHECK_EQ(talk_visit_recall(ID_NANA, 0), TALK_RECALL_CLEAR);
+    for (day = 1868; day < 1920; day++) {
+        doomo_town.day = day;
+        if (talk_visit_recall(ID_NANA, 0) == TALK_RECALL_LAPSE) break;
+    }
+    CHECK(day < 1920);
+
+    town_free(ID_NANA);
+    CHECK(town_bind(ID_NANA) >= 0);
+    replacement = town_res(ID_NANA);
+    resident_generate(replacement, 123u);
+    RES_SET_STAGE(replacement, LIFE_ELDER);
+    CHECK_EQ(talk_visit_recall(ID_NANA, 0), TALK_RECALL_CLEAR);
+}
+
+TEST(talk_archive_keeps_a_tombstoned_residents_history)
+{
+    TalkMemoryEvent event;
+    premade_town();
+    sim_init();
+    CHECK(family_add(ID_RIVET, FAMROLE_HOUSEMATE, LIFE_ADULT) >= 0);
+    talk_visit_note(ID_NANA, ID_RIVET, ACT_PARK);
+    talk_event_note(TALK_EV_FRIENDSHIP, ID_NANA, ID_RIVET, ACT_PARK + 1);
+
+    sim_lay_to_rest(ID_RIVET, DEATH_OLD_AGE);
+    CHECK_EQ(town_res(ID_RIVET)->status, RES_DEAD);
+    CHECK(family_find(ID_RIVET) == NULL);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_visit_page(ID_NANA, ID_RIVET, 0, 0, NULL, 1), 1);
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, &event, 1), 1);
+    CHECK_EQ(event.kind, TALK_EV_FRIENDSHIP);
+    CHECK_EQ(event.other, ID_RIVET);
+}
+
+static int reserve_meetup(int avatar, int guest, int venue)
+{
+    TalkSummary sum = {0};
+    TalkOutcome out;
+    sum.avatar = avatar;
+    sum.n = sum.nev = 1;
+    sum.id[0] = (int16_t)guest;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = (uint8_t)venue;
+    town_res(guest)->activity = ACT_HOME;
+    talk_outcome_apply(&sum, &out);
+    return out.invited;
+}
+
+TEST(talk_meetup_does_not_pass_to_a_replacement_guest)
+{
+    premade_town();
+    doomo_town.minute = 12 * 60;
+    sim_init();
+    CHECK(reserve_meetup(DOOMO_PLAYER_ID, ID_NANA, ACT_CAFE));
+    CHECK(reserve_meetup(DOOMO_PLAYER_ID, ID_RIVET, ACT_PARK));
+    CHECK(reserve_meetup(DOOMO_PLAYER_ID, ID_VEX, ACT_PARK));
+
+    town_free(ID_NANA);
+    CHECK(town_bind(ID_NANA) >= 0);
+    resident_generate(town_res(ID_NANA), 123u);
+    town_res(ID_NANA)->activity = ACT_CAFE;
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK_EQ(talk_outcome_meet_plan(ID_RIVET), ACT_PARK);
+    CHECK(town_alive(42));
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, 42));
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK_EQ(talk_outcome_meet_plan(ID_RIVET), ACT_PARK);
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, 42));
+}
+
+TEST(talk_meetup_does_not_pass_to_a_replacement_avatar)
+{
+    int avatar, replacement;
+    premade_town();
+    doomo_town.minute = 12 * 60;
+    sim_init();
+    avatar = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 7u, "Sam", -1);
+    CHECK(avatar >= FAMILY_POOL_FIRST);
+    CHECK(reserve_meetup(avatar, ID_NANA, ACT_CAFE));
+
+    CHECK(family_remove(avatar));
+    replacement = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 13u, "Alex", -1);
+    CHECK_EQ(replacement, avatar);
+    playas_new_life_arm();
+    CHECK(playas_switch(replacement, PLAYAS_SWITCH_INSTANT));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), -1);
+    CHECK(!talk_outcome_can(TEV_ACT_INVITE, ID_NANA));
+    CHECK(talk_outcome_can(TEV_ACT_INVITE, ID_RIVET));
+}
+
+TEST(talk_meetup_load_clears_a_pending_reservation_for_a_vacant_guest)
+{
+    premade_town();
+    doomo_town.minute = 12 * 60;
+    sim_init();
+    CHECK(reserve_meetup(DOOMO_PLAYER_ID, ID_NANA, ACT_CAFE));
+    town_res(ID_NANA)->status = RES_EMPTY;    /* A save made before release cleared reservations. */
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK(town_bind(ID_NANA) >= 0);
+    resident_generate(town_res(ID_NANA), 123u);
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+}
+
+TEST(talk_visit_legacy_news_cannot_attach_to_a_replacement_resident)
+{
+    premade_town();
+    sim_init();
+    sim_news_rec(NT_TALK_MEET, ACT_CAFE, NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET, ACT_PARK, NEWS_IDS(ID_RIVET, DOOMO_PLAYER_ID, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET_FAV, ACT_PARK, NEWS_IDS(ID_RIVET, ID_VEX, NEWS_NONE));
+    sim_lay_to_rest(ID_VEX, DEATH_OLD_AGE);
+    CHECK_EQ(town_res(ID_VEX)->status, RES_DEAD);
+    town_res(ID_NANA)->status = RES_EMPTY;    /* A save made before release cleared Talk news. */
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK(town_bind(ID_NANA) >= 0);
+    resident_generate(town_res(ID_NANA), 123u);
+    sim_init();
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, NULL, 1), 0);
+    CHECK_EQ(talk_visit_page(ID_RIVET, DOOMO_PLAYER_ID, 0, 0, NULL, 1), 1);
+    CHECK_EQ(talk_visit_page(ID_RIVET, ID_VEX, 0, 0, NULL, 1), 1);
 }
 
 TEST(talk_events_keep_real_participants_places_and_days_after_save)
@@ -404,11 +608,10 @@ TEST(talk_mem_pool_member_and_removed_resident)
     CHECK(talk_mem_touch(kid));
     talk_mem_note_topic(kid, 12);
     CHECK(talk_mem_find(kid) && talk_mem_find(kid)->topic_a == 12);
-    /* the pool member leaves: the entry goes the next time anybody asks */
+    /* The entry goes when the pool ID is released. */
     CHECK(family_remove(kid));
-    CHECK_EQ(talk_mem_count(), 1);
-    CHECK(talk_mem_find(kid) == NULL);
     CHECK_EQ(talk_mem_count(), 0);
+    CHECK(talk_mem_find(kid) == NULL);
     /* a resident whose slot is freed */
     CHECK(talk_mem_touch(ID_RIVET));
     town_free(ID_RIVET);

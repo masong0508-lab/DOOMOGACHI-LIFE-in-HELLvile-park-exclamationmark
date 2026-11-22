@@ -531,6 +531,41 @@ static void news_remove(int i)
     news_s.n--;
 }
 
+#ifdef DOOMO_HAS_TALK
+static int meetup_headline(const DoomoNewsRec *r)
+{
+    return r->tmpl == NT_TALK_MEET || r->tmpl == NT_TALK_MEET_FAV;
+}
+
+void sim_news_forget_meetups(int id)
+{
+    int i;
+    for (i = news_s.n - 1; i >= 0; i--) {
+        const DoomoNewsRec *r = &news_s.rec[i];
+        if (!meetup_headline(r)) continue;
+        if ((r->v & NEWS_NONE) == (unsigned)id || ((r->v >> 10) & NEWS_NONE) == (unsigned)id)
+            news_remove(i);
+    }
+}
+
+static int meetup_person_exists(int id)
+{
+    const DoomoResident *r = town_res(id);
+    return r ? r->status != RES_EMPTY : family_find(id) != NULL;
+}
+
+void sim_news_prune_meetups(void)
+{
+    int i;
+    for (i = news_s.n - 1; i >= 0; i--) {
+        const DoomoNewsRec *r = &news_s.rec[i];
+        if (meetup_headline(r) && (!meetup_person_exists(r->v & NEWS_NONE) ||
+                                  !meetup_person_exists((r->v >> 10) & NEWS_NONE)))
+            news_remove(i);
+    }
+}
+#endif
+
 static void news_add(int tmpl, int arg8, uint32_t v)
 {
     int i;

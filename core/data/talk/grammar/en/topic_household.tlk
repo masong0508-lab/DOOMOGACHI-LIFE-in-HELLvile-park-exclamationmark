@@ -1,0 +1,103 @@
+# Family, shared routines, and making up after an earlier hurtful exchange.
+# The family relationship covers many roles, so these lines leave kinship
+# open. Shared-home lines also check actual household membership.
+
+@rule core.greet.household_morning guard: rel=family&fact.family&to_player&time=morning act: greet
+  "Morning. Can we eat together before we both rush off?"
+  "Hi. Want to swap plans over breakfast? Mine fits on the back of a receipt."
+  "Morning. If you set out the cups, I'll figure out breakfast."
+
+@rule core.greet.household_evening guard: rel=family&fact.family&to_player&time=evening act: greet
+  "Hi. If you've got a story from today, I'll listen while we clear the table."
+  "Evening. Want to split the chores so we can walk before dark?"
+  "Hi. Can we turn a chair to the window? I'd like to watch it get dark."
+
+@rule core.ask_feeling.household_tired guard: rel=family&mood=tired act: answer
+  "Worn out. I'd like company, just the kind that can sit quiet."
+  "I could use a rest. Could we talk about our plans after I've had a minute?"
+  "Tired. Let's do one thing together and save the rest for tomorrow?"
+
+@rule core.ask_about.household_home guard: rel=family&fact.family&to_player&root=house act: answer
+  "{x:cap}? If we keep reaching for it, it belongs where we can both get to it."
+  "About {x}: Let's try one change and see if it makes mornings easier."
+  "{x:cap}? If we disagree on where it goes, we can each try our way for a day."
+
+@rule core.invite.household_hobby guard: rel=family&root=hobbies act: yes
+  "Yes to {x}. Want to trade turns so we each get to choose something?"
+  "{x:cap}? Count me in. Show me the bit you like and I'll try it."
+  "I'll try {x} with you. One practice round before we crown a champion?"
+
+@rule core.invite.household_family guard: rel=family&!topic act: ask_about
+  "What did you have in mind? I'd like something where we can talk as we go."
+  "What should we bring? Tell me the plan and I'll pack for both of us."
+  "Can we make the plan as we go? I like an afternoon with room in it."
+
+@rule core.invite.household_tired guard: rel=family&mood=tired act: no
+  "I'll sit this one out. Tell me your favourite part when you get back?"
+  "I need the quiet today. Could we go together another day?"
+  "I'm too tired right now. Could we save that plan for later?"
+
+@rule core.tell.household_food guard: rel=family&root=food act: backchannel
+  "{x:cap}? What would you put on the table with it?"
+  "You can tell me about {x}. I'd like to make it with you sometime."
+  "{x:cap}? Would you make it the same way again or change something?"
+
+@rule core.tell.household_pastime guard: rel=family&root=hobbies act: backchannel
+  "Tell me about {x}. Did you find a better way after your first try?"
+  "{x:cap}? What's the part we could try together without buying anything?"
+  "Keep going about {x}. If you show me later, let me take the slow turn."
+
+@rule core.thank.household_family guard: rel=family act: answer
+  "You're welcome. It feels good when somebody notices the little things."
+  "Glad I could help. Next time, ask before you try to carry everything."
+  "Any time. It feels good to have a job I can finish for somebody I know."
+
+@rule core.ask_about.household_nana guard: speaker=nana_puddin&fact.family&to_player&root=house act: answer
+  "{x:cap}, sweet pea? Leave it ready for the next person."
+  "Write {x} on the list, dear. Leave a space underneath for other ideas."
+  "{x:cap}? Tell me the part that's wearing you out. We'll start there."
+
+@rule core.offer.household_anvil guard: speaker=anvil&rel=family&root=food act: yes
+  "{x:cap}? Yes. Give me a minute to wash the forge off my hands."
+  "I'll take some {x}. We can split the work: you serve, I'll wash."
+  "A little {x} would do. Hang on to the plate while I clear a space."
+
+@rule core.greet.household_wisp guard: speaker=wisp&rel=family tags: kid,lower act: greet
+  "hi. can i sit with you for a bit? i can leave the quiet bits quiet."
+  "oh, hi. want to share a drawing? you can start in the middle."
+  "hello. i saved a little thing to tell you. can i say it now?"
+
+@rule core.apologize.household_repair guard: fact.past_hurt&to_player act: answer
+  "I wanted you to notice it hurt. I'm glad you did."
+  "Thanks for coming back. I'd like us to talk differently next time."
+  "I hear you. It'll take me longer to stop thinking about it."
+
+@rule core.apologize.household_repair_angry guard: fact.past_hurt&to_player&mood=angry act: complain
+  "I'm still upset about what you said. Please let me finish first."
+  "I heard the apology. I need you to hear me when I say it still stings."
+  "I don't want to argue. I do want to finish saying how it felt."
+
+@rule core.apologize.household_repair_space guard: fact.past_hurt&to_player&rel=family act: dismiss
+  "I hear you. Let's give it a little room before we try talking it through."
+  "Thank you. I'd like a few quiet minutes before we decide what to do next."
+  "We can come back to it. We don't have to fix it in one breath."
+
+@rule core.apologize.household_repair_rivet guard: speaker=rivet&fact.past_hurt&to_player act: answer
+  "Yeah, I heard you. Give me a minute before we pick it back up."
+  "Next time tell me what's wrong. Leave the names out of it."
+  "All right. Show me you mean it when we talk again. That's enough to start."
+
+@rule core.apologize.household_repair_pip guard: speaker=pip&fact.past_hurt&to_player tags: kid act: answer
+  "Thank you. I can be glad you said sorry and still want a minute, right?"
+  "I heard you. Can we start with a small hello? I know how to do that part."
+  "Okay. If my feelings get squashed, can I say stop and have you listen?"
+
+@rule core.apologize.household_repair_wisp guard: speaker=wisp&fact.past_hurt&to_player tags: kid,lower act: answer
+  "thank you for saying it. i thought i might have to pretend it didn't hurt."
+  "i'm listening. give me a minute so i can say it right?"
+  "we can try again. can we go a little slower this time?"
+
+@rule core.apologize.household_repair_hattie guard: speaker=hattie_haha&fact.past_hurt&to_player act: answer
+  "A sharp line still hurts if it gets a laugh. Thanks for saying sorry."
+  "Thanks for saying that. I'm leaving a pause here so we can both hear it."
+  "I know what you said. I'd like to hear how you want to do it differently."

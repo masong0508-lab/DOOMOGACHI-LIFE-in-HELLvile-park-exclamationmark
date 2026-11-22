@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Shared topics and apologies in Talk (2026-11-22):** Browse saved topic
+  pairs in **Our history**, then ask the selected resident about either
+  subject. A clearly recalled date can lead to an apology for past hurt through
+  the normal Talk exchange. The journal records the apology after the chat.
 - **Long-term Talk visit memories (2026-11-22):** The dated outing
   journal holds 144 outings on GBA, 384 in the experimental PS1 Talk
   profile, 960 on Dreamcast, and 1,584 on PS2. It preserves return trips

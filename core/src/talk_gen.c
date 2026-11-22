@@ -466,7 +466,7 @@ typedef struct Gen {
     uint16_t like[5];
     TalkConcept tc;
     int partner;
-    int8_t pc[TGP_FIRST_VALUED];  /* boolean predicates already worked out, -1 not yet */
+    int8_t pc[TGP_FIRST_VALUED + 1];  /* cached Boolean predicates; -1 means unevaluated */
     /* the part being written */
     char *buf;
     int len, cap, fail, depth;
@@ -600,12 +600,10 @@ static int pred_raw(Gen *g, int p, int v);
 
 static int pred(Gen *g, int p, int v)
 {
-    int r;
-    if (p > 0 && p < TGP_FIRST_VALUED) {
-        if (g->pc[p] >= 0) return g->pc[p];
-        r = pred_raw(g, p, v);
-        g->pc[p] = (int8_t)(r != 0);
-        return r != 0;
+    if ((p > 0 && p < TGP_FIRST_VALUED) || p == TGP_FACT_PAST_HURT) {
+        int slot = p == TGP_FACT_PAST_HURT ? TGP_FIRST_VALUED : p;
+        if (g->pc[slot] < 0) g->pc[slot] = pred_raw(g, p, v) != 0;
+        return g->pc[slot];
     }
     return pred_raw(g, p, v);
 }
@@ -676,6 +674,12 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_FACT_MEMORY: return g->mem_ok;
     case TGP_FACT_COMPLIMENTED: return (c->mem_flags[g->who] & TMF_COMPLIMENTED) != 0;
     case TGP_FACT_INSULTED: return (c->mem_flags[g->who] & TMF_INSULTED) != 0;
+    case TGP_FACT_PAST_HURT:
+#ifdef DOOMO_HAS_TALK
+        return g->to == -1 && talk_event_pending_hurt(g->sid, c->avatar);
+#else
+        return 0;
+#endif
     case TGP_FACT_PROMISED: return (c->mem_flags[g->who] & TMF_PROMISED) != 0;
     case TGP_FACT_FAMILY: return talk_gen_fact(g->sid, TCB_FAMILY, NULL);
     case TGP_FACT_LOSS: return loss_of(g->sid) >= 0;

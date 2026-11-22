@@ -40,8 +40,20 @@
 #define TALK_TYPING 1
 #endif
 
-enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL, K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT };
+enum {
+    PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE,
+    PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL, PG_SHARED, PG_SHARED_PAIR
+};
+enum {
+    K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE,
+    K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER,
+    K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY,
+    K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT,
+    K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN,
+    K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL,
+    K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT, K_SHARED_TOPICS, K_SHARED_PAIR,
+    K_SHARED_PAGE, K_SHARED_ASK, K_JOURNAL_REPAIR
+};
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 enum { JOURNAL_OUTINGS, JOURNAL_PERSONAL, JOURNAL_ISLAND };
 
@@ -49,6 +61,7 @@ typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
 #define TROWS 40
 #define TSTOCK 24
 #define JOURNAL_PAGE 8
+#define SHARED_PAGE (JOURNAL_PAGE / 2)
 #define JOURNAL_LAST 0xFFFFu
 #define TALK_ARG_HOME 0x400
 
@@ -65,8 +78,12 @@ static struct TalkScn {
     union {
         TalkVisit visits[JOURNAL_PAGE + 1];
         TalkMemoryEvent events[JOURNAL_PAGE + 1];
+        TalkTopicPair pairs[SHARED_PAGE + 1];
     } journal;
-    char      journal_date[JOURNAL_PAGE][16];
+    union {
+        char rows[JOURNAL_PAGE][16];     /* dates or short names of each shared pair */
+        char subjects[2][36];           /* full labels on the selected pair page */
+    } journal_label;
     uint16_t  journal_offset;
     uint8_t   journal_mode, place;
     uint16_t  stock[TSTOCK];
@@ -915,7 +932,38 @@ static void build_history(void)
     if (meet_memory_minor(id) >= 0) {
         if (talk_event_page(id, T.avatar, 0, NULL, 1)) add_row(K_JOURNAL, JOURNAL_PERSONAL, 0);
         if (talk_event_page(-1, T.avatar, 0, NULL, 1)) add_row(K_JOURNAL, JOURNAL_ISLAND, 0);
+        if (talk_link_page(id, T.avatar, 0, NULL, 1)) add_row(K_SHARED_TOPICS, 0, 0);
     }
+    list_reset();
+}
+
+static void build_shared(int offset)
+{
+    int id = speaker_of(T.to);
+    int i, count = meet_memory_minor(id) < 0 ? 0 :
+                   talk_link_page(id, T.avatar, offset, T.journal.pairs, SHARED_PAGE + 1);
+    if (!count) { build_history(); return; }
+    T.page = PG_SHARED;
+    T.nrows = 0;
+    T.journal_offset = (uint16_t)offset;
+    if (offset) add_row(K_SHARED_PAGE, 0, offset - SHARED_PAGE);
+    for (i = 0; i < count && i < SHARED_PAGE; i++) {
+        topic_name(T.journal.pairs[i].a, T.journal_label.rows[2 * i], sizeof T.journal_label.rows[0]);
+        topic_name(T.journal.pairs[i].b, T.journal_label.rows[2 * i + 1], sizeof T.journal_label.rows[0]);
+        add_row(K_SHARED_PAIR, i, 0);
+    }
+    if (count > SHARED_PAGE) add_row(K_SHARED_PAGE, 1, offset + SHARED_PAGE);
+    list_reset();
+}
+
+static void build_shared_pair(int i)
+{
+    T.page = PG_SHARED_PAIR;
+    T.nrows = 0;
+    topic_name(T.journal.pairs[i].a, T.journal_label.subjects[0], sizeof T.journal_label.subjects[0]);
+    topic_name(T.journal.pairs[i].b, T.journal_label.subjects[1], sizeof T.journal_label.subjects[0]);
+    add_row(K_SHARED_ASK, 2 * i, T.journal.pairs[i].a);
+    add_row(K_SHARED_ASK, 2 * i + 1, T.journal.pairs[i].b);
     list_reset();
 }
 
@@ -956,7 +1004,7 @@ static void build_journal(int mode, int offset)
     if (offset > 0) add_row(K_JOURNAL_NEWER, 0, offset - JOURNAL_PAGE);
     for (i = 0; i < count && i < JOURNAL_PAGE; i++) {
         uint32_t day = mode == JOURNAL_OUTINGS ? T.journal.visits[i].day : T.journal.events[i].day;
-        visit_date_label(T.journal_date[i], sizeof T.journal_date[i], day);
+        visit_date_label(T.journal_label.rows[i], sizeof T.journal_label.rows[i], day);
         add_row(K_JOURNAL_VISIT, i, mode == JOURNAL_OUTINGS ? T.journal.visits[i].venue : T.journal.events[i].kind);
     }
     if (count > JOURNAL_PAGE) {
@@ -1446,15 +1494,22 @@ static const char *row_text(int index, char *buf)
         break;
     case K_JOURNAL_VISIT:
         if (T.journal_mode == JOURNAL_OUTINGS) {
-            doomo_snprintf(buf, 48, "%s - %s", T.journal_date[r->arg], sim_venue_name(T.journal.visits[r->arg].venue));
+            doomo_snprintf(buf, 48, "%s - %s", T.journal_label.rows[r->arg], sim_venue_name(T.journal.visits[r->arg].venue));
         } else {
             const TalkMemoryEvent *event = &T.journal.events[r->arg];
             const char *detail = event_place_name(event->place);
             if (event->other != NEWS_NONE && event->other != T.avatar) detail = event_person(event->other);
-            doomo_snprintf(buf, 48, "%s %s%s%s", T.journal_date[r->arg], event_label(event->kind),
+            doomo_snprintf(buf, 48, "%s %s%s%s", T.journal_label.rows[r->arg], event_label(event->kind),
                            *detail ? " - " : "", detail);
         }
         break;
+    case K_SHARED_TOPICS: doomo_snprintf(buf, 48, "Shared topics >"); break;
+    case K_SHARED_PAIR:
+        doomo_snprintf(buf, 48, "%s + %s >", T.journal_label.rows[2 * r->arg], T.journal_label.rows[2 * r->arg + 1]);
+        break;
+    case K_SHARED_PAGE: doomo_snprintf(buf, 48, "%s", r->arg ? "Older pairs >" : "< Recent pairs"); break;
+    case K_SHARED_ASK: doomo_snprintf(buf, 48, "Ask about %s", T.journal_label.subjects[r->arg % 2]); break;
+    case K_JOURNAL_REPAIR: doomo_snprintf(buf, 48, "Apologize for past hurt"); break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
         break;
@@ -1988,10 +2043,27 @@ static uint16_t remembered_venue_topic(int venue)
     return TC_NONE;
 }
 
-static void journal_followup(void)
+static int journal_repair_open(int id, const TalkMemoryEvent *event)
 {
-    if (T.nrows > 0 && T.row[T.nrows - 1].kind == K_FOLLOW_UP) T.nrows--;
+    unsigned order;
+    if (T.journal_mode != JOURNAL_PERSONAL || event->kind != TALK_EV_HURT ||
+        event->other != T.avatar || meet_memory_minor(id) < 0 ||
+        (T.s.flags & (TDF_CARE | TDF_OVER)) || (T.s.q_kind && (T.s.q_st & TQ_ST_ASKED)) ||
+        sensitive_thread(talk_quick_thread(&T.s, NULL)) ||
+        talk_event_after(id, T.avatar, event, TALK_EV_APOLOGY)) return 0;
+    /* Three distinct tones in this session, two bits each. A pending
+     * apology (tone 3) already goes to this resident when the chat ends. */
+    for (order = T.s.memory_order[T.to]; order; order >>= 2)
+        if ((order & 3u) == 3u) return 0;
+    return town_res(id)->activity != ACT_SLEEPING;
+}
+
+static void journal_actions(int repair)
+{
+    if (T.nrows > 0 && (T.row[T.nrows - 1].kind == K_FOLLOW_UP ||
+                        T.row[T.nrows - 1].kind == K_JOURNAL_REPAIR)) T.nrows--;
     if (T.followup) add_row(K_FOLLOW_UP, 0, T.followup);
+    else if (repair >= 0) add_row(K_JOURNAL_REPAIR, repair, 0);
     T.list.count = T.nrows;
 }
 
@@ -2018,7 +2090,7 @@ static void recall_meetup(int id, int venue, int cue, uint32_t day)
     show_scene_reply(id, line, cue ? remembered_venue_topic(venue) : TC_NONE);
 }
 
-static void recall_event(int id, const TalkMemoryEvent *event)
+static int recall_event(int id, const TalkMemoryEvent *event)
 {
     const char *place = event_place_name(event->place);
     const char *other = event->other == T.avatar ? "you" : event_person(event->other);
@@ -2034,7 +2106,7 @@ static void recall_event(int id, const TalkMemoryEvent *event)
         doomo_snprintf(T.you, sizeof T.you, "What happened%s on %s?", where, date);
     else {
         doomo_snprintf(T.you, sizeof T.you, "Remember %s?", date);
-        if (recall_needs_cue(id, 1)) return;
+        if (recall_needs_cue(id, 1)) return 0;
     }
     switch (event->kind) {
     case TALK_EV_ARGUMENT:
@@ -2073,9 +2145,10 @@ static void recall_event(int id, const TalkMemoryEvent *event)
     case TALK_EV_RESCUED:
         doomo_snprintf(line, sizeof line, "The island journal says the people%s were freed on %s.", where, date);
         break;
-    default: return;
+    default: return 0;
     }
     show_scene_reply(id, line, venue >= 0 ? remembered_venue_topic(venue) : TC_NONE);
+    return 1;
 }
 
 static void reminisce(unsigned selected)
@@ -2378,6 +2451,33 @@ static void activate(int i)
     case K_JOURNAL_NEWER: case K_JOURNAL_OLDER:
         build_journal(T.journal_mode, r->v);
         break;
+    case K_SHARED_TOPICS: build_shared(0); break;
+    case K_SHARED_PAGE: build_shared(r->v); break;
+    case K_SHARED_PAIR: build_shared_pair(r->arg); break;
+    case K_SHARED_ASK: {
+        const TalkTopicPair *pair = &T.journal.pairs[r->arg / 2];
+        if (followup_open(r->v) &&
+            talk_link_weight(speaker_of(T.to), T.avatar, pair->a, pair->b) >= TALK_LINK_REHEARSED) {
+            T.topic = r->v;
+            say_act(TA_ASK_ABOUT);
+        } else ui_toast("They need a little space right now.");
+        break;
+    }
+    case K_JOURNAL_REPAIR: {
+        const TalkMemoryEvent *event = &T.journal.events[r->arg];
+        int id = speaker_of(T.to);
+        if (journal_repair_open(id, event) && talk_event_has(id, T.avatar, event)) {
+            TalkUtter u = {0};
+            u.act[0] = TA_APOLOGIZE;
+            u.target = T.to;
+            u.conf = 15;
+            doomo_snprintf(u.shown, sizeof u.shown, "I've thought about %s. I'm sorry for the times I hurt you.",
+                           T.journal_label.rows[r->arg]);
+            say_utter(&u);
+            build_main();
+        } else journal_actions(-1);
+        break;
+    }
     case K_JOURNAL_VISIT: {
         int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
         int minor = meet_memory_minor(id);
@@ -2385,14 +2485,14 @@ static void activate(int i)
             const TalkVisit *visit = &T.journal.visits[r->arg];
             if (talk_visit_has(id, T.avatar, minor, visit)) {
                 recall_meetup(id, visit->venue, 1, visit->day);
-                journal_followup();
+                journal_actions(-1);
                 break;
             }
         } else if (minor >= 0) {
             const TalkMemoryEvent *event = &T.journal.events[r->arg];
             if (talk_event_has(T.journal_mode == JOURNAL_ISLAND ? -1 : id, T.avatar, event)) {
-                recall_event(id, event);
-                journal_followup();
+                int recalled = recall_event(id, event);
+                journal_actions(recalled && journal_repair_open(id, event) ? r->arg : -1);
                 break;
             }
         }
@@ -2491,7 +2591,8 @@ static void change_to(int to)
     T.to = (int8_t)to;
     if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
     else if (T.page == PG_TOPIC) build_topics();
-    else if (T.page == PG_HISTORY || T.page == PG_JOURNAL) build_history();
+    else if (T.page == PG_HISTORY || T.page == PG_JOURNAL || T.page == PG_SHARED || T.page == PG_SHARED_PAIR)
+        build_history();
     else if (T.page == PG_MAIN) {
         int c;
         build_main();
@@ -2506,7 +2607,8 @@ static void change_to(int to)
 static void back_page(void)
 {
     T.pending = 0;
-    if (T.page == PG_JOURNAL) build_history();
+    if (T.page == PG_SHARED_PAIR) build_shared(T.journal_offset);
+    else if (T.page == PG_JOURNAL || T.page == PG_SHARED) build_history();
     else if (T.page == PG_HISTORY) build_more();
     else build_main();
 }
@@ -2641,6 +2743,8 @@ static const char *panel_title(char *buf, int cap)
     case PG_HEAL: t = "Choose a treatment"; break;
     case PG_HISTORY: t = "Our history"; break;
     case PG_JOURNAL: t = journal_title(T.journal_mode); break;
+    case PG_SHARED: t = "Shared topics"; break;
+    case PG_SHARED_PAIR: t = "Pick a subject"; break;
     case PG_CONCERN: t = "What's on their mind?"; break;
     case PG_MORE:   t = "Options"; break;
     case PG_ACTS:   t = cats[T.cat].name; break;
@@ -2760,7 +2864,7 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern", "journal" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern", "journal", "shared", "sharedpair" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
@@ -2786,7 +2890,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit", "sharedtopics", "sharedpair", "sharedpage", "sharedask", "journalrepair" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;

@@ -88,6 +88,42 @@ static const char *line(TalkConv *c, int who, int to, int act, uint16_t topic)
     return l.text;
 }
 
+static int guarded_repair_replies(int avatar)
+{
+    const int speaker = ID_RIVET;
+    int count = 0, k;
+    for (k = 0; k < 128; k++) {
+        TalkConv c;
+        TalkLine reply;
+        TalkTrace trace;
+        TalkAltInfo info;
+        int term;
+        talk_gen_begin(&c, avatar, &speaker, 1, (uint32_t)k);
+        c.plain = 1;
+        talk_mem_begin(&c);
+        if (!talk_gen_line(&c, 0, -1, TA_APOLOGIZE, TC_NONE, &reply, &trace) ||
+            !talk_gen_alt_info(trace.core_alt, &info)) continue;
+        for (term = 0; term < info.nterm; term++) {
+            if (info.term[2 * term] == TGP_FACT_PAST_HURT) { count++; break; }
+        }
+    }
+    return count;
+}
+
+TEST(talk_gen_repair_replies_belong_to_the_avatar_in_the_journal)
+{
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    talk_event_note(TALK_EV_HURT, ID_RIVET, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    talk_mem_set_flags(ID_RIVET, TMF_INSULTED);
+    CHECK_EQ(guarded_repair_replies(ID_NANA), 0);
+    talk_mem_forget(ID_RIVET);
+    CHECK(guarded_repair_replies(DOOMO_PLAYER_ID) > 0);
+    talk_event_note(TALK_EV_APOLOGY, ID_RIVET, DOOMO_PLAYER_ID, TALK_PLACE_UNKNOWN);
+    CHECK_EQ(guarded_repair_replies(DOOMO_PLAYER_ID), 0);
+    talk_db_close();
+}
+
 /* ---- the modifiers and fields ------------------------------------------- */
 TEST(talk_gen_modifiers)
 {

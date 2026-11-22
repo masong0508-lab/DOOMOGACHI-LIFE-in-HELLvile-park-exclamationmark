@@ -1733,6 +1733,10 @@ static int load_decoded(const uint8_t *h, const uint8_t *body)
     resident_sanitize(&doomo_town.player);
     portrait_invalidate(DOOMO_PLAYER_ID);
     rel_normalize();
+#ifdef DOOMO_HAS_TALK
+    /* Legacy outing headlines can seed an empty archive on the next sim init. */
+    sim_news_prune_meetups();
+#endif
 #if DOOMO_RES_SLOTS
     sv_moved_away();
 #endif

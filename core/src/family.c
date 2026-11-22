@@ -302,7 +302,7 @@ int family_remove(int id)
     int i = find_slot(id);
     if (i < 0) return 0;
 #ifdef DOOMO_HAS_TALK
-    if (is_pool(id)) talk_link_forget(id);
+    if (is_pool(id)) talk_forget_departed(id);
 #endif
     ident_drop(id);
     memmove(&fam_[i], &fam_[i + 1], (size_t)(fam_n_ - i - 1) * sizeof(fam_[0]));

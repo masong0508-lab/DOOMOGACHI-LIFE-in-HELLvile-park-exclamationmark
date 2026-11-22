@@ -321,7 +321,7 @@ class Compiler:
             return (pred | (0x80 if neg else 0), v)
         key = name.replace(".", "_")
         pred = self.env.tgp.get(key)
-        if pred is None or pred == 0 or pred >= self.env.first_valued:
+        if pred is None or pred == 0 or (pred >= self.env.first_valued and pred != self.env.tgp["fact_past_hurt"]):
             self.die(where, "guard %r: no such predicate (talk.h TGP_*)" % t)
         return (pred | (0x80 if neg else 0), 0)
 

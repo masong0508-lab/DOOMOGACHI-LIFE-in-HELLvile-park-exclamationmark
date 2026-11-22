@@ -292,6 +292,7 @@ void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU R
 /* CR10: PARTS.BIN (the part scripts) -> SPU RAM, right after the effects (partstore.c). The store lives from
  * SPU_PARTS_BASE up; the effects stop below it (spu.c SPU_SFX_END). */
 #define SPU_PARTS_BASE 0x50000u
+#define SPU_REVERB_BASE 0x7e000u
 #ifdef DOOMO_SPRITES_SPU
 /* The Talk disc keeps packed sprites below the part store. SFX remain
  * below the data area and the remaining space can cache Talk sectors. */
@@ -299,6 +300,7 @@ void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU R
 #define SPU_SPRITES_BASE 0x34000u
 void     talkdisc_prewarm(void);
 void     packart_boot(void);
+uint32_t partstore_spu_end(void);
 #endif
 void     partstore_boot(void);
 uint32_t partstore_reads(void);

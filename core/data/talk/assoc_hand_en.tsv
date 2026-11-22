@@ -65,7 +65,7 @@ neighbour	friendship
 open_mic	concert	joke
 paintbrush	mural
 park	picnic
-photo_album	photography
+photo_album	photography	family_reunion
 photography	camera	photo_album
 picnic	park	riverbank
 postcard	letter
@@ -74,3 +74,27 @@ shooting_star	stargazing
 stargazing	constellation	shooting_star
 tea	bakery
 wind	kite
+
+# Family visits, household routines, and ways to make up.
+apology	patience
+argument	truce
+bedtime_story	reading	blanket
+blanket	bedtime_story
+board_game	game_night
+childhood	sibling
+chores	household	teamwork
+dinner	dishes
+dishes	kitchen	dinner
+family_reunion	photo_album
+game_night	sibling	board_game
+household	chores
+kitchen	dishes
+patience	apology
+promise	trust
+reading	bedtime_story
+roommate	spare_key
+sibling	childhood	game_night
+spare_key	roommate
+teamwork	chores
+truce	argument	trust
+trust	truce	promise

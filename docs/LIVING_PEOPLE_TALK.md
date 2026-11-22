@@ -501,16 +501,35 @@ a quick reply or show **Revisit** in the topic picker. Continuing onto a
 familiar subject can keep the conversation at its current depth across topic
 categories. The existing gates still check rapport, mood and subject safety.
 Each connection belongs to the resident and the avatar who spoke to them.
+**Options > Our history > Shared topics** lists rehearsed pairs for the
+selected resident, with the most recently used pairs first. Pick a pair,
+then choose either subject to ask about it. An older page shows the rest
+of the saved pairs for these two people.
 
 A clear journal recall can lead back into conversation. After recalling an
 outing, choose **Ask about** to talk about its venue. A friendship milestone
 or an argument the residents already resolved can lead to the same option
 when it has a known venue and the resident is ready to talk about it.
+When a resident clearly recalls a day the current avatar hurt them,
+**Apologize for past hurt** starts a normal Talk apology. It mentions the
+selected date and acknowledges earlier hurt between those two people.
+The reply uses their own history. The journal records the apology when
+the chat ends, and later recalls acknowledge it.
+Releasing a resident or removing an avatar from the family pool removes
+their private memories and shared records tied to that ID. Island
+milestones and memories for residents with a memorial stay in the archive.
+Pending outings for a released ID are canceled while the invitation still
+counts toward that day's limit. Loading an old save drops meetup headlines
+for vacant IDs before those slots can be reused.
 
 The English bank adds 60 authored alternatives and 18 reciprocal subject
 connections. These cover everyday outings, food, friendships, music,
 making things, school and the night sky. Lines can vary with the speaker,
 time of day, relationship and preferences.
+Another 60 alternatives and 15 reciprocal topic connections cover home
+routines, siblings, shared activities, and making up. Shared-home replies
+check household membership. Repair replies let residents acknowledge an
+apology, ask for time, or suggest how to make things right.
 
 The saved graph uses six bytes per connection in an optional `TLNK` chunk.
 Repeated connections earn more weight. At capacity, newer observations can
@@ -588,16 +607,18 @@ to reload on every frame. Reply generation processes one line per tick.
 
 The Talk variant loads the packed sprite stream into SPU RAM at boot.
 Sprites still decompress on a VRAM cache miss. The disc reader uses two
-2048-byte sectors in main RAM and up to 80 cached sectors in SPU RAM for
-the English Talk bank. The standard game and engine-test discs use their
-existing sprite storage and omit Talk.
+2048-byte sectors in main RAM. The current parts pack leaves room for
+22 extra SPU sectors before reverb, so Talk keeps its 72 preloaded sectors
+and has 30 more slots for demand reads. A pack that leaves too little
+room uses the original 80-slot rolling cache. The standard game and
+engine-test discs omit Talk.
 
-With the intro FMV, the Talk game disc leaves **84,928 B** below the stack
-top and the standard game leaves **74,848 B**. Both exceed the 73,728 B
-project gate. The PS1 bank keeps 34 controller lookup words and the full
-conversation banks, reducing it from **913,148 B to 633,852 B**. In
-PCSX-Redux the worst frame when opening Talk fell from **6,900 ms to
-about 1,100 ms**, and the dialogue window averaged **30.00 fps**.
+The PS1 bank keeps a compact controller vocabulary and the full dialogue
+banks. On a fixed build and memory card in PCSX-Redux, retaining the
+preloaded sectors cut the longest frame in **Ask about band** from
+1,300 ms to 500 ms and **Revisit song** from 650 ms to 317 ms. Sustained
+dialogue display ran at 30 fps. The FMV builds are gated at 73,728 bytes
+of stack headroom.
 
 ## Dreamcast functionality checks extended
 

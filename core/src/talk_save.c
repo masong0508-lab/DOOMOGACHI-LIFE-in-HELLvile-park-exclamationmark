@@ -890,6 +890,19 @@ int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int ki
     return 0;
 }
 
+int talk_event_pending_hurt(int guest, int avatar)
+{
+    int i;
+    if (avatar < 0 || avatar >= (int)NEWS_NONE) return 0;
+    for (i = 0; i < event_count; i++) {
+        uint32_t key = event_key(event_rows[i]);
+        int kind = event_kind(key);
+        if ((kind == TALK_EV_HURT || kind == TALK_EV_APOLOGY) &&
+            event_other(key, guest, avatar) == avatar) return kind == TALK_EV_HURT;
+    }
+    return 0;
+}
+
 static void event_reset(void) { event_count = 0; }
 static uint32_t event_size(void) { return event_count ? 1u + event_count * TEVT_REC : 0; }
 
@@ -925,6 +938,43 @@ static const DoomoSaveExt event_ext = {
     SAVE_EXT_TAG_TEVT, 1, event_size, event_write, event_read, event_reset, SAVE_EXT_MAX_TEVT
 };
 const DoomoSaveExt *const doomo_save_ext_tevt = &event_ext;
+
+static int history_has_person(uint32_t key, unsigned id)
+{
+    return (key & NEWS_NONE) == id || ((key >> 10) & NEWS_NONE) == id;
+}
+
+void talk_forget_departed(int id)
+{
+    unsigned i, kept;
+    int elder;
+    if (id < 0 || id >= (int)NEWS_NONE) return;
+    talk_mem_forget(id);
+    talk_link_forget(id);
+    talk_outcome_meet_forget(id);
+    /* Older saves can reconstruct an empty outing archive from these headlines. */
+    sim_news_forget_meetups(id);
+
+    for (i = 0, kept = 0; i < visits.count; i++) {
+        if (history_has_person(visit_key(visits.rows[i]), (unsigned)id)) continue;
+        if (kept != i) memcpy(visits.rows[kept], visits.rows[i], TVIS_REC);
+        kept++;
+    }
+    visits.count = (uint16_t)kept;
+    elder = elder_index(id);
+    if (elder >= 0) {
+        visits.elders--;
+        memmove(visits.elder + elder, visits.elder + elder + 1,
+                (visits.elders - (unsigned)elder) * sizeof(visits.elder[0]));
+    }
+
+    for (i = 0, kept = 0; i < event_count; i++) {
+        if (history_has_person(event_key(event_rows[i]), (unsigned)id)) continue;
+        if (kept != i) memcpy(event_rows[kept], event_rows[i], TEVT_REC);
+        kept++;
+    }
+    event_count = (uint8_t)kept;
+}
 
 /* TLNK v1: [u8 count], then six bytes per link. The first three hold
  * resident, avatar (10 bits each) and weight (4 bits). The remaining
@@ -1041,6 +1091,27 @@ uint16_t talk_link_pick(int resident, int avatar, uint16_t topic, uint16_t avoid
         if (strength == 15) break;
     }
     return best && talk_link_topic_safe(topic) ? best : TC_NONE;
+}
+
+int talk_link_page(int resident, int avatar, int offset, TalkTopicPair *page, int capacity)
+{
+    uint32_t owner = NEWS_IDS(resident, avatar, 0);
+    int i, count = 0;
+    if (!link_count || !link_people_ok(resident, avatar)) return 0;
+    for (i = 0; i < link_count && count < capacity; i++) {
+        const uint8_t *row = link_rows[i];
+        uint32_t pair;
+        uint16_t a, b;
+        if ((row[2] >> 4) < TALK_LINK_REHEARSED || link_owner(row) != owner) continue;
+        pair = link_pair(row);
+        a = (uint16_t)(pair & TALK_MAX_CONCEPTS);
+        b = (uint16_t)(pair >> 12);
+        if (!talk_link_topic_safe(a) || !talk_link_topic_safe(b)) continue;
+        if (offset > 0) { offset--; continue; }
+        if (page) page[count] = (TalkTopicPair){ a, b };
+        count++;
+    }
+    return count;
 }
 
 void talk_link_forget(int id)

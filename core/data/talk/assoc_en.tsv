@@ -47,7 +47,7 @@ anxious	hungry:2 spooked:2 exhausted:2 excited:2 furious:2 fed_up:2 glad:2 asham
 apartment	apartment_door:8 corner_shop:5 bunker:5 cottage:4 shed:4 tent:4 phone_box:3 town:2
 apartment_door	apartment:12 pink_front_door:4 door_slammer:4 cottage_door:4 furnace_door:4 heart_door:4 gothic_door:4 door_handle:4
 apologetic	glum:2 sick:2 sleepy:2 filthy:2 bored:2 stuffed:2 terrified:2 glad:2
-apology	sorry:7 compliment:4 truce:4 small_talk:4 introduction:4 farewell:4 memorial:3 mourning:3
+apology	patience:15 sorry:7 compliment:4 truce:4 small_talk:4 introduction:4 farewell:4 memorial:3 mourning:3
 app	video_call:6 low_battery:4 games_console:2 battery:2 vending_machine:2 tv:2 satellite_dish:2 game_controller:2
 apple	apple_pie:8 strawberry:7 cherry:5 pear:5 melon:5 watermelon:5 orange:5 tomato:4
 apple_pie	pie:15 apple:12 pot_pie:8 tart_pastry:6 pie_and_mash:4 pie_judge:4 shepherds_pie:4 custard:4
@@ -62,7 +62,7 @@ archery	fencing:4 gymnastics:4 bow_and_arrow:3 meditation:3 cow:3 twenty_questio
 archivist	archivist_of_dread:8
 archivist_of_dread	dread:12 archivist:12
 arena_belt	demon_arena:4
-argument	debate:5 soap_opera:4 prank_call:4 school_play:3 tantrum:3 meltdown:3 movie:3 giggle_fit:2
+argument	truce:15 debate:5 soap_opera:4 prank_call:4 school_play:3 tantrum:3 meltdown:3 movie:3 giggle_fit:2
 arm	leg:6 eye:5 foot:5 brain:5 face:5 back:4 wave:4 opinion:3
 armadillo	rhino:5 badger:4 hare:4 zebra:4 deer:4 kangaroo:4 skunk:4 cockroach:3
 armor	plate_armor:9 plush_toy:5 boot:2 sweater:2 hazmat_suit:2 long_skirt:2 leather_jacket:2 crop_top:2
@@ -167,7 +167,7 @@ bedhead	hair:4 hairstyle:4 party_animal:3 bucket_list:3 roommate:3 plan:2 gang:2
 bedroom	living_room:6 kitchen:4 diary:3 diary_entry:3 house_party:2 home_smell:2 dressing_gown:2 garage:2
 bedtime	bedtime_reader:8 bedtime_story:8 morning_routine:5 sleepyhead:4 sleeping_in:3 choir_practice:3 early_bird:3 childhood:2
 bedtime_reader	bedtime:12 bedtime_story:4 tea_leaf_reader:4
-bedtime_story	story:12 bedtime:12 detective_story:6 ghost_story:6 comic_strip:5 comic:5 bedtime_reader:4 life_story:4
+bedtime_story	reading:15 blanket:15 story:12 bedtime:12 detective_story:6 ghost_story:6 comic_strip:5 comic:5 bedtime_reader:4 life_story:4
 bee	spelling_bee:8 bee_box:8 pip_s_bee_drawing:8 holy_water:2 deep_water:2 dentist:2 exorcism:2 thunder:2
 bee_box	bee:12 cardboard_box:4 music_box:4 ice_box:4 mystery_box:4 jigsaw_box:4 gift_box:4 phone_box:4
 beer	soda:5 lemonade:5 champagne:5 cider:4 brussels_sprout:3 cola:3 espresso:3 coffee:3
@@ -211,7 +211,7 @@ black_licorice	black_pepper:7 burnt_bits:5 black_sheep:4 black_cat_clock:4 littl
 black_pepper	black_licorice:7 little_black_book:4 black_cat_clock:4 bell_pepper:4 pepper_grower:4 hell_pepper:4 black_sheep:4 burnt_bits:2
 black_sheep	sheep:12 black_cat_clock:4 black_pepper:4 little_black_book:4 black_licorice:4
 blackberry	plum:7 grape:7 cranberry:5 raspberry:5 kiwi:4 fig:4 melon:4 pear:4
-blanket	tuck_in_blanket:8 blanket_folder:8 picnic_blanket:8 fluffy_slippers:7 dressing_gown:6 heat_pack:6 fireplace:5 home_smell:5
+blanket	bedtime_story:15 tuck_in_blanket:8 blanket_folder:8 picnic_blanket:8 fluffy_slippers:7 dressing_gown:6 heat_pack:6 fireplace:5 home_smell:5
 blanket_folder	blanket:12 tuck_in_blanket:4 picnic_blanket:4 towel_folder:4
 blender	lawnmower:5 power_drill:5 zip:4 ladle:4 woodpecker:3 toucan:3 building_blocks:3 light_switch:2
 blessed_salt	salt:12 sea_salt:4 amulet:2 potion:2 crystal:2 hymn_book:2 boreagotchi_egg:2 demon_horn:2
@@ -228,7 +228,7 @@ blue_flower_bed	flower:12 shared_flower_bed:9 pink_flower_bed:9 yellow_flower_be
 blueberry	budgie:4 the_sky:3 kingfisher:3 orange:2 lime:2 banana:2 kiwi:2 blackberry:2
 blueprint	chill_pill:2 soap:2 medicine:2 snow_globe:2 souvenir:2 weld_rod:2 gear:2 love_letter:2
 blush	cheek:5 hiccup:4 dimple:4 sneeze:4 goosebumps:4 burp:4 kid:2 child:2
-board_game	video_game:6 game_controller:4 dice_game:4 ouija_board:4 nana_s_recipe_board:4 game_night:4 tomato_review_board:4 marbles_game:4
+board_game	game_night:15 video_game:6 game_controller:4 dice_game:4 ouija_board:4 nana_s_recipe_board:4 tomato_review_board:4 marbles_game:4
 boarded_window	gingham_window:4 bone_rimmed_window:4 window_washer:4 out_window_candle:4 window_candle:4 ossuary_window:4 grate_window:4 lancet_window:4
 boat	rowing_boat:15 canoe:9 paper_boat_pond:8 lava_boat_captain:8 boat_trip:8 pedalo:7 newspaper:5 water_balloon:5
 boat_trip	boat:12 road_trip:9 kite_flying:7 day_trip:6 fishing_trip:6 puddle_jumping:6 field_trip:4 paper_boat_pond:4
@@ -467,7 +467,7 @@ chess_champion	chess:12 fetch_champion:4
 chicken	chicken_nugget:8 fried_chicken:8 wing:3 woodpecker:3 toucan:2 goose:2 pig:2 donkey:2
 chicken_nugget	chicken:12 bacon:7 chips:7 fish_finger:6 toastie:5 toast:5 fried_chicken:4 sausage:4
 child	only_child:9 niece:8 kid:8 nephew:8 baby:5 son:4 daughter:4 dimple:3
-childhood	old_days:6 selfie:5 dream_job:5 found_footage:3 diary:2 middle_name:2 name:2 flu:2
+childhood	sibling:15 old_days:6 selfie:5 dream_job:5 found_footage:3 diary:2 middle_name:2 name:2 flu:2
 chili	stew:6 soup:6 chilli:4 gravy:4 cinnamon:4 milkshake:3 radish:3 gingerbread:3
 chill_adventurer	chill_pill:4 quiet_bookworm:2 cozy_napper:2 wild_card:2 stern_captain:2 bubbly_sparkler:2 gentle_dreamer:2 dramatic_poet:2
 chill_pill	chill_adventurer:4 cassette:2 love_letter:2 gift_box:2 scrap:2 energy_drink:2 ring:2 hellsteel:2
@@ -488,7 +488,7 @@ choir_members	choir:12 choir_director:4 choir_singer:4 doom_choir_singer:4 choir
 choir_practice	choir:12 choir_singer:4 doom_choir_singer:4 choir_director:4 choir_members:4 choir_bell:4 huggins_choir:4 morning_routine:4
 choir_singer	choir:12 singer:12 doom_choir_singer:9 torch_singer:4 choir_bell:4 lullaby_singer:4 huggins_choir:4 choir_practice:4
 chopper_mechanic	broom_mechanic:4
-chores	dusting:6 overtime:4 hoovering:4 bills:4 customer_service:4 mopping:4 moving_day:4 laundry:4
+chores	household:15 teamwork:15 dusting:6 overtime:4 hoovering:4 bills:4 customer_service:4 mopping:4 moving_day:4 laundry:4
 chorus	lyrics:15 song:6 anthem:6 earworm:6 melody:5 boy_band:5 jingle:5 beat:5
 chuffed	lonely:2 anxious:2 chipper:2 annoyed:2 sick:2 grumbly:2 content:2 jolly:2
 church	church_fete:8 church_bell:8 church_candle:8 holy_relic:4 house:3 blessing:3 museum:3 shed:2
@@ -746,7 +746,7 @@ dice_game	game_night:8 card_game:6 arcade_game:6 bingo:6 game_show:4 big_game:4 
 diligent_helper	tax_helper:4 farm_helper:4 sweet_sunbeam:2 eager_go_getter:2 grumpy_gremlin:2 deadpan_drifter:2 fiery_leader:2 chaos_goblin:2
 dimple	baby:6 freckle:6 little_kid:4 face:4 blush:4 child:3 nephew:3 niece:3
 dining_room	utility_room:6 spare_room:6 living_room:6 hidden_room:4 escape_room:4 staff_room:4 nursery:4 awe:3
-dinner	dinner_party:8 dessert:5 midnight_snack:5 brunch:5 roast:3 anger:3 kebab:3 sleepover:3
+dinner	dishes:15 dinner_party:8 dessert:5 midnight_snack:5 brunch:5 roast:3 anger:3 kebab:3 sleepover:3
 dinner_party	party:12 dinner:12 party_animal:4 surprise_party:4 birthday_party:4 party_hat:4 party_popper:4 house_party:4
 dino_plush	plush_maker:4 comfort_plush:4 cupcake_plush:4 father_fuzz_plush:4 grape_cloud_plush:4 plush_making:4 ghost_plush:4 plush_cross:4
 dip	yogurt:4 hummus:4 snack:4 cooking_channel:3 hot_chocolate:3 eclair:3 cannoli:3 avocado:3
@@ -754,7 +754,7 @@ disco	classical:2 lo_fi_beats:2 lullaby:2 bubblegum_pop:2 industrial:2 hardcore_
 disguise	wig:4 moustache:4 posture:4 habit:4 reputation:3 fame:3 reality_show:3 luck:3
 disgust	relief:6 surprise:6 mood_swing:6 giggle_fit:4 teamwork:4 meltdown:4 tantrum:4 panic:4
 dish_rack	dishes:12 ladle:7 spice_rack:4 satellite_dish:4 rack_bed:4 fridge:4 freezer:4 pantry:4
-dishes	dish_rack:8 satellite_dish:8 plate:4 laundry:2 dusting:2 decluttering:2 gutter_cleaning:2 bin_day:2
+dishes	kitchen:15 dinner:15 dish_rack:8 satellite_dish:8 plate:4 laundry:2 dusting:2 decluttering:2 gutter_cleaning:2 bin_day:2
 dj	solo:5 cucumber:3 superhero_movie:3 jingle:2 radio:2 playlist:2 pop_star:2 anthem:2
 dmv_clerk	skeleton_clerk:4 lost_and_found_clerk:4 vape_clerk:4 stock_clerk:4
 doctor	plague_doctor:8 robot_doctor:8 leech_doctor:8
@@ -892,7 +892,7 @@ falling	taxes:4 crowds:4 invasion:4 jump_scare:4 small_spaces:4 monster_under_th
 fame	reality_show:3 resume:3 chat_show:3 disguise:3 jackpot:2 microphone:2 shell:2
 family	family_reunion:11 family_tree:9 family_restaurant:8 father:6 mother:6 grandma:5 grandparent:5 parent:5
 family_restaurant	restaurant:12 family:12 family_tree:4 family_reunion:4 purple_fog:4 mascot:4 training_tape:4 oven:3
-family_reunion	family:15 family_tree:6 family_restaurant:4 household:4 truth:3 charades:3 plus_one:3 third_wheel:3
+family_reunion	photo_album:15 family:15 family_tree:6 family_restaurant:4 household:4 truth:3 charades:3 plus_one:3 third_wheel:3
 family_tree	family:14 family_reunion:6 family_restaurant:4 winter_tree:4 oak_tree:4 pine_tree:4 spinning_top:4 household:4
 fan	fan_club:14 summer_fan:8 fan_fiction:8 audience:4 brother:3 sister:3 sibling:3 team:2
 fan_club	fan:15 club:12 club_promoter:4 book_club:4 summer_fan:4 fan_fiction:4 audience:4 sister:3
@@ -1043,7 +1043,7 @@ fuzz_s_cushion	vex_s_cushion:4 cloud_cushion:4 vapula_cushion:4 father_fuzz:4 fa
 gadget	calculator:7 smartwatch:5 microwave:4 microphone:4 smoke_alarm:3 jackpot:2 low_battery:2 floppy_disk:2
 gallery_frame	picture_frame:4 plain_water_frame:4
 game_controller	notification:5 text_message:5 big_game:4 board_game:4 marbles_game:4 card_game:4 game_show:4 game_tester:4
-game_night	night:12 card_game:12 dice_game:8 big_game:8 trivia:7 arcade_game:6 musical_chairs:6 gaming:5
+game_night	sibling:15 board_game:15 night:12 card_game:12 dice_game:8 big_game:8 trivia:7 arcade_game:6 musical_chairs:6 gaming:5
 game_show	quiz_show:10 arcade_game:8 show_off:7 superhero_movie:6 puppet_show:6 chat_show:6 tv_show:6 magic_show:6
 game_tester	video_game:4 game_night:4 card_game:4 arcade_game:4 big_game:4 game_show:4 carnival_game_host:4 toy_tester:4
 games_console	console:12 superhero_movie:3 solo:3 arcade:3 fairground:3 game_show:3 peacock:3 quiz_show:3
@@ -1330,7 +1330,7 @@ house	haunted_house:9 house_key:8 bath_house_keeper:8 house_party:8 house_rules:
 house_key	key:12 house:12 haunted_house:4 cellar_key:4 framed_gate_key:4 key_keeper:4 house_rules:4 house_party:4
 house_party	party:15 house:12 house_rules:6 dance_party:4 party_animal:4 surprise_party:4 birthday_party:4 party_popper:4
 house_rules	rule:15 house:12 house_party:6 house_key:4 haunted_house:4 bath_house_keeper:4 haunted_house_actor:4 principal:3
-household	flat_drama:8 city:4 mall:4 family_reunion:4 family:4 family_tree:4 mother:4 father:4
+household	chores:15 flat_drama:8 city:4 mall:4 family_reunion:4 family:4 family_tree:4 mother:4 father:4
 housewarming	house_party:4 sleepover:4 town_festival:3 fair_day:3 tenant:3 scavenger_hunt:3 promotion:3 plus_one:3
 hovercraft	train:5 ambulance:5 plane:5 motorbike:4 bike:4 sled:4 rocket:4 broomstick:4
 hug	hug_therapist:8 hug_counter:8 sunlight:2 bee:2 heights:2 vacuum_cleaner:2 public_speaking:2 mirror:2
@@ -1450,7 +1450,7 @@ kimono	ripped_jeans:2 dress:2 sandal:2 cargo_pants:2 tank_top:2 shorts:2 overall
 kindness	friendship:5 gratitude:5 teamwork:4 nostalgia:4 awe:4 anger:4 confusion:4 relief:4
 kingfisher	hummingbird:5 ostrich:4 budgie:3 blueberry:3 the_sky:3 toy_car:3 dragonfly:2 stoat:2
 kiss	proposal:4 butterflies_in_tummy:4 pick_up_line:2 love_song:2 romance:2 date:2 boyfriend:2 love_life:2
-kitchen	kitchen_disaster:8 kitchen_counter:8 living_room:6 closet:4 bedroom:4 moving_day:4 chip_shop:3 house_party:3
+kitchen	dishes:15 kitchen_disaster:8 kitchen_counter:8 living_room:6 closet:4 bedroom:4 moving_day:4 chip_shop:3 house_party:3
 kitchen_counter	kitchen:12 kitchen_disaster:4 hug_counter:4 coin_counter:4 counter_board:4 ramen_counter:4
 kitchen_disaster	kitchen:12 kitchen_counter:4 food_fight:4 cooking:4 barbecue:4 bonfire:3 bagel_stand:3 campfire:3
 kite	wind:15 kite_maker:8 kite_pilot:8 kite_seller:8 kite_flyer:8 kite_flying:8
@@ -1884,7 +1884,7 @@ password	shopping_list:5 surprise_party:2 text_message:2 group_chat:2 gadget:2 j
 pasta	baked_potato:7 burrito:5 toast:4 pie_and_mash:4 soup:4 beans_on_toast:4 fried_rice:4 mashed_potato:4
 pastel_wardrobe	gothic_wardrobe:4 pastel_window:4
 pastel_window	stained_glass_window:4 ossuary_window:4 candy_window:4 gingham_window:4 round_window:4 pastel_wardrobe:4 cloud_window:4 wired_window:4
-patience	awe:6 peace_of_mind:6 loneliness:6 homesickness:6 loss:6 grief:6 calm:5 respect:5
+patience	apology:15 awe:6 peace_of_mind:6 loneliness:6 homesickness:6 loss:6 grief:6 calm:5 respect:5
 paw	feather:6 fur:5 fluffy_slippers:4 hair:4 teddy_bear:4 tail:4 pillow:3 bedhead:2
 paycheck	savings:5 shift:4 night_shift:4 raise:4 side_hustle:4 break_time:4 promotion:4 interview:4
 payday	leap_year:4 raise:3 eclipse:2 rainbow:2 comet:2 shooting_star:2 bank_holiday:2 northern_lights:2
@@ -1922,7 +1922,7 @@ phoenix	dragon:4 sea_monster:2 vampire:2 werewolf:2 fairy:2 wizard:2 kraken:2 me
 phone	phone_box:8 phone_number:8 door_handle:2 blanket:2 mail:2 parcel:2 letterbox:2 heat_pack:2
 phone_box	phone:12 bee_box:4 gift_box:4 cardboard_box:4 mystery_box:4 phone_number:4 ice_box:4 jigsaw_box:4
 phone_number	phone:12 address:6 lucky_number:6 bucket_list:6 birthday_wish:5 inside_joke:5 number_caller:4 phone_box:4
-photo_album	photography:15 album:12 baby_photo:9 mayor_s_framed_photo:4 profile_photo:4 middle_name:4 nickname:3 truth_or_dare:3 sock:2
+photo_album	family_reunion:15 photography:15 album:12 baby_photo:9 mayor_s_framed_photo:4 profile_photo:4 middle_name:4 nickname:3 truth_or_dare:3 sock:2
 photography	camera:15 photo_album:15 sculpture:4 sketch:4 shopping:3 collecting:2 sequel:2
 piano	organ:6 castle:4 theatre:4 palace:3 banjo:2 synthesizer:2 cowbell:2 trombone:2
 pick_up_line	heartbreak:5 line_cutter:4 line_cook:4 romance:4 girlfriend:4 love_song:4 hangover:3 love_mixtape:2
@@ -2055,7 +2055,7 @@ prison	police_station:4 january:3 sleet:3 february:3 office:3 car_park:2 bus_she
 problem	trouble:5 challenge:4 goal:3 bake_sale:3 unicycle:3 bow_and_arrow:3 hellvile_park:3 urban_legend:3
 professional_napper	cozy_napper:4
 profile_photo	mayor_s_framed_photo:4 photo_album:4 baby_photo:4
-promise	favour:5 invitation:4 chess:3 documentary:3 sorry:2 thanks:2 cuddle:2 farewell:2
+promise	trust:15 favour:5 invitation:4 chess:3 documentary:3 sorry:2 thanks:2 cuddle:2 farewell:2
 promotion	break_time:4 paycheck:4 interview:4 resume:4 housewarming:3 savings:2 paperwork:2 side_hustle:2
 prop_maker	popsicle_maker:4 sock_puppet_maker:4 jam_maker:4 candy_maker:4 soap_maker:4 costume_maker:4 zine_maker:4 plush_maker:4
 propeller_hat	top_hat:6 bucket_hat:6 party_hat:6 chef_hat:6 witch_hat:6 cowboy_hat:6 kevin_s_hat_stand:4 top_hat_rabbit:4
@@ -2119,7 +2119,7 @@ ranch_hand	hand:12 second_hand_embarrassment:4
 raspberry	cranberry:7 blackberry:5 cherry:4 kiwi:4 apricot:4 grapefruit:4 strawberry:4 lime:4
 rat	skate_rat:8 tinker_rat:8 lab_rat:8 squirrel:4 snake:4 hare:4 falling:4 stoat:3
 rattlecup_s_teacup	cloud_foam_teacup:4 teacup_table:4
-reading	tarot_reading:9 reading_nook:8 cloud_watching:2 dancing:2 skull_collecting:2 napping:2 graffiti:2 fishing:2
+reading	bedtime_story:15 tarot_reading:9 reading_nook:8 cloud_watching:2 dancing:2 skull_collecting:2 napping:2 graffiti:2 fishing:2
 reading_nook	reading:12 tarot_reading:4 study:4 bookshop:3 hillvile:3 house:2 cottage:2 cafe:2
 reality_show	chat_show:10 tv_show:6 puppet_show:6 magic_show:6 game_show:6 radio_show:6 quiz_show:6 cooking_show:4
 realtor_s_sign	sign:12 star_sign:4 mini_town_sign:4 days_since_fire_sign:4 tomb_realtor:4
@@ -2200,7 +2200,7 @@ rolling_pin	safety_pin_smith:4 safety_pin:4 bench:3 microwave:2 spoon:2 blender:
 romance	love_song:5 pick_up_line:4 love_life:4 breakup:4 love_mixtape:3 sitcom:3 heartbreak:2 crush:2
 romcom	sitcom:4 superhero_movie:2 bedtime_story:2 diary_entry:2 murder_mystery:2 detective_story:2 sequel:2 book:2
 rooftop	cliff_top:5 cliff:5 crossroads:4 train_station:3 bridge:3 bus_stop:3 tower:2 windmill:2
-roommate	life:3 life_story:3 bedhead:3 pet_peeve:2 opinion:2 tenant:2 relative:2 cousin:2
+roommate	spare_key:15 life:3 life_story:3 bedhead:3 pet_peeve:2 opinion:2 tenant:2 relative:2 cousin:2
 rooster	horse:5 choir_practice:3 peacock:3 bird_feeding:3 the_mayor:3 daughter:3 son:3 alarm_clock:3
 rope	skipping_rope:8 string:2 paint_roller:2 toolbelt:2 hammer:2 glue:2 tape:2 bucket:2
 rosary	propeller_hat:2 cape:2 chef_hat:2 cross_necklace:2 crown:2 bandage:2 beanie:2 cowboy_hat:2
@@ -2335,7 +2335,7 @@ shovel	hammer:7 toolbelt:6 wrench:5 crowbar:5 wheelbarrow:4 suitcase:4 power_dri
 show_and_tell	quiz_show:4 tv_show:4 game_show:4 talent_show:4 reality_show:4 chat_show:4 cooking_show:4 show_off:4
 show_off	game_show:7 tv_show:4 bake_off:4 reality_show:4 day_off:4 show_and_tell:4 puppet_show:4 talent_show:4
 shower	hotpot:4 bathroom:3 stir_fry:3 tea_kettle:3 cheese_on_toast:3 toothbrush:2 bubble_bath:2 toothpaste:2
-sibling	sister:8 brother:8 pet_peeve:3 copycat:3 team:3 friend:3 best_friend:3 coworker:3
+sibling	childhood:15 game_night:15 sister:8 brother:8 pet_peeve:3 copycat:3 team:3 friend:3 best_friend:3 coworker:3
 sick	sick_day:8 terrified:2 stuffed:2 possessed:2 content:2 apologetic:2 chuffed:2 down:2
 sick_day	sick:12 day_off:9 training_day:6 sports_day:4 moving_day:4 day_trip:4 beach_day:4 fair_day:4
 side_hustle	raise:4 paycheck:4 motel:4 town:3 gang:3 savings:2 tip:2 allowance:2
@@ -2457,7 +2457,7 @@ souvenir	keyring:4 sale:2 tabloid:2 scrap:2 plush_toy:2 ring:2 glitter:2 snow_gl
 space_opera	soap_opera:9 movie:5 small_spaces:4 outer_space:4 fan_fiction:4 encyclopedia:4 plot_twist:4 reality_show:4
 spacesuit	hoodie:2 kimono:2 sweater:2 ripped_jeans:2 sneaker:2 platform_shoe:2 crop_top:2 kilt:2
 spaghetti	waffle:2 pudding:2 blood_orange:2 candy_eyeball:2 omurice:2 black_licorice:2 mochi:2 fried_chicken:2
-spare_key	key:14 light_switch:5 spare_room:4 cellar_key:4 house_key:4 framed_gate_key:4 spare_mr_huggins:4 key_keeper:4
+spare_key	roommate:15 key:14 light_switch:5 spare_room:4 cellar_key:4 house_key:4 framed_gate_key:4 spare_mr_huggins:4 key_keeper:4
 spare_mr_huggins	huggins_choir:4 mr_huggins_the_9th:4 spare_room:4 spare_key:4 huggins_1st_s_marker:4
 spare_room	dining_room:6 utility_room:6 living_room:6 garage:6 spare_key:4 hidden_room:4 spare_mr_huggins:4 staff_room:4
 sparrow	canary:6 budgie:4 grasshopper:3 flamingo:2 heron:2 robin:2 swan:2 peacock:2
@@ -2642,7 +2642,7 @@ teacher	dance_teacher:8 art_teacher:8 yoga_teacher:8 music_teacher:8 xylophone_t
 teacup_table	rattlecup_s_teacup:4 pine_table:4 table_tennis:4 cloud_foam_teacup:4 tombstone_end_table:4 lava_table:4 xylophone_end_table:4
 team	team_building:8 brother:3 sibling:3 sister:3 musical_chairs:3 game_night:3 rival:3 jock:2
 team_building	team:12 meeting:6 building_blocks:4 training_day:4 office_party:4 leaving_do:4 interview:4 charades:3
-teamwork	awe:5 anger:5 confusion:5 relief:5 hate:5 fear:5 loneliness:5 surprise:5
+teamwork	chores:15 awe:5 anger:5 confusion:5 relief:5 hate:5 fear:5 loneliness:5 surprise:5
 teapot	seal:3 panda:3 walrus:3 dining_room:2 butter_knife:2 dish_rack:2 microwave:2 plate:2
 teddy_bear	bear:12 giant_teddy:4 teddy_charm:4 fluffy_slippers:4 paw:4 pillow:3 feather:3 best_bud:3
 teddy_charm	teddy_bear:4 giant_teddy:4 lucky_charm:4 eyepatch:2 gas_mask:2 glasses:2 horned_helmet:2 bucket_hat:2
@@ -2767,10 +2767,10 @@ trombone	trumpet:7 tuba:6 saxophone:5 xylophone:2 bass_guitar:2 harmonica:2 orga
 trophy	medal:9 fish_trophy:8 treasure:3 halo:3 jackpot:2 plush_toy:2 energy_drink:2 gift_box:2
 trouble	problem:5 bake_sale:3 hellvile_park:3 surprise:3 urban_legend:3 noise:3 fireworks:2 confetti:2
 troublemaker	imp_brat:5 tattletale:2 copycat:2
-truce	sorry:4 apology:4 compliment:4 memorial:3 mourning:3 gratitude:3 epitaph:3 condolences:2
+truce	argument:15 trust:15 sorry:4 apology:4 compliment:4 memorial:3 mourning:3 gratitude:3 epitaph:3 condolences:2
 true_crime	news:4 movie:4 vhs_tape:2 podcast:2 magazine:2 radio_show:2 picture_book:2 lore_dump:2
 trumpet	trombone:7 tuba:6 saxophone:5 organ:2 flute:2 guitar:2 banjo:2 harp:2
-trust	awe:5 confusion:5 anger:5 hate:5 fear:5 surprise:5 curiosity:5 excitement:5
+trust	truce:15 promise:15 awe:5 confusion:5 anger:5 hate:5 fear:5 surprise:5 curiosity:5 excitement:5
 truth	truth_or_dare:8 mistake:5 magic_mirror:4 reflection:4 family_reunion:3 answer:3 report_card:3 video_call:2
 truth_or_dare	truth:12 nickname:3 photo_album:3 loan:3 baby_photo:3 middle_name:3 charades:2 twenty_questions:2
 tuba	tuba_player:8 trombone:6 trumpet:6 drums:5 bass_guitar:5 organ:5 saxophone:4 speaker:3
