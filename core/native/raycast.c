@@ -50,6 +50,12 @@ static int vx0, vy0, vw0, vh0;
 static int64_t max_dist;        /* fix16 world units: rays stop here */
 static int fade_div;            /* world units per light step */
 
+/* Before clipping to a cell, depth depends only on the plane height and
+ * absolute screen row. Adjacent rays often sample the same plane. */
+static struct PlaneRow {
+    int64_t height, depth;
+} planes[NAT_MAX_H];
+
 static int light_at(const DoomoCell *c)
 {
     int l = c->light ? c->light : (M->ambient ? M->ambient : 12);
@@ -90,12 +96,31 @@ static void face(int x, int64_t z_top, int64_t z_bot, int64_t d, int tex, int u,
     if (z_top >= ((int64_t)SKY_Z * 65536)) ys = ytop;
     if (ys < ytop) ys = ytop;
     if (ye > ybot) ye = ybot;
-    for (y = ys; y <= ye; y++) {
-        /* world z at the centre of this row */
-        int64_t z = eye - ((int64_t)(2 * (y - horizon) + 1) * d) / (2 * focal);
-        int v = (int)((-(z >> 16)) & 63);
-        uint8_t c = tp ? tp[v * 64 + (u & 63)] : flat;
-        nat_fb[y * nat_w + vx0 + x] = cm[c];
+    if (ys <= ye) {
+        int den = 2 * focal;
+        int64_t num = (int64_t)(2 * (ys - horizon) + 1) * d;
+        int64_t step = d / focal;
+        int step_rem = (int)(d - step * focal) * 2;
+        int64_t q = num / den;
+        int rem = (int)(num - q * den);
+        /* Advance the exact quotient and remainder instead of dividing
+         * per pixel. Undo floor rounding for negative sample rows. */
+        if (rem < 0) {
+            q--;
+            rem += den;
+        }
+        for (y = ys; y <= ye; y++) {
+            int64_t z = eye - (q + (q < 0 && rem != 0));
+            int v = (int)((-(z >> 16)) & 63);
+            uint8_t c = tp ? tp[v * 64 + (u & 63)] : flat;
+            nat_fb[y * nat_w + vx0 + x] = cm[c];
+            q += step;
+            rem += step_rem;
+            if (rem >= den) {
+                q++;
+                rem -= den;
+            }
+        }
     }
 }
 
@@ -111,12 +136,16 @@ static void flat(int x, int64_t rdx, int64_t rdy, int64_t z, int64_t d0, int64_t
     if (ys < ytop) ys = ytop;
     if (ye > ybot) ye = ybot;
     for (y = ys; y <= ye; y++) {
-        int64_t den = (int64_t)(2 * (y - horizon) + 1);
+        struct PlaneRow *row = &planes[y];
         int64_t d;
         int u, v;
-        if (den == 0) continue;
-        d = ((eye - z) * 2 * focal) / den;
-        if (d < 0) d = -d;
+        if (row->height != z) {
+            int den = 2 * (y - horizon) + 1;
+            int64_t depth = ((eye - z) * 2 * focal) / den;
+            row->height = z;
+            row->depth = depth < 0 ? -depth : depth;
+        }
+        d = row->depth;
         if (d < d0) d = d0;
         if (d > d1) d = d1;
         u = (int)(((camx + ((rdx * d) >> 16)) >> 16) & 63);
@@ -406,6 +435,7 @@ void plat_view3d(const DoomoView3D *v)
     camy = v->y;
     eye = (int64_t)v->z + ((int64_t)v->bob * 65536);
 
+    for (i = vy0; i < vy0 + vh0; i++) planes[i].height = INT64_MIN;
     for (x = 0; x < vw0; x++) cast_column(x, dirx, diry, plx, ply);
 
     /* billboards, far to near */

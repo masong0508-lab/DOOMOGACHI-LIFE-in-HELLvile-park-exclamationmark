@@ -292,6 +292,12 @@ captures for all seven phases of the separate GS texture animation
 using the old and new layouts. Measure frame times on the target
 console during the PCSX2 and hardware acceptance walkthrough.
 
+The software raycaster reuses floor and ceiling depths by screen row and
+advances the wall texture sample with exact integer steps. This removes
+repeated divisions from both pixel loops. The row cache costs 3.75 KiB
+of EE memory. Native runs matched 906 frame hashes across the Bone
+levels, the general combat route, and the Hell Breach playthrough.
+
 ## PS2-9 compact disc images and low-storage CI artifacts
 
 Three outputs are available from the **same, real game build**:
