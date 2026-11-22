@@ -1,8 +1,8 @@
 /* PS2 GS indexed-to-RGB5551 change-detect upload.
- * Compare against the *same* persistent 512x256 DMA staging texture.
- * Identical frames avoid a 256KiB GIF upload (and matching VRAM traffic)
+ * Compare against the persistent DMA staging texture.
+ * Identical frames avoid a GIF upload and its matching VRAM traffic
  * without storing a second framebuffer or hashing away correctness.
- * Only the used 320x240 pixels are touched; padded edges remain clear.
+ * Only the supplied width and height are touched.
  */
 #ifndef PS2_INDEXED_PRESENT_H
 #define PS2_INDEXED_PRESENT_H

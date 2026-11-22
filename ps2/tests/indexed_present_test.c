@@ -1,7 +1,8 @@
 /* Exact-content GS upload suppression:
- * - first frame uploads; identical frames need no 256KiB DMA
+ * - first frame uploads; identical frames need no DMA
  * - one changed pixel is enough to upload
- * - 512x256 padding and guard words remain untouched
+ * - packed production layout matches the padded reference pixel for pixel
+ * - padding and guard words remain untouched
  * - 1000 randomized tiles agree with reference conversion.
  */
 #include <stdint.h>
@@ -65,6 +66,14 @@ int main(void)
     for(y=0;y<H;y++)for(x=0;x<W;x++)
         CHECK(texture[y*TW+x]==colors[frame[y*W+x]]);
     pad_untouched();
+    /* The console allocates exactly W*H texels for its staging image.
+     * Check every pixel across packed rows and the adjacent guard. */
+    memset(texture,0,sizeof texture);
+    for(i=W*H;i<W*H+GUARD;i++)texture[i]=0xBEEF;
+    CHECK(ps2_indexed_update(frame,W,texture,W,W,H,colors)==1);
+    CHECK(ps2_indexed_update(frame,W,texture,W,W,H,colors)==0);
+    for(i=0;i<W*H;i++)CHECK(texture[i]==colors[frame[i]]);
+    for(i=W*H;i<W*H+GUARD;i++)CHECK(texture[i]==0xBEEF);
     printf("PS2 exact GS frame update: %d checks, %d failures\n",checks,failures);
     return failures!=0;
 }

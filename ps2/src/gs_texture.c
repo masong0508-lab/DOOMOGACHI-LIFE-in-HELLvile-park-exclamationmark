@@ -1,7 +1,6 @@
 /* Isolate the actual PS2 game CT16 GS texture path from all IOP services.
- * Draw ONLY the 512x256 packed RGB5551 texture and do not light the
- * background: a positive Play! frame check must come from texture DMA,
- * not a fallback solid-colour gsKit primitive or the emulator UI.
+ * The 320x240 packed RGB5551 texture is the only thing drawn on the
+ * black background. Visible Play! pixels come from texture DMA.
  * Diagnostic ELF only. Do not include this in the gameplay disc.
  */
 #include <stdint.h>
@@ -9,9 +8,10 @@
 #include <tamtypes.h>
 #include <gsKit.h>
 #include <dmaKit.h>
+#include "game2d.h"
 
-enum { TEX_W=512, TEX_H=256, ACTIVE_W=320, ACTIVE_H=240 };
-static u16 pixels[TEX_W*TEX_H] __attribute__((aligned(64)));
+enum { W=PS2_GAME_W, H=PS2_GAME_H };
+static u16 pixels[W*H] __attribute__((aligned(64)));
 static GSTEXTURE tex;
 
 static u16 rgb5(unsigned r,unsigned g,unsigned b)
@@ -24,12 +24,11 @@ static void repaint(unsigned phase)
     unsigned bar=(phase%7u)*34u;
     u16 dark=rgb5(4,19,30),light=rgb5(31,11,23);
     u16 gold=rgb5(31,29,2);
-    for(y=0;y<ACTIVE_H;y++){
-        for(x=0;x<ACTIVE_W;x++){
-            /* Explicitly keep the padded texture region untouched/black. */
+    for(y=0;y<H;y++){
+        for(x=0;x<W;x++){
             u16 c=(((x/32u)^(y/32u))&1u)?light:dark;
             if(x>=bar && x<bar+48u && y>=64u && y<172u)c=gold;
-            pixels[y*TEX_W+x]=c;
+            pixels[y*W+x]=c;
         }
     }
 }
@@ -57,11 +56,11 @@ int main(void)
     gsKit_set_test(gs,GS_ZTEST_OFF);
     memset(&tex,0,sizeof tex);
     memset(pixels,0,sizeof pixels);
-    tex.Width=TEX_W;tex.Height=TEX_H;
+    tex.Width=W;tex.Height=H;
     tex.PSM=GS_PSM_CT16;
     tex.Filter=GS_FILTER_NEAREST;
     tex.Mem=(u32 *)(void *)pixels;
-    tex.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(TEX_W,TEX_H,tex.PSM),
+    tex.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(W,H,tex.PSM),
                               GSKIT_ALLOC_USERBUFFER);
     if(tex.Vram==GSKIT_ALLOC_ERROR)return 2;
     gsKit_set_clamp(gs,GS_CMODE_CLAMP);
@@ -76,7 +75,7 @@ int main(void)
         gsKit_prim_sprite_texture(gs,&tex,
                                   22.0f,0.0f,0.0f,0.0f,
                                   618.0f,448.0f,
-                                  (float)ACTIVE_W,(float)ACTIVE_H,1,
+                                  (float)W,(float)H,1,
                                   GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0));
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);

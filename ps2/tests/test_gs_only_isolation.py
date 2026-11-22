@@ -36,7 +36,8 @@ def test_gs_only():
     # moving CT16 textured sprite may light the deliberately black GS.
     for token in forbidden + ("gsKit_prim_sprite(gs", "doomo_frame("):
         assert token not in texture, "Texture-only GS probe is no longer isolated: " + token
-    for token in ("TEX_W=512", "TEX_H=256", "ACTIVE_W=320", "ACTIVE_H=240",
+    for token in ("W=PS2_GAME_W", "H=PS2_GAME_H",
+                  "tex.Width=W;tex.Height=H;", "gsKit_texture_size(W,H,tex.PSM)",
                   "GS_PSM_CT16", "gs->PrimAlphaEnable=GS_SETTING_OFF;",
                   "gsKit_texture_upload(gs,&tex);", "gsKit_prim_sprite_texture(gs,&tex,",
                   "gsKit_queue_exec(gs);", "gsKit_sync_flip(gs);",

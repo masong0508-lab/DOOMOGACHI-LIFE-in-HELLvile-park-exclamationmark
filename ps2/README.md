@@ -168,12 +168,11 @@ their day and a real social-memory ledger. On an ELF boot without the
 language disc it does not advertise Talk. Typed entry is off because
 this version has no PS2 keyboard backend.
 
-The GS software surface remains 320x240 indexed and shared with 3D.
-Only the *presentation texture* changed: 512x256 RGB5551, 256KiB in
-both EE upload scratch and GS VRAM instead of 512KiB RGBA32. This
-reduces memory and pixel upload bytes by 50%, but is **not** yet a
-native-GS geometry renderer, and visual/alpha parity still needs
-PCSX2 screenshots.
+The 320x240 indexed software surface is shared with 3D. Its RGB5551
+presentation texture uses 150 KiB of EE staging and 160 KiB of
+page-aligned GS VRAM. The prior 512x256 RGB5551 path used 256 KiB in
+each. gsKit rounds the sampler dimensions independently of the upload.
+PCSX2 and hardware remain part of the visual acceptance walkthrough.
 
 For a disc image:
 
@@ -269,17 +268,18 @@ draft through the PCSX2 acceptance walkthrough.
 
 ## PS2-7 exact-content GS upload suppression
 
-The renderer now compares the indexed 320x240 output against its existing
-512x256 RGB5551 DMA staging texture. If nothing changed, it draws the
-resident texture without re-uploading **256 KiB** to GS VRAM. Changed
-frames copy exactly the differing pixels and perform the normal full
-texture upload; nothing else is allocated. The test
-`ps2/tests/indexed_present_test.c` verifies first-upload behavior,
-identical-frame suppression, random pixel changes, color parity and
-padding guards. A native reproduction passed 134,098 sanitizer-backed
-checks, but this is not a PS2 hardware performance measurement. FPS
-improvement depends on how many frames are genuinely unchanged. The
-portable reference 3D geometry still renders into the indexed buffer.
+The renderer compares the indexed frame against the persistent
+320x240 RGB5551 staging image. An unchanged frame reuses the resident
+texture. A changed frame uploads 150 KiB, down from 256 KiB. At 30
+changed frames per second this saves up to 3,180 KiB/s of GIF texture
+payload. The compact staging image saves 106 KiB in EE memory and the
+page-aligned texture saves 96 KiB in GS VRAM.
+
+The host test checks packed pixel order, random mutations, identical
+frames, and buffer guards. Play! produced pixel-identical viewport
+captures for all seven phases of the separate GS texture animation
+using the old and new layouts. Measure frame times on the target
+console during the PCSX2 and hardware acceptance walkthrough.
 
 ## PS2-9 compact disc images and low-storage CI artifacts
 

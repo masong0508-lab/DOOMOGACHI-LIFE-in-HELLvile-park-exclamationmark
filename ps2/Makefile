@@ -52,7 +52,7 @@ $(GS_ALPHA_BIN): build/gs_only_alpha.o
 	$(EE_CC) -T$(EE_LINKFILE) $(EE_OPTFLAGS) -o $@ $< \
 		$(EE_LDFLAGS) $(EXTRA_LDFLAGS) -lgskit_toolkit -lgskit -ldmakit -lm
 
-# Isolated CT16 texture DMA/sprite probe matches the game's 512x256
+# Isolated CT16 texture DMA/sprite probe matches the game's 320x240
 # GS texture/VRAM format and has no controller, disc, audio or save calls.
 build/gs_texture.o: src/gs_texture.c
 	@mkdir -p build

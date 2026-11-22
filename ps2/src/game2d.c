@@ -1,7 +1,7 @@
 /* PS2-1: first playable shared-core 2D framebuffer.
  * The core's authoritative 256-colour palette, 5x8 font, portraits and
- * user interface draw here at 320x240. A single 512x256 GS RGB5551
- * texture (256KiB, previously 512KiB RGBA) is refreshed at 30Hz;
+ * user interface draw here at 320x240. A single 320x240 GS RGB5551
+ * texture (150 KiB per changed frame) is refreshed at up to 30Hz;
  * NTSC fields display the most recent image at 60Hz. The reference 3D/overworld renderers share this indexed surface;
  * native GS polygon acceleration is still an unimplemented milestone.
  * No new per-resident portrait cache, heap allocation or save fields.
@@ -17,14 +17,14 @@
 #include "doomo/font.h"
 #include "doomo/palette.h"
 
-enum { W=320, H=240, TEX_W=512, TEX_H=256 };
+enum { W=PS2_GAME_W, H=PS2_GAME_H };
 uint8_t ps2_indexed_fb[W*H];
 #define fb ps2_indexed_fb
-static u16 upload[TEX_W*TEX_H] __attribute__((aligned(64)));
+static u16 upload[W*H] __attribute__((aligned(64)));
 static u16 colors[256];
 static GSTEXTURE picture;
 static uint32_t frame_ticks;
-static uint32_t gs_upload_count;  /* attempted 256KiB texture DMA uploads */
+static uint32_t gs_upload_count;
 static uint8_t drawing;
 
 int plat_screen_w(void){return W;}
@@ -130,25 +130,22 @@ void plat_checker(int x,int y,int w,int h,uint8_t c)
     for(j=0;j<h;j++)for(i=0;i<w;i++)if(((x+i+y+j)&1)==0)pix(x+i,y+j,c);
 }
 
-/* No frame-time allocation. The core's RGB555 palette maps directly to
- * GS RGB5A1: DMA and VRAM usage are 256KiB, half of old RGBA32. */
+/* The staging image contains only visible pixels. gsKit rounds the
+ * sampler exponents and the CT16 VRAM footprint independently. */
 int ps2_game2d_init(GSGLOBAL *gs)
 {
     unsigned i;
     memset(&picture,0,sizeof picture);
     gs_upload_count=0;
-    /* GS sampling covers 320x240; the larger power-of-two texture edge
-     * is always transparent. The edge is never touched by game drawing,
-     * so clear it once at boot instead of 106KiB every 30Hz upload. */
     memset(upload,0,sizeof upload);
-    picture.Width=TEX_W;picture.Height=TEX_H;
+    picture.Width=W;picture.Height=H;
     picture.PSM=GS_PSM_CT16;
     picture.Filter=GS_FILTER_NEAREST;
     /* gsKit declares GSTEXTURE.Mem as u32* for all texture PSMs.
      * CT16 uploads remain packed u16 pixels; the upload byte size is
      * derived from picture.PSM, not the pointer's C element type. */
     picture.Mem=(u32 *)(void *)upload;
-    picture.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(TEX_W,TEX_H,picture.PSM),
+    picture.Vram=gsKit_vram_alloc(gs,gsKit_texture_size(W,H,picture.PSM),
                                   GSKIT_ALLOC_USERBUFFER);
     if(picture.Vram==GSKIT_ALLOC_ERROR)return 0;
     for(i=0;i<256;i++){
@@ -162,7 +159,7 @@ int ps2_game2d_init(GSGLOBAL *gs)
 void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
 {
     u64 tint=GS_SETREG_RGBAQ(0x80,0x80,0x80,0x80,0);
-    if(upload_frame && ps2_indexed_update(fb,W,upload,TEX_W,W,H,colors)){
+    if(upload_frame && ps2_indexed_update(fb,W,upload,W,W,H,colors)){
         /* The full texture remains resident in GS VRAM during alternate
          * fields and unchanged logic frames. No duplicate backing image
          * or probabilistic hash; exact per-pixel comparison is the gate. */
