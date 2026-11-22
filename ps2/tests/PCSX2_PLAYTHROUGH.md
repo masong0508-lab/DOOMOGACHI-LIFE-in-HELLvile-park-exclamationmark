@@ -89,6 +89,12 @@ nominal 30 Hz simulation over the same route.
 The current Play! CI gate verifies that the game boots, the controller
 changes the screen, and the viewport shows motion. Establish the sustained
 cadence on PCSX2 at normal emulation speed and on a physical console.
+Collect EE timing and VBLANK counts with the
+[cadence diagnostic](../README.md#cadence-diagnostic) in a separate run
+of the same route. Its logs report per-window phase maxima and GS work.
+Use refresh-by-refresh capture to identify the images that reached
+scanout. Obtain per-frame timings for percentiles when measuring the
+full acceptance criteria.
 
 ## Release criteria
 

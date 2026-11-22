@@ -150,6 +150,31 @@ TEST(raycaster_occludes_sprites_behind_walls)
     CHECK(count_color(0, 0, nat_w, nat_h, PAL_UI_GOLD) > 20);
 }
 
+TEST(raycaster_occludes_billboard_behind_near_tall_step)
+{
+    static uint8_t pixels[16 * 16];
+    DoomoImage img = { 16, 16, pixels, 77 };
+    DoomoBillboard sprite = {
+        .x = INT2FIX(6 * 64), .y = INT2FIX(7 * 64 + 32),
+        .img = &img, .scale = 256, .flags = BB_FULLBRIGHT | BB_SHADOW
+    };
+    DoomoView3D view = {
+        .map = &tmap, .x = INT2FIX(3 * 64 - 1), .y = INT2FIX(7 * 64 + 32),
+        .z = INT2FIX(DOOMO_EYE_HEIGHT), .sprites = &sprite, .sprite_count = 1,
+        .player_sprite = -1
+    };
+    int y;
+    build_room();
+    for (y = 1; y < 15; y++) {
+        DoomoCell *cell = &tmap.cells[y * 16 + 3];
+        cell->floor_h = 36;
+        cell->ceil_h = 42;
+    }
+    memset(pixels, PAL_UI_GOLD, sizeof(pixels));
+    plat_view3d(&view);
+    CHECK_EQ(count_color(0, 0, nat_w, nat_h, PAL_UI_GOLD), 0);
+}
+
 TEST(overworld_renders)
 {
     DoomoOverworldView ov;

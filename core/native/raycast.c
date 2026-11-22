@@ -200,20 +200,30 @@ static void push_clip(int x, int64_t d, int ytop, int ybot)
     if (nclips[x] < CLIP_MAX) {
         ClipEnt *e = &clips[x][nclips[x]++];
         e->d = (int32_t)((d >> 16) > 0x7FFFFFFF ? 0x7FFFFFFF : (d >> 16));
-        e->top = (int16_t)ytop;
-        e->bot = (int16_t)ybot;
+        /* A closed window can have rows far beyond the viewport.
+         * Store an empty interval before narrowing those coordinates. */
+        e->top = ytop <= ybot ? (int16_t)ytop : 1;
+        e->bot = ytop <= ybot ? (int16_t)ybot : 0;
     }
 }
 
-static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t ply)
+static int64_t cell_delta(int32_t direction)
 {
-    int64_t camx_c = (2 * (int64_t)x + 1 - vw0) * 65536 / vw0;    /* -1..1 */
-    int64_t rdx = dirx + ((plx * camx_c) >> 16);
-    int64_t rdy = diry + ((ply * camx_c) >> 16);
+    uint32_t magnitude = direction < 0 ? 0u - (uint32_t)direction : (uint32_t)direction;
+    if (!magnitude) return (int64_t)1 << 40;
+    /* 2^32 and UINT32_MAX give different quotients exactly when the
+     * divisor divides 2^32, which means it is a power of two. */
+    return (int64_t)(UINT32_MAX / magnitude) + ((magnitude & (magnitude - 1)) == 0);
+}
+
+static void cast_column(int x, int32_t camx_c, int64_t dirx, int64_t diry, int64_t plx, int64_t ply)
+{
+    int32_t rdx = (int32_t)(dirx + ((plx * camx_c) >> 16));
+    int32_t rdy = (int32_t)(diry + ((ply * camx_c) >> 16));
     int64_t posx = camx / DOOMO_CELL_UNITS, posy = camy / DOOMO_CELL_UNITS; /* fix16 cells */
     int mx = (int)(posx >> 16), my = (int)(posy >> 16);
-    int64_t deltax = rdx ? ((int64_t)1 << 32) / (rdx < 0 ? -rdx : rdx) : ((int64_t)1 << 40);
-    int64_t deltay = rdy ? ((int64_t)1 << 32) / (rdy < 0 ? -rdy : rdy) : ((int64_t)1 << 40);
+    int64_t deltax = cell_delta(rdx);
+    int64_t deltay = cell_delta(rdy);
     int stepx = rdx < 0 ? -1 : 1, stepy = rdy < 0 ? -1 : 1;
     int64_t sidex = rdx < 0 ? (((posx - ((int64_t)mx * 65536)) * deltax) >> 16)
                             : ((((int64_t)(mx + 1) * 65536) - posx) * deltax >> 16);
@@ -472,7 +482,20 @@ void plat_view3d(const DoomoView3D *v)
             planes[i].height = INT64_MIN;
         }
     }
-    for (x = 0; x < vw0; x++) cast_column(x, dirx, diry, plx, ply);
+    {
+        int32_t num = (1 - vw0) * 65536;
+        int32_t ray = num / vw0, rem = num % vw0;
+        int32_t step = 131072 / vw0, step_rem = 131072 % vw0;
+        /* Step the exact quotient of (2*x + 1 - vw0) * 65536 / vw0.
+         * Use floor internally, then restore C's truncation toward zero. */
+        if (rem < 0) { ray--; rem += vw0; }
+        for (x = 0; x < vw0; x++) {
+            cast_column(x, ray + (ray < 0 && rem != 0), dirx, diry, plx, ply);
+            ray += step;
+            rem += step_rem;
+            if (rem >= vw0) { ray++; rem -= vw0; }
+        }
+    }
 
     /* billboards, far to near */
     n = v->sprites ? DOOMO_MIN(v->sprite_count, 256) : 0;

@@ -79,11 +79,18 @@ DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
 PS2_VIDEO ?= 480i
+PS2_CADENCE ?= 0
 ifeq ($(PS2_VIDEO),480p)
 GAME_SUFFIX := _480p
 GAME_VIDEO_FLAGS := -DPS2_PROGRESSIVE=1
 else ifneq ($(PS2_VIDEO),480i)
 $(error PS2_VIDEO must be 480i or 480p)
+endif
+ifeq ($(PS2_CADENCE),1)
+GAME_SUFFIX := $(GAME_SUFFIX)_cadence
+GAME_CADENCE_FLAGS := -DPS2_CADENCE=1
+else ifneq ($(PS2_CADENCE),0)
+$(error PS2_CADENCE must be 0 or 1)
 endif
 GAME_MAIN := build/game_main$(GAME_SUFFIX).o
 GAME_OBJS := $(GAME_MAIN) build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
@@ -132,7 +139,7 @@ $(GAME_DISC_BIN): $(GAME_BIN) tools/check_disc_elf.py
 
 $(GAME_MAIN): src/game_main.c src/padmap.h src/game2d.h
 	@mkdir -p build
-	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) $(GAME_VIDEO_FLAGS) -c $< -o $@
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) $(GAME_VIDEO_FLAGS) $(GAME_CADENCE_FLAGS) -c $< -o $@
 
 build/game2d.o: src/game2d.c src/game2d.h src/indexed_blit.h src/indexed_present.h
 	@mkdir -p build

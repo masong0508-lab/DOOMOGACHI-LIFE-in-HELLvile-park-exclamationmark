@@ -315,6 +315,40 @@ audio timing preserved. The current loop still draws at most one new
 game image per two refreshes. Measure image updates separately from the
 display refresh rate when testing progress toward the target.
 
+### Cadence diagnostic
+
+Build an instrumented game ISO for either output mode:
+
+```sh
+make -C ps2 -j2 disc PS2_VIDEO=480i PS2_CADENCE=1
+make -C ps2 -j2 disc PS2_VIDEO=480p PS2_CADENCE=1
+```
+
+The files are `ps2/build/doomogachi_ps2_game_cadence.iso` and
+`ps2/build/doomogachi_ps2_game_480p_cadence.iso`. CI cross-builds both
+variants and packages the progressive ISO as
+`doomogachi-ps2-game-480p-cadence-iso`. The game loop follows the same
+tick, texture upload, and flip schedule. The diagnostic replaces the
+framebuffer-hash heartbeat with `PS2_CADENCE` console records every four
+EE seconds, for up to 300 records.
+
+Each record includes elapsed EE time, VBLANK-start interrupts, completed
+logic ticks, exact changed-texture uploads, GS flips, and progressive
+holds. The phase peaks cover input plus core update/draw, audio, frame
+preparation (palette conversion and upload calls), GS queue and flip
+including sync wait, and the progressive hold wait. `skipped_refreshes`
+counts interrupts beyond the first between completed loop boundaries.
+If `zero_vblank_iterations` is nonzero, check interrupt delivery and
+boundary alignment before interpreting skipped refreshes. A GS flip can
+reuse an image, and a changed upload counts GS work. Use an external
+capture to measure changed images reaching scanout.
+
+Capture the EE console on PCSX2 or a homebrew PS2 with console output
+forwarded. Play! may omit the EE console even while gameplay continues.
+Record the build, mode, scene and emulator speed with the log and use
+the [60 fps acceptance walkthrough](tests/PCSX2_PLAYTHROUGH.md#60-fps-acceptance)
+for the corresponding video capture.
+
 ## PS2-9 compact disc images and low-storage CI artifacts
 
 Three outputs are available from the **same, real game build**:

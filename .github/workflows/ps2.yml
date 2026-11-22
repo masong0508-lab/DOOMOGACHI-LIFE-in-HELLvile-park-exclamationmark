@@ -38,6 +38,11 @@ jobs:
           cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Ips2/src \
             ps2/tests/indexed_present_test.c -o /tmp/ps2-indexed-present-test
           /tmp/ps2-indexed-present-test
+      - name: Check cadence counters and phase peaks
+        run: |
+          cc -std=c99 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=undefined -Ips2/src \
+            ps2/tests/cadence_test.c -o /tmp/ps2-cadence-test
+          /tmp/ps2-cadence-test
       - name: Check dual-bank memory-card save journal and rollback
         run: |
           cc -std=c99 -O2 -Wall -Wextra -Werror -Ips2/src \
@@ -191,6 +196,20 @@ jobs:
         with:
           name: doomogachi-ps2-game-480p-iso
           path: ps2/build/doomogachi_ps2_game_480p.iso
+          retention-days: 3
+          if-no-files-found: error
+      - name: Build cadence diagnostics for both video modes
+        run: |
+          set -eu
+          make -C ps2 -j2 game PS2_VIDEO=480i PS2_CADENCE=1
+          test -s ps2/build/doomogachi_ps2_game_cadence.elf
+          make -C ps2 -j2 disc PS2_VIDEO=480p PS2_CADENCE=1
+          test -s ps2/build/doomogachi_ps2_game_480p_cadence.iso
+      - name: Upload progressive-scan cadence diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-480p-cadence-iso
+          path: ps2/build/doomogachi_ps2_game_480p_cadence.iso
           retention-days: 3
           if-no-files-found: error
       - name: Upload experimental game ELF only if linked

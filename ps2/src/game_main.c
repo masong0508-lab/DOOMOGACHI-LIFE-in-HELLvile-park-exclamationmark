@@ -17,6 +17,10 @@
 #include "doomo/doomo.h"
 #include "padmap.h"
 #include "game2d.h"
+#if defined(PS2_CADENCE)
+#include <timer.h>
+#include "cadence.h"
+#endif
 #if defined(PS2_SCRIPTED_STORY_PROBE)
 #include "scripted_story.h"
 #include "doomo/scene.h"
@@ -25,6 +29,119 @@ int ps2_memcard_init(void);
 int ps2_audio_init(void);
 void ps2_audio_frame(void);
 void ps2_talk_disc_init(void);
+
+#if defined(PS2_CADENCE)
+/* The INTC event is independent of gsKit's polling of the GS CSR. Read
+ * only this aligned, single-writer counter from the gameplay thread. */
+static volatile uint32_t cadence_vblanks;
+static int cadence_handler = -1;
+static Ps2CadenceWindow cadence_window;
+static uint64_t cadence_start_ticks, cadence_marks[PS2_CADENCE_PHASES];
+static uint32_t cadence_start_logic, cadence_start_uploads;
+static unsigned cadence_reports;
+
+static int count_vblank(int cause)
+{
+    (void)cause;
+    cadence_vblanks++;
+    ExitHandler();
+    return 0;
+}
+
+static void cadence_reset_window(void)
+{
+    ps2_game2d_probe(&cadence_start_logic,&cadence_start_uploads,NULL);
+    cadence_start_ticks=GetTimerSystemTime();
+    cadence_window=(Ps2CadenceWindow){.last_vblank=cadence_vblanks};
+}
+
+static void cadence_start(void)
+{
+    cadence_handler=AddIntcHandler(INTC_VBLANK_S,count_vblank,0);
+    if(cadence_handler<0){
+        printf("PS2_CADENCE unavailable=vblank_handler code=%d\n",cadence_handler);
+        return;
+    }
+    EnableIntc(INTC_VBLANK_S);
+    cadence_reset_window();
+}
+
+static void cadence_stop(void)
+{
+    RemoveIntcHandler(INTC_VBLANK_S,cadence_handler);
+    cadence_handler=-1;
+}
+
+static unsigned long long cadence_us(uint64_t ticks)
+{
+    return ticks*1000000u/kBUSCLK;
+}
+
+static void cadence_finish(unsigned field,int flipped)
+{
+    uint64_t phase_ticks[PS2_CADENCE_PHASES]={0};
+    uint64_t now,elapsed,hold_ticks=0;
+    uint32_t vblanks,logic,uploads;
+    const Ps2CadenceWindow *w=&cadence_window;
+
+    if(cadence_handler<0)return;
+    now=GetTimerSystemTime();
+    vblanks=cadence_vblanks;
+    if(now<=cadence_marks[PS2_CADENCE_UPDATE]){
+        printf("PS2_CADENCE unavailable=timer\n");
+        cadence_stop();
+        return;
+    }
+    if(flipped){
+        if((field&1u)==0){
+            phase_ticks[PS2_CADENCE_UPDATE]=cadence_marks[PS2_CADENCE_AUDIO]-cadence_marks[PS2_CADENCE_UPDATE];
+            phase_ticks[PS2_CADENCE_AUDIO]=cadence_marks[PS2_CADENCE_PREPARE]-cadence_marks[PS2_CADENCE_AUDIO];
+            phase_ticks[PS2_CADENCE_PREPARE]=cadence_marks[PS2_CADENCE_FLIP]-cadence_marks[PS2_CADENCE_PREPARE];
+        }else{
+            phase_ticks[PS2_CADENCE_PREPARE]=cadence_marks[PS2_CADENCE_FLIP]-cadence_marks[PS2_CADENCE_UPDATE];
+        }
+        phase_ticks[PS2_CADENCE_FLIP]=now-cadence_marks[PS2_CADENCE_FLIP];
+    }else{
+        hold_ticks=now-cadence_marks[PS2_CADENCE_UPDATE];
+    }
+    ps2_cadence_record(&cadence_window,vblanks,flipped,phase_ticks,hold_ticks);
+    elapsed=now-cadence_start_ticks;
+    if(elapsed<4ull*kBUSCLK)return;
+
+    ps2_game2d_probe(&logic,&uploads,NULL);
+    printf("PS2_CADENCE mode=%s window=%u elapsed_us=%llu vblank_irqs=%lu "
+           "logic_ticks=%lu gs_uploads=%lu gs_flips=%lu refresh_holds=%lu "
+           "skipped_refreshes=%lu max_vblank_gap=%lu zero_vblank_iterations=%lu "
+           "update_draw_max_us=%llu audio_max_us=%llu frame_prepare_max_us=%llu "
+           "gs_submit_wait_max_us=%llu hold_wait_max_us=%llu\n",
+#if defined(PS2_PROGRESSIVE)
+           "480p",
+#else
+           "480i",
+#endif
+           ++cadence_reports,cadence_us(elapsed),(unsigned long)w->vblanks,
+           (unsigned long)(logic-cadence_start_logic),
+           (unsigned long)(uploads-cadence_start_uploads),
+           (unsigned long)w->flips,(unsigned long)w->holds,
+           (unsigned long)w->skipped_refreshes,(unsigned long)w->max_vblank_gap,
+           (unsigned long)w->zero_vblank_iterations,
+           cadence_us(w->max_ticks[PS2_CADENCE_UPDATE]),
+           cadence_us(w->max_ticks[PS2_CADENCE_AUDIO]),
+           cadence_us(w->max_ticks[PS2_CADENCE_PREPARE]),
+           cadence_us(w->max_ticks[PS2_CADENCE_FLIP]),cadence_us(w->max_hold_ticks));
+    /* Keep console output out of the measurement window. */
+    if(cadence_reports>=300)cadence_stop();
+    else cadence_reset_window();
+}
+
+#define CADENCE_MARK(phase) do { \
+    if(cadence_handler>=0)cadence_marks[phase]=GetTimerSystemTime(); \
+} while(0)
+#define CADENCE_FINISH(field,flipped) cadence_finish(field,flipped)
+#else
+#define CADENCE_MARK(phase) ((void)0)
+#define CADENCE_FINISH(field,flipped) ((void)0)
+#endif
 
 static unsigned char pad_dma[256] __attribute__((aligned(64)));
 static int pad_open;
@@ -173,7 +290,11 @@ int main(void)
     input_set_pad(PAD_PS1);
     input_set_feel(1);
     printf("PS2 shared-core prototype: doomo_init complete, 30Hz logic\n");
+#if defined(PS2_CADENCE)
+    cadence_start();
+#endif
     for(;;){
+        CADENCE_MARK(PS2_CADENCE_UPDATE);
         /* Input is sampled each game tick; 60Hz GS fields never advance
          * the simulation twice. Present the last complete 8bpp image. */
         if((field&1u)==0){
@@ -197,8 +318,11 @@ int main(void)
             }
 #endif
             plat_end_frame();
+            CADENCE_MARK(PS2_CADENCE_AUDIO);
             ps2_audio_frame();
+            CADENCE_MARK(PS2_CADENCE_PREPARE);
             ps2_game2d_present(gs,1);
+#if !defined(PS2_CADENCE)
             /* Sparse EE-console heartbeat (~4s at 60 fields): useful to
              * diagnose a black/frozen emulator screen or runaway uploads.
              * Hash is not computed during normal frames. */
@@ -209,12 +333,14 @@ int main(void)
                        (unsigned long)ticks,(unsigned long)uploads,
                        (unsigned long)hash);
             }
+#endif
         }else{
 #if defined(PS2_PROGRESSIVE)
             /* Progressive scanout keeps showing the completed front
              * buffer. Wait for this refresh without drawing a duplicate
              * into the back buffer or flipping it. */
             gsKit_vsync_wait();
+            CADENCE_FINISH(field,0);
             field++;
             continue;
 #else
@@ -223,8 +349,10 @@ int main(void)
             ps2_game2d_present(gs,0);
 #endif
         }
+        CADENCE_MARK(PS2_CADENCE_FLIP);
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
+        CADENCE_FINISH(field,1);
         field++;
     }
     return 0;
