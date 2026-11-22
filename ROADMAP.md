@@ -21,6 +21,11 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone material overhaul (2026-11-22):** Both maps use clearer skull
+  reliefs, framed colored glass, broad red paving, and a quieter skyline.
+  The shipped 24-window 3D regression census passed. The four Bone
+  windows stayed within 0.24 drawn FPS of the previous ROM. See the
+  [GBA validation](docs/BONE_READABILITY.md#current-gba-validation).
 - **GBA Bone pacing and clarity (2026-11-22):** The 96×64 scaler and
   health digits preserve their original pixels. Damage tints are published
   within VBlank. Faster actor collision filtering and sliced portraits

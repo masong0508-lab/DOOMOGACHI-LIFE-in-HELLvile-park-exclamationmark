@@ -228,9 +228,25 @@ static int iatan16(int32_t t)
     return lo;
 }
 
+#include "bone_materials.inc"
+
+static const uint8_t *view_texture_pixels(int id)
+{
+    if (r3f.map && bone_readability_map(r3f.map->def)) {
+        switch (id) {
+        case TEX_BONE_WALL:    return bone_wall_pixels;
+        case TEX_SKULL_MOSAIC: return carved_mosaic_pixels;
+        case TEX_STAINED_GLASS: return stained_glass_pixels;
+        case TEX_BLOOD_BRICK:   return brick_pixels;
+        case TEX_GORE_FLOOR:    return red_paving_pixels;
+        }
+    }
+    return texture_pixels(id, r3f.time);
+}
+
 const uint8_t *r3d_texture(int id)
 {
-    const uint8_t *t = texture_pixels(id, r3f.time);
+    const uint8_t *t = view_texture_pixels(id);
     if (!t) t = gba_missing_tex;
     r3d_texc[id & (R3D_MAXTEX - 1)] = t;
     return t;
@@ -414,6 +430,13 @@ static void setup_map(const DoomoMap *m)
     cache_mw = m->w;
     cache_mh = m->h;
     memset(r3d_avgc, 0, sizeof(r3d_avgc));
+    if (bone_readability_map(m->def)) {
+        r3d_avgc[TEX_BONE_WALL] = PAL_RAMP(RAMP_WOOD, 4);
+        r3d_avgc[TEX_SKULL_MOSAIC] = PAL_RAMP(RAMP_WOOD, 3);
+        r3d_avgc[TEX_STAINED_GLASS] = PAL_RAMP(RAMP_VAPE, 4);
+        r3d_avgc[TEX_BLOOD_BRICK] = PAL_RAMP(RAMP_BLOOD, 3);
+        r3d_avgc[TEX_GORE_FLOOR] = PAL_RAMP(RAMP_BLOOD, 3);
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -627,7 +650,7 @@ static void vtex_update(void)
         const uint8_t *src;
         uint8_t *dst = VTEX_BASE + i * VTEX_SIZE;
         if (id < 0) continue;
-        src = texture_pixels(id, r3f.time);
+        src = view_texture_pixels(id);
         if (!src) { vtex_id[i] = 0; continue; }
         if (src != vtex_src[i]) {
             if (((uintptr_t)src & 3) == 0) dma3_copy32(dst, src, VTEX_SIZE / 4);
@@ -784,7 +807,7 @@ void plat_view3d(const DoomoView3D *v)
     memset(r3d_texc, 0, sizeof(r3d_texc));
     vtex_update();
     r3f.time = v->time;
-    r3f.sky = sky_pixels(m->sky, v->time);
+    r3f.sky = bone && m->sky == SKY_HELL ? bone_sky_pixels : sky_pixels(m->sky, v->time);
     if (!r3f.sky) r3f.sky = gba_missing_tex;
     r3f.skyang = a;
     r3f.frame = ++frame_no;

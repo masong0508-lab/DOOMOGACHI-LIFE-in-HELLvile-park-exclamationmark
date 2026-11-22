@@ -21,17 +21,17 @@ All 24 windows passed their existing regression floors. The Bone FPS
 below use presented frames divided by elapsed video refreshes at the
 GBA's 59.7275 Hz refresh rate.
 
-| Bone map and camera | Baseline `4f23e628` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
+| Bone map and camera | Baseline `0cdf8ab6` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 15.85 | 17.30 | 29.98 | 48.3 / 68.6 ms |
-| Cathedral, third person | 15.79 | 18.15 | 29.86 | 46.6 / 63.2 ms |
-| Capital, first person | 17.30 | 19.30 | 29.86 | 43.8 / 53.9 ms |
-| Capital, third person | 18.15 | 19.76 | 29.86 | 42.9 / 57.5 ms |
+| Cathedral, first person | 17.30 | 17.39 | 29.75 | 47.7 / 58.5 ms |
+| Cathedral, third person | 18.15 | 17.92 | 29.86 | 47.4 / 57.9 ms |
+| Capital, first person | 19.30 | 19.45 | 29.75 | 44.0 / 55.3 ms |
+| Capital, third person | 19.76 | 19.68 | 30.09 | 42.7 / 59.0 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
-The longer-term target is **30 drawn FPS**. The largest Cathedral
-third-person gap fell from seven to four video refreshes, about 117 to
-67 ms. Mean frame work remains above 41.7 ms in every Bone window.
+The longer-term target is **30 drawn FPS**. The new art was within
+0.24 drawn FPS of the previous build in all four windows. Mean frame
+work remains above 41.7 ms in every Bone window.
 
 ### Current Bone rendering budget
 
@@ -56,7 +56,10 @@ third-person gap fell from seven to four video refreshes, about 117 to
   both hardware palette banks in the same VBlank.
 - The Cathedral's brighter red approach and closer stained-glass windows
   frame the stepped arch. Capital's taller piers and raised Ossuary Gate
-  mark its approach. For visual checkpoints and caveats, see
+  mark its approach. The GBA uses dedicated skull reliefs, colored glass,
+  wide mortar lines, crimson pavers, and a quieter eclipse skyline in
+  both maps. These ROM assets reuse the texture cache and sampler. For
+  visual checkpoints and caveats, see
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
 The measured game ROM uses 236,452 B of EWRAM and leaves 25,692 B free.
