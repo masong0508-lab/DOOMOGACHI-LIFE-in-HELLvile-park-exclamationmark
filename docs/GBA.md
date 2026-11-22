@@ -21,24 +21,28 @@ All 24 windows passed their existing regression floors. The Bone FPS
 below use presented frames divided by elapsed video refreshes at the
 GBA's 59.7275 Hz refresh rate.
 
-| Bone map and camera | Baseline `0cdf8ab6` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
+| Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.30 | 17.39 | 29.75 | 47.7 / 58.5 ms |
-| Cathedral, third person | 18.15 | 17.92 | 29.86 | 47.4 / 57.9 ms |
-| Capital, first person | 19.30 | 19.45 | 29.75 | 44.0 / 55.3 ms |
-| Capital, third person | 19.76 | 19.68 | 30.09 | 42.7 / 59.0 ms |
+| Cathedral, first person | 17.39 | 17.23 | 29.86 | 49.1 / 57.7 ms |
+| Cathedral, third person | 17.92 | 17.85 | 29.75 | 46.8 / 60.5 ms |
+| Capital, first person | 19.45 | 18.84 | 29.86 | 45.2 / 65.1 ms |
+| Capital, third person | 19.68 | 19.60 | 29.98 | 43.0 / 57.9 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
-The longer-term target is **30 drawn FPS**. The new art was within
-0.24 drawn FPS of the previous build in all four windows. Mean frame
-work remains above 41.7 ms in every Bone window.
+The longer-term target is **30 drawn FPS**. The four windows spent their
+draws at 96×64 or 120×80. Mean frame work remains above 41.7 ms in every
+Bone window.
 
 ### Current Bone rendering budget
 
 - Balanced can step from full or half detail to 96×64 (48 rays) and then
-  to 80×54 (40 rays). Three consecutive 96×64 frames that take more than four
+  to 80×54 (40 rays). Five consecutive 96×64 frames that take more than four
   VBlanks trigger the emergency tier. Smooth uses a 120×80 world viewport.
   The 240×160 HUD is drawn after scaling.
+- Each Bone wall ray shades a left and right texture sample. In the
+  96×64 tier those samples occupy two and three screen pixels. Both
+  samples share the same ray intersection and vertical rows. The engine
+  test checks mixed pairs at 2×, 2.5× and 3×, with guards around the view.
 - Cathedral caps sightlines at 14 cells in Balanced and Smooth (12 in
   the emergency tier). Capital uses 20 and 16. Max caps both maps at
   26 cells. The GBA-specific roof cap applies to decorative height.
@@ -63,8 +67,8 @@ work remains above 41.7 ms in every Bone window.
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
 The measured game ROM uses 236,452 B of EWRAM and leaves 25,692 B free.
-The IWRAM main stack reserve is 6,160 B against the 6,144 B minimum.
-The 3D overlay uses 10,200 B of its 10,304 B slot.
+The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
+The 3D overlay uses 10,256 B of its 10,304 B slot.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

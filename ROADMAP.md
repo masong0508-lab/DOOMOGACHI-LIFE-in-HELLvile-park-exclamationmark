@@ -21,6 +21,11 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone wall sampling (2026-11-22):** Each wall ray now shades two
+  independent samples. The GBA scaler preserves both, and the engine test
+  checks the packed pixels at each scale. All four mGBA Bone windows
+  drew at 96×64 or 120×80 and reached 17.23 to 19.60 FPS. The 24 FPS
+  target remains open. See the [current measurements](docs/GBA.md#current-gba-performance-status).
 - **GBA Bone material overhaul (2026-11-22):** Both maps use clearer skull
   reliefs, framed colored glass, broad red paving, and a quieter skyline.
   The shipped 24-window 3D regression census passed. The four Bone

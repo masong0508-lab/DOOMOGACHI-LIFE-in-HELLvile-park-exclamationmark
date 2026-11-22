@@ -1,8 +1,7 @@
 @ r3d_loops.s - the raycaster's pixel loops, hand-scheduled ARM in IWRAM
-@ (owner: gba). Mode 4, 2-pixel-wide columns: every pixel is one
-@ halfword (both bytes the same colour), so VRAM never needs a
-@ read-modify-write. Loads are interleaved so no ldrb result is used by
-@ the very next instruction.
+@ (owner: gba). Mode 4 stores each ray's two pixels in one halfword.
+@ Bone wall faces can shade the two bytes independently. Both samples
+@ use the ray's visibility and lighting.
 @ Section .iwram_3d: the IWRAM overlay's 3D group (G4, iwram_ovl.h),
 @ loaded by plat_view3d(); never call these from outside it.
 
@@ -10,8 +9,8 @@
     .arm
     .align 2
 
-@ FACEBODY: the textured vertical span loop shared by r3d_face_loop and the
-@ column pass's faces. In: r0 p, r1 n > 0, r2 texcol, r3 v, r4 dv, r5 cm,
+@ FACEBODY: the one-texel vertical span loop.
+@ In: r0 p, r1 n > 0, r2 texcol, r3 v, r4 dv, r5 cm,
 @ r7 = 0xFC0; trashes r1, r3, r6, r12, advances r0. Unrolled 8 times; the
 @ first round enters part-way (a computed jump skips (8 - n % 8) % 8 pixels).
     .macro FACEPX
@@ -41,21 +40,6 @@
     subs    r1, r1, #8
     bne     1b
     .endm
-
-@ void r3d_face_loop(uint16_t *p, int n, const uint8_t *texcol, int32_t v,
-@                    int32_t dv, const uint8_t *cm)
-@ Textured vertical span: n > 0 rows starting at p (stride 240 bytes).
-@ v / dv: texture row in 16.16 (wraps at 64). texcol = texture + u.
-@ Shares the column pass's face loop (.Lba_face_body, same saved registers).
-    .global r3d_face_loop
-    .type   r3d_face_loop, %function
-r3d_face_loop:
-    stmfd   sp!, {r4-r9, lr}
-    ldr     r4, [sp, #28]               @ dv
-    ldr     r5, [sp, #32]               @ cm
-    mov     r7, #0xFC0                  @ 63 << 6
-    b       .Lba_face_body
-    .size   r3d_face_loop, . - r3d_face_loop
 
 @ void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int32_t v16,
 @                   int32_t dv16, const uint8_t *cm)
@@ -294,6 +278,9 @@ r3d_flat_loop:
     .equ CS_D16,    172
     .equ CS_K8,     176
     .equ CS_AMB,    180
+    .equ CS_PAIR,   184
+    .equ WK_DDX,    8
+    .equ WK_DDY,    12
     .equ FL_P,      0
     .equ FL_N,      4
     .equ FL_KP,     8
@@ -836,6 +823,17 @@ ba_flat:                              @ (named for the profiler)
 2:  ldmfd   sp!, {r0-r3, r12, lr}
     bx      lr
 
+@ C fallback addresses the same textured face loop as the DDA fast path.
+    .global r3d_boundary_face
+    .type r3d_boundary_face, %function
+r3d_boundary_face:
+    push    {r11, lr}
+    ldr     r11, [sp, #8]
+    bl      .Lba_face
+    pop     {r11, lr}
+    bx      lr
+    .size r3d_boundary_face, . - r3d_boundary_face
+
 @ ---- face: r0 = y0, r1 = y1 (y0 < y1), r2 = tex id, r3 = light (keeps r4-r11)
 .Lba_face:
 ba_face:                              @ (named for the profiler)
@@ -868,14 +866,21 @@ ba_face:                              @ (named for the profiler)
     ldreq   r1, [r11, #CS_EY]
     ldrne   r1, [r11, #CS_EX]
     add     r12, r12, r1
-    mov     r12, r12, lsr #16
-    and     r12, r12, #63
     ldreq   r1, [r11, #CS_STX]
     ldrne   r1, [r11, #CS_STY]
     rsbne   r1, r1, #0
     cmp     r1, #0
-    rsblt   r12, r12, #63
-    add     r6, r6, r12                 @ texture column
+    mvnlt   r12, r12                   @ reverse the oriented 16.16 u
+    bic     r12, r12, #0xFF000000
+    bic     r12, r12, #0x00C00000
+    ldr     r0, [r11, #CS_INVPROJ]
+    umull   r1, r7, r2, r0              @ v step, 16.16
+    ldr     r0, [r11, #CS_PAIR]
+    cmp     r0, #0
+    bne     .Lba_split_u
+    add     r6, r6, r12, lsr #16
+    mov     r8, r6
+.Lba_u_ready:
     @ light - side - fade[d16 >> 21] -> colormap row
     sub     r9, r9, r3
     mov     r1, r2, lsr #21
@@ -891,8 +896,6 @@ ba_face:                              @ (named for the profiler)
     ldr     r0, [r11, #CS_CM]
     ldr     r9, [r0, r9, lsl #2]        @ colormap row
     @ dv = d16 / proj, v = ((y0 - hor) * 2 + 1) * (dv / 2) - ez
-    ldr     r0, [r11, #CS_INVPROJ]
-    umull   r1, r7, r2, r0              @ r7 = dv
     ldr     r2, [r11, #CS_HOR]
     sub     r2, r4, r2
     mov     r2, r2, lsl #1
@@ -909,10 +912,47 @@ ba_face:                              @ (named for the profiler)
     mov     r4, r7                      @ dv
     mov     r5, r9                      @ cm
     mov     r7, #0xFC0
-.Lba_face_body:                         @ r3d_face_loop enters here
+    cmp     r2, r8
+    bne     .Lba_pair_pixels
     FACEBODY
+.Lba_pixels_done:
     ldmfd   sp!, {r4-r9, lr}
     bx      lr
+
+.Lba_split_u:
+    @ Half a logical pixel from the centre is (distance/focal)/2, then
+    @ the reciprocal of the hit-axis component projects it along the wall.
+    @ Use the DDA's existing reciprocal and keep the sample in this tile.
+    cmp     r3, #0
+    ldreq   r0, [r11, #WK_DDX]
+    ldrne   r0, [r11, #WK_DDY]
+    mov     lr, r7, lsr #1
+    umull   r0, r1, lr, r0
+    cmp     r1, #8
+    movhs   lr, #0x80000               @ limit grazing-angle samples
+    movlo   lr, r0, lsr #16
+    orrlo   lr, lr, r1, lsl #16
+    subs    r0, r12, lr
+    movmi   r0, #0
+    add     r12, r12, lr
+    cmp     r12, #0x400000
+    movhs   r12, #0x3F0000             @ stay within the hit cell's texture
+    add     r8, r6, r12, lsr #16
+    add     r6, r6, r0, lsr #16
+    b       .Lba_u_ready
+
+.Lba_pair_pixels:
+    and     r12, r7, r3, lsr #10
+    add     r3, r3, r4
+    ldrb    r6, [r2, r12]
+    ldrb    r12, [r8, r12]
+    ldrb    r6, [r5, r6]
+    ldrb    r12, [r5, r12]
+    subs    r1, r1, #1
+    orr     r6, r6, r12, lsl #8
+    strh    r6, [r0], #240
+    bne     .Lba_pair_pixels
+    b       .Lba_pixels_done
 
 @ ---- sky: rows [r0, r1) (keeps r4-r11)
 .Lba_sky:

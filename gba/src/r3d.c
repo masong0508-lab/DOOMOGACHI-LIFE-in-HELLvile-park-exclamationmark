@@ -134,11 +134,11 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
     }
     /* The new Bone middle tier casts 48 rays at 96x64 (rather than the
      * emergency tier's 40 rays at 80x54). Keep it while a frame fits four
-     * vblanks; only retreat to the original lower-detail image after
+     * vblanks; only retreat to the lower-detail image after five
      * repeated slower frames. Screen size, view distance and FOV stay fixed. */
     if (bone && m == OPT3D_BALANCED && frame == 4) {
         if (took > 4u) {
-            if (++gov_bone_overruns >= 3u) {
+            if (++gov_bone_overruns >= 5u) {
                 gov_half = 4;
                 gov_wait = 32;
                 gov_bone_overruns = 0;
@@ -155,9 +155,12 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         uint32_t middle = gov_r3d[3] ? gov_r3d[3] :
                           gov_r3d[4] + gov_r3d[4] * 2u / 5u;
         uint32_t extra = middle > gov_r3d[4] ? middle - gov_r3d[4] : 0;
-        if (work + extra + VBL_CYC / 4u <= 4u * VBL_CYC)
+        if (work + extra + VBL_CYC / 4u <= 4u * VBL_CYC) {
             gov_half = 3;
-        gov_wait = 32;
+            gov_wait = 32;
+        } else {
+            gov_wait = 8;
+        }
         return;
     }
     if (frame == 4) {
@@ -388,6 +391,7 @@ DOOMO_STATIC_ASSERT(offsetof(ColState, rdx) == 68 && offsetof(ColState, fz4) == 
                     offsetof(ColState, d16) == 172, colstate_layout);
 DOOMO_STATIC_ASSERT(offsetof(R3DFlat, avg) == 56, flat_layout);
 DOOMO_STATIC_ASSERT(offsetof(ColState, amb) == 180, colstate_amb);
+DOOMO_STATIC_ASSERT(offsetof(ColState, pair_wall) == 184, colstate_pair_wall);
 DOOMO_STATIC_ASSERT(sizeof(R3DClip) == 4, clip_layout);
 DOOMO_STATIC_ASSERT(sizeof(DoomoCell) == 8, cell_is_8_bytes);
 
@@ -722,6 +726,9 @@ void plat_view3d(const DoomoView3D *v)
         vh = detail == 3 ? 64 : 54;
     } else if (detail) { vw >>= detail; vh >>= detail; }
     gba_view3d_frame = (uint8_t)(detail + 1);
+    /* The full tier stores both samples directly. The Bone scaling tiers
+     * expand each sample separately. */
+    r3f.pair_wall = bone && detail != 2;
     {
         int fov = opt_get(OPT_FOV);
         if (vw != cache_vw || vh != cache_vh || fov != cache_fov) setup_viewport(vw, vh, fov);

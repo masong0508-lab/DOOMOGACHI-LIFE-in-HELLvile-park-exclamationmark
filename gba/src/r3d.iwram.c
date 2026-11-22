@@ -78,37 +78,6 @@ static inline int rowof(int32_t z4, int32_t k8)
     return (r3f.hor12 + dz * k8 + 0x800) >> 12;
 }
 
-static inline const uint8_t *light_cm(R3DRows cm, int light, uint32_t d16)
-{
-    uint32_t b = d16 >> 21;
-    int l = light - r3d_fade[b < R3D_FADE_N ? b : R3D_FADE_N - 1];
-    if (l < 1) l = 1;
-    if (l > 15) l = 15;
-    return cm[l];
-}
-
-/* ------------------------------------------------------------------------ */
-/* column primitives                                                         */
-
-/* textured vertical face: rows [y0, y1) of the column at p (row 0) */
-static void draw_face(uint16_t *p, int y0, int y1, const uint8_t *texcol,
-                      uint32_t d16, const uint8_t *cm)
-{
-    int n = y1 - y0;
-    uint32_t dv, lo;
-    int32_t v;
-    if (n <= 0) return;
-    r3f.dbg_facepx += (uint32_t)n;
-    /* ARM7TDMI has a native unsigned 32x32->64 multiply. Its upper word
-     * is EXACTLY ((uint64_t)d16 * invproj) >> 32, so texel selection and
-     * perspective remain byte-identical, with no runtime helper call. */
-    __asm__ volatile ("umull %0, %1, %2, %3"
-                      : "=&r"(lo), "=&r"(dv)
-                      : "r"(d16), "r"(r3f.invproj));
-    v = (int32_t)(((y0 - r3f.hor) * 2 + 1) * (int32_t)(dv >> 1)) - r3f.ez;
-    r3d_face_loop(p + y0 * LINE, n, texcol, v, (int32_t)dv, cm);
-}
-
 static void fill_col(uint16_t *p, int y0, int y1, uint32_t c)
 {
     if (y1 <= y0) return;
@@ -255,18 +224,9 @@ ColState CS;
 /* textured face of the boundary at d16: rows [y0, y1), light `lit` */
 static void face(ColState *s, int y0, int y1, int tex, int lit, uint32_t d16)
 {
-    int u;
-    if (s->wk.side == 0) {
-        int32_t hit = s->ey + mul16s(s->rdy, (int32_t)d16);
-        u = (hit >> 16) & 63;
-        if (s->stx < 0) u = 63 - u;
-    } else {
-        int32_t hit = s->ex + mul16s(s->rdx, (int32_t)d16);
-        u = (hit >> 16) & 63;
-        if (s->sty > 0) u = 63 - u;
-    }
-    r3d_texpix[tex & (R3D_MAXTEX - 1)] += (uint16_t)(y1 - y0);
-    draw_face(s->col, y0, y1, tex_get(tex) + u, d16, light_cm(s->cm, lit, d16));
+    r3f.dbg_facepx += (uint32_t)(y1 - y0);
+    s->d16 = d16;
+    r3d_boundary_face(y0, y1, tex, lit + s->wk.side, s);
 }
 
 /* close the region's floor run at row edge yf */
@@ -516,6 +476,7 @@ void r3d_columns(void)
     s->invproj = f->invproj;
     s->ez = f->ez;
     s->amb = f->amb;
+    s->pair_wall = f->pair_wall;
     s->wk.cells = (const uint32_t *)f->cells;
     s->wk.maxd = f->maxd;
     FL.u0 = (uint32_t)f->ex << 10;
@@ -611,8 +572,10 @@ void r3d_draw_sprite(const R3DSprite *s)
                 if (yb > bot) yb = bot;
                 for (y = ya; y < yb; y++) {
                     uint16_t *p = f->dst + y * LINE + c;
-                    uint32_t v = dk[*p & 0xFF];
-                    *p = (uint16_t)(v | (v << 8));
+                    uint32_t pixels = *p;
+                    uint32_t a = dk[pixels & 0xFF];
+                    uint32_t b = f->pair_wall ? dk[pixels >> 8] : a;
+                    *p = (uint16_t)(a | (b << 8));
                 }
             }
         }

@@ -55,7 +55,7 @@ typedef struct R3DFrame {
     /* textures resolved for this frame (lazily) */
     uint16_t time;
     uint8_t  sky_id;
-    uint8_t  pad0;
+    uint8_t  pair_wall;            /* sample each half of a wide wall ray */
     const uint8_t *sky;            /* 256 x 96                           */
     int32_t skyang;
     uint32_t frame;
@@ -105,8 +105,6 @@ int r3d_cell_floor(int cx, int cy, const DoomoCell *c) ROM_CALL;
 int r3d_cell_ceil(int cx, int cy, const DoomoCell *c) ROM_CALL;
 
 /* hand-written ARM pixel loops (r3d_loops.s, IWRAM; call from IWRAM only) */
-void r3d_face_loop(uint16_t *p, int n, const uint8_t *texcol, int32_t v,
-                   int32_t dv, const uint8_t *cm);
 void r3d_sky_loop(uint16_t *p, int n, const uint8_t *col, int32_t v16, int32_t dv16,
                   const uint8_t *cm);
 void r3d_fill_loop(uint16_t *p, int n, uint32_t c2, int stride_bytes);
@@ -164,12 +162,14 @@ typedef struct ColState {
     int32_t ez;                     /* 168                                 */
     uint32_t d16, k8;               /* 172: scratch                        */
     int32_t amb;                    /* 180: light for cells with light 0   */
+    int32_t pair_wall;              /* 184: resolve wider wall ray samples */
 } ColState;
 /* one column boundary in ARM assembly (everything but door / lift cells
  * and roofed cells seen from under the sky, which boundary() in C does).
  * Returns 0 continue, 1 column done, 2 not handled. */
 /* 1 = column done, 2 = max distance, 3 / 4 = run boundary() with res 0 / 1 */
 int r3d_column_asm(ColState *s);
+void r3d_boundary_face(int y0, int y1, int tex, int light, ColState *s);
 /* sky background rows [y0, y1) of column c (r3d.iwram.c) */
 void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, R3DRows cm);
 

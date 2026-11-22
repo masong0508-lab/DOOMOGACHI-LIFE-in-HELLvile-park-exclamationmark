@@ -426,9 +426,18 @@ void et_blit2_test(void)
     if (!bad) gba_logf("ET blit2test ok (%d cases)", n);
 }
 
-/* Exercise the ROM scaler directly. Its reference is the former pair
- * of IWRAM calls. Check both whole pages, including the pixels outside
- * the viewport, and exercise both even and odd source row widths. */
+static unsigned scaler_pixel(int x, int y, int second)
+{
+    return second ? (x * 31 + y * 97 + 37) & 255 : (x * 13 + y * 71) & 255;
+}
+
+static uint16_t scaler_pair(int x, int y)
+{
+    return (uint16_t)(scaler_pixel(x, y, 0) | (scaler_pixel(x, y, 1) << 8));
+}
+
+/* Check whole pages, including pixels outside the viewport. Mixed
+ * source pairs exercise independent wall texture samples. */
 void et_upscale_test(void)
 {
     void r3d_up2(uint16_t *, int, int) __attribute__((long_call));
@@ -458,6 +467,20 @@ void et_upscale_test(void)
                 gba_logf("ET upscale FAIL case %u pixel %d", i, p);
                 return;
             }
+        for (p = 0; p < LINE * 160; p++) ((vu16_t *)PAGE_B)[p] = 0xA5A5;
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) ((vu16_t *)got)[y * LINE + x] = scaler_pair(x, y);
+        r3d_up2(got, w, h);
+        for (y = 0; y < 160; y++)
+            for (x = 0; x < LINE; x++) {
+                uint16_t want = 0xA5A5;
+                if (x >= sx && x < sx + 2 * w && y >= sy && y < sy + 2 * h)
+                    want = (uint16_t)(scaler_pixel((x - sx) / 2, (y - sy) / 2, (x - sx) & 1) * 257u);
+                if (((vu16_t *)PAGE_B)[y * LINE + x] != want) {
+                    gba_logf("ET upscale FAIL double at %d,%d", x, y);
+                    return;
+                }
+            }
     }
     {
         int x, y;
@@ -465,11 +488,13 @@ void et_upscale_test(void)
         page[LINE * 160] = 0xA5A5;
         for (y = 0; y < 54; y++)
             for (x = 0; x < 40; x++)
-                page[y * LINE + x] = (uint16_t)(0xA507u + 13u * x + 317u * y);
+                page[y * LINE + x] = scaler_pair(x, y);
         r3d_up3(PAGE_B);
         for (y = 0; y < 160; y++)
             for (x = 0; x < LINE; x++) {
-                uint16_t want = (uint16_t)(0xA507u + 13u * (x / 3) + 317u * ((y + 1) / 3));
+                int c0 = (2 * x) / 3, c1 = (2 * x + 1) / 3, row = (y + 1) / 3;
+                unsigned want = scaler_pixel(c0 / 2, row, c0 & 1) |
+                                (scaler_pixel(c1 / 2, row, c1 & 1) << 8);
                 if (page[y * LINE + x] != want) {
                     gba_logf("ET upscale FAIL third at %d,%d", x, y);
                     return;
@@ -486,13 +511,14 @@ void et_upscale_test(void)
         page[LINE * 160] = 0xA5A5;
         for (y = 0; y < 64; y++)
             for (x = 0; x < 48; x++)
-                page[y * LINE + x] = (uint16_t)(((x * 13 + y * 71) & 255) * 257);
+                page[y * LINE + x] = scaler_pair(x, y);
         r3d_up5x2(PAGE_B);
         for (y = 0; y < 160; y++) {
             int row = y / 5 * 2 + (y % 5 >= 2);
             for (x = 0; x < LINE; x++) {
-                int lo = ((2 * x / 5) * 13 + row * 71) & 255;
-                int hi = (((2 * x + 1) / 5) * 13 + row * 71) & 255;
+                int c0 = 2 * x, c1 = c0 + 1;
+                unsigned lo = scaler_pixel(c0 / 5, row, c0 % 5 >= 2);
+                unsigned hi = scaler_pixel(c1 / 5, row, c1 % 5 >= 2);
                 if (page[y * LINE + x] != (lo | (hi << 8))) {
                     gba_logf("ET upscale FAIL five-halves at %d,%d", x, y);
                     return;

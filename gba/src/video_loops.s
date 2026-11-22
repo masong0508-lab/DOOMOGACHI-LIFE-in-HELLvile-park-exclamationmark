@@ -378,19 +378,17 @@ pn_span:
     .size   pn_span, . - pn_span
     .ltorg
 
-@ void r3d_up2(uint16_t *base, int hw, int vh2)
-@ G7 (r3d.c, Options "Combat detail": the half-resolution view): the 3D view
-@ drawn at half resolution into the top left of its rect (vh2 rows of hw
-@ halfwords, row stride 240 bytes, base word aligned) doubled in place:
-@ source row r goes to rows 2r and 2r + 1, each pixel twice. Rows from the
-@ bottom up and pixels from the right, so no source pixel is overwritten
-@ before it is read.
-@ (SP8) Every halfword of the view is one 2-pixel column of the raycaster
-@ (both bytes equal: r3d.c, r3d_loops.s), so a source halfword "a a" is one
-@ output word "a a a a": two source words (4 columns) are read with one
-@ LDMDB and written as four words to each of the two rows with STMDB.
-@ Same pixels as the byte-wise G7 loop for such input, about half its time
-@ (5.2 -> ~2.6 ms for the 120 x 80 view).
+@ Expand each byte in a packed pair twice. Equal bytes naturally keep
+@ the original single-sample pixel.
+    .macro DUP_PAIR dst, src, tmp
+    and     \tmp, \src, #0xFF00
+    and     \dst, \src, #0xFF
+    orr     \dst, \dst, \tmp, lsl #8
+    orr     \dst, \dst, \dst, lsl #8
+    .endm
+
+@ In-place 2x upscale. The source uses halfword pairs and 240-byte rows.
+@ Process bottom to top and right to left so the source stays readable.
     .section .iwram_3d, "ax", %progbits     @ (SP8) the 3D overlay group: only plat_view3d calls it
     .arm
     .align 2
@@ -411,7 +409,7 @@ r3d_up2:
     tst     r1, #1                      @ an odd last halfword
     beq     2f
     ldrh    r8, [r4, #-2]!
-    orr     r8, r8, r8, lsl #16
+    DUP_PAIR r8, r8, r9
     str     r8, [r6, #-4]!
     str     r8, [r7, #-4]!
 2:  mov     r12, r1, lsr #1             @ whole words
@@ -419,22 +417,19 @@ r3d_up2:
     beq     3f
     ldr     r8, [r4, #-4]!
     mov     r9, r8, lsr #16
-    orr     r9, r9, r9, lsl #16         @ b b b b
-    mov     r8, r8, lsl #16
-    orr     r8, r8, r8, lsr #16         @ a a a a
+    DUP_PAIR r8, r8, r10
+    DUP_PAIR r9, r9, r10
     stmdb   r6!, {r8, r9}
     stmdb   r7!, {r8, r9}
 3:  movs    r12, r12, lsr #1            @ word pairs
     beq     5f
 4:  ldmdb   r4!, {r8, r10}              @ "a a b b", "c c d d"
     mov     r9, r8, lsr #16
-    orr     r9, r9, r9, lsl #16
-    mov     r8, r8, lsl #16
-    orr     r8, r8, r8, lsr #16
     mov     r11, r10, lsr #16
-    orr     r11, r11, r11, lsl #16
-    mov     r10, r10, lsl #16
-    orr     r10, r10, r10, lsr #16
+    DUP_PAIR r8, r8, r2
+    DUP_PAIR r9, r9, r2
+    DUP_PAIR r10, r10, r2
+    DUP_PAIR r11, r11, r2
     stmdb   r6!, {r8-r11}
     stmdb   r7!, {r8-r11}
     subs    r12, r12, #1
@@ -514,9 +509,9 @@ r3d_up4:
     .size   r3d_up4, . - r3d_up4
 
 
-@ Bone readability: 96x64 -> 240x160 (5/2 in both axes). Each input
-@ halfword is one 2-pixel ray column, so four input rays a,b,c,d expand
-@ to five packed words containing 5a, 5b, 5c, 5d output pixels.
+@ 96x64 -> 240x160 (5/2 in both axes). Expand each source pair's left
+@ sample twice and its right sample three times. Four input pairs give
+@ five packed output words.
 @ Source and destination are the SAME Mode 4 VRAM page; reverse order
 @ preserves unread input. Even input rows repeat twice, odd rows thrice:
 @ 32*2 + 32*3 = 160 output rows. The scaler uses the existing VRAM page.
@@ -555,17 +550,25 @@ r3d_up5x2:
     .align 2
     .type   r3d_up5x2_row, %function
 r3d_up5x2_row:
-    ldmdb   r2!, {r6, r7}           @ a,a,b,b and c,c,d,d
-    mov     r8, r6, lsl #16
-    orr     r8, r8, r8, lsr #16     @ a,a,a,a
-    and     r9, r6, #0xFF000000
-    orr     r9, r9, r6, lsr #8      @ a,b,b,b
-    mov     r10, r7, lsl #16
-    orr     r10, r10, r6, lsr #16   @ b,b,c,c
-    and     r11, r7, #0xFF
-    orr     r11, r11, r7, lsl #8    @ c,c,c,d
+    ldmdb   r2!, {r6, r7}           @ a,A,b,B and c,C,d,D
+    DUP_PAIR r8, r6, r9            @ a,a,A,A
+    mov     r9, r6, lsr #8
+    bic     r9, r9, #0xFF0000
+    mov     r10, r6, lsr #16
+    orr     r9, r9, r10, lsl #16    @ A,b,b,B
+    mov     r10, r6, lsr #24
+    and     r12, r7, #0xFF
+    orr     r10, r10, r12, lsl #16
+    orr     r10, r10, r10, lsl #8   @ B,B,c,c
+    and     r11, r7, #0xFF00
+    orr     r12, r11, r11, lsl #8
+    orr     r11, r12, r11, lsr #8
+    and     r12, r7, #0xFF0000
+    orr     r11, r11, r12, lsl #8   @ C,C,C,d
     mov     r12, r7, lsr #16
-    orr     r12, r12, r12, lsl #16  @ d,d,d,d
+    mov     r7, r7, lsr #24
+    orr     r12, r12, r7, lsl #16
+    orr     r12, r12, r7, lsl #24   @ d,D,D,D
     stmdb   r3!, {r8-r12}
     stmdb   r4!, {r8-r12}
     tst     r1, #1
@@ -578,7 +581,7 @@ r3d_up5x2_row:
 
 @ Expand an 80x54 full-screen view to 240x160, discarding one padded
 @ row at each end to keep the horizon centred. Draw backwards in place.
-@ Each pair of source halfwords [a,b] becomes three words [aa,ba,bb].
+@ Three output pixels per source byte, packed into aligned word writes.
     .section .text.r3d_up3, "ax", %progbits
     .align 2
     .global r3d_up3
@@ -586,9 +589,9 @@ r3d_up5x2_row:
 r3d_up3:
     push    {r4-r10, lr}
     mov     r1, #53
-    mov     r10, #240
     ldr     r9, =.Lup3_row
-1:  mla     r2, r1, r10, r0         @ input row
+1:  mov     r10, #240
+    mla     r2, r1, r10, r0         @ input row
     add     r3, r1, r1, lsl #1      @ 3 * row
     mla     r3, r10, r3, r0         @ end of the first output row
     add     r2, r2, #80
@@ -615,10 +618,20 @@ r3d_up3:
     .align 2
 .Lup3_row:
 2:  ldr     r7, [r2, #-4]!
-    mov     r6, r7, lsl #16
-    mov     r8, r7, lsr #16
-    orr     r6, r6, r6, lsr #16
-    orr     r8, r8, r8, lsl #16
+    and     r6, r7, #0xFF
+    orr     r6, r6, r6, lsl #8
+    orr     r6, r6, r6, lsl #8
+    and     r8, r7, #0xFF00
+    orr     r6, r6, r8, lsl #16        @ a,a,a,A
+    orr     r8, r8, r8, lsr #8
+    and     r10, r7, #0xFF0000
+    orr     r8, r8, r10
+    orr     r10, r8, r10, lsl #8       @ A,A,b,b
+    mov     r7, r7, lsr #16
+    and     r8, r7, #0xFF00
+    orr     r7, r7, r8, lsl #8
+    orr     r8, r7, r8, lsl #16        @ b,B,B,B
+    mov     r7, r10
     stmdb   r3!, {r6-r8}
     stmdb   r4!, {r6-r8}
     stmdb   r5!, {r6-r8}

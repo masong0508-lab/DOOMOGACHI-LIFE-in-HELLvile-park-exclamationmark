@@ -43,8 +43,14 @@ and less speckled red paving. A quieter skyline separates Capital's
 facades from the horizon. The baked assets occupy ROM and use the
 existing raycaster and texture cache.
 
-The current mGBA census drew 17.39 and 17.92 FPS in Cathedral and
-19.45 and 19.68 FPS in Capital, first and third person respectively.
+Two wall texture samples now fit inside each ray. At 96×64 the enlarged
+columns hold a two-pixel sample and a three-pixel sample, so the skull
+reliefs and glass have visible detail inside the previous five-pixel
+bands. The geometric edges and vertical rows still use the coarse ray
+grid.
+
+The current mGBA census drew 17.23 and 17.85 FPS in Cathedral and
+18.84 and 19.60 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that
