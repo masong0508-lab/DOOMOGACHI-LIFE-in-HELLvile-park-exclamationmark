@@ -48,6 +48,14 @@ and continue from their answer. Recent topics and known likes still appear,
 and the picker reserves space for the usual stock topics. The links are read when
 the picker opens and go through the existing audience and grief checks.
 
+**Ask about their day** can place a direct follow-up on the main Talk
+page when the resident mentions a venue and is open to discussion.
+The answer names their actual activity. A resident who is tired or upset
+can ask for a quiet day instead. The menu clears the offer when the
+player switches to another resident or moves the conversation on. Taking
+the follow-up starts a normal exchange, which records a topic only if
+the resident answers it.
+
 | Starting topic | Linked subjects | What to cover in the next writing pass |
 |---|---|---|
 | Band | Song, lyrics, microphone, concert, encore | Ask what they like to play, give a reason, then follow up about a song or a performance. |

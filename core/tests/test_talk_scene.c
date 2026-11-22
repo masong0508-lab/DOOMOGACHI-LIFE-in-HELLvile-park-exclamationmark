@@ -15,6 +15,7 @@
 #include "doomo/town.h"
 #include "doomo/ui.h"
 #include "doomo/items.h"
+#include "doomo/save.h"
 #include "doomo/sim.h"
 #include "../src/fp_int.h"          /* Free Play achievement IDs */
 #include "../src/ui_internal.h"     /* UiDialogDebug */
@@ -45,16 +46,23 @@ static void town(void)
     presses = 0;
 }
 
-/* open Talk with `who` and read the greeting (A until the list is back; a patient reader waits for the typing) */
-static int open_talk(int who)
+/* Read the dialogue until the Talk menu is back. */
+static int read_talk_reply(void)
 {
     TalkSceneDebug d;
     int k;
+    for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) { frames(0, 90); press(BTN_A); }
+    return talk_scene_debug(&d) && !d.busy;
+}
+
+static int open_talk(int who)
+{
+    int ready;
     if (!home_talk_enter(who)) return 0;
     frames(0, 3);
-    for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) { frames(0, 90); press(BTN_A); }
+    ready = read_talk_reply();
     presses = 0;
-    return talk_scene_debug(&d) && !d.busy;
+    return ready;
 }
 
 static int find_row(const char *kind, int arg, int v)
@@ -138,6 +146,122 @@ TEST(talk_scene_day_plan_tracks_actual_activity_without_reward)
     CHECK_EQ((int)doomo_town.money, cash);
     CHECK_EQ(sim_problem_count(), problems);
     CHECK_EQ(talk_mem_count(), memories);
+}
+
+TEST(talk_scene_day_plan_offers_live_venue_and_remembers_its_answer)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    const TalkMem *memory;
+    DoomoResident *r;
+    uint16_t pie, park, wf;
+    uint32_t tags[4];
+    char label[48];
+    town();
+    CHECK(talk_lex_find("pie", &pie, &wf, tags) >= 0);
+    CHECK(talk_lex_find("park", &park, &wf, tags) >= 0);
+    talk_mem_note_topic(ID_NANA, pie);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A); /* Topic */
+    go_to(find_row("pick", 0, pie)); press(BTN_A);
+
+    r = town_res(ID_NANA);
+    r->activity = ACT_PARK;
+    r->mood = MOOD_HAPPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text != NULL && strstr(box.text, "the park") != NULL);
+    CHECK(read_talk_reply());
+    memory = talk_mem_find(ID_NANA);
+    CHECK(memory && memory->topic_a == pie && memory->topic_b == TC_NONE);
+    CHECK_EQ(find_row("followup", 0, park), 0);
+    CHECK(talk_scene_debug(&d) && d.sel == 0);
+    CHECK(talk_scene_row_debug(0, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Ask about") != NULL && strstr(label, "park") != NULL);
+
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy && d.gate == TG_PASS && d.nlines > 0);
+    CHECK(strstr(d.you, "park") != NULL);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+    press(BTN_B);
+    for (int k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) {
+        frames(0, 90); press(BTN_A);
+    }
+    CHECK(!talk_scene_debug(&d));
+    memory = talk_mem_find(ID_NANA);
+    CHECK(memory && memory->topic_a == park && memory->topic_b == pie);
+    CHECK_EQ(r->activity, ACT_PARK);
+    CHECK(save_game(1));
+    talk_mem_forget(ID_NANA);
+    CHECK(load_game(1));
+    memory = talk_mem_find(ID_NANA);
+    CHECK(memory && memory->topic_a == park && memory->topic_b == pie);
+    CHECK(open_talk(ID_NANA));
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+}
+
+TEST(talk_scene_day_plan_offer_expires_when_you_turn_to_someone_else)
+{
+    TalkSceneDebug d;
+    const TalkMem *memory;
+    DoomoResident *r;
+    int other = roster_find("Steamy");
+    town();
+    CHECK(other >= 0);
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    r = town_res(ID_NANA);
+    r->activity = ACT_PARK;
+    r->mood = MOOD_HAPPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("followup", -1, -1), 0);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+    press(BTN_SELECT); /* everyone */
+    press(BTN_SELECT); /* Nana */
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+    scene_pop();
+    memory = talk_mem_find(ID_NANA);
+    CHECK(!memory || memory->topic_a == TC_NONE);
+}
+
+TEST(talk_scene_day_plan_respects_audience_and_requests_for_space)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    DoomoResident *r;
+    int child = ID_PIP;
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    r = town_res(ID_NANA);
+    r->activity = ACT_VAPE_SHOP;
+    r->mood = MOOD_HAPPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+
+    r->activity = ACT_PARK;
+    r->mood = MOOD_SLEEPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text != NULL && strstr(box.text, "quiet day") != NULL);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("followup", -1, -1), -1);
+
+    r->mood = MOOD_HAPPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("followup", -1, -1), 0);
+    r->mood = MOOD_ANGRY;
+    press(BTN_A); /* The menu was built before the mood changed. */
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(find_row("followup", -1, -1), -1);
 }
 
 /* The thought bubble is backed by the simulation's real problem queue, not

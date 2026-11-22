@@ -40,7 +40,7 @@
 #endif
 
 enum { PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE, PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN };
-enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN };
+enum { K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE, K_QUICK, K_OUT, K_OUTING, K_PLAY, K_SHOW, K_SHOWITEM, K_GIVE, K_GIVEITEM, K_REMEMBER, K_HELP, K_COMFORT, K_CLEAN, K_FEED, K_HEAL, K_FEEDITEM, K_HEALITEM, K_HISTORY, K_HISTORY_INFO, K_HISTORY_QUEST, K_HISTORY_TOPIC, K_HISTORY_EVENT, K_HISTORY_REPEAT, K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN, K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 
 typedef struct TRow { uint8_t kind, arg; uint16_t v; } TRow;
@@ -54,7 +54,7 @@ static struct TalkScn {
     int8_t    to;                       /* slot spoken to, -1 everyone               */
     uint8_t   page, cat, active, busy, after, leaving, typed_ok, gen;   /* gen: TD2, steps still to run (talk_scene_slice) */
     uint8_t   pending, handin;          /* pending topic; real quest payout after thanks */
-    uint16_t  topic, idle;
+    uint16_t  topic, idle, followup;     /* transient subject offered by a live reply */
     int       nrows, nstock;
     TRow      row[TROWS];
     uint16_t  stock[TSTOCK];
@@ -66,7 +66,7 @@ static struct TalkScn {
 #ifdef TALK_TYPING
     char      typed[TALK_INPUT_MAX + 1];
 #endif
-    char      note[40];
+    char      followup_name[40];
 } T;
 
 static int extra_ids[TALK_PARTS_MAX], extra_n;       /* the others the caller wants in the room */
@@ -486,6 +486,11 @@ static int q_grief(uint16_t topic)
     return topic && talk_db_concept(topic, &tc) && (tc.flags & TCF_GRIEF);
 }
 
+static int sensitive_thread(const TalkLine *thread)
+{
+    return thread && ((thread->flags & TLF_SINCERE) || TA_IS_SAFETY(thread->act) || q_grief(thread->topic));
+}
+
 /* Only suggest a new subject when the current concept is linked by the
  * curated association graph. Never substitute random word adjacency for
  * a conversational segue. One 16 B bank read, no persistent allocation. */
@@ -665,6 +670,24 @@ static int speaker_of(int slot)
     return T.s.part[slot].id == TALK_PET_ID ? -1 : T.s.part[slot].id;
 }
 
+static int followup_open(uint16_t topic)
+{
+    TalkAudience aud;
+    const DoomoResident *r;
+    int id;
+    if (!topic || T.to < 0 || T.to >= T.s.nparts || (T.s.part[T.to].flags & TPF_LEFT)) return 0;
+    id = speaker_of(T.to);
+    r = id >= 0 && id < DOOMO_MAX_RESIDENTS ? town_res(id) : NULL;
+    if (!r || r->status != RES_ALIVE || r->activity == ACT_SLEEPING || r->mood == MOOD_SLEEPY ||
+        r->mood == MOOD_SAD || r->mood == MOOD_SCARED || r->mood == MOOD_ANGRY) return 0;
+    if ((T.s.flags & TDF_CARE) || T.s.tension >= TALK_TENSION_ARGUE ||
+        (T.s.q_kind && (T.s.q_st & TQ_ST_ASKED)) || q_grief(T.topic) || q_grief(T.s.topic_stack[0]) ||
+        sensitive_thread(talk_quick_thread(&T.s, NULL))) return 0;
+    talk_safe_ctx(T.avatar, T.ids, T.n, T.to, &aud);
+    aud.any_minor |= T.s.conv.aud.any_minor;   /* A room that started age-restricted stays that way. */
+    return talk_gen_concept_ok(topic, &aud) && !q_grief(topic);
+}
+
 /* ---- the rows ------------------------------------------------------------------------------ */
 static void add_row(int kind, int arg, int v)
 {
@@ -702,6 +725,8 @@ static void build_main(void)
     int c;
     T.page = PG_MAIN;
     T.nrows = 0;
+    if (followup_open(T.followup)) add_row(K_FOLLOW_UP, 0, T.followup);
+    else T.followup = TC_NONE;
     quick_refresh();
     for (c = 0; c < T.nquick; c++) add_row(K_QUICK, c, 0);
     for (c = 0; c < C_COUNT; c++) {
@@ -1033,9 +1058,19 @@ static void build_care_items(int is_med)
     list_reset();
 }
 
-/* The care menu appears earlier than the shared dialogue callback below.
- * Declare it here for strict C99 and the ARM/Dreamcast compilers. */
 static void cb_after(void);
+
+/* Scene-authored sim replies have the same lifetime as a DM exchange.
+ * The optional subject is resolved here, outside the drawing path. */
+static void show_scene_reply(int speaker, const char *reply, uint16_t followup)
+{
+    T.followup = followup;
+    if (followup) topic_name(followup, T.followup_name, (int)sizeof T.followup_name);
+    ui_say(speaker, reply);
+    T.busy = 1;
+    T.idle = 0;
+    ui_say_done(cb_after);
+}
 
 static void perform_care(int kind, int item)
 {
@@ -1077,10 +1112,7 @@ static void perform_care(int kind, int item)
         break;
     default: build_care(); return;
     }
-    ui_say(target, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(target, reply, TC_NONE);
     build_main();
 }
 
@@ -1114,8 +1146,7 @@ static void build_topics(void)
     if (stock_start) topic_add(T.stock[0], K_PICK);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
-    if (!q_grief(active) &&
-        (!thread || (!(thread->flags & TLF_SINCERE) && !TA_IS_SAFETY(thread->act) && !q_grief(thread->topic)))) {
+    if (!q_grief(active) && !sensitive_thread(thread)) {
         for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + stock_remaining < TROWS; i++)
             if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
                 topic_add(concept, K_PICK);
@@ -1282,6 +1313,7 @@ static const char *row_text(int index, char *buf)
     case K_QUICK: expand(T.quick[r->arg].text, T.quick[r->arg].topic, buf, 48); break;
     case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
     case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
+    case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
     case K_TOPIC_LINK:
         topic_name(r->v, tn, (int)sizeof tn);
         doomo_snprintf(buf, 48, "Ask about %s", tn);
@@ -1297,6 +1329,7 @@ static const char *row_text(int index, char *buf)
 
 /* ---- running the talk ----------------------------------------------------------------------- */
 static void begin_talk(void);
+static void change_to(int to);
 
 static void cb_after(void)
 {
@@ -1371,6 +1404,7 @@ static void begin_talk(void)
     talk_outcome_begin(&T.s, T.avatar, T.ids, T.n, seed);
     if (T.to >= T.n) T.to = 0;
     T.busy = T.after = T.leaving = T.pending = T.gen = 0;
+    T.followup = TC_NONE;
     T.idle = 0;
     T.you[0] = 0;
 }
@@ -1410,6 +1444,7 @@ static void gen_done(void)
 
 static void gen_run(int kind)
 {
+    T.followup = TC_NONE;
     T.gen = (uint8_t)kind;
 #ifndef DOOMO_PLATFORM_GBA
     if (slice_on) return;                /* talk_update takes the steps, one a tick */
@@ -1462,10 +1497,7 @@ static void play_together(void)
         if (can_play) talk_mem_note_shared(target, TALK_SHARED_PLAYED);
     }
     doomo_snprintf(T.you, sizeof T.you, "Let's play together!");
-    ui_say(target, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(target, reply, TC_NONE);
 }
 
 static void show_item(int item)
@@ -1482,10 +1514,7 @@ static void show_item(int item)
     }
     reply = sim_show(target, item);
     doomo_snprintf(T.you, sizeof T.you, "Look at my %s!", doomo_items[item].name);
-    ui_say(target, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(target, reply, TC_NONE);
     build_main();
 }
 
@@ -1515,10 +1544,7 @@ static void give_item(int item)
      * gift if a real recipient accepted its item-care code path. */
     talk_mem_note_shared(target, TALK_SHARED_GIFTED);
     doomo_snprintf(T.you, sizeof T.you, "This %s is for you!", doomo_items[item].name);
-    ui_say(target, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(target, reply, TC_NONE);
     build_main();
 }
 
@@ -1590,10 +1616,7 @@ static void tell_oddity(void)
      * and a follow-up subject in the existing Talk topic picker. */
     talk_mem_know_like(id, which);
     doomo_snprintf(T.you, sizeof T.you, "What's one odd little thing about you?");
-    ui_say(id, line);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(id, line, TC_NONE);
     build_main();
 }
 
@@ -1603,6 +1626,9 @@ static void tell_oddity(void)
 static void tell_day_plan(void)
 {
     int id, act;
+    size_t i;
+    uint16_t subject = TC_NONE, form;
+    uint32_t tags[4];
     const DoomoResident *r;
     char line[128];
     if (T.to < 0 || T.to >= T.n) { build_main(); return; }
@@ -1634,22 +1660,24 @@ static void tell_day_plan(void)
         }
         if (r->mood == MOOD_SAD || r->mood == MOOD_SCARED) ending = "It's been a difficult day.";
         else if (r->mood == MOOD_ANGRY) ending = "I need a little space today.";
+        else if (r->mood == MOOD_SLEEPY) ending = "I'm tired. I'd like a quiet day.";
+        else {
+            for (i = 0; i < sizeof outing / sizeof outing[0]; i++) {
+                if (outing[i].venue != act) continue;
+                if (talk_lex_find(outing[i].key, &subject, &form, tags) < 0) subject = TC_NONE;
+                break;
+            }
+        }
         doomo_snprintf(line, sizeof line, "I'm %s%s. %s", action, place, ending);
     }
     doomo_snprintf(T.you, sizeof T.you, "How's your day going?");
-    ui_say(id, line);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(id, line, subject);
 }
 
 static void concern_reply(int id, const char *reply, const char *you)
 {
     doomo_snprintf(T.you, sizeof T.you, "%s", you);
-    ui_say(id, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(id, reply, TC_NONE);
     build_main();
 }
 
@@ -1663,10 +1691,7 @@ static void concern_info(void)
     if (pi < 0) { build_concern(); return; }
     sim_problem_text(pi, message, (int)sizeof message);
     doomo_snprintf(T.you, sizeof T.you, "What's on your mind?");
-    ui_say(id, message);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(id, message, TC_NONE);
 }
 
 static void concern_choice(int c)
@@ -1780,10 +1805,7 @@ static void reminisce(unsigned selected)
             : "I remember you inviting me somewhere.";
     if (!reply) { build_main(); return; }
     doomo_snprintf(T.you, sizeof T.you, "Remember our last time?");
-    ui_say(target, reply);
-    T.busy = 1;
-    T.idle = 0;
-    ui_say_done(cb_after);
+    show_scene_reply(target, reply, TC_NONE);
 }
 
 static void say_quick(int i)
@@ -1846,7 +1868,10 @@ static void say_typed(void)
     /* Spoken intentions that promise an actual game action must not
      * turn into empty gestures. Use exactly the same verified target,
      * inventory and activity menus as the controller actions. */
-    if (u.target >= 0 && u.target < T.n) T.to = u.target;
+    if (u.target >= 0 && u.target < T.n && u.target != T.to) {
+        T.to = u.target;
+        T.followup = TC_NONE;
+    }
     if (u.act[0] == TA_INVITE) { build_outings(); return; }
     if (u.act[0] == TA_OFFER) { build_care(); return; }
     if (u.act[0] == TA_GIVE) { build_give_items(); return; }
@@ -1880,6 +1905,7 @@ static void invite(int id)
 
 static void pick_topic(uint16_t c)
 {
+    T.followup = TC_NONE;
     T.topic = c;
     if (T.pending) {
         int a = T.pending;
@@ -1979,13 +2005,18 @@ static void activate(int i)
         }
         break;
     }
-    case K_TOPIC_LINK:
-    case K_HISTORY_TOPIC:
-        if (talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v)) {
+    case K_FOLLOW_UP: case K_TOPIC_LINK: case K_HISTORY_TOPIC: {
+        int available = (r->kind == K_FOLLOW_UP) ? (r->v == T.followup && followup_open(r->v)) :
+                        (talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v));
+        if (available) {
             T.topic = r->v;
             say_act(TA_ASK_ABOUT); /* A genuine Talk question, not just a label. */
+        } else if (r->kind == K_FOLLOW_UP) {
+            T.followup = TC_NONE;
+            build_main();
         }
         break;
+    }
     case K_HISTORY_EVENT: reminisce(r->arg); break;
     case K_HISTORY_REPEAT:
         /* Never allow a forged/stale row to manufacture a memory. These
@@ -2046,9 +2077,7 @@ static void activate(int i)
         break;
 #endif
     case K_TO:
-        T.to = (int8_t)(T.to + 1 >= T.n ? -1 : T.to + 1);
-        build_more();
-        T.list.sel = i;
+        change_to(T.to + 1 >= T.n ? -1 : T.to + 1);
         break;
     case K_INVITE: build_invite(); break;
     case K_BYE: bye(); break;
@@ -2110,6 +2139,7 @@ static void talk_leave(void)
 /* who you speak to (SELECT, or a click on a name): the page that shows it is built again */
 static void change_to(int to)
 {
+    T.followup = TC_NONE;
     T.to = (int8_t)to;
     if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
     else if (T.page == PG_HISTORY) build_history();
@@ -2375,7 +2405,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
