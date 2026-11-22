@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 17.23 | 29.86 | 49.1 / 57.7 ms |
-| Cathedral, third person | 17.92 | 17.85 | 29.75 | 46.8 / 60.5 ms |
-| Capital, first person | 19.45 | 18.84 | 29.86 | 45.2 / 65.1 ms |
-| Capital, third person | 19.68 | 19.60 | 29.98 | 43.0 / 57.9 ms |
+| Cathedral, first person | 17.39 | 17.00 | 29.86 | 49.6 / 64.4 ms |
+| Cathedral, third person | 17.92 | 17.39 | 29.75 | 47.2 / 60.5 ms |
+| Capital, first person | 19.45 | 18.54 | 29.75 | 45.4 / 62.3 ms |
+| Capital, third person | 19.68 | 19.14 | 29.98 | 43.8 / 58.0 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -39,6 +39,14 @@ Bone window.
   to 80×54 (40 rays). Five consecutive 96×64 frames that take more than four
   VBlanks trigger the emergency tier. Smooth uses a 120×80 world viewport.
   The 240×160 HUD is drawn after scaling.
+- The two Bone maps reuse the first sector across the view's rays. The
+  raycaster stops at opaque geometry and uses its current wall depth to
+  skip billboards hidden behind it. A ray through a window or open arch
+  keeps the exterior and its sprites eligible for drawing.
+- The actual camera eye selects the room budget. An enclosed room starts
+  at 120×80 and adapts independently of the exterior. A one-cell arch
+  borrows the street budget and requires extra headroom before promoting
+  to 120×80. Door and lift heights are read live for both cameras.
 - Each Bone wall ray shades a left and right texture sample. In the
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The engine
@@ -66,9 +74,30 @@ Bone window.
   visual checkpoints and caveats, see
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
-The measured game ROM uses 236,452 B of EWRAM and leaves 25,692 B free.
+The measured game ROM uses 236,484 B of EWRAM and leaves 25,660 B free.
 The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
-The 3D overlay uses 10,256 B of its 10,304 B slot.
+The 3D overlay uses 10,140 B of its 10,304 B slot.
+
+These headless mGBA checkpoints held each camera in place for 130 live
+logic ticks while enemies remained active. Each cell is first / third
+person. The equivalent routes start from the same pose on each ROM.
+
+| Camera checkpoint | `bba66ac3` FPS | Room-aware FPS |
+|---|---:|---:|
+| Cathedral courtyard | 19.22 / 20.45 | 18.76 / 20.14 |
+| Cathedral nave, looking north | 16.83 / 16.71 | 16.02 / 16.31 |
+| Cathedral nave, looking at the enclosed east wall | 17.99 / 18.68 | 18.61 / 19.14 |
+| Cathedral east chapel | 19.45 / 19.53 | 19.99 / 19.37 |
+| Cathedral arch from inside | 18.31 / 19.83 | 18.38 / 19.45 |
+| Capital street | 17.76 / 18.22 | 17.76 / 18.22 |
+| Capital beneath the gateway | 19.91 / 24.44 | 20.60 / 25.96 |
+| Capital gateway from the market | 18.76 / 20.45 | 18.76 / 20.45 |
+
+The east nave skipped up to 18 hidden billboards per draw. The east
+chapel spent 49 of 84 third-person draws at 120×80, up from 29 of 85.
+The faster Capital gateway stayed at 96×64. In Smooth mode all 64
+matched frames across four portal views kept the test torch visible
+beyond the opening. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

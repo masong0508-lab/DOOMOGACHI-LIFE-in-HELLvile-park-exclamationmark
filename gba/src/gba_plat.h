@@ -162,6 +162,7 @@ uint32_t r3d_presentation_cap(int frame);
 typedef struct R3DStats {
     uint32_t cycles_total, cycles_cols, cycles_planes, cycles_sprites;
     uint16_t planes, spans, events_overflow, columns;
+    uint16_t indoors, occluded_sprites;
 } R3DStats;
 extern R3DStats r3d_stats;
 

@@ -387,12 +387,12 @@ static int __attribute__((noinline)) boundary(ColState *s, int res)
     return 0;
 }
 
-static void column(int c)
+static void column(int c, const RayStart *start)
 {
     R3DFrame *const f = &r3f;
     ColState *const s = &CS;
     const int32_t t = r3d_colt[c];
-    const int32_t px = f->ex >> 6, py = f->ey >> 6;    /* 16.16 cells */
+    const int32_t px = start->px, py = start->py;
     const int w = f->mw, h = f->mh;
     int mx = px >> 16, my = py >> 16;
     int32_t rdx, rdy;
@@ -403,44 +403,23 @@ static void column(int c)
     s->ybot = f->vh;
     s->ncp = 0;
     s->cps = r3d_clips[c];
-    s->cm = r3d_cmrow;
-    if ((unsigned)mx >= (unsigned)w || (unsigned)my >= (unsigned)h) {
-        fill_col(s->col, 0, f->vh, r3d_cmrow[15][1]);
-        r3d_nclips[c] = 0;
-        return;
-    }
     rdx = f->fx + mul16s(f->rx, t);
     rdy = f->fy + mul16s(f->ry, t);
     s->rdx = rdx;
     s->rdy = rdy;
-    FL.cm = s->cm;
     s->wk.ddx = dir_recip(rdx);
     s->wk.ddy = dir_recip(rdy);
     if (rdx < 0) { s->stx = -1; s->wk.sdx = mul16u((uint32_t)px & 0xFFFF, s->wk.ddx); s->wk.cx = mx; }
     else { s->stx = 1; s->wk.sdx = mul16u(0x10000u - ((uint32_t)px & 0xFFFF), s->wk.ddx); s->wk.cx = w - 1 - mx; }
     if (rdy < 0) { s->sty = -1; s->wk.sdy = mul16u((uint32_t)py & 0xFFFF, s->wk.ddy); s->wk.cy = my; }
     else { s->sty = 1; s->wk.sdy = mul16u(0x10000u - ((uint32_t)py & 0xFFFF), s->wk.ddy); s->wk.cy = h - 1 - my; }
-    s->wk.idx8 = (my * w + mx) * 8;
+    s->wk.idx8 = start->idx8;
     s->wk.ix8 = s->stx * 8;
     s->wk.iy8 = s->sty * w * 8;
-    {
-        const uint32_t *wp = (const uint32_t *)((const uint8_t *)s->wk.cells + s->wk.idx8);
-        uint32_t w0 = wp[0], w1 = wp[1];
-        if (w1 & CW1_DYN) {
-            s->fz4 = r3d_cell_floor(mx, my, (const DoomoCell *)wp) << 4;
-            s->cz4 = r3d_cell_ceil(mx, my, (const DoomoCell *)wp) << 4;
-        } else {
-            s->fz4 = ((int32_t)w0 >> 24) << 7;
-            s->cz4 = (int32_t)(int8_t)(w1 & 0xFF) << 7;
-        }
-        s->ftex = (w0 >> 8) & 0xFF;
-        s->ctex = (w0 >> 16) & 0xFF;
-        s->light = (w1 >> 8) & 0xFF;
-        if (!s->light) s->light = f->amb;
-        s->sky = s->ctex == DOOMO_TEX_SKY;
-        s->wk.c0 = ((w1 & CW1_DYN) || (w0 & 0xFF)) ? 0xFFFFFFFFu : w0;
-        s->wk.c1 = w1;
-    }
+    s->wk.c0 = start->c0; s->wk.c1 = start->c1;
+    s->fz4 = start->floor; s->cz4 = start->ceil;
+    s->ftex = start->floor_tex; s->ctex = start->ceil_tex;
+    s->light = start->light; s->sky = start->sky;
 
     for (;;) {
         int r = r3d_column_asm(s);
@@ -459,12 +438,19 @@ static void column(int c)
     r3d_nclips[c] = (uint8_t)s->ncp;
 }
 
-void r3d_columns(void)
+void r3d_columns(const RayStart *start)
 {
     R3DFrame *const f = &r3f;
     ColState *const s = &CS;
     int c, n = f->ncol;
     f->dbg_steps = f->dbg_facepx = f->dbg_skypx = f->dbg_flatpx = 0;
+    if (start->idx8 < 0) {
+        for (c = 0; c < n; c++) {
+            fill_col(f->dst + c, 0, f->vh, r3d_cmrow[15][1]);
+            r3d_nclips[c] = 0;
+        }
+        return;
+    }
     /* per-frame constants of the column state (read-only in the pass) */
     s->ez4 = f->ez4;
     s->hor12r = f->hor12 + 0x800;
@@ -482,7 +468,8 @@ void r3d_columns(void)
     FL.u0 = (uint32_t)f->ex << 10;
     FL.v0 = (uint32_t)f->ey << 10;
     FL.fade = r3d_fade;
-    for (c = 0; c < n; c++) column(c);
+    s->cm = FL.cm = r3d_cmrow;
+    for (c = 0; c < n; c++) column(c, start);
 }
 
 /* ------------------------------------------------------------------------ */

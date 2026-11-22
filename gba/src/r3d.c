@@ -55,14 +55,14 @@ uint8_t gba_view3d_frame, gba_view3d_pace;
  *             under load. Upscaling uses the existing Mode 4 page.
  *             Upgrade quality only after a cooldown and a CPU-budget
  *             estimate that accounts for the more detailed renderer.
- *   Max       full/half resolution with its original 15 fps budget.
- *   Smooth    half resolution always (preserves the existing 2x artwork).
- * State: +4 bytes EWRAM versus the previous four-tier estimate array. */
-static uint8_t  gov_half;          /* 0 full, 1 half, 2 quarter, 3 Bone 96x64, 4 Bone 80x54 */
-static uint8_t  gov_wait;          /* frames before the next quality retry */
-static uint8_t  gov_backoff = 16;  /* adaptive failed-upgrade cooldown */
-static uint32_t gov_r3d[5];        /* CPU cycles per quality tier */
-static uint8_t gov_bone_overruns; /* consecutive very slow readable views */
+ *   Max       full/half resolution with its original 15 fps budget. */
+typedef struct ViewQuality {
+    uint32_t cost[5];              /* CPU cycles per quality tier */
+    uint8_t detail;               /* 0 full, 1 half, 2 quarter, 3 Bone 96x64, 4 Bone 80x54 */
+    uint8_t wait, backoff;
+    uint8_t overruns;
+} ViewQuality;
+static ViewQuality view_quality[2] = { { .backoff = 16 }, { .detail = 1, .backoff = 16 } };
 static const DoomoMapDef *gov_mapdef; /* reset old scene timing on map changes */
 
 /* The Bone maps keep half detail while it fits three vblanks. A
@@ -71,6 +71,19 @@ static int bone_readability_map(const DoomoMapDef *def)
 {
     return def == doomo_maps[MAPID_BONE_CAPITAL] ||
            def == doomo_maps[MAPID_BONE_CATHEDRAL];
+}
+
+static int room_quality(const DoomoView3D *v)
+{
+    int cx = v->x >> 22, cy = v->y >> 22;
+    static const int8_t dirs[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+    int i;
+    /* A shallow arch with sky next door shares the street's budget. */
+    for (i = 0; i < 4; i++) {
+        const DoomoCell *cell = map_cell_safe(v->map, cx + dirs[i][0], cy + dirs[i][1]);
+        if (!cell->wall && cell->ceil_tex == DOOMO_TEX_SKY) return 0;
+    }
+    return 1;
 }
 
 uint32_t r3d_presentation_cap(int frame)
@@ -88,17 +101,18 @@ uint32_t r3d_presentation_cap(int frame)
 #define VBL_CYC 280896u            /* cycles a vblank (16.78 MHz / 59.73 Hz)        */
 
 #if !defined(ENGINE_TEST)                 /* the engine test draws full resolution */
-static int view_half(void)
+static int view_half(const ViewQuality *q)
 {
     int m = opt_get(OPT_3D_FAST);
     if (m == OPT3D_SMOOTH) return 1;
-    return gov_half;
+    return q->detail;
 }
 #endif
 
 /* main.c video_flip: `took` is the vblank gap. Update the next render. */
 void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
 {
+    ViewQuality *q = &view_quality[r3f.interior_quality];
     int m = opt_get(OPT_3D_FAST);
     /* Two vblanks = 30 fps at the GBA's ~59.73 Hz video refresh.
      * Balanced previously tolerated 3 (20 fps) before stepping down;
@@ -110,11 +124,11 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
     if (m == OPT3D_SMOOTH || !frame) return;
     if (frame == 1) {
         if (took > limit) {
-            gov_half = 1;
-            gov_wait = gov_backoff;
-            gov_backoff = (uint8_t)(gov_backoff >= 120 ? 240 : gov_backoff * 2);
+            q->detail = 1;
+            q->wait = q->backoff;
+            q->backoff = (uint8_t)(q->backoff >= 120 ? 240 : q->backoff * 2);
         } else {
-            gov_backoff = 16;
+            q->backoff = 16;
         }
         return;
     }
@@ -124,13 +138,13 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * Keep Max's previous quality contract and Smooth's existing 2x mode. */
     if (frame == 2 && m == OPT3D_BALANCED) {
         if (took > (bone ? 3u : 2u)) {
-            if (bone && ++gov_bone_overruns < 2u) return;
-            gov_bone_overruns = 0;
-            gov_half = bone ? 3 : 2;
-            gov_wait = 32;
+            if (bone && ++q->overruns < 2u) return;
+            q->overruns = 0;
+            q->detail = bone ? 3 : 2;
+            q->wait = 32;
             return;
         }
-        gov_bone_overruns = 0;
+        q->overruns = 0;
     }
     /* The new Bone middle tier casts 48 rays at 96x64 (rather than the
      * emergency tier's 40 rays at 80x54). Keep it while a frame fits four
@@ -138,60 +152,63 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
      * repeated slower frames. Screen size, view distance and FOV stay fixed. */
     if (bone && m == OPT3D_BALANCED && frame == 4) {
         if (took > 4u) {
-            if (++gov_bone_overruns >= 5u) {
-                gov_half = 4;
-                gov_wait = 32;
-                gov_bone_overruns = 0;
+            if (++q->overruns >= 5u) {
+                q->detail = 4;
+                q->wait = 32;
+                q->overruns = 0;
             }
             return;
         }
-        gov_bone_overruns = 0;
+        q->overruns = 0;
     }
-    if (gov_wait) { gov_wait--; return; }
+    if (q->wait) { q->wait--; return; }
     if (frame == 5) {
         /* A measured middle-tier cost is preferable; before its first
          * visit estimate 1.4x the emergency renderer. Hysteresis avoids
          * bouncing between resolutions in a demanding corridor. */
-        uint32_t middle = gov_r3d[3] ? gov_r3d[3] :
-                          gov_r3d[4] + gov_r3d[4] * 2u / 5u;
-        uint32_t extra = middle > gov_r3d[4] ? middle - gov_r3d[4] : 0;
+        uint32_t middle = q->cost[3] ? q->cost[3] :
+                          q->cost[4] + q->cost[4] * 2u / 5u;
+        uint32_t extra = middle > q->cost[4] ? middle - q->cost[4] : 0;
         if (work + extra + VBL_CYC / 4u <= 4u * VBL_CYC) {
-            gov_half = 3;
-            gov_wait = 32;
+            q->detail = 3;
+            q->wait = 32;
         } else {
-            gov_wait = 8;
+            q->wait = 8;
         }
         return;
     }
     if (frame == 4) {
         /* Prefer 120x80 only when it should fit a three-vblank budget.
-         * 120x80 has 1.56x as many input pixels as 96x64. */
-        uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] :
-                             gov_r3d[3] + gov_r3d[3] / 2u;
-        uint32_t extra = half_cost > gov_r3d[3] ? half_cost - gov_r3d[3] : 0;
-        if (work + extra + VBL_CYC / 4u <= 3u * VBL_CYC)
-            gov_half = 1;
-        gov_wait = 16;
+         * A shallow arch needs more headroom: its visible street can
+         * change quickly as the camera crosses the threshold. */
+        uint32_t budget = (r3f.indoors && !r3f.interior_quality) ?
+                          5u * VBL_CYC / 2u : 3u * VBL_CYC;
+        uint32_t half_cost = q->cost[1] ? q->cost[1] :
+                             q->cost[3] + q->cost[3] / 2u;
+        uint32_t extra = half_cost > q->cost[3] ? half_cost - q->cost[3] : 0;
+        if (work + extra + VBL_CYC / 4u <= budget)
+            q->detail = 1;
+        q->wait = 16;
         return;
     }
     if (frame == 3) {
         /* When a cheap frame leaves room for the measured half-detail
          * cost, try an upgrade. Back off if it immediately runs late. */
-        uint32_t half_cost = gov_r3d[1] ? gov_r3d[1] : gov_r3d[2] * 2u;
-        uint32_t est = work + (half_cost > gov_r3d[2] ? half_cost - gov_r3d[2] : 0);
+        uint32_t half_cost = q->cost[1] ? q->cost[1] : q->cost[2] * 2u;
+        uint32_t est = work + (half_cost > q->cost[2] ? half_cost - q->cost[2] : 0);
         if (est + VBL_CYC / 4u <= 2u * VBL_CYC) {
-            gov_half = 1;
-            gov_wait = 16;
-        } else gov_wait = 16;
+            q->detail = 1;
+            q->wait = 16;
+        } else q->wait = 16;
         return;
     }
     {
         /* Full resolution costs what the last full view measured (or an
          * estimate from half when the full view has not been seen). */
-        uint32_t full = gov_r3d[0] ? gov_r3d[0] : gov_r3d[1] * 3u;
-        uint32_t est = work + (full > gov_r3d[1] ? full - gov_r3d[1] : 0);
-        if (est + VBL_CYC / 4u <= limit * VBL_CYC) gov_half = 0;
-        else gov_wait = 8;
+        uint32_t full = q->cost[0] ? q->cost[0] : q->cost[1] * 3u;
+        uint32_t est = work + (full > q->cost[1] ? full - q->cost[1] : 0);
+        if (est + VBL_CYC / 4u <= limit * VBL_CYC) q->detail = 0;
+        else q->wait = 8;
     }
 }
 /* (S2-2, viewhold.c) the rect the last drawn view covered, and the frame (gba_frames) it was drawn in */
@@ -451,7 +468,44 @@ typedef struct SprOrder { int32_t depth; int16_t idx; } SprOrder;
 #define R3D_MAXSPR 128
 #define spr_order ((SprOrder *)(gba_r3d + GBA_BIG_SPR))
 
-static void draw_sprites(const DoomoView3D *v, int bone)
+enum { WALL_BIN_SHIFT = 3, WALL_BIN_N = (R3D_MAXCOLS + 7) >> WALL_BIN_SHIFT };
+
+/* A closed ray can never admit a billboard at or behind that checkpoint.
+ * Keep the farthest closure in each group, or infinity if any ray still
+ * has an opening. A visible arch or window keeps its sector eligible. */
+static unsigned wall_depth_bounds(uint16_t bins[WALL_BIN_N])
+{
+    unsigned far = 0;
+    int c;
+    memset(bins, 0, WALL_BIN_N * sizeof(*bins));
+    for (c = 0; c < r3f.ncol; c++) {
+        int bin = c >> WALL_BIN_SHIFT;
+        int n = r3d_nclips[c];
+        unsigned depth = UINT16_MAX;
+        if (bins[bin] == UINT16_MAX) continue;
+        if (n) {
+            const R3DClip *end = &r3d_clips[c][n - 1];
+            if (end->top >= end->bot) depth = end->d8;
+        }
+        if (depth > bins[bin]) bins[bin] = (uint16_t)depth;
+        if (depth > far) far = depth;
+    }
+    return far;
+}
+
+static int behind_wall(const uint16_t bins[WALL_BIN_N], int32_t x0, int32_t x1, unsigned depth)
+{
+    int start = DOOMO_MAX(0, (x0 - 1) >> 13);
+    int end = DOOMO_MIN(r3f.ncol, (x1 + 0xFFF) >> 13);
+    int b;
+    if (start >= end) return 0;
+    /* A drop shadow fits horizontally inside the sprite's projected span. */
+    for (b = start >> WALL_BIN_SHIFT; b <= (end - 1) >> WALL_BIN_SHIFT; b++)
+        if (depth < bins[b]) return 0;
+    return 1;
+}
+
+static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, unsigned far)
 {
     int i, n = 0, count = v->sprite_count;
     const int32_t smax = (int32_t)(r3f.maxd << 6);     /* (LV4) the level's view distance in 16.16 world units (64 a cell) */
@@ -470,6 +524,10 @@ static void draw_sprites(const DoomoView3D *v, int bone)
         depth = r3d_dot16(dx, r3f.fx, dy, r3f.fy);
         if (depth < (4 << 16)) continue;                 /* behind / at the eye */
         if (depth > smax) continue;
+        if (((uint32_t)depth >> 13) >= far) {
+            r3d_stats.occluded_sprites++;
+            continue;
+        }
         spr_order[n].depth = depth;
         spr_order[n].idx = (int16_t)i;
         n++;
@@ -503,6 +561,11 @@ static void draw_sprites(const DoomoView3D *v, int bone)
         int level;
         if (w12 < 0x400 || h12 < 0x400) continue;                  /* < 1/4 px */
         if (sx12 + (w12 >> 1) <= 0 || sx12 - (w12 >> 1) >= (r3f.vw << 12)) continue;
+        if (bins && behind_wall(bins, sx12 - (w12 >> 1),
+                                      sx12 - (w12 >> 1) + w12, (uint32_t)depth >> 13)) {
+            r3d_stats.occluded_sprites++;
+            continue;
+        }
         s.img = img;
         s.depth16 = depth;
         s.x0_12 = sx12 - (w12 >> 1);
@@ -666,12 +729,48 @@ static void vtex_update(void)
     memset(r3d_texpix, 0, sizeof(r3d_texpix));
 }
 
+/* Resolve the shared starting sector once in ROM. Door and lift cells
+ * still read their actual moving heights for this frame. */
+static void setup_ray_start(RayStart *start)
+{
+    int cx = r3f.ex >> 22, cy = r3f.ey >> 22;
+    const DoomoCell *cell;
+    const uint32_t *words;
+    uint32_t w0, w1;
+    start->idx8 = -1;
+    if ((unsigned)cx >= (unsigned)r3f.mw || (unsigned)cy >= (unsigned)r3f.mh) return;
+    start->px = r3f.ex >> 6;
+    start->py = r3f.ey >> 6;
+    start->idx8 = (cy * r3f.mw + cx) * sizeof(*cell);
+    cell = &r3f.cells[cy * r3f.mw + cx];
+    words = (const uint32_t *)cell;
+    w0 = words[0]; w1 = words[1];
+    if (cell->flags & (CELL_DOOR | CELL_LIFT)) {
+        start->floor = map_floor_z(r3f.map, cx, cy) * 16;
+        start->ceil = map_ceil_z(r3f.map, cx, cy) * 16;
+    } else {
+        start->floor = cell->floor_h * 128;
+        start->ceil = cell->ceil_h * 128;
+    }
+    start->floor_tex = cell->floor_tex;
+    start->ceil_tex = cell->ceil_tex;
+    start->light = cell->light ? cell->light : r3f.amb;
+    start->sky = cell->ceil_tex == DOOMO_TEX_SKY;
+    start->c0 = (cell->wall || (cell->flags & (CELL_DOOR | CELL_LIFT))) ? UINT32_MAX : w0;
+    start->c1 = w1;
+}
+
 void plat_view3d(const DoomoView3D *v)
 {
-    uint32_t t0, t1, t2, t3;
+    uint32_t t0, t1, t2, t3, collect_cycles = 0;
+    DoomoView3D resolved;
+    RayStart start;
+    uint16_t bins[WALL_BIN_N];
+    unsigned far = UINT16_MAX;
     int vx, vy, vw, vh, detail = 0;
     int a, bone;
     const DoomoMap *m;
+    ViewQuality *q;
     if (gba_nodraw == 1 || !v || !v->map) return;
     if (gba_nodraw) {                         /* G5: the view draws into a page */
         cv_need_m4();
@@ -684,15 +783,17 @@ void plat_view3d(const DoomoView3D *v)
     t0 = gba_cycles();
     m = v->map;
     bone = bone_readability_map(m->def);
+    r3f.indoors = (uint8_t)(bone && (v->collect_sprites || doomo_view_under_roof(v)));
+    r3f.interior_quality = (uint8_t)(r3f.indoors && room_quality(v));
+    q = &view_quality[r3f.interior_quality];
     /* Scene changes invalidate cost estimates from the previous level:
      * otherwise entering an intricate map may inherit its 4x fallback. */
     if (gov_mapdef != m->def) {
         gov_mapdef = m->def;
-        gov_half = 0;
-        gov_wait = 0;
-        gov_backoff = 16;
-        gov_bone_overruns = 0;
-        memset(gov_r3d, 0, sizeof(gov_r3d));
+        memset(view_quality, 0, sizeof(view_quality));
+        view_quality[0].backoff = view_quality[1].backoff = 16;
+        /* A new interior begins at 120x80, then follows the measured room cost. */
+        view_quality[1].detail = 1;
     }
 
     /* viewport: even x / width (2-pixel columns), clipped to the screen */
@@ -713,15 +814,15 @@ void plat_view3d(const DoomoView3D *v)
      * 4x is legal only with whole 4-pixel blocks and enough view area. */
 #if !defined(ENGINE_TEST)
     if (!(vx & 3) && !(vw & 3) && !(vh & 1) && vw >= 32 && vh >= 32) {
-        detail = view_half() ? 1 : 0;
-        if (detail && gov_half == 2 && opt_get(OPT_3D_FAST) == OPT3D_BALANCED &&
+        detail = view_half(q) ? 1 : 0;
+        if (detail && q->detail == 2 && opt_get(OPT_3D_FAST) == OPT3D_BALANCED &&
             !(vx & 7) && !(vw & 7) && !(vh & 3) && vw >= 64 && vh >= 64)
             detail = 2;
     }
 #endif
-    if (gov_half >= 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
+    if (q->detail >= 3 && vx == 0 && vy == 0 && vw == SCREEN_W && vh == SCREEN_H &&
         bone && opt_get(OPT_3D_FAST) == OPT3D_BALANCED) {
-        detail = gov_half;
+        detail = q->detail;
         vw = detail == 3 ? 96 : 80;
         vh = detail == 3 ? 64 : 54;
     } else if (detail) { vw >>= detail; vh >>= detail; }
@@ -829,10 +930,21 @@ void plat_view3d(const DoomoView3D *v)
      * sampling in the GBA emulator census before increasing it further. */
     FL.far = ((detail == 1 || detail == 3 || detail == 4) && bone &&
               opt_get(OPT_3D_FAST) == OPT3D_BALANCED ? 768u : 1400u) << 8;
-    r3d_columns();
+    setup_ray_start(&start);
+    r3d_columns(&start);
     t1 = gba_cycles();
     t2 = t1;
-    draw_sprites(v, bone);
+    r3d_stats.occluded_sprites = 0;
+    if (r3f.indoors) far = wall_depth_bounds(bins);
+    if (v->collect_sprites) {
+        fix16 limit = far == UINT16_MAX ? INT32_MAX : (fix16)(far << 13) + INT2FIX(1);
+        uint32_t start = gba_cycles();
+        resolved = *v;
+        r3d_stats.occluded_sprites = (uint16_t)v->collect_sprites(&resolved, limit);
+        collect_cycles = gba_cycles() - start;
+        v = &resolved;
+    }
+    draw_sprites(v, bone, r3f.indoors ? bins : NULL, far);
     if (v->tint > TINT_NONE && v->tint < TINT_COUNT && v->tint_level > 0) {
         /* Unlike the old 4x4 per-pixel ordered dither, a subtle palette
          * lerp never paints isolated red/purple dots over stonework when
@@ -861,15 +973,16 @@ void plat_view3d(const DoomoView3D *v)
     }
     t3 = gba_cycles();
 
-    gov_r3d[detail] = t3 - t0;                        /* SP8: the governor's estimate */
+    q->cost[detail] = t3 - t0 - collect_cycles;      /* renderer cost, excluding core actor work */
     r3d_stats.cycles_cols = t1 - t0;
     r3d_stats.cycles_planes = t2 - t1;
-    r3d_stats.cycles_sprites = t3 - t2;
-    r3d_stats.cycles_total = t3 - t0;
+    r3d_stats.cycles_sprites = t3 - t2 - collect_cycles;
+    r3d_stats.cycles_total = q->cost[detail];
     r3d_stats.planes = 0;
     r3d_stats.spans = (uint16_t)(r3f.dbg_flatpx > 65535 ? 65535 : r3f.dbg_flatpx);
     r3d_stats.events_overflow = r3f.cp_over;
     r3d_stats.columns = (uint16_t)r3f.ncol;
+    r3d_stats.indoors = r3f.indoors;
     r3d_dbg[0] = r3f.dbg_steps; r3d_dbg[1] = r3f.dbg_facepx;
     r3d_dbg[2] = r3f.dbg_skypx; r3d_dbg[3] = r3f.dbg_flatpx;
 }

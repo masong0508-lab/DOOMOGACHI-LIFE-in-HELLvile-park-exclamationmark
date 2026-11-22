@@ -174,8 +174,24 @@ typedef struct DoomoView3D {
                                    (lv_env_view). A renderer clamps it to
                                    its range; the PS1 ignores it until the
                                    LEVELS share of PS1 RAM is released.     */
+#if defined(DOOMO_PLATFORM_GBA)
+    /* Live Bone views can collect billboards after world occlusion is known.
+     * The depth is a conservative 16.16 cap, or INT32_MAX for open views. */
+    unsigned (*collect_sprites)(struct DoomoView3D *view, fix16 opaque_depth);
+#endif
 } DoomoView3D;
 enum { CAM_FIRST_PERSON, CAM_THIRD_PERSON };
+
+#if defined(DOOMO_PLATFORM_GBA)
+static inline int doomo_view_under_roof(const DoomoView3D *v)
+{
+    int cx = v->x >> 22, cy = v->y >> 22;
+    int z = (v->z >> 16) + v->bob;
+    const DoomoCell *cell = map_cell_safe(v->map, cx, cy);
+    if (cell->wall || cell->ceil_tex == DOOMO_TEX_SKY) return 0;
+    return z >= map_floor_z(v->map, cx, cy) && z < map_ceil_z(v->map, cx, cy);
+}
+#endif
 
 /* 3D view of the map from (x,y,z,angle,pitch): walls, step faces,
  * textured floors and ceilings, sky, per-cell light + distance fade,

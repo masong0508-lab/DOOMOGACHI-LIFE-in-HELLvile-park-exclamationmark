@@ -21,6 +21,12 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone interior rendering (2026-11-22):** Opaque walls cull hidden
+  billboards, and real rooms have their own adaptive detail budget. All four
+  tested opening views kept the outside torch visible. The enclosed east
+  nave gained 0.46–0.62 FPS and the Capital gateway reached 25.96 FPS in
+  third person. The full Bone movement windows still draw 17.00–19.14 FPS.
+  See the [camera checkpoints and census](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone wall sampling (2026-11-22):** Each wall ray now shades two
   independent samples. The GBA scaler preserves both, and the engine test
   checks the packed pixels at each scale. All four mGBA Bone windows

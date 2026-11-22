@@ -1896,7 +1896,12 @@ static uint64_t bb_sq(fix16 rx, fix16 ry)
 }
 #endif
 
+#if defined(DOOMO_PLATFORM_GBA)
+static int combat_bb_sort_filtered(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key,
+                                  fix16 opaque_depth, unsigned *culled)
+#else
 int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key)
+#endif
 {
     int i, k, cnt = 0;
     for (i = 0; i < ACTOR_MAX; i++) {
@@ -1935,6 +1940,14 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
 #endif
         depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
         if (depth < -INT2FIX(48)) continue;
+#if defined(DOOMO_PLATFORM_GBA)
+        /* Keep a unit of slack between the core projection and the
+         * renderer's independently rounded projection. */
+        if (depth > opaque_depth) {
+            if (culled) (*culled)++;
+            continue;
+        }
+#endif
         s = bb_sq(rx, ry);
         if (s >= BB_CULL_S) continue;
         kn = (uint32_t)(s >> BB_KEY_SHIFT);
@@ -1968,14 +1981,123 @@ int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint3
     }
     return cnt;
 }
+#if defined(DOOMO_PLATFORM_GBA)
+int combat_bb_sort(fix16 ex, fix16 ey, fix16 fx, fix16 fy, int16_t *order, uint32_t *key)
+{
+    return combat_bb_sort_filtered(ex, ey, fx, fy, order, key, INT32_MAX, NULL);
+}
+#endif
 #endif
 
-void combat_build_view(DoomoView3D *v)
+#if defined(DOOMO_PLATFORM_GBA)
+unsigned combat_collect_sprites(DoomoView3D *v, fix16 opaque_depth)
+#else
+static void combat_view_sprites(DoomoView3D *v)
+#endif
 {
-    int n = 0, shake = combat_px.shake;
+    int n = 0;
+    fix16 ex = v->x, ey = v->y;
 #if defined(DOOMO_PLATFORM_PS1)
     int i;
 #endif
+#if defined(DOOMO_PLATFORM_GBA)
+    unsigned culled = 0;
+    if (opaque_depth < INT32_MAX) {
+        int i, used = 0;
+        /* Preserve the original nearest-first cap in a crowded scene. */
+        for (i = 0; i < ACTOR_MAX; i++)
+            if ((doomo_actors[i].flags & AF_USED) && ++used > BB_MAX - 2) {
+                opaque_depth = INT32_MAX;
+                break;
+            }
+    }
+#endif
+    /* billboards: nearest first, capped */
+    {
+        static int16_t order[ACTOR_MAX];
+#if defined(DOOMO_PLATFORM_PS1)
+        /* (SP1) the PS1 keeps the fx_dist() insertion sort: combat_build_view is resident there and
+         * combat_bb_sort's code (+320..480 B) would take the disc under its 72 KB headroom plan gate (docs/PS1.md) */
+        static int32_t dist[ACTOR_MAX];
+        int cnt = 0, k;
+        fix16 fx = fx_cos(v->angle), fy = fx_sin(v->angle);
+        for (i = 0; i < ACTOR_MAX; i++) {
+            const DoomoActor *a = &doomo_actors[i];
+            fix16 rx, ry, depth, dd;
+            if (!(a->flags & AF_USED)) continue;
+            rx = a->x - ex; ry = a->y - ey;
+            depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
+            if (depth < -INT2FIX(48)) continue;
+            dd = fx_dist(rx, ry);
+            if (dd > INT2FIX(30 * CELLU)) continue;
+            for (k = cnt; k > 0 && dist[k - 1] > dd; k--) { dist[k] = dist[k - 1]; order[k] = order[k - 1]; }
+            dist[k] = dd;
+            order[k] = (int16_t)i;
+            cnt++;
+        }
+#define BB_IS_NEAR(k) (dist[k] < INT2FIX(3 * CELLU))
+#else
+        static uint32_t key[ACTOR_MAX];
+#if defined(DOOMO_PLATFORM_GBA)
+        int cnt = combat_bb_sort_filtered(ex, ey, fx_cos(v->angle), fx_sin(v->angle), order, key, opaque_depth, &culled), k;
+#else
+        int cnt = combat_bb_sort(ex, ey, fx_cos(v->angle), fx_sin(v->angle), order, key), k;
+#endif
+#define BB_IS_NEAR(k) (key[k] < BB_KEY_NEAR)
+#endif
+        for (k = 0; k < cnt && n < BB_MAX - 2; k++) {
+            const DoomoActor *a = &doomo_actors[order[k]];
+            int flags, scale, zoff;
+            const DoomoImage *img = actor_image(a, &flags, &scale, &zoff);
+            if (!img) continue;
+            bbs[n].x = a->x;
+            bbs[n].y = a->y;
+            bbs[n].z = a->z + INT2FIX(zoff);
+            bbs[n].img = img;
+            bbs[n].scale = (uint16_t)scale;
+            bbs[n].flags = (uint8_t)flags;
+            bbs[n].light = 0;
+            if (combat_px.flash && BB_IS_NEAR(k)) bbs[n].light = 4;
+#undef BB_IS_NEAR
+            if (combat_px.zoom_t > 128 && combat_weapon()->sight == WSIGHT_THERMAL && IS_DEMON(a->type))
+                bbs[n].flags |= BB_FULLBRIGHT;
+            n++;
+        }
+    }
+    /* the player's own body in third person */
+    if (doomo_player.camera == CAM_THIRD_PERSON) {
+        int flip, view = player_view_dir(ex, ey, &flip), anim;
+        if (doomo_player.hp <= 0) anim = 6;
+        else if (doomo_player.roll_timer) anim = 5;
+        else if (doomo_player.hurt_flash > 14) anim = 6;
+        else if (combat_px.flash || combat_px.kick > 64) anim = 4;
+        else if (fx_dist_gt(combat_px.vx, combat_px.vy, INT2FIX(1))) anim = (combat_px.anim / 48) & 3;
+        else anim = 0;
+        bbs[n].x = doomo_player.x;
+        bbs[n].y = doomo_player.y;
+        bbs[n].z = doomo_player.z + (doomo_player.roll_timer ? 0 : 0);
+        bbs[n].img = fighter_image(doomo_player.resident_id, view, anim, combat_weapon()->frame);
+        bbs[n].scale = (uint16_t)(doomo_player.crouch ? 240 : 300);
+        bbs[n].flags = (uint8_t)(BB_SHADOW | (flip ? BB_FLIPX : 0));
+        bbs[n].light = (uint8_t)(combat_px.flash ? 3 : 0);
+        if (combat_px.invuln && (combat_st.ticks & 1)) bbs[n].flags |= BB_TRANSLUCENT;
+        v->player_sprite = (int8_t)n;
+        n++;
+    }
+    v->sprites = bbs;
+    v->sprite_count = n;
+#if defined(DOOMO_PLATFORM_GBA)
+    return culled;
+#endif
+}
+
+#if defined(DOOMO_PLATFORM_GBA)
+static void combat_build_view_mode(DoomoView3D *v, unsigned (*collect)(DoomoView3D *, fix16))
+#else
+void combat_build_view(DoomoView3D *v)
+#endif
+{
+    int shake = combat_px.shake;
     fix16 ex, ey, ez;
     int sw = plat_screen_w(), sh = plat_screen_h();
     memset(v, 0, sizeof(*v));
@@ -2020,80 +2142,15 @@ void combat_build_view(DoomoView3D *v)
     if (plat_draw_skipped()) {
         v->sprites = bbs;
         v->sprite_count = 0;
-        goto tints;
-    }
-    /* billboards: nearest first, capped */
-    {
-        static int16_t order[ACTOR_MAX];
-#if defined(DOOMO_PLATFORM_PS1)
-        /* (SP1) the PS1 keeps the fx_dist() insertion sort: combat_build_view is resident there and
-         * combat_bb_sort's code (+320..480 B) would take the disc under its 72 KB headroom plan gate (docs/PS1.md) */
-        static int32_t dist[ACTOR_MAX];
-        int cnt = 0, k;
-        fix16 fx = fx_cos(v->angle), fy = fx_sin(v->angle);
-        for (i = 0; i < ACTOR_MAX; i++) {
-            const DoomoActor *a = &doomo_actors[i];
-            fix16 rx, ry, depth, dd;
-            if (!(a->flags & AF_USED)) continue;
-            rx = a->x - ex; ry = a->y - ey;
-            depth = FIXMUL(rx, fx) + FIXMUL(ry, fy);
-            if (depth < -INT2FIX(48)) continue;
-            dd = fx_dist(rx, ry);
-            if (dd > INT2FIX(30 * CELLU)) continue;
-            for (k = cnt; k > 0 && dist[k - 1] > dd; k--) { dist[k] = dist[k - 1]; order[k] = order[k - 1]; }
-            dist[k] = dd;
-            order[k] = (int16_t)i;
-            cnt++;
-        }
-#define BB_IS_NEAR(k) (dist[k] < INT2FIX(3 * CELLU))
+    } else {
+#if defined(DOOMO_PLATFORM_GBA)
+        if (collect && doomo_view_under_roof(v)) v->collect_sprites = collect;
+        else (void)combat_collect_sprites(v, INT32_MAX);
 #else
-        static uint32_t key[ACTOR_MAX];
-        int cnt = combat_bb_sort(ex, ey, fx_cos(v->angle), fx_sin(v->angle), order, key), k;
-#define BB_IS_NEAR(k) (key[k] < BB_KEY_NEAR)
+        combat_view_sprites(v);
 #endif
-        for (k = 0; k < cnt && n < BB_MAX - 2; k++) {
-            const DoomoActor *a = &doomo_actors[order[k]];
-            int flags, scale, zoff;
-            const DoomoImage *img = actor_image(a, &flags, &scale, &zoff);
-            if (!img) continue;
-            bbs[n].x = a->x;
-            bbs[n].y = a->y;
-            bbs[n].z = a->z + INT2FIX(zoff);
-            bbs[n].img = img;
-            bbs[n].scale = (uint16_t)scale;
-            bbs[n].flags = (uint8_t)flags;
-            bbs[n].light = 0;
-            if (combat_px.flash && BB_IS_NEAR(k)) bbs[n].light = 4;
-#undef BB_IS_NEAR
-            if (combat_px.zoom_t > 128 && combat_weapon()->sight == WSIGHT_THERMAL && IS_DEMON(a->type))
-                bbs[n].flags |= BB_FULLBRIGHT;
-            n++;
-        }
     }
-    /* the player's own body in third person */
-    if (doomo_player.camera == CAM_THIRD_PERSON) {
-        int flip, view = player_view_dir(ex, ey, &flip), anim;
-        if (doomo_player.hp <= 0) anim = 6;
-        else if (doomo_player.roll_timer) anim = 5;
-        else if (doomo_player.hurt_flash > 14) anim = 6;
-        else if (combat_px.flash || combat_px.kick > 64) anim = 4;
-        else if (fx_dist_gt(combat_px.vx, combat_px.vy, INT2FIX(1))) anim = (combat_px.anim / 48) & 3;
-        else anim = 0;
-        bbs[n].x = doomo_player.x;
-        bbs[n].y = doomo_player.y;
-        bbs[n].z = doomo_player.z + (doomo_player.roll_timer ? 0 : 0);
-        bbs[n].img = fighter_image(doomo_player.resident_id, view, anim, combat_weapon()->frame);
-        bbs[n].scale = (uint16_t)(doomo_player.crouch ? 240 : 300);
-        bbs[n].flags = (uint8_t)(BB_SHADOW | (flip ? BB_FLIPX : 0));
-        bbs[n].light = (uint8_t)(combat_px.flash ? 3 : 0);
-        if (combat_px.invuln && (combat_st.ticks & 1)) bbs[n].flags |= BB_TRANSLUCENT;
-        v->player_sprite = (int8_t)n;
-        n++;
-    }
-    v->sprites = bbs;
-    v->sprite_count = n;
     /* tints: hurt, pickup, low health pulse, vape haze, disco */
-tints:
     {
         int reduce = opt_get(OPT_REDUCE_FLASH);
         int lvl = 0, tint = TINT_NONE;
@@ -2134,3 +2191,15 @@ tints:
     }
     combat_hud_set_view(v);
 }
+
+#if defined(DOOMO_PLATFORM_GBA)
+void combat_build_view(DoomoView3D *v)
+{
+    combat_build_view_mode(v, NULL);
+}
+
+void combat_build_roof_view(DoomoView3D *v, unsigned (*collect)(DoomoView3D *, fix16))
+{
+    combat_build_view_mode(v, collect);
+}
+#endif

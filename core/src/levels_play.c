@@ -510,6 +510,15 @@ static uint32_t pause_sig(void)
            (uint32_t)(doomo_player.weapon_slot & 15) << 2;
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+static unsigned br_collect_view(DoomoView3D *v, fix16 opaque_depth)
+{
+    unsigned culled = combat_collect_sprites(v, opaque_depth);
+    lv_runtime_view(v);
+    return culled;
+}
+#endif
+
 static void br_draw(void)
 {
     DoomoView3D v;
@@ -526,8 +535,17 @@ static void br_draw(void)
         ui_modal_hold_end();
         return;
     }
-    combat_build_view(&v);
-    lv_runtime_view(&v);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (br.state == BR_PLAY && (doomo_map.def == doomo_maps[MAPID_BONE_CATHEDRAL] ||
+                                doomo_map.def == doomo_maps[MAPID_BONE_CAPITAL]))
+        combat_build_roof_view(&v, br_collect_view);
+    else
+#endif
+        combat_build_view(&v);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (!v.collect_sprites)
+#endif
+        lv_runtime_view(&v);
     /* S2-2: the world stands still under the intro card, the pause menu, the results and the death screen */
     shaded = combat_view_draw(&v, br.state != BR_PLAY, combat_stats()->ticks,
                               br_introish() ? intro_shade() : -1) == 2;

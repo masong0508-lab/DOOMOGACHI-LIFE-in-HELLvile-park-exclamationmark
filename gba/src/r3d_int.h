@@ -54,13 +54,14 @@ typedef struct R3DFrame {
     int32_t maxtop4;               /* tallest floor/ceiling/top, 1/16 u. */
     /* textures resolved for this frame (lazily) */
     uint16_t time;
-    uint8_t  sky_id;
+    uint8_t  indoors;             /* camera eye is inside a roofed Bone cell */
     uint8_t  pair_wall;            /* sample each half of a wide wall ray */
     const uint8_t *sky;            /* 256 x 96                           */
     int32_t skyang;
     uint32_t frame;
     /* stats */
-    uint16_t nplanes, nspans;
+    uint8_t interior_quality, quality_pad;
+    uint16_t nspans;
     uint16_t cp_over, plane_over;
     uint32_t dbg_steps, dbg_facepx, dbg_skypx, dbg_flatpx;
     int32_t amb;                   /* light of cells whose light is 0     */
@@ -178,7 +179,13 @@ void r3d_draw_sky(uint16_t *p, int c, int y0, int y1, R3DRows cm);
 #define r3d_roof ((int8_t *)(gba_r3d + GBA_BIG_ROOF))
 
 /* ARM / IWRAM entry points (r3d.iwram.c) */
-void r3d_columns(void) IWRAM_CALL;
+typedef struct RayStart {
+    int32_t px, py, idx8;
+    uint32_t c0, c1;
+    int32_t floor, ceil, floor_tex, ceil_tex, light, sky;
+} RayStart;
+
+void r3d_columns(const RayStart *start) IWRAM_CALL;
 
 typedef struct R3DSprite {
     const DoomoImage *img;

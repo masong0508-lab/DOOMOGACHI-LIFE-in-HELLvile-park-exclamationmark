@@ -225,6 +225,10 @@ void combat_hud_project(fix16 x, fix16 y, fix16 z, int *sx, int *sy, int *visibl
 void combat_hud_reset(void);
 int  combat_hud_style(void);                    /* 0 cute .. 256 hell */
 void combat_hud_set_view(const DoomoView3D *v);
+#if defined(DOOMO_PLATFORM_GBA)
+void combat_build_roof_view(DoomoView3D *v, unsigned (*collect)(DoomoView3D *, fix16));
+unsigned combat_collect_sprites(DoomoView3D *v, fix16 opaque_depth);
+#endif
 /* clarity C10: the HUD's icons with their names on one line (the control card's last line) */
 void combat_hud_legend(int x, int y, int w, uint8_t col);
 
