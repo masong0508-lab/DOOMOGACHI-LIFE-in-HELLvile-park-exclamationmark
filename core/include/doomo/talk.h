@@ -774,6 +774,11 @@ void talk_mem_clear_flags(int id, unsigned flags);
 #define TALK_SHARED_ALL     0xE0u
 void talk_mem_note_shared(int id, unsigned event_flags);
 int  talk_mem_shared(int id, unsigned event_flags);
+/* Long-term memories of an actual visit, newest distinct destination first.
+ * The speaker and avatar both have to match. Minor-room rules apply to recall. */
+void talk_visit_note(int guest, int avatar, int venue);
+void talk_visit_import_news(void);
+int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte

@@ -97,7 +97,9 @@ extern const DoomoSaveExt *const doomo_save_ext_talk;
 #define SAVE_EXT_TAG_BRCH SAVE_EXT_TAG('B', 'R', 'C', 'H')
 extern const DoomoSaveExt *const doomo_save_ext_breach;
 /* --- end LV0 --- */
-#define SAVE_EXT_SLOTS 14
+#define SAVE_EXT_TAG_TVIS SAVE_EXT_TAG('T', 'V', 'I', 'S')
+extern const DoomoSaveExt *const doomo_save_ext_tvis;
+#define SAVE_EXT_SLOTS 15
 int save_ext_count(void);
 const DoomoSaveExt *save_ext_at(int i);
 void save_ext_reset_all(void);   /* called by town_new() */

@@ -43,6 +43,7 @@
 #include "doomo/family.h"
 #include "doomo/save_ext.h"
 #include "doomo/save_budget.h"
+#include "doomo/sim.h"
 
 DOOMO_STATIC_ASSERT(sizeof(TalkMem) == TALK_MEM_ENTRY, talk_mem_entry_is_12_bytes);
 
@@ -443,4 +444,120 @@ static const DoomoSaveExt talk_ext = {
     SAVE_EXT_TAG_TALK, TALK_MEM_VERSION, talk_size, talk_write, talk_read, talk_save_reset, TALK_SAVE_WORST
 };
 const DoomoSaveExt *const doomo_save_ext_talk = &talk_ext;
+
+/* An independent archive lets smalltalk rotate without losing visits.
+ * Each record holds two 10-bit identities followed by a 4-bit venue.
+ * Repeating a place moves that record to the front. */
+#define TVIS_REC 3u
+#define TVIS_MAX (SAVE_EXT_MAX_TVIS / TVIS_REC)
+#define TVIS_WIRE_MAX 576u   /* largest console's payload, accepted on all ports */
+static struct {
+    uint8_t count;
+    uint8_t rows[TVIS_MAX][TVIS_REC];
+} visits;
+
+DOOMO_STATIC_ASSERT(SAVE_EXT_MAX_TVIS % TVIS_REC == 0 && SAVE_EXT_MAX_TVIS <= TVIS_WIRE_MAX, visit_archive_fits);
+DOOMO_STATIC_ASSERT(ACT_COUNT <= 16 && DOOMO_PLAYER_ID + HOUSEHOLD_CAP_MAX < NEWS_NONE, visit_fields_fit);
+
+static uint32_t visit_unpack(const uint8_t *p)
+{
+    return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
+}
+
+static int visit_valid(int guest, int avatar, int venue)
+{
+    return guest >= 0 && guest < DOOMO_MAX_RESIDENTS && guest != avatar &&
+           person_ok(guest) && person_ok(avatar) && talk_act_invite_ok(TA_INVITE, venue, 0, 12);
+}
+
+static int visit_index(uint32_t value)
+{
+    int i;
+    for (i = 0; i < visits.count; i++) if (visit_unpack(visits.rows[i]) == value) return i;
+    return -1;
+}
+
+void talk_visit_note(int guest, int avatar, int venue)
+{
+    int i;
+    uint32_t value;
+    if (!visit_valid(guest, avatar, venue)) return;
+    value = NEWS_IDS(guest, avatar, venue);
+    i = visit_index(value);
+    if (i < 0) {
+        if (visits.count < TVIS_MAX) visits.count++;
+        i = visits.count - 1;
+    }
+    memmove(visits.rows + 1, visits.rows, TVIS_REC * (unsigned)i);
+    visits.rows[0][0] = (uint8_t)value;
+    visits.rows[0][1] = (uint8_t)(value >> 8);
+    visits.rows[0][2] = (uint8_t)(value >> 16);
+}
+
+static uint32_t visit_in_news(int i)
+{
+    const DoomoNewsRec *news = sim_news_record(i);
+    if (!news || (news->tmpl != NT_TALK_MEET && news->tmpl != NT_TALK_MEET_FAV) ||
+        news->v >> 20 != NEWS_NONE || news->arg8 >= ACT_COUNT) return 0;
+    return (news->v & 0xFFFFFu) | ((uint32_t)news->arg8 << 20);
+}
+
+void talk_visit_import_news(void)
+{
+    int i;
+    if (visits.count) return;
+    for (i = sim_news_count() - 1; i >= 0; i--) {
+        uint32_t value = visit_in_news(i);
+        if (value) talk_visit_note(value & 1023u, (value >> 10) & 1023u, value >> 20);
+    }
+}
+
+int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity)
+{
+    uint32_t people, seen = 0;
+    int i, news_count, count = 0;
+    if (guest < 0 || guest >= DOOMO_MAX_RESIDENTS || avatar < 0 || avatar >= (int)NEWS_NONE) return 0;
+    news_count = sim_news_count();
+    people = NEWS_IDS(guest, avatar, 0);
+    for (i = 0; i < visits.count + news_count && count < capacity; i++) {
+        uint32_t value = i < visits.count ? visit_unpack(visits.rows[i]) : visit_in_news(i - visits.count);
+        int venue = (int)(value >> 20);
+        uint32_t bit = 1u << venue;
+        if ((value & 0xFFFFFu) != people || seen & bit ||
+            !talk_act_invite_ok(TA_INVITE, venue, minor, 12)) continue;
+        venues[count++] = venue;
+        seen |= bit;
+    }
+    return count;
+}
+
+static void visit_reset(void) { visits.count = 0; }
+
+static uint32_t visit_size(void) { return visits.count * TVIS_REC; }
+
+static uint32_t visit_write(uint8_t *dst, uint32_t cap)
+{
+    uint32_t size = visit_size();
+    if (cap < size) return 0;
+    if (size) memcpy(dst, visits.rows, size);
+    return size;
+}
+
+static int visit_read(const uint8_t *src, uint32_t len, uint16_t version)
+{
+    uint32_t i;
+    visit_reset();
+    if (version != 1 || len > TVIS_WIRE_MAX || len % TVIS_REC) return 0;
+    for (i = 0; i < len && visits.count < TVIS_MAX; i += TVIS_REC) {
+        uint32_t value = visit_unpack(src + i);
+        if (visit_valid(value & 1023u, (value >> 10) & 1023u, value >> 20) && visit_index(value) < 0)
+            memcpy(visits.rows[visits.count++], src + i, TVIS_REC);
+    }
+    return 1;
+}
+
+static const DoomoSaveExt visit_ext = {
+    SAVE_EXT_TAG_TVIS, 1, visit_size, visit_write, visit_read, visit_reset, SAVE_EXT_MAX_TVIS
+};
+const DoomoSaveExt *const doomo_save_ext_tvis = &visit_ext;
 #endif /* DOOMO_HAS_TALK */

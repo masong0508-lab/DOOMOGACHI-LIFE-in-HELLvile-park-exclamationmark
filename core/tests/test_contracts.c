@@ -193,7 +193,7 @@ TEST(contracts_registries_read_through_volatile)
         /* T0 */
         doomo_save_ext_talk,
         /* LV0 */
-        doomo_save_ext_breach };
+        doomo_save_ext_breach, doomo_save_ext_tvis };
     const DoomoActivity *const acts[] = {
         doomo_activities_minigames, doomo_activities_concert, doomo_activities_collections,
         doomo_activities_combat, doomo_activities_extra, doomo_activities_studio,

@@ -438,14 +438,30 @@ If the guest leaves before the player confirms, another resident at the
 same venue keeps their appointment. In Talk, **Meet today** checks the
 resident you are speaking with and names the actual destination.
 
-After a completed meetup, **Our history** offers **Remember our visit**
-with the venue name. The response reflects the resident's current mood
-and personality. The shortcut **Remember when we...?** also uses the
-completed visit when available. The game reads the most recent matching
-event for these two people from the saved Town News feed. The specific
-venue stays available across saves while the event is still in the feed.
-An accepted invitation remains a separate memory. Recalling a visit
-adds no relationship points, items, or headlines.
+After a completed meetup, **Our history** lists remembered venues for
+the resident and the character who went with them. The newest distinct
+venue comes first. **Remember when we...?** uses their newest matching
+visit. The response reflects the resident's current mood and personality.
+Recounting a visit adds no relationship points, items, or headlines.
+
+Completed visits use the optional `TVIS` save chunk. Each entry takes
+three bytes and records the two people and the venue. Returning to the
+same venue with the same person refreshes that entry. Once full, the
+archive drops its oldest entry. Existing saves import completed visits
+that still appear in Town News. A visit then survives news rotation and
+recent-topic eviction. When moving to a smaller archive, the game keeps
+the newest records that fit.
+
+| Platform | Saved visit records | Maximum payload |
+|---|---:|---:|
+| GBA | 24 | 72 bytes |
+| PS1 with Talk | 64 | 192 bytes |
+| PS2 and native | 128 | 384 bytes |
+| Dreamcast | 192 | 576 bytes |
+
+Moving the Talk cursor, changing speakers, and clicking a choice restart
+the pause timer. A resident can start a spontaneous exchange after a
+full quiet window. The conversation's limit on idle remarks still applies.
 
 The activity itself runs on menu selection. It adds no per-resident
 data or 3D render overhead. The story choice uses callback 131 and the menu reserves

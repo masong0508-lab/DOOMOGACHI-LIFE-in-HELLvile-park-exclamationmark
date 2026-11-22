@@ -51,6 +51,53 @@ static void premade_town(void)
     town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
 }
 
+TEST(talk_visit_archive_imports_legacy_news_and_filters_by_participant)
+{
+    int venues[ACT_COUNT], i;
+    premade_town();
+    sim_init();
+    sim_news_rec(NT_TALK_MEET, ACT_CAFE, NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET, ACT_PARK, NEWS_IDS(ID_NANA, ID_RIVET, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET, ACT_CAFE, NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, NEWS_NONE));
+    sim_news_rec(NT_TALK_MEET, ACT_CONCERT, NEWS_IDS(ID_NANA, DOOMO_PLAYER_ID, NEWS_NONE));
+    CHECK_EQ(doomo_save_ext_tvis->size(), 0);
+    CHECK(save_game(1));      /* legacy visit history exists only in the newspaper */
+    CHECK(load_game(1));
+    sim_init();
+    CHECK_EQ(doomo_save_ext_tvis->size(), 9);
+    for (i = 0; i < NEWS_MAX; i++) sim_news_rec(NT_PIE, 0, NEWS_IDS(ID_NANA, NEWS_NONE, NEWS_NONE));
+    CHECK_EQ(talk_visit_venues(ID_NANA, DOOMO_PLAYER_ID, 0, venues, ACT_COUNT), 2);
+    CHECK_EQ(venues[0], ACT_CONCERT);
+    CHECK_EQ(venues[1], ACT_CAFE);
+    CHECK_EQ(talk_visit_venues(ID_NANA, ID_RIVET, 0, venues, ACT_COUNT), 1);
+    CHECK_EQ(venues[0], ACT_PARK);
+    CHECK_EQ(talk_visit_venues(ID_NANA, DOOMO_PLAYER_ID, 1, venues, ACT_COUNT), 1);
+    CHECK_EQ(venues[0], ACT_CAFE);
+}
+
+TEST(talk_visit_archive_keeps_recent_records_within_the_save_budget)
+{
+    const DoomoSaveExt *ext = doomo_save_ext_tvis;
+    uint8_t bytes[SAVE_EXT_MAX_TVIS];
+    int i, venue, cap = SAVE_EXT_MAX_TVIS / 3u;
+    uint32_t size;
+    premade_town();
+    sim_init();
+    CHECK_EQ(save_budget_declared_max(SAVE_EXT_TAG_TVIS), SAVE_EXT_MAX_TVIS);
+    for (i = 0; i < cap; i++) talk_visit_note(i, DOOMO_PLAYER_ID, ACT_PARK);
+    talk_visit_note(0, DOOMO_PLAYER_ID, ACT_PARK); /* moved forward, once */
+    talk_visit_note(cap, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK_EQ(talk_visit_venues(1, DOOMO_PLAYER_ID, 0, &venue, 1), 0);
+    CHECK_EQ(talk_visit_venues(0, DOOMO_PLAYER_ID, 0, &venue, 1), 1);
+    size = ext->write(bytes, sizeof bytes);
+    CHECK_EQ(size, sizeof bytes);
+    CHECK(!ext->read(bytes, size - 1, 1));
+    CHECK_EQ(ext->size(), 0);
+    CHECK(ext->read(bytes, size, 1));
+    CHECK_EQ(talk_visit_venues(cap, DOOMO_PLAYER_ID, 0, &venue, 1), 1);
+    CHECK_EQ(venue, ACT_PARK);
+}
+
 static uint16_t concept(const char *key)
 {
     uint16_t c = 0, wf = 0;

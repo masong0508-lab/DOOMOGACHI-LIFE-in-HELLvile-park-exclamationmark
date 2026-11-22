@@ -112,6 +112,17 @@ uint32_t save_budget_declared_max(uint32_t tag);
 #define SAVE_EXT_MAX_TALK     736u
 #endif
 #define SAVE_BUDGET_TALK_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TALK) + SAVE_BUDGET_CHUNK_HDR)
+/* Completed Talk visits use three bytes per distinct guest, avatar and venue. */
+#if defined(DOOMO_PLATFORM_GBA)
+#define SAVE_EXT_MAX_TVIS  72u
+#elif defined(DOOMO_PLATFORM_PS1)
+#define SAVE_EXT_MAX_TVIS 192u
+#elif defined(DOOMO_PLATFORM_DC)
+#define SAVE_EXT_MAX_TVIS 576u
+#else
+#define SAVE_EXT_MAX_TVIS 384u
+#endif
+#define SAVE_BUDGET_TVIS_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TVIS) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 
 /* --- LV0 (levels plan 8.5): 'BRCH', the newer levels' records and the

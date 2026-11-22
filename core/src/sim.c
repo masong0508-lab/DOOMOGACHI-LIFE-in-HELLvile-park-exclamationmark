@@ -919,6 +919,9 @@ void sim_init(void)
     talk_outcome_meet_restore(meet_activities);
 #endif
     sim_events_reset();
+#ifdef DOOMO_HAS_TALK
+    talk_visit_import_news();
+#endif
     sim_news_welcome(town_count(-1));     /* LS1: once per town or load */
 #if DOOMO_RES_SLOTS
     save_moved_away_news();               /* GBA-500: an old save's people who moved away */

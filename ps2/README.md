@@ -192,8 +192,11 @@ simulation. The existing memory-card format stores the results.
 
 Free Play venue menus offer one meetup choice per available guest. A
 confirmed meetup stays with the named resident in Story and Free Play.
-In Talk, **Options > Our history** can recall a completed visit and name
-its location using the saved Town News feed.
+In Talk, **Options > Our history** recalls completed visits by location.
+PS2 saves hold 128 distinct visits across resident and avatar pairs.
+They remain available after the corresponding Town News headline scrolls
+out. Talk waits through a full pause after a controller input before a
+resident starts an idle exchange.
 
 Same-day meetup plans now survive a memory-card save and reload. They
 belong to the character who made them, and a guest's saved activity

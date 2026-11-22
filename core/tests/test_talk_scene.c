@@ -117,6 +117,23 @@ TEST(talk_scene_the_debug_view_describes_the_page)
     CHECK_EQ(talk_scene_act_cat(TA_REFUSE_SEXUAL), -1);    /* never a row */
 }
 
+TEST(talk_scene_navigation_restarts_the_idle_window)
+{
+    TalkSceneDebug d;
+    int selected;
+    town();
+    CHECK(open_talk(ID_NANA));
+    frames(0, TALK_IDLE_FRAMES - 24);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    selected = d.sel;
+    press(BTN_DOWN);
+    frames(0, 48); /* would have crossed the original silence threshold */
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(d.sel, selected + 1);
+    frames(0, TALK_IDLE_FRAMES - 32);
+    CHECK(talk_scene_debug(&d) && d.busy); /* a fresh pause still gets a reply */
+}
+
 /* Asking about a day is a spoken view of the live ACT_* schedule.
  * Reading it should neither award anything nor change the actual activity.
  * The activity deliberately changes after Talk opens, proving this is not
@@ -751,6 +768,50 @@ TEST(talk_scene_history_names_a_completed_meetup_after_reloading)
     CHECK_EQ((int)doomo_town.money, cash);
     CHECK_EQ(sim_news_count(), news);
     CHECK_EQ(rel_value(ID_NANA, avatar), bond);
+}
+
+TEST(talk_scene_visit_history_outlives_news_and_recent_topics)
+{
+    TalkSummary sum = {0};
+    TalkOutcome out;
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    int i, cafe, park;
+    town();
+    doomo_town.minute = 12 * 60;
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = sum.nev = 1;
+    sum.id[0] = ID_NANA;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = ACT_CAFE;
+    town_res(ID_NANA)->activity = ACT_HOME;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ(out.invited, 1);
+    CHECK_EQ(talk_outcome_meet_kind(ID_NANA, ACT_CAFE, TALK_MEET_CHAT), ID_NANA);
+    doomo_town.day++;
+    sum.ev[0].b = ACT_PARK;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ(out.invited, 1);
+    CHECK_EQ(talk_outcome_meet_kind(ID_NANA, ACT_PARK, TALK_MEET_CHAT), ID_NANA);
+
+    for (i = 0; i < NEWS_MAX; i++) sim_news_rec(NT_PIE, 0, NEWS_IDS(ID_NANA, NEWS_NONE, NEWS_NONE));
+    talk_mem_forget(ID_NANA); /* even if this resident's recent-topic row was evicted */
+    doomo_town.day += 30;
+    CHECK(save_game(1));
+    town_new(TOWN_FREEPLAY, 13, TOWN_POP_PREMADE);
+    CHECK(load_game(1));
+    sim_init();
+    CHECK(open_talk(ID_NANA));
+    CHECK(find_row("remember", -1, -1) >= 0);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "history") == 0);
+    park = find_row("meetmemory", 0, ACT_PARK);
+    cafe = find_row("meetmemory", 0, ACT_CAFE);
+    CHECK(park >= 0 && cafe > park);
+    go_to(cafe); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "Brimstone Bites"));
 }
 
 TEST(talk_scene_history_reports_real_favor_progress)

@@ -8,20 +8,15 @@
 #include "doomo/doomo.h"
 #include "doomo/save_budget.h"
 
-/* 2 x 36 B of .bss (only linked once something asks for a budget; 2 x 24 B
- * before K0 raised SAVE_EXT_SLOTS 7 -> 12; T0's 13th slot filled the pad;
- * LV0's 14th ('BRCH') takes the two bytes of `valid` and `n`, still 36 B:
- * "valid" is now the top bit of `total` (a file is far below 2 GB) and the
- * count is not kept, since the sizes after it are 0 anyway): chunk sizes
- * are kept by registry position (stable in a build) and fit 16 bits (each
- * chunk <= DOOMO_SAVE_EXT_MAX). */
+/* Two snapshots, with one u16 per registered chunk and a validity bit
+ * in the file size. Unused entries stay zero. */
 #define SNAP_VALID 0x80000000u
 typedef struct BudgetSnap {
     uint32_t total;                              /* SNAP_VALID | file size on the medium */
     uint32_t seed;                               /* doomo_town.seed at the I/O */
     uint16_t size[SAVE_EXT_SLOTS];
 } BudgetSnap;
-DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 36, the_budget_snapshot_stays_36_bytes);
+DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 40, budget_snapshot_size);
 
 static BudgetSnap snap[2];
 static uint32_t seen_last_size;
@@ -140,6 +135,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
     case SAVE_EXT_TAG_OPT2: return SAVE_EXT_MAX_OPT2;
     case SAVE_EXT_TAG_PROF: return SAVE_EXT_MAX_PROF;
     case SAVE_EXT_TAG_TALK: return SAVE_EXT_MAX_TALK;      /* T0 */
+    case SAVE_EXT_TAG_TVIS: return SAVE_EXT_MAX_TVIS;
     case SAVE_EXT_TAG_BRCH: return SAVE_EXT_MAX_BRCH;      /* LV0 */
     default: return 0;
     }

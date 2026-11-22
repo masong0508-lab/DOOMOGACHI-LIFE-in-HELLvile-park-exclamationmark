@@ -733,6 +733,8 @@ static void quick_refresh(void)
     T.nquick = (uint8_t)talk_quick_replies(&T.s, slot, T.topic, fresh, T.qsalt++, T.quick);
 }
 
+static int last_meet_venue(int id);
+
 static void build_main(void)
 {
     int c, planned_place = 0;
@@ -793,7 +795,7 @@ static void build_main(void)
     if (T.to >= 0 && T.to < T.n &&
         (talk_mem_shared(T.ids[T.to], TALK_SHARED_PLAYED) ||
          talk_mem_shared(T.ids[T.to], TALK_SHARED_GIFTED) ||
-         talk_mem_shared(T.ids[T.to], TALK_SHARED_INVITED)))
+         talk_mem_shared(T.ids[T.to], TALK_SHARED_INVITED) || last_meet_venue(T.ids[T.to]) >= 0))
         add_row(K_REMEMBER, 0, 0);
 #ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
@@ -817,30 +819,23 @@ static void build_more(void)
     list_reset();
 }
 
-/* The saved news ring already records actual visits with both people.
- * Scan it only on opening History or recalling an event. Use daytime
- * rules here to keep adult venues out of a room with minors. */
-static int last_meet_venue(int id)
+/* Sample only on menu entry or when a player chooses a memory. */
+static int meet_memory_venues(int id, int *venues, int capacity)
 {
-    int i, count, minor;
-    uint32_t people;
+    int minor;
     if (T.to < 0 || T.to >= T.s.nparts || (T.s.part[T.to].flags & TPF_LEFT) ||
-        id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id)) return -1;
+        id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id)) return 0;
     minor = T.s.conv.aud.any_minor || talk_safe_minor(id) || talk_safe_minor(T.avatar);
-    people = NEWS_IDS(id, T.avatar, NEWS_NONE);
-    count = sim_news_count();
-    for (i = 0; i < count; i++) {
-        const DoomoNewsRec *news = sim_news_record(i);
-        if ((news->tmpl == NT_TALK_MEET || news->tmpl == NT_TALK_MEET_FAV) &&
-            news->v == people && talk_act_invite_ok(TA_INVITE, news->arg8, minor, 12))
-            return news->arg8;
-    }
-    return -1;
+    return talk_visit_venues(id, T.avatar, minor, venues, capacity);
 }
 
-/* No new save bytes or heap allocations: this page presents the recorded
- * per-person facts already in TALK. Counts are snapshotted on entering,
- * not recomputed each video frame. Nothing here invents an outing. */
+static int last_meet_venue(int id)
+{
+    int venue;
+    return meet_memory_venues(id, &venue, 1) ? venue : -1;
+}
+
+/* Snapshot the recorded facts on entry to History. */
 static void build_history(void)
 {
     const TalkMem *m;
@@ -869,10 +864,10 @@ static void build_history(void)
      * sampled only on opening History, not drawn/calculated each frame. */
     add_row(K_HISTORY_TONE, T.s.part[T.to].engage, T.s.tension);
     {
-        int venue = talk_outcome_meet_plan(id);
+        int venues[ACT_COUNT], count, i, venue = talk_outcome_meet_plan(id);
         if (venue >= 0) add_row(K_MEET_PLAN, 1, venue);
-        venue = last_meet_venue(id);
-        if (venue >= 0) add_row(K_MEET_MEMORY, 0, venue);
+        count = meet_memory_venues(id, venues, ACT_COUNT);
+        for (i = 0; i < count; i++) add_row(K_MEET_MEMORY, 0, venues[i]);
     }
     if (m) {
         /* Knowledge is revealed only by a real earlier conversation.
@@ -1331,7 +1326,7 @@ static const char *row_text(int index, char *buf)
                        sim_venue_name(r->v) : "unknown place");
         break;
     case K_MEET_MEMORY:
-        doomo_snprintf(buf, 48, "Remember our visit: %s", sim_venue_name(r->v));
+        doomo_snprintf(buf, 48, "Our visit to %s", sim_venue_name(r->v));
         break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
@@ -2143,8 +2138,10 @@ static void activate(int i)
         break;
     }
     case K_MEET_MEMORY: {
-        int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
-        if (last_meet_venue(id) == r->v) recall_meetup(id, r->v);
+        int venues[ACT_COUNT], count, j, id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
+        count = meet_memory_venues(id, venues, ACT_COUNT);
+        for (j = 0; j < count; j++) if (venues[j] == r->v) break;
+        if (j < count) recall_meetup(id, r->v);
         else build_history();
         break;
     }
@@ -2278,10 +2275,10 @@ static int pointer_click(int x, int y)
     }
     if (y < py) return 0;
     if (y < py + 17) {
-        if (T.page != PG_MAIN) { T.idle = 0; T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
+        if (T.page != PG_MAIN) { T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
         return 1;
     }
-    if (ui_list_click(&T.list, 6, py + 17, sw - 12, x, y) == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
+    if (ui_list_click(&T.list, 6, py + 17, sw - 12, x, y) == UI_SELECT) activate(T.list.sel);
     return 1;
 }
 
@@ -2295,6 +2292,12 @@ static void pointer_draw(void)
     for (i = 0; i < 7; i++) plat_rect(x, y + i, i + 1, 1, st->text);
 }
 #endif
+
+static void restart_idle_clock(void)
+{
+    T.idle = 0;
+    T.s.idle_frames = 0;
+}
 
 static void talk_update(void)
 {
@@ -2321,24 +2324,30 @@ static void talk_update(void)
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
         if (T.page == PG_MAIN) build_main();          /* new replies for what was just said */
     }
-    if (T.page == PG_MAIN && ++T.idle % 8 == 0 && talk_dm_tick(&T.s, 8)) {
-        gen_run(2);
-        return;
-    }
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
+        restart_idle_clock();
         change_to(T.to + 1 >= T.n ? -1 : T.to + 1);
         return;
     }
 #if DOOMO_POINTER
-    { int cx, cy; if (input_pointer_click(&cx, &cy) && pointer_click(cx, cy)) return; }
+    {
+        int cx, cy;
+        if (input_pointer_click(&cx, &cy)) {
+            restart_idle_clock();
+            if (pointer_click(cx, cy)) return;
+        }
+    }
 #endif
     r = ui_list_update(&T.list);
-    if (r == UI_SELECT) { T.idle = 0; activate(T.list.sel); }
+    if (r == UI_SELECT) { restart_idle_clock(); activate(T.list.sel); }
     else if (r == UI_CANCEL) {
-        T.idle = 0;
+        restart_idle_clock();
         if (T.page != PG_MAIN) { T.pending = 0; if (T.page == PG_HISTORY) build_more(); else build_main(); }
         else bye();
-    }
+    } else if (r == UI_CHANGED || btn_down(BTN_UP | BTN_DOWN | BTN_L | BTN_R | BTN_A | BTN_B | BTN_SELECT))
+        restart_idle_clock();
+    else if (T.page == PG_MAIN && ++T.idle % 8 == 0 && talk_dm_tick(&T.s, 8))
+        gen_run(2);
 }
 
 /* "calm" is the usual state and says nothing; only a tense or heated room is named (less on screen) */

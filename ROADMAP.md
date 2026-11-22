@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Long-term Talk visit memories (2026-11-22):** The saved archive holds
+  24 visits on GBA, 64 on PS1, 128 on PS2, and 192 on Dreamcast. Residents
+  recall distinct venues with the character who went with them. Moving
+  through a Talk menu restarts the idle chatter timer.
 - **Talk day-plan invitations (2026-11-22):** The current venue can lead
   directly to a focused outing choice. The picker lists named venues
   through normalized language-bank keys and surfaces an existing plan

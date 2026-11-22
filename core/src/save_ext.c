@@ -22,6 +22,7 @@ __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_profiles = 0;
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_talk = 0;
 /* --- LV0: 'BRCH' (levels plan 8.5); owner levels_rec.c --- */
 __attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_breach = 0;
+__attribute__((weak)) const DoomoSaveExt *const doomo_save_ext_tvis = 0;
 
 /* The registry order (a chunk's position is its bit in save.c's "seen"
  * mask and its place in the budget snapshot; add at the end only). A
@@ -34,7 +35,8 @@ static const DoomoSaveExt *const *const slots[SAVE_EXT_SLOTS] = {
     &doomo_save_ext_life, &doomo_save_ext_playas, &doomo_save_ext_endings,
     &doomo_save_ext_opt2, &doomo_save_ext_profiles,                     /* K0 */
     &doomo_save_ext_talk,                                               /* T0 */
-    &doomo_save_ext_breach                                              /* LV0 */
+    &doomo_save_ext_breach,                                             /* LV0 */
+    &doomo_save_ext_tvis
 };
 
 /* The defaults above are weak CONSTANTS: without the volatile read GCC

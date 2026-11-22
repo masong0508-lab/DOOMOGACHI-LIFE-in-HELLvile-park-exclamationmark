@@ -502,6 +502,7 @@ int talk_outcome_meet_kind(int id, int venue, int kind)
      * appointment was consumed above, revisiting the menu cannot
      * fabricate another headline. */
 #ifdef DOOMO_HAS_TALK
+    talk_visit_note(id, owner, venue);
     sim_news_rec(sim_favourite_venue(id) == venue ? NT_TALK_MEET_FAV : NT_TALK_MEET,
                  venue, NEWS_IDS(id, owner, NEWS_NONE));
 #endif
