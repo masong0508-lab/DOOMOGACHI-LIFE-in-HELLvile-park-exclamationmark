@@ -101,11 +101,21 @@ gates still apply to the linked choices.
 
 ### Adaptiveness across one life
 
-Use the same resident's routine, temperament, relationships, and confirmed
-memories from their first day through the end of their story. Add small
-encounters at each stage, with enough variants that two residents who
-share an interest can still respond differently. The examples below are
-writing and playtest targets.
+Treat these stages as checkpoints in a continuous simulation. Whenever
+the player opens Talk, the resident's routine, temperament, relationships,
+nearby people, current plans, and confirmed memories should shape the
+greeting and follow-up choices. During a conversation, a move, completed
+favor, gift, or change in who is present should be reflected when the
+next relevant choice or reply is prepared. Meaningful outcomes should
+show up again in the town through actions, activity, and later visits.
+
+Keep one path for choosing relevant facts and linking topics across Talk
+entry points. Read focused facts on conversation open or a turn, using
+the selected resident and nearby participants. Use the existing sim
+actions for care, gifts, favors, and outings, and the existing Talk gates
+for suitability. Keep short, varied replies specific to the resident.
+Reserve milestones for changes the story actually made to the town. The
+examples below are writing and playtest targets for this same system.
 
 | Stage | What the resident can react to | First encounter to write and test |
 | --- | --- | --- |
@@ -121,6 +131,9 @@ and check that only residents with grounds to know it change their response.
 Check a warm reunion, a missed plan, a resident who needs time alone, and a
 visit after save and reload. The test should verify an ensuing action or a
 visible change in routine or relationship when an encounter promises one.
+Also repeat the test mid-chapter at different times, in different homes
+and venues, and after interrupting a group chat. Track time from a button
+press to the first response and frame time through all of the transitions.
 
 ## Next milestones, in priority order
 
