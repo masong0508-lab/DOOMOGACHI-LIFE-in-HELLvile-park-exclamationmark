@@ -1,4 +1,5 @@
 """Host images: input-only visual differences must pass, autoplay must fail."""
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -7,7 +8,42 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from check_story_causality import inspect_causality
+from check_story_causality import check_controller_reports, inspect_causality
+
+
+class ControllerReportsTests(unittest.TestCase):
+    def test_same_iso_with_an_idle_control(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pairs = []
+            reports = []
+            for side in ("active", "idle"):
+                folder = root / side
+                folder.mkdir()
+                frames = [folder / f"boot-{i}.png" for i in range(1, 4)]
+                pairs.append(frames)
+                reports.append(dict(
+                    boot_media_type="disc", boot_image_sha256="a" * 64,
+                    capture_offsets_seconds=[3, 12, 22],
+                    x11_key_events=[],
+                    pngs=[frame.name for frame in frames],
+                ))
+            reports[0]["x11_key_events"] = [
+                {"seconds": 6, "key": "Return"},
+                {"seconds": 8, "key": "z"},
+                {"seconds": 10, "key": "z"},
+            ]
+            for frames, report in zip(pairs, reports):
+                (frames[0].parent / "report.json").write_text(json.dumps(report))
+            self.assertEqual(check_controller_reports(*pairs), "a" * 64)
+
+            idle_report = pairs[1][0].parent / "report.json"
+            idle_report.write_text(json.dumps(dict(reports[1], boot_image_sha256="b" * 64)))
+            with self.assertRaisesRegex(ValueError, "same ISO"):
+                check_controller_reports(*pairs)
+            idle_report.write_text(json.dumps(dict(reports[1], x11_key_events=reports[0]["x11_key_events"])))
+            with self.assertRaisesRegex(ValueError, "no keys"):
+                check_controller_reports(*pairs)
 
 
 @unittest.skipUnless(shutil.which("convert") and shutil.which("identify"), "ImageMagick")

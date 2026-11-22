@@ -1,11 +1,14 @@
 # DOOMOGACHI PlayStation 2 Deluxe — PS2-0
 
-**Current state: two experimental PS2 outputs, not a verified game release.**
-The original PS2-0 diagnostic ELF remains isolated; the separate PS2-1+
-shared-game ELF now links the portable core and has experimental SPU2,
-disc Talk, double-bank memory-card writes and a 16-bit GS display path.
-None of these constitute a complete PCSX2 playthrough or physical
-console acceptance test.
+The shared-game ISO boots the portable core in Play! and reaches Story using
+the Qt virtual controller. The independent diagnostic ELFs remain available
+for renderer and startup checks. The ISO also includes disc-backed Talk,
+SPU2 audio and journaled memory-card saves.
+
+The controller gate compares the same unmodified ISO with and without input.
+It checks the ISO checksum, capture times and input schedule before comparing
+the frames. The full PCSX2 and physical-console walkthroughs remain open.
+[Play! controller evidence](https://github.com/masong0508-lab/DOOMOGACHI-LIFE-in-HELLvile-park-exclamationmark/actions/runs/44965048660)
 
 ## Build
 
@@ -130,6 +133,11 @@ generation rollover. PS2-6 also tracks a formatted MCMAN card across
 successive `mcGetInfo` polls (where `fmt` remains zero) and resets the
 state on removal, as covered by the mocked-libmc tests. These are not a
 substitute for actual memory-card integration on PCSX2 or hardware. Treat the feature as **experimental until tested**.
+
+The transport uses the PS2SDK's IOP open flags for libmc readback and writes.
+The host mock enforces those flags and rejects writes through read-only
+handles. It checks both save slots, truncated writes, corrupt banks and RPC
+reinitialization.
 
 ## PS2-3/4/5: SPU2, live Talk disc and GS throughput
 

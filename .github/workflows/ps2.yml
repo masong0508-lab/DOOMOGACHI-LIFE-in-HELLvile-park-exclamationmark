@@ -304,11 +304,10 @@ jobs:
       # Unlike PS2_SCRIPTED_STORY_PROBE, these two ISO boots use the
       # unmodified shipping ELF and Play!'s Qt virtual controller.
       # Play!'s default keyboard mapping: Return=START and Z=CROSS.
-      # Do not gate the ISO release until Play! keyboard routing proves
-      # reliable on hosted Xvfb; preserve both screenshots on failure.
-      - name: Capture normal game ISO with no X11 keys (non-gating)
+      # Both runs must use the same shipping ISO. Retain screenshots
+      # and provenance if controller navigation regresses.
+      - name: Capture the idle gameplay ISO as a controller control
         if: always()
-        continue-on-error: true
         timeout-minutes: 4
         run: |
           set -eu
@@ -316,9 +315,8 @@ jobs:
             python3 ps2/tools/play_biosfree_smoke.py \
               ps2/build/doomogachi_ps2_game.iso \
               --out ps2/build/play-pad-idle --seconds 22 --early-capture 3 --software-gl
-      - name: Deliver Qt/X11 START and CROSS to real game ISO (non-gating)
+      - name: Require Qt virtual-controller progression on the gameplay ISO
         if: always()
-        continue-on-error: true
         timeout-minutes: 4
         run: |
           set -eu
@@ -329,6 +327,7 @@ jobs:
               --out ps2/build/play-pad-keys --seconds 22 --early-capture 3 --software-gl \
               --x11-key Return@6 --x11-key z@8 --x11-key z@10
           python3 ps2/tools/check_story_causality.py \
+            --controller \
             --scripted ps2/build/play-pad-keys/boot-1.png ps2/build/play-pad-keys/boot-2.png ps2/build/play-pad-keys/boot-3.png \
             --idle ps2/build/play-pad-idle/boot-1.png ps2/build/play-pad-idle/boot-2.png ps2/build/play-pad-idle/boot-3.png \
             --output ps2/build/play-pad-keys/pad-causality.json

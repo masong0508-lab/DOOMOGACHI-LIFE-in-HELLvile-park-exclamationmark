@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
+#include <io_common.h>
 #include "libmc.h"
 #include "loadfile.h"
 #include "doomo/save.h"
@@ -22,7 +22,7 @@ static Bank bank[NBANK] = {
     { .name="/DOOMOGACHI/ISLANDA" },
     { .name="/DOOMOGACHI/ISLANDB" }
 };
-static int pending,open_id=-1,offset,card_present=1,card_formatted=1;
+static int pending,open_id=-1,open_access,offset,card_present=1,card_formatted=1;
 static int card_seen; /* MCMAN's first poll returns -1, later 0. */
 static int writes,fail_write_after=-1;
 static int failures,checks;
@@ -54,16 +54,18 @@ int mcGetInfo(int port,int slot,int *type,int *free_space,int *format)
 }
 int mcOpen(int port,int slot,const char *name,int mode)
 {
-    int i;
+    int i, access=mode & FIO_O_RDWR;
     (void)port;(void)slot;
     pending=-4;
     if(!card_present || !card_formatted)return 0;
+    if(access!=FIO_O_RDONLY && access!=FIO_O_WRONLY && access!=FIO_O_RDWR)return 0;
+    if(access==FIO_O_RDONLY && (mode & (FIO_O_CREAT|FIO_O_TRUNC)))return 0;
     for(i=0;i<NBANK;i++)if(!strcmp(bank[i].name,name))break;
     if(i==NBANK)return 0;
-    if(!bank[i].live && !(mode&O_CREAT))return 0;
+    if(!bank[i].live && !(mode&FIO_O_CREAT))return 0;
     if(!bank[i].live){bank[i].live=1;bank[i].size=0;}
-    if(mode&O_TRUNC)bank[i].size=0;
-    open_id=i;offset=0;
+    if(mode&FIO_O_TRUNC)bank[i].size=0;
+    open_id=i;open_access=access;offset=0;
     pending=i+1;
     return 0;
 }
@@ -85,7 +87,7 @@ int mcSeek(int fd,int off,int origin)
 int mcRead(int fd,void *data,int n)
 {
     Bank *b;
-    if(open_id!=fd-1 || !card_present){pending=-4;return 0;}
+    if(open_id!=fd-1 || !card_present || !(open_access & FIO_O_RDONLY)){pending=-4;return 0;}
     b=&bank[open_id];
     if(n<0 || offset+n>b->size){pending=-4;return 0;}
     memcpy(data,b->data+offset,(size_t)n);
@@ -95,7 +97,7 @@ int mcRead(int fd,void *data,int n)
 int mcWrite(int fd,const void *data,int n)
 {
     Bank *b;
-    if(open_id!=fd-1 || !card_present){pending=-4;return 0;}
+    if(open_id!=fd-1 || !card_present || !(open_access & FIO_O_WRONLY)){pending=-4;return 0;}
     writes++;
     if(fail_write_after>=0 && writes>=fail_write_after){
         pending=-3;return 0;

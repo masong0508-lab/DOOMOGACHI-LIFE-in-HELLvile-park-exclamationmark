@@ -10,7 +10,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <fcntl.h>
+/* Raw flag values for libmc RPC. Standard file I/O still uses Newlib. */
+#define NEWLIB_PORT_AWARE
+#include <io_common.h>
+#undef NEWLIB_PORT_AWARE
 #include <libmc.h>
 #include <loadfile.h>
 #include "doomo/save.h"
@@ -134,7 +137,9 @@ static int read_bank(int slot,int bank,uint32_t *gen,
     uint32_t len=0,crc=0,epoch=0,pos=0,calc=0xFFFFFFFFu;
     int fd,filesize,ok=0;
     uint8_t *dst=(uint8_t *)out;
-    fd=open_bank(slot,bank,O_RDONLY);
+    /* libmc sends IOP file flags verbatim. Newlib O_RDONLY is zero,
+     * and O_WRONLY is the IOP's read-only value. */
+    fd=open_bank(slot,bank,FIO_O_RDONLY);
     if(fd<0)return 0;
     filesize=seek_bank(fd,0,SEEK_END);
     if(filesize<(int)PS2_SJ_HEADER || seek_bank(fd,0,SEEK_SET)!=0)
@@ -207,7 +212,7 @@ int plat_save_write(int slot,const void *data,uint32_t size)
     /* Safe to try an existing folder; "already exists" is not a
      * failure. A later mcOpen/write/verify is the real success check. */
     if(mcMkDir(MC_PORT,MC_SLOT,MC_DIR)>=0)(void)sync_result();
-    fd=open_bank(slot,target,O_WRONLY|O_CREAT|O_TRUNC);
+    fd=open_bank(slot,target,FIO_O_WRONLY|FIO_O_CREAT|FIO_O_TRUNC);
     if(fd<0)return 0;
     ok=write_exact(fd,h,sizeof h) && write_exact(fd,data,size);
     if(ok && mcFlush(fd)>=0)ok=sync_result()>=0;

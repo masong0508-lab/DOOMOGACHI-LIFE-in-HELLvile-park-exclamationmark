@@ -11,7 +11,7 @@ endif
 EE_BIN := build/doomogachi_ps2.elf
 EE_OBJS := build/main.o build/padmap.o
 EE_INCS += -I../core/include -Isrc -I$(GSKIT)/include
-EE_CFLAGS += -std=c99 -DDOOMO_PLATFORM_PS2=1 -DDOOMO_HAS_TALK=1 -ffunction-sections -fdata-sections
+EE_CFLAGS += -std=c99 -DDOOMO_PLATFORM_PS2=1 -DDOOMO_HAS_TALK=1 -ffunction-sections -fdata-sections -MMD -MP
 EE_LDFLAGS += -L$(GSKIT)/lib -Wl,--gc-sections
 EE_LIBS := -lgskit_toolkit -lgskit -ldmakit -lmc -lpad -lm
 include $(PS2SDK)/samples/Makefile.pref
@@ -171,10 +171,10 @@ PS2_ISO_PAD ?= 0
 ISO_PAD_OPT := $(if $(filter 1,$(PS2_ISO_PAD)),-pad,-no-pad)
 PS2_ZSTD_LEVEL ?= 15
 
-$(TALK_BIN):
+.PHONY: talk-bank disc
+talk-bank:
 	$(MAKE) -C ../core talk
-.PHONY: disc
-disc: $(GAME_DISC_BIN) $(TALK_BIN) $(AUDSRV_IRX)
+disc: $(GAME_DISC_BIN) talk-bank $(AUDSRV_IRX)
 	@command -v xorriso >/dev/null || (echo 'Install xorriso to build the PS2 ISO' && false)
 	@rm -rf $(DISC_ROOT)
 	@mkdir -p $(DISC_ROOT)
@@ -205,3 +205,6 @@ compact: disc
 	@command -v chdman >/dev/null || (echo 'Install mame-tools (chdman)' && false)
 	@command -v zstd >/dev/null || (echo 'Install zstd' && false)
 	python3 tools/compact_iso.py --iso $(DISC_ISO) --out-dir build/compact --zstd-level $(PS2_ZSTD_LEVEL)
+
+-include $(EE_OBJS:.o=.d) $(GAME_OBJS:.o=.d) $(STORY_PROBE_OBJS:.o=.d) $(STORY_IDLE_OBJS:.o=.d) \
+	build/gs_only.d build/gs_only_ct16.d build/gs_only_alpha.d build/gs_texture.d
