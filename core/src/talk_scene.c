@@ -524,6 +524,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     const TalkLine *th;
     const uint8_t *fl = NULL, *sl = NULL;
     int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, bridge = 0;
+    int8_t bridge_to = -1;
     uint32_t h;
     if (!s || !out || (s->flags & TDF_OVER)) return 0;
     if (s->q_kind && (s->q_st & TQ_ST_ASKED)) return talk_quest_quick(s, out);   /* TQ: a request is on the table: accept, decline, haggle, ask more */
@@ -560,6 +561,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         uint16_t familiar = TC_NONE, remembered = s->conv.mem_topic[slot];
         if (s->turn && !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE)
             familiar = talk_link_pick(s->part[slot].id, s->conv.avatar, q.topic, s->topic_stack[1]);
+        if (familiar) bridge_to = (int8_t)slot;
         if (!familiar && s->turn >= 3 && q_linked(q.topic, remembered) &&
             talk_gen_concept_ok(remembered, &s->conv.aud) && !q_grief(remembered)) familiar = remembered;
         if (familiar) { q.fresh = familiar; bridge = 1; }
@@ -601,8 +603,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
             /* Reserve the final option for a personal semantic bridge
              * only after the conversation has earned it. Never keep
              * pushing a new subject right after a topic change. */
-            if (!(bridge && s->last_act != TA_CHANGE_TOPIC &&
-                  q_add(&q, NULL, TA_CHANGE_TOPIC, h >> 11, tmp)))
+            if (!(bridge && q_add(&q, &bridge_to, TA_CHANGE_TOPIC, h >> 11, tmp)))
                 q_from(&q, ql_dive, (int)sizeof ql_dive, slot, h >> 11, tmp);
         } else {
             q_from(&q, ql_chg, (int)sizeof ql_chg, slot, h >> 9, tmp);
@@ -2489,6 +2490,7 @@ static void change_to(int to)
     T.followup = TC_NONE;
     T.to = (int8_t)to;
     if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
+    else if (T.page == PG_TOPIC) build_topics();
     else if (T.page == PG_HISTORY || T.page == PG_JOURNAL) build_history();
     else if (T.page == PG_MAIN) {
         int c;

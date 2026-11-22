@@ -621,6 +621,34 @@ TEST(talk_outcome_reinforces_a_topic_link_once_per_chat_for_the_actual_pair)
     talk_db_close();
 }
 
+TEST(talk_outcome_a_deflected_topic_breaks_the_learning_thread)
+{
+    static const int ids[] = { ID_NANA };
+    TalkState s;
+    TalkUtter u = {0};
+    uint16_t pie, weather;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    weather = concept("weather");
+    CHECK(pie && weather);
+    talk_outcome_begin(&s, HERO, ids, 1, 38u);
+    u.conf = 15;
+    u.act[0] = TA_ASK_ABOUT;
+    u.topic[0] = pie;
+    CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK(s.answered_topic[0] & TALK_LINK_SOURCE);
+    u.act[0] = TA_ASK_OPINION;
+    u.topic[0] = weather;
+    CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK(s.nlines && s.line[0].act == TA_CHANGE_TOPIC);
+    talk_outcome_end(&s, NULL, NULL);
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, pie, weather), 0);
+    talk_db_close();
+}
+
 /* The talk memory is written back, and an ordinary end locks nobody out. */
 TEST(talk_outcome_memory_written_back)
 {

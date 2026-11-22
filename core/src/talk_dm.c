@@ -1777,7 +1777,8 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
                 s->answered_topic[who] &= TALK_MAX_CONCEPTS;
                 if (s->gate == TG_PASS && L->act && !(L->flags & (TLF_SAFE | TLF_FALLBACK))) {
 #ifdef DOOMO_HAS_TALK
-                    if (!(L->flags & TLF_SINCERE) && !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE &&
+                    if (!(L->flags & (TLF_SINCERE | TLF_END)) && L->act != TA_DISMISS && L->act != TA_CHANGE_TOPIC &&
+                        !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE &&
                         (previous == (topic | TALK_LINK_SOURCE) || talk_link_topic_safe(topic))) {
                         observe_topic_link(s, who, previous, topic);
                         learned = TALK_LINK_SOURCE;

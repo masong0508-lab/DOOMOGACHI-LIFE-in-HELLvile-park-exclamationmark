@@ -593,6 +593,7 @@ TEST(talk_quick_personal_semantic_bridge_is_earned_and_opt_in)
     if (n >= 3) {
         CHECK_EQ(g[n - 1].act, TA_CHANGE_TOPIC);
         CHECK_EQ(g[n - 1].topic, song);
+        CHECK_EQ(g[n - 1].to, 0);
     }
     s.topic_stack[1] = song;
     n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);

@@ -1179,9 +1179,11 @@ TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
 {
     TalkSceneDebug d;
     uint16_t pie, weather;
-    int row;
+    int row, other = roster_find("Steamy");
     char label[48];
     town();
+    CHECK(other >= 0);
+    talk_scene_party(&other, 1);
     CHECK(open_talk(ID_NANA));
     CHECK(talk_lex_find("pie", &pie, NULL, NULL) >= 0);
     CHECK(talk_lex_find("weather", &weather, NULL, NULL) >= 0);
@@ -1195,6 +1197,15 @@ TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
     row = find_row("topiclink", 1, weather);
     CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
     CHECK_STR(label, "Revisit weather");
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_EQ(find_row("topiclink", 1, weather), -1);
+    press(BTN_SELECT);
+    CHECK_EQ(find_row("topiclink", 1, weather), -1);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+    row = find_row("topiclink", 1, weather);
+    CHECK(row >= 0);
     if (row < 0) return;
     go_to(row); press(BTN_A);
     CHECK(talk_scene_debug(&d) && d.busy);
