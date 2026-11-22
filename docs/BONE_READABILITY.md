@@ -1,5 +1,20 @@
 # Bone level legibility
 
+## PS2 graphics pass
+
+Carved slab mortar and brighter bone friezes give the ossuary walls a
+more legible structure. Stained glass uses framed, faceted panes with
+warm highlights and cool insets. Cathedral frames the arch with
+crimson masonry and adds a light pool at the entrance. Capital extends
+its paved route toward the player start, adds flagstone edges and uses
+stained glass to mark the approach. Both previews face the route and
+pan through a small arc. The combat HUD uses dark crimson and ivory
+from the start of both levels.
+
+The authored changes cover materials and lighting. Cell solidity,
+heights, flags, tags, and thing placement match the previous maps.
+The rebuilt art uses the same texture count and sizes.
+
 ## Current GBA validation
 
 The native Cathedral reference calls for a red approach, skull masonry,

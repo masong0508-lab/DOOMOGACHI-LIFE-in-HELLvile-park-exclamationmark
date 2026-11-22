@@ -264,7 +264,13 @@ static int preview(int x, int y, int w, int h, int shade)
     v.x = INT2FIX(cx * CELLU + CELLU / 2);
     v.y = INT2FIX(cy * CELLU + CELLU / 2);
     v.z = INT2FIX(map_floor_z(&doomo_map, cx, cy) + L->pv_z * 8);
-    v.angle = (int16_t)((ls.pv_t * 5 + ls.sel * 700) & DOOMO_ANG_MASK);
+    if (L->map == MAPID_BONE_CATHEDRAL || L->map == MAPID_BONE_CAPITAL) {
+        /* Both preview positions face the principal route to the north.
+         * Pan along it instead of turning into the nearby outside wall. */
+        v.angle = (int16_t)(DOOMO_ANG_FULL * 3 / 4 + ui_wave(ls.pv_t, 180, 240));
+    } else {
+        v.angle = (int16_t)((ls.pv_t * 5 + ls.sel * 700) & DOOMO_ANG_MASK);
+    }
     v.pitch = (int16_t)(ui_wave(ls.pv_t, 240, 14) - 6);
     v.time = (uint16_t)ls.pv_t;
     v.camera = CAM_FIRST_PERSON;

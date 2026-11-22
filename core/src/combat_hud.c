@@ -59,7 +59,8 @@ typedef struct HudPal {
 
 static void hud_pal(HudPal *p)
 {
-    if (combat_s.hell >= 128) {
+    if (combat_s.hell >= 128 || combat_s.map_id == MAPID_BONE_CATHEDRAL ||
+        combat_s.map_id == MAPID_BONE_CAPITAL) {
         p->fill = PAL_RAMP(RAMP_BLOOD, 1);
         p->fill_hi = PAL_RAMP(RAMP_BLOOD, 3);
         p->fill_lo = PAL_RAMP(RAMP_BLOOD, 0);

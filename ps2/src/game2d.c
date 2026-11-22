@@ -23,6 +23,7 @@ uint8_t ps2_indexed_fb[W*H];
 static u16 upload[W*H] __attribute__((aligned(64)));
 static u16 colors[256];
 static GSTEXTURE picture;
+static float picture_left, picture_right, picture_bottom;
 static uint32_t frame_ticks;
 static uint32_t gs_upload_count;
 static uint8_t drawing;
@@ -135,6 +136,12 @@ void plat_checker(int x,int y,int w,int h,uint8_t c)
 int ps2_game2d_init(GSGLOBAL *gs)
 {
     unsigned i;
+    /* Keep the source at 4:3. In 480p each texel covers 2x2 display
+     * pixels with nearest sampling. */
+    int width = ((gs->Height * W) / H) & ~1;
+    picture_left = (float)(gs->Width - width) / 2.0f;
+    picture_right = picture_left + (float)width;
+    picture_bottom = (float)gs->Height;
     memset(&picture,0,sizeof picture);
     gs_upload_count=0;
     memset(upload,0,sizeof upload);
@@ -167,8 +174,8 @@ void ps2_game2d_present(GSGLOBAL *gs, int upload_frame)
         gs_upload_count++;
     }
     gsKit_clear(gs,GS_SETREG_RGBAQ(12,9,20,0x80,0));
-    gsKit_prim_sprite_texture(gs,&picture,22.0f,0.0f,0.0f,0.0f,
-                              618.0f,448.0f,(float)W,(float)H,1,tint);
+    gsKit_prim_sprite_texture(gs,&picture,picture_left,0.0f,0.0f,0.0f,
+                              picture_right,picture_bottom,(float)W,(float)H,1,tint);
 }
 
 /* Sparse emulator diagnostics: a framebuffer checksum plus the true

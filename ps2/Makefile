@@ -78,16 +78,24 @@ clean:
 DOOMO_CORE := $(abspath ../core)
 include ../core/sources.mk
 GAME_CORE_OBJS := $(patsubst $(DOOMO_CORE)/%.c,build/core/%.o,$(CORE_SRCS))
-GAME_OBJS := build/game_main.o build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
+PS2_VIDEO ?= 480i
+ifeq ($(PS2_VIDEO),480p)
+GAME_SUFFIX := _480p
+GAME_VIDEO_FLAGS := -DPS2_PROGRESSIVE=1
+else ifneq ($(PS2_VIDEO),480i)
+$(error PS2_VIDEO must be 480i or 480p)
+endif
+GAME_MAIN := build/game_main$(GAME_SUFFIX).o
+GAME_OBJS := $(GAME_MAIN) build/game2d.o build/memcard.o build/audio.o build/synth.o build/talkdisc.o build/ref_overworld.o build/ref_view3d.o build/padmap.o $(GAME_CORE_OBJS)
 GAME_LIBS := $(EE_LIBS) -laudsrv
-GAME_BIN := build/doomogachi_ps2_game.elf
+GAME_BIN := build/doomogachi_ps2_game$(GAME_SUFFIX).elf
 # CI-only synthetic Start -> Story -> New Story acceptance diagnostic.
 # Shared core and subsystem startup are unchanged; just substitute
 # deterministic button pulses at the game-input boundary. Never ship.
 STORY_PROBE_BIN := build/doomogachi_ps2_story_probe.elf
-STORY_PROBE_OBJS := $(filter-out build/game_main.o,$(GAME_OBJS)) build/game_main_story_probe.o
+STORY_PROBE_OBJS := $(filter-out $(GAME_MAIN),$(GAME_OBJS)) build/game_main_story_probe.o
 STORY_IDLE_BIN := build/doomogachi_ps2_story_idle.elf
-STORY_IDLE_OBJS := $(filter-out build/game_main.o,$(GAME_OBJS)) build/game_main_story_idle.o
+STORY_IDLE_OBJS := $(filter-out $(GAME_MAIN),$(GAME_OBJS)) build/game_main_story_idle.o
 .PHONY: story-probe story-idle
 story-probe: $(STORY_PROBE_BIN)
 story-idle: $(STORY_IDLE_BIN)
@@ -106,7 +114,7 @@ build/game_main_story_idle.o: src/game_main.c src/padmap.h src/game2d.h src/scri
 	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -DPS2_SCRIPTED_STORY_PROBE=1 -DPS2_STORY_IDLE_CONTROL=1 -c $< -o $@
 # Preserve GAME_BIN (DWARF) for source-level debugging, but put a
 # separately verified no-DWARF image on the disc to save storage.
-GAME_DISC_BIN := build/doomogachi_ps2_disc.elf
+GAME_DISC_BIN := build/doomogachi_ps2_disc$(GAME_SUFFIX).elf
 PS2_EE_STRIP ?= mips64r5900el-ps2-elf-strip
 
 .PHONY: game
@@ -122,9 +130,9 @@ $(GAME_DISC_BIN): $(GAME_BIN) tools/check_disc_elf.py
 	$(PS2_EE_STRIP) --strip-debug -o $@ $<
 	python3 tools/check_disc_elf.py $< $@
 
-build/game_main.o: src/game_main.c src/padmap.h src/game2d.h
+$(GAME_MAIN): src/game_main.c src/padmap.h src/game2d.h
 	@mkdir -p build
-	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+	$(EE_CC) $(EE_CFLAGS) $(EE_INCS) $(GAME_VIDEO_FLAGS) -c $< -o $@
 
 build/game2d.o: src/game2d.c src/game2d.h src/indexed_blit.h src/indexed_present.h
 	@mkdir -p build
@@ -164,8 +172,8 @@ build/ref_view3d.o: src/ref_view3d.c src/frame_ref.h src/game2d.h
 TALK_BIN := ../core/build/talk/TALK_en.BIN
 AUDSRV_IRX := $(PS2SDK)/iop/irx/audsrv.irx
 FREESD_IRX := $(PS2SDK)/iop/irx/freesd.irx
-DISC_ROOT := build/disc
-DISC_ISO := build/doomogachi_ps2_game.iso
+DISC_ROOT := build/disc$(GAME_SUFFIX)
+DISC_ISO := build/doomogachi_ps2_game$(GAME_SUFFIX).iso
 # Default: compact DVD ISO with no unnecessary mkisofs 300 KiB tail pad.
 # Set PS2_ISO_PAD=1 when making an image specifically for physical burning.
 PS2_ISO_PAD ?= 0
@@ -206,7 +214,7 @@ play-smoke: disc
 compact: disc
 	@command -v chdman >/dev/null || (echo 'Install mame-tools (chdman)' && false)
 	@command -v zstd >/dev/null || (echo 'Install zstd' && false)
-	python3 tools/compact_iso.py --iso $(DISC_ISO) --out-dir build/compact --zstd-level $(PS2_ZSTD_LEVEL)
+	python3 tools/compact_iso.py --iso $(DISC_ISO) --out-dir build/compact$(GAME_SUFFIX) --zstd-level $(PS2_ZSTD_LEVEL)
 
 -include $(EE_OBJS:.o=.d) $(GAME_OBJS:.o=.d) $(STORY_PROBE_OBJS:.o=.d) $(STORY_IDLE_OBJS:.o=.d) \
 	build/gs_only.d build/gs_only_ct16.d build/gs_only_alpha.d build/gs_texture.d

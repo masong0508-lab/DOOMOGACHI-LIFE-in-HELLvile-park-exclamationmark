@@ -23,6 +23,8 @@ export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2SDK/bin"
 make -C ps2 -j2
 # Gameplay ISO with the generated Talk bank and PS2SDK sound modules.
 make -C ps2 -j2 disc
+# Progressive-scan image for displays that support PS2 480p.
+make -C ps2 -j2 disc PS2_VIDEO=480p
 # Optional, if CMake is installed:
 # cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
 # cmake --build ps2/build --parallel
@@ -31,6 +33,15 @@ make -C ps2 -j2 disc
 ELF: `ps2/build/doomogachi_ps2.elf` (launch on PCSX2 or on homebrew-enabled
 PS2 with ps2link/ps2client). The PS2 GitHub workflow compiles that ELF in
 the upstream `ps2dev/ps2dev` container and uploads it on success.
+
+The standard `doomogachi_ps2_game.iso` uses the 640×448 interlaced
+presentation. `doomogachi_ps2_game_480p.iso` uses 640×480 progressive
+scan and exactly doubles each 320×240 source pixel in both directions
+with nearest sampling. It applies to the title, interface, overworld,
+portraits, rooms, and combat through the same GS presentation path.
+Both images use the same memory-card format and 30-tick game loop.
+The video mode changes the GS screen buffers, while the compact
+texture transfer remains 150 KiB per changed frame.
 
 ## Verified functionality to aim for
 

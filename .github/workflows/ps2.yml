@@ -184,6 +184,15 @@ jobs:
           # short-lived compatibility and emulator smoke-test artifact.
           retention-days: 3
           if-no-files-found: error
+      - name: Build the progressive-scan gameplay ISO
+        run: make -C ps2 -j2 disc PS2_VIDEO=480p
+      - name: Upload progressive-scan gameplay ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: doomogachi-ps2-game-480p-iso
+          path: ps2/build/doomogachi_ps2_game_480p.iso
+          retention-days: 3
+          if-no-files-found: error
       - name: Upload experimental game ELF only if linked
         if: always()
         uses: actions/upload-artifact@v4
@@ -332,6 +341,19 @@ jobs:
             --scripted ps2/build/play-pad-keys/boot-1.png ps2/build/play-pad-keys/boot-2.png ps2/build/play-pad-keys/boot-3.png \
             --idle ps2/build/play-pad-idle/boot-1.png ps2/build/play-pad-idle/boot-2.png ps2/build/play-pad-idle/boot-3.png \
             --output ps2/build/play-pad-keys/pad-causality.json
+      - name: Retrieve the progressive-scan gameplay ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: doomogachi-ps2-game-480p-iso
+          path: ps2/build
+      - name: Check the progressive-scan game viewport in Play!
+        timeout-minutes: 4
+        run: |
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 ps2/tools/play_biosfree_smoke.py \
+              ps2/build/doomogachi_ps2_game_480p.iso --out ps2/build/play-480p \
+              --seconds 34 --early-capture 9 --middle-capture 24 --software-gl --require-motion \
+              --x11-key Return@12 --x11-key z@14 --x11-key z@16 --x11-key z@18 --x11-key z@20
       - name: Retrieve independent PS2-0 hardware diagnostic ELF
         if: always()
         uses: actions/download-artifact@v4
@@ -468,4 +490,5 @@ jobs:
             ps2/build/play-story-idle/
             ps2/build/play-pad-idle/
             ps2/build/play-pad-keys/
+            ps2/build/play-480p/
           if-no-files-found: warn

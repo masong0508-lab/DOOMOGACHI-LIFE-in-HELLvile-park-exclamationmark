@@ -116,20 +116,37 @@ static void t_bone_wall(ArtImg *im, int f, int n)
 {
     int x, y, i;
     (void)f; (void)n;
-    for (y = 0; y < 64; y++)
-        for (x = 0; x < 64; x++)
-            PX(x, y, RP(RAMP_WOOD, (art_noise(x, y, 4, 64, 0xB0E1u) > 150) ? 1 : 0));
-    /* bone rows */
-    for (i = 0; i < 4; i++) {
-        femur(im, i * 16 + 1, 18, 15);
-        femur(im, i * 16 + 9, 21, 15);
-        femur(im, i * 16 + 5, 50, 15);
-        femur(im, i * 16 + 13, 53, 15);
+    for (y = 0; y < 64; y++) {
+        for (x = 0; x < 64; x++) {
+            TxCell slab;
+            int variation;
+            tx_brick(x, y, 32, 16, 16, 1, &slab);
+            variation = art_noise(x, y, 8, 64, 0xB0E1u) > 164;
+            if (slab.mortar) {
+                PX(x, y, RP(RAMP_VAPE, 0));
+            } else if (slab.ly == 1 || slab.lx == 1) {
+                PX(x, y, RP(RAMP_WOOD, 3));
+            } else {
+                PX(x, y, RP(RAMP_WOOD, 1 + variation));
+            }
+        }
     }
-    /* skull rows */
+    /* Recess the bone friezes into the masonry and pick out the ledges. */
+    for (x = 0; x < 64; x++) {
+        for (i = 0; i < 2; i++) {
+            int y0 = i * 32;
+            PX(x, y0 + 1, RP(RAMP_BLOOD, 1));
+            PX(x, y0 + 14, RP(RAMP_BONE, 4));
+            PX(x, y0 + 15, RP(RAMP_BLOOD, 0));
+            PX(x, y0 + 24, RP(RAMP_BONE, 3));
+            PX(x, y0 + 25, RP(RAMP_BLOOD, 0));
+        }
+    }
     for (i = 0; i < 4; i++) {
         skull(im, i * 16 + 8, 7, art_hash((uint32_t)i, 0u, 0xB0E2u));
-        skull(im, i * 16 + 16, 37, art_hash((uint32_t)i, 1u, 0xB0E2u));
+        skull(im, i * 16 + 16, 39, art_hash((uint32_t)i, 1u, 0xB0E2u));
+        femur(im, i * 16 + 1, 20, 14);
+        femur(im, i * 16 + 9, 52, 14);
     }
 }
 

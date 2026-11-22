@@ -93,14 +93,26 @@ absent:
  * not a new texture or an every-frame rendering cost. */
 static void show_boot_stage(GSGLOBAL *gs,int stage)
 {
-    u64 bg=GS_SETREG_RGBAQ(18,11,38,0x80,0);
-    u64 bar=GS_SETREG_RGBAQ(189,72,138,0x80,0);
-    u64 done=GS_SETREG_RGBAQ(96,217,178,0x80,0);
+    u64 bg=GS_SETREG_RGBAQ(25,16,44,0x80,0);
+    u64 shadow=GS_SETREG_RGBAQ(58,37,76,0x80,0);
+    u64 rose=GS_SETREG_RGBAQ(221,87,153,0x80,0);
+    u64 light=GS_SETREG_RGBAQ(255,177,214,0x80,0);
+    u64 done=GS_SETREG_RGBAQ(140,237,195,0x80,0);
+    const int mid=gs->Height/2;
+    int i;
     gsKit_clear(gs,bg);
-    gsKit_prim_sprite(gs,0,0,640,22,1,bar);
-    gsKit_prim_sprite(gs,64,183,576,264,1,bar);
-    gsKit_prim_sprite(gs,72,191,568,256,2,bg);
-    gsKit_prim_sprite(gs,72,191,72+((stage+1)*496)/5,256,3,done);
+    gsKit_prim_sprite(gs,0,mid+82,640,gs->Height,1,shadow);
+    gsKit_prim_sprite(gs,228,mid-89,412,mid+77,1,shadow);
+    gsKit_prim_sprite(gs,294,mid-58,314,mid-46,2,light);
+    gsKit_prim_sprite(gs,326,mid-58,346,mid-46,2,light);
+    gsKit_prim_sprite(gs,287,mid-46,353,mid-24,2,rose);
+    gsKit_prim_sprite(gs,294,mid-24,346,mid-13,2,rose);
+    gsKit_prim_sprite(gs,303,mid-13,337,mid-2,2,rose);
+    gsKit_prim_sprite(gs,312,mid-2,328,mid+9,2,rose);
+    gsKit_prim_sprite(gs,252,mid+38,388,mid+54,2,bg);
+    for(i=0;i<5;i++)
+        gsKit_prim_sprite(gs,258+i*26,mid+42,278+i*26,mid+50,3,
+                          i<=stage?done:shadow);
     gsKit_queue_exec(gs);
     gsKit_sync_flip(gs);
     printf("PS2_BOOT_STAGE stage=%d\n",stage);
@@ -114,8 +126,14 @@ int main(void)
      * with no signal of which subsystem failed. */
     gs=gsKit_init_global();
     if(!gs)return 1;
+    gs->Width=640;
+#if defined(PS2_PROGRESSIVE)
+    gs->Mode=GS_MODE_DTV_480P;gs->Interlace=GS_NONINTERLACED;
+    gs->Field=GS_FRAME;gs->Height=480;
+#else
     gs->Mode=GS_MODE_NTSC;gs->Interlace=GS_INTERLACED;
-    gs->Field=GS_FIELD;gs->Width=640;gs->Height=448;
+    gs->Field=GS_FIELD;gs->Height=448;
+#endif
     /* Output is 16-bit RGB, matching our native RGB5551 frame texture.
      * Preserves gsKit VRAM for streaming sprites and avoids excessive
      * 32-bit display double buffers on a real 4 MiB GS. */

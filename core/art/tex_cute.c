@@ -622,16 +622,23 @@ static void t_church_wall(ArtImg *im, int f, int n)
 
 static void t_stained_glass(ArtImg *im, int f, int n)
 {
-    static const int cols[7] = {PAINT_ROSE, PAINT_SKY, PAINT_LEMON, PAINT_MINT, PAINT_LAVENDER,
-                                PAINT_BUBBLEGUM, PAINT_CYAN};
+    static const int cols[8] = {PAINT_CHERRY, PAINT_GRAPE, PAINT_SKY, PAINT_CYAN,
+                                PAINT_ROSE, PAINT_LAVENDER, PAINT_COBALT, PAINT_TANGERINE};
     int x, y;
     (void)f; (void)n;
     for (y = 0; y < 64; y++)
         for (x = 0; x < 64; x++) {
+            int border = DOOMO_MIN(DOOMO_MIN(x, 63 - x), DOOMO_MIN(y, 63 - y));
             int dx = 2 * x - 63, dy = 2 * y - 63;          /* centre (31.5,31.5) x2 */
             int d = art_dist(dx, dy), a = art_atan2(dy, dx);
             int lead = 0, pane, shade;
             uint8_t c;
+            if (border < 5) {
+                uint8_t frame = border == 1 ? RP(RAMP_BONE, 3) :
+                                border == 3 ? RP(RAMP_CANDY, 4) : RP(RAMP_WOOD, 1);
+                PX(x, y, frame);
+                continue;
+            }
             if (d < 14) {                                   /* golden heart core */
                 pane = -1;
                 lead = (d >= 12);
@@ -639,21 +646,21 @@ static void t_stained_glass(ArtImg *im, int f, int n)
                 int seg = ((a + 256) & 4095) / 512;
                 int rel = ((a + 256) & 511);
                 pane = seg * 2 + (d > 34);
-                lead = (d >= 33 && d <= 35) || rel < 24 || d >= 50;
+                lead = (d >= 33 && d <= 35) || rel < 24 || rel > 487 || d >= 50;
             } else {                                        /* corner lattice */
                 int u = art_wrap(x + y, 16), v = art_wrap(x - y, 16);
                 pane = 20 + ((x + y) / 16 + (x - y + 64) / 16) % 4;
                 lead = u == 0 || v == 0;
             }
             if (lead) { PX(x, y, PP(PAINT_CHARCOAL, (x + y) & 1 ? 0 : 1)); continue; }
-            /* backlit: brighter towards the middle of each pane */
-            shade = 1 + (art_noise(x, y, 8, 64, 0x9A55u) > 150) + (d < 40 && d > 24 ? 0 : 0);
+            /* A facet across each pane separates glass from the dark leading. */
+            shade = art_wrap(x + y + pane * 3, 20) > 11 ? 2 : 1;
+            if (d >= 45 || (art_noise(x, y, 8, 64, 0x9A55u) < 92)) shade--;
             if (pane < 0) {
                 c = RP(RAMP_CANDY, d < 8 ? 7 : (d < 11 ? 6 : 5));
             } else {
-                int k = art_wrap(pane * 3 + 1, 7);
-                if (pane >= 20) k = (pane - 20) * 2 % 7;
-                c = PP(cols[k], shade > 2 ? 2 : shade);
+                int k = pane < 20 ? ((pane / 2) + (pane & 1) * 3) & 7 : (pane - 20) * 2;
+                c = PP(cols[k], shade);
             }
             PX(x, y, c);
         }
