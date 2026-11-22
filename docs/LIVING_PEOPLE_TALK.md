@@ -492,6 +492,38 @@ with the same people and place on one day uses one entry. When space fills,
 the journal favors major milestones over recurring arguments. Older saves
 start adding these entries as new events occur.
 
+## Topics that grow out of earlier conversations
+
+Talk learns a connection when the same resident gives real answers on two
+ordinary subjects in one chat. Each conversation can strengthen a pair
+once. After two chats have reinforced a pair, the resident can offer it as
+a quick reply or show **Revisit** in the topic picker. Continuing onto a
+familiar subject can keep the conversation at its current depth across topic
+categories. The existing gates still check rapport, mood and subject safety.
+Each connection belongs to the resident and the avatar who spoke to them.
+
+A clear journal recall can lead back into conversation. After recalling an
+outing, choose **Ask about** to talk about its venue. A friendship milestone
+or an argument the residents already resolved can lead to the same option
+when it has a known venue and the resident is ready to talk about it.
+
+The English bank adds 60 authored alternatives and 18 reciprocal subject
+connections. These cover everyday outings, food, friendships, music,
+making things, school and the night sky. Lines can vary with the speaker,
+time of day, relationship and preferences.
+
+The saved graph uses six bytes per connection in an optional `TLNK` chunk.
+Repeated connections earn more weight. At capacity, newer observations can
+replace the oldest connection among the weakest. Talk looks up these links
+when it answers a turn or opens the topic picker.
+
+| Platform | Story links | Free Play links |
+|---|---:|---:|
+| GBA | 12 | 16 |
+| PS1 Talk | 20 | 32 |
+| Dreamcast | 20 | 64 |
+| PS2 and native | 20 | 96 |
+
 **Options > Life Sim > Elder memory lapses** is off by default. When
 enabled, some elders develop occasional difficulty recalling outings and
 personal experiences.

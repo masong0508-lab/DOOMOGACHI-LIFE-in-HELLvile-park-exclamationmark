@@ -371,6 +371,13 @@ TEST(depth_resets)
     memset(&tr, 0, sizeof tr);
     talk_gen_line(&c, 0, -1, TA_ASK_OPINION, tune, &l, &tr);
     CHECK_EQ((int)TDEP_LEVEL(c.dep[0]), 0);
+    /* Rehearsed topics can continue a familiar thread across roots. */
+    talk_link_note(id, DOOMO_PLAYER_ID, pie, tune);
+    talk_link_note(id, DOOMO_PLAYER_ID, pie, tune);
+    c = w.c;
+    c.engage = 80;
+    talk_gen_line(&c, 0, -1, TA_ASK_OPINION, tune, &l, &tr);
+    CHECK(TDEP_LEVEL(c.dep[0]) >= 2);
     /* an insult lowers by one (and the thread stays) */
     c = w.c;
     c.engage = 80;

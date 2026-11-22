@@ -727,8 +727,20 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
 #endif
         /* Keep the topic they answered before the room moved on. */
         if (s->answered_topic[k])
-            talk_mem_note_topic(id, s->answered_topic[k]);
+            talk_mem_note_topic(id, s->answered_topic[k] & TALK_MAX_CONCEPTS);
     }
+#ifdef DOOMO_HAS_TALK
+    /* Fold the last distinct pairs in order. The scene can finish through
+     * another callback without reinforcing the same observation twice. */
+    for (k = TALK_LINK_OBSERVATIONS - 1; k >= 0; k--) {
+        uint32_t key = s->topic_links[k];
+        unsigned who = key >> 24;
+        if (key && who < s->nparts)
+            talk_link_note(s->part[who].id, s->conv.avatar, key & TALK_MAX_CONCEPTS,
+                           (uint16_t)((key >> 12) & TALK_MAX_CONCEPTS));
+        s->topic_links[k] = 0;
+    }
+#endif
     talk_mem_end(&s->conv);
     talk_dm_end(s, sum);
     talk_outcome_apply(sum, out);

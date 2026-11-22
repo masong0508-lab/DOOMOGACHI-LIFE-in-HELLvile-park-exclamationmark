@@ -297,6 +297,7 @@ void     audio_hw_sfx_preload(void);   /* after overlay_init(): SFX.BIN -> SPU R
  * below the data area and the remaining space can cache Talk sectors. */
 #define SPU_TALK_BASE 0x0c000u
 #define SPU_SPRITES_BASE 0x34000u
+void     talkdisc_prewarm(void);
 void     packart_boot(void);
 #endif
 void     partstore_boot(void);

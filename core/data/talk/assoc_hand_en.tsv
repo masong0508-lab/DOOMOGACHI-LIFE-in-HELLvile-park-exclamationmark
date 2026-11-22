@@ -32,7 +32,7 @@ birthday	birthday_cake	party	gift
 
 # Everyday topics for the first multi-turn Talk writing pass.
 band	song	concert	microphone
-concert	band	song	encore
+concert	band	song	encore	open_mic
 encore	concert
 fish	fishing	pond
 fishing	fishing_trip	pond	riverbank	fish
@@ -40,9 +40,37 @@ fishing_trip	fishing	pond	riverbank
 flower_pot	gardening	watering_can
 garden	gardening	watering_can	flower_pot
 gardening	garden	watering_can	flower_pot
-lyrics	song	band
+lyrics	song	band	chorus
 microphone	band	song	concert
 pond	fishing	fish
-riverbank	fishing	fishing_trip
+riverbank	fishing	fishing_trip	picnic
 song	lyrics	band	microphone
 watering_can	gardening	garden	flower_pot
+
+# Outings, shared pastimes, and the things residents bring along.
+bakery	baking	tea
+baking	bakery	recipe
+camera	photography
+chorus	lyrics
+constellation	stargazing
+countryside	hiking
+friendship	neighbour	inside_joke
+hiking	countryside
+inside_joke	friendship
+joke	open_mic
+kite	wind
+letter	postcard
+mural	paintbrush
+neighbour	friendship
+open_mic	concert	joke
+paintbrush	mural
+park	picnic
+photo_album	photography
+photography	camera	photo_album
+picnic	park	riverbank
+postcard	letter
+recipe	baking
+shooting_star	stargazing
+stargazing	constellation	shooting_star
+tea	bakery
+wind	kite

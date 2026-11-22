@@ -102,8 +102,8 @@ bake_off	day_off:4 bake_sale:4 show_off:4 musical_chairs:4 game_night:4 staring_
 bake_sale	sale:12 bake_off:4 hellvile_park:4 townsfolk:4 news:3 urban_legend:3 trouble:3 problem:3
 baked_potato	potato:14 mashed_potato:9 sweet_potato:8 pasta:7 soup:6 pie_and_mash:6 burrito:5 toast:5
 baker	head_baker:8 burnt_toast_baker:8 royal_baker:8 border_baker:8
-bakery	flower_shop:5 grandma:4 chip_shop:3 bubble_bath:3 flower_field:3 kitchen:3 pine_tree:3 city:2
-baking	gardening:2 ghost_hunting:2 prank:2 cloud_watching:2 birdwatching:2 reading:2 bubble_blowing:2 poetry:2
+bakery	baking:15 tea:15 flower_shop:5 grandma:4 chip_shop:3 bubble_bath:3 flower_field:3 kitchen:3 pine_tree:3 city:2
+baking	bakery:15 recipe:15 gardening:2 ghost_hunting:2 prank:2 cloud_watching:2 birdwatching:2 reading:2 bubble_blowing:2 poetry:2
 balcony	porch:4 seaside:4 dining_room:2 nursery:2 staircase:2 kitchen:2 cellar:2 garage:2
 bald_spot	picnic_spot:4 marble:3 spoon:3 birthday_wish:3 inside_joke:3 bucket_list:3 phone_number:2 plan:2
 ballad	cello:3 mixtape:2 verse:2 harmony:2 dance_move:2 rockstar:2 radio:2 dj:2
@@ -368,7 +368,7 @@ calculator	gadget:7 smartwatch:5 microwave:3 smoke_alarm:3 password:2 low_batter
 calendar	pantry:3 coat_hook:3 bag:3 laundry_basket:3 fair_day:2 clock:2 today:2 countdown:2
 calligraphy	golf:4 kraken:3 baseball:2 cricket:2
 calm	awe:6 loneliness:5 homesickness:5 loss:5 grief:5 patience:5 respect:5 teamwork:4
-camera	camera_op:8 joystick:5 hotel:3 restaurant:3 hoof:3 artwork:2 back:2 taxi:2
+camera	photography:15 camera_op:8 joystick:5 hotel:3 restaurant:3 hoof:3 artwork:2 back:2 taxi:2
 camera_op	camera:12
 campfire	camping:4 campsite:4 bonfire:4 home_smell:3 dressing_gown:3 kitchen_disaster:3 blanket:3 barbecue:3
 camping	campsite:5 campfire:4 pumpkin_patch:3 bonfire:3 kitchen_disaster:3 barbecue:3 fishing_trip:2 puddle_jumping:2
@@ -489,7 +489,7 @@ choir_practice	choir:12 choir_singer:4 doom_choir_singer:4 choir_director:4 choi
 choir_singer	choir:12 singer:12 doom_choir_singer:9 torch_singer:4 choir_bell:4 lullaby_singer:4 huggins_choir:4 choir_practice:4
 chopper_mechanic	broom_mechanic:4
 chores	dusting:6 overtime:4 hoovering:4 bills:4 customer_service:4 mopping:4 moving_day:4 laundry:4
-chorus	song:6 anthem:6 earworm:6 lyrics:5 melody:5 boy_band:5 jingle:5 beat:5
+chorus	lyrics:15 song:6 anthem:6 earworm:6 melody:5 boy_band:5 jingle:5 beat:5
 chuffed	lonely:2 anxious:2 chipper:2 annoyed:2 sick:2 grumbly:2 content:2 jolly:2
 church	church_fete:8 church_bell:8 church_candle:8 holy_relic:4 house:3 blessing:3 museum:3 shed:2
 church_bell	bell:12 church:12 ring:5 bell_toller:4 church_fete:4 church_candle:4 bell_ringer:4 choir_bell:4
@@ -580,7 +580,7 @@ compliment	sorry:4 apology:4 truce:4 memorial:3 mourning:3 gratitude:3 epitaph:3
 computer	desk_computer:8 vending_machine:5 robot_vacuum:4 tram:3 utility_room:3 laundrette:3 dry_cleaner:3 tractor:2
 con_fox	fox:12 con_organizer:4
 con_organizer	con_fox:4
-concert	band:15 song:15 encore:15 concert_hall:8 concert_poster:8 mosh_pit:2 open_mic:2 sing_along:2
+concert	open_mic:15 band:15 song:15 encore:15 concert_hall:8 concert_poster:8 mosh_pit:2 sing_along:2
 concert_hall	concert:12 concert_poster:4 town_hall:4 night:3 beach:2 hospital:2 shop:2 brimstone_bites:2
 concert_poster	poster:12 concert:12 heart_poster:4 concert_hall:4 band_poster:4
 condolences	memorial:7 mourning:6 gratitude:5 epitaph:5 prayer:4 sorry:3 apology:3 compliment:2
@@ -591,7 +591,7 @@ confetti	contract_confetti:8 finger_painting:4 art_class:4 collage:3 noise:3 fir
 confused	stuffed:2 guilty:2 happy:2 chuffed:2 fed_up:2 content:2 grumbly:2 glad:2
 confusion	second_hand_embarrassment:6 awe:6 anger:6 fear:6 hate:6 surprise:6 excitement:6 curiosity:6
 console	games_console:8
-constellation	planet:4 morning_dew:2 tomorrow:2 the_sky:2 sun:2 comet:2 northern_lights:2 shooting_star:2
+constellation	stargazing:15 planet:4 morning_dew:2 tomorrow:2 the_sky:2 sun:2 comet:2 northern_lights:2 shooting_star:2
 content	embarrassed:2 grumbly:2 annoyed:2 chipper:2 anxious:2 filthy:2 scared:2 stuffed:2
 contract	small_print:8 contract_confetti:8 contract_devil:8 contract_desk:8 imps:2 bagel_stand:2 ember:2 hellfire:2
 contract_confetti	contract:12 confetti:12 contract_devil:4 contract_desk:4
@@ -623,7 +623,7 @@ couch_potato	potato:12 hellhide_couch:4 baked_potato:4 mashed_potato:4 sweet_pot
 countdown	countdown_clock:8 summit:3 time:2 tomorrow:2 long_weekend:2 clock:2 today:2 new_moon:2
 countdown_clock	clock:12 countdown:12 gear_clock:4 clock_tower:4 alarm_clock:4 time_trial_clock:4 black_cat_clock:4 cherry_clock:4
 counter_board	tomato_review_board:4 cheese_board:4 ramen_counter:4 nana_s_recipe_board:4 badge_board:4 ouija_board:4 hug_counter:4 kitchen_counter:4
-countryside	riverbank:7 valley:4 fishing_trip:4 void:4 farm:3 swamp:3 pumpkin_patch:2 campsite:2
+countryside	hiking:15 riverbank:7 valley:4 fishing_trip:4 void:4 farm:3 swamp:3 pumpkin_patch:2 campsite:2
 coupon	cursed_coupon:8 ticket:5 flyer:5 sale:5 shopping_list:4 bargain:3 map:3 jackpot:3
 courage	honesty:7 awe:6 anger:5 confusion:5 fear:5 hate:5 surprise:5 curiosity:5
 court_jester	bone_jester:4
@@ -1021,7 +1021,7 @@ fridge_magnet	fridge:12 strawberry_fridge:4 light_switch:4 sprinkles:3 emoji:3 s
 fried_chicken	chicken:12 fried_rice:4 chicken_nugget:4 milk:2 sushi:2 brussels_sprout:2 grave_dirt_cake:2 honey_toast:2
 fried_rice	rice:12 beans_on_toast:7 burrito:5 pie_and_mash:5 soup:5 rice_cake:4 fried_chicken:4 baked_potato:4
 friend	best_friend:14 best_bud:3 stepdad:3 stepmum:3 sibling:3 sister:3 brother:3 godparent:3
-friendship	gratitude:6 kindness:5 teamwork:4 nostalgia:4 awe:4 confusion:4 anger:4 relief:4
+friendship	neighbour:15 inside_joke:15 gratitude:6 kindness:5 teamwork:4 nostalgia:4 awe:4 confusion:4 anger:4 relief:4
 frog	kangaroo:4 ectoplasm:3 slug:3 snail:3 octopus:3 worm:3 sea_monster:3 deer:2
 frogling	pupkin:2 animatronic:2 ghost:2 turkey:2 batling:2 bunnykin:2 foxkin:2 cacoblob:2
 frost	icicle:7 hail:5 cold_snap:5 blizzard:4 snow:4 cloud:4 moon:2 sea_breeze:2
@@ -1276,7 +1276,7 @@ high_five	high_schooler:4 high_score_hoarder:4 high_priestess:4 introduction:4 f
 high_priestess	high_score_hoarder:4 high_schooler:4 high_five:4
 high_schooler	edgy_teen:8 teen:5 high_priestess:4 high_five:4 high_score_hoarder:4 emo_teen:4 drama_queen:3 part_timer:2
 high_score_hoarder	high_five:4 high_priestess:4 high_schooler:4
-hiking	fishing_trip:4 overtime:4 shift:3 shopping:3 jogging:3 moving_day:3 chores:3 volunteering:2
+hiking	countryside:15 fishing_trip:4 overtime:4 shift:3 shopping:3 jogging:3 moving_day:3 chores:3 volunteering:2
 hill	dune:4 seaside:4 shore:4 cliff:4 cliff_top:4 riverbank:4 march:3 staircase:3
 hillvile	mayor_of_hillvile:8 hillvile_towers:8 hellvile:5 bookshop:4 sunflower:4 evening:3 music_festival:3 reading_nook:3
 hillvile_towers	hillvile:12 mayor_of_hillvile:4 fun_fair:2 unity_stage:2 wall_gate:2 imp_market:2 haha_mart:2 pier:2
@@ -1373,7 +1373,7 @@ in_law	relative:6 cousin:6 stepdad:5 stepmum:5 godparent:5 pen_pal:4 everyone:3 
 industrial	disco:2 chiptune:2 city_pop:2 goth_rock:2 folk:2 synthwave:2 jazz:2 sea_shanty:2
 inferno	cafe_inferno_cook:8 ash:4 ember:4 hellfire:4 lava:4 horned_beast:3 demon_lord:2 doorman:2
 influencer	doom_influencer:8
-inside_joke	joke:12 nickname:6 middle_name:5 diary:5 birthday_wish:5 age:5 bucket_list:5 phone_number:5
+inside_joke	friendship:15 joke:12 nickname:6 middle_name:5 diary:5 birthday_wish:5 age:5 bucket_list:5 phone_number:5
 insomniac_poet	poet:12 goth_poet:4 dramatic_poet:4 moth_poet:4
 instant_noodles	beans_on_toast:6 fish_and_chips:4 stir_fry:4 hot_dog:4 cheese_on_toast:4 chips:4 bacon:4 gravy:4
 insult	prank_call:4 curse:3 pun:2 apology:2 chat:2 truce:2 promise:2 argument:2
@@ -1408,7 +1408,7 @@ jingle	earworm:7 song:5 chorus:5 anthem:5 lyrics:5 melody:5 boy_band:5 beat:4
 job	dream_job:8 first_job:8 email:4 training_day:4 beat:3 weekday:3 day_off:2 resume:2
 jock	shock_jock:8 karate:3 swimming:3 team:2 rival:2
 jogging	vex:4 hiking:3 bird_feeding:3 shopping:3 wrestling:3 marathon:3 cycling:2 sports_day:2
-joke	inside_joke:8 prank_call:4 first_job:4 stand_up:3 ghost:3 time:2 wave:2 invitation:2
+joke	open_mic:15 inside_joke:8 prank_call:4 first_job:4 stand_up:3 ghost:3 time:2 wave:2 invitation:2
 jolly	guilty:2 bored:2 homesick:2 fed_up:2 ecstatic:2 hungry:2 exhausted:2 stuffed:2
 journaling	drawing:4 meditation:4 sunbathing:3 vacation:3 bullet_journal:2 diary_entry:2 audiobook:2 blogging:2
 jousting_coach	selfie_coach:4 skate_coach:4 cuddle_coach:4 nap_coach:4
@@ -1453,7 +1453,7 @@ kiss	proposal:4 butterflies_in_tummy:4 pick_up_line:2 love_song:2 romance:2 date
 kitchen	kitchen_disaster:8 kitchen_counter:8 living_room:6 closet:4 bedroom:4 moving_day:4 chip_shop:3 house_party:3
 kitchen_counter	kitchen:12 kitchen_disaster:4 hug_counter:4 coin_counter:4 counter_board:4 ramen_counter:4
 kitchen_disaster	kitchen:12 kitchen_counter:4 food_fight:4 cooking:4 barbecue:4 bonfire:3 bagel_stand:3 campfire:3
-kite	kite_maker:8 kite_pilot:8 kite_seller:8 kite_flyer:8 kite_flying:8
+kite	wind:15 kite_maker:8 kite_pilot:8 kite_seller:8 kite_flyer:8 kite_flying:8
 kite_flyer	flyer:12 kite:12 kite_flying:4 kite_pilot:4 kite_seller:4 kite_maker:4
 kite_flying	kite:12 boat_trip:7 kite_maker:4 kite_pilot:4 kite_flyer:4 kite_seller:4 mini_golf:4 road_trip:4
 kite_maker	kite:12 kite_flying:4 sausage_maker:4 corset_maker:4 popsicle_maker:4 costume_maker:4 prop_maker:4 sock_puppet_maker:4
@@ -1511,7 +1511,7 @@ leggings	overalls:2 combat_boot:2 sweater_vest:2 nurse_outfit:2 tank_top:2 suit:
 lemon	lime:7 cranberry:4 raspberry:4 blackberry:4 kiwi:4 grapefruit:4 rhubarb:4 custard:2
 lemonade	soda:8 cola:5 juice:4 sulfur_soda:3 popsicle:2 sundae:2 milkshake:2 leftovers:2
 lesson	detention:4 homework:4 tape:3 town_meeting:3 sermon:3 cookbook:3 weekday:3 advice:3
-letter	love_letter:8 love_letter_writer:8 bell:3 poster:2 birthday_card:2 flyer:2 list:2 form:2
+letter	postcard:15 love_letter:8 love_letter_writer:8 bell:3 poster:2 birthday_card:2 flyer:2 list:2 form:2
 letterbox	hallway:6 doorway:5 curtains:4 chimney:4 mousetrap:4 street:3 radiator:2 candle:2
 lettuce	zucchini:7 cucumber:5 celery:5 squash:4 corn:4 leek:4 bell_pepper:4 peas:4
 level_tool	spirit_board_seller:4 power_drill:2 crowbar:2 sandpaper:2 welding_torch:2 garden_hose:2 shovel:2 lawnmower:2
@@ -1574,7 +1574,7 @@ lunch	packed_lunch:12 school_lunch:8 lunch_money_imp:8 lunch_hour:8 takeaway:4 b
 lunch_hour	lunch:12 today:5 packed_lunch:4 school_lunch:4 witching_hour:4 lunch_money_imp:4 rush_hour:4 moment:4
 lunch_money_imp	lunch:12 money:12 imp:12 imp_brat:6 imp_student:6 mini_whack_an_imp:4 drill_imp:4 imp_doll:4
 lunchbox	pillow:4 packed_lunch:3 sandwich:3 tray:2 bowl:2 plate:2 spoon:2 butter_knife:2
-lyrics	song:15 band:15 verse:6 chorus:5 anthem:5 earworm:5 melody:5 boy_band:5
+lyrics	chorus:15 song:15 band:15 verse:6 anthem:5 earworm:5 melody:5 boy_band:5
 mac_and_cheese	cheese:14 cheese_on_toast:10 cheese_puffs:6 shepherds_pie:6 lasagne:6 toastie:6 hot_chocolate:5 coleslaw:5
 macaron	macaron_stool:8 lava_cake:2 soul_soup:2 carrot_cake:2 milk:2 sushi:2 ice_cream:2 melon_bread:2
 macaron_stool	macaron:12 imp_stool:4 bolt_s_stool:4
@@ -1719,7 +1719,7 @@ muffin_artist	muffin:12 tattoo_artist:4 escape_artist:4 stencil_artist:4 sundae_
 mug	bowl:6 plate:5 flower_pot:4 home_smell:2 kitchen:2 dressing_gown:2 spoon:2 fork:2
 mum	grandma:2 family_reunion:2 family_tree:2 teen:2 dad:2 niece:2 uncle:2 parent:2
 mummy	mousekin:2 cherub:2 owlkin:2 human:2 slime:2 frogling:2 sheepkin:2 mothkin:2
-mural	finger_painting:4 collage:4 drawing:4 poster:3 cartoon:3 mini_golf:2 hula_hoop:2 puppet_show:2
+mural	paintbrush:15 finger_painting:4 collage:4 drawing:4 poster:3 cartoon:3 mini_golf:2 hula_hoop:2 puppet_show:2
 murder_mystery	detective_story:9 mystery_box:4 movie:4 soap_opera:4 fan_fiction:4 plot_twist:4 space_opera:4 reality_show:4
 museum	museum_guide:8 bookshop:5 racetrack:3 hardware_store:3 spell_book:3 spare_room:3 study:3 church:3
 museum_guide	museum:12 trail_guide:4 mountain_guide:4 ghost_tour_guide:4 planetarium_guide:4
@@ -1752,7 +1752,7 @@ nature_documentary	documentary:15 book:7 nature_walk:4 history:4 conversation:4 
 nature_walk	moon_watching:5 nature_documentary:4 fishing_trip:4 puddle_jumping:4 tug_of_war:2 football:2 night:2 geocaching:2
 neck	back:7 shoulder:7 elbow:5 uniform:3 face:2 dimple:2 horn:2 hand:2
 needle	silence:2 cute_thing:2 vacuum_cleaner:2 hug:2 dark:2 church_bell:2 being_alone:2 tax_season:2
-neighbour	everyone:3 chat:3 tattletale:3 greeting:3 wave:3 coworker:3 in_law:2 townsfolk:2
+neighbour	friendship:15 everyone:3 chat:3 tattletale:3 greeting:3 wave:3 coworker:3 in_law:2 townsfolk:2
 neighbourhood	neighbourhood_watch:8 townsfolk:4 people_watching:3 bake_sale:3 hellvile_park:3 sleepover:2 leak:2 moving_day:2
 neighbourhood_watch	neighbourhood:12 wall_watch_badge:4 night_watch:4 everyone:4 coworker:4 committee:4 townsfolk:3 boss:3
 nemesis	villain:5 demon_lord:4 enemy:3 show_off:3 rival:2 smarty_pants:2 know_it_all:2 celebrity:2
@@ -1817,7 +1817,7 @@ omurice	pudding:2 brussels_sprout:2 cotton_candy:2 bat_wing_chip:2 onigiri:2 cer
 onigiri	burnt_toast:2 sulfur_soda:2 candy_eyeball:2 mochi:2 coffee:2 fried_chicken:2 curry:2 soul_soup:2
 onion	asparagus:5 garlic:4 zucchini:2 eggplant:2 pumpkin:2 corn:2 mushroom:2 tomato:2
 only_child	child:14 third_wheel:3 godparent:2 cousin:2 parent:2 sister:2 grandpa:2 dad:2
-open_mic	talent_show:5 recital:5 mic_stand:4 broken_mic:4 heart:3 courage:3 honesty:3 music_festival:2
+open_mic	concert:15 joke:15 talent_show:5 recital:5 mic_stand:4 broken_mic:4 heart:3 courage:3 honesty:3 music_festival:2
 opinion	smell:4 life:4 life_story:4 pet_peeve:4 habit:4 arm:3 ant:3 loyalty:3
 orange	blood_orange:8 pear:5 melon:5 watermelon:5 strawberry:5 mango:5 plum:5 grape:5
 orchard	orchard_keeper:8 rake:3 cabbage:3 spinach:3 cliff_top:2 campsite:2 oak_tree:2 shore:2
@@ -1847,7 +1847,7 @@ pacifier	rosary:2 scarf:2 backpack:2 beanie:2 earring:2 chain:2 bowtie:2 fez:2
 packed_lunch	lunch:15 sandwich:5 lunch_hour:4 lunch_money_imp:4 school_lunch:4 lunchbox:3 fish_finger:2 brunch:2
 paddling_pool	pool:12 rock_pool:4
 paint_roller	paintbrush:7 watering_can:7 roller_skating:4 roller_derby_star:4 ladle:4 dish_rack:4 leak:3 top_hat_rabbit:2
-paintbrush	watering_can:7 paint_roller:7 ladle:4 dish_rack:4 hammer:4 leak:3 emoji:2 confetti:2
+paintbrush	mural:15 watering_can:7 paint_roller:7 ladle:4 dish_rack:4 hammer:4 leak:3 emoji:2 confetti:2
 painter	flash_painter:8 rainbow_painter:8
 painting	finger_painting:8 graffiti:2 cloud_watching:2 ghost_hunting:2 yoga:2 video_game:2 bubble_blowing:2 poetry:2
 pajamas	overalls:2 t_shirt:2 slipper:2 hazmat_suit:2 leggings:2 plate_armor:2 tank_top:2 priest_robe:2
@@ -1868,7 +1868,7 @@ parade_planner	parade_float_driver:4 picnic_planner:4 wedding_planner:4
 parcel	parcel_sorter:8 junk_drawer:4 gift_box:4 alarm:2 radiator:2 coat_hook:2 curtains:2 remote:2
 parcel_sorter	parcel:12 scrap_sorter:4
 parent	stay_home_parent:8 mother:6 father:6 family:5 grandma:5 grandparent:5 dad:4 leg:3
-park	car_park:8 park_ranger:8 hellvile_park:8 amusement_park:8 skate_park:8 tummy:3 hospital:2 concert_hall:2
+park	picnic:15 car_park:8 park_ranger:8 hellvile_park:8 amusement_park:8 skate_park:8 tummy:3 hospital:2 concert_hall:2
 park_ranger	park:12 skate_park:4 amusement_park:4 car_park:4 hellvile_park:4
 parlour_organ	organ:12 mini_bone_organ:4 organ_grinder:4 ice_cream_parlour:4
 parrot	parrot_keeper:8 chatterbox:3 podcast:3 chat_show:3 book_club:3 busybody:3 radio_show:3 toucan:2
@@ -1922,14 +1922,14 @@ phoenix	dragon:4 sea_monster:2 vampire:2 werewolf:2 fairy:2 wizard:2 kraken:2 me
 phone	phone_box:8 phone_number:8 door_handle:2 blanket:2 mail:2 parcel:2 letterbox:2 heat_pack:2
 phone_box	phone:12 bee_box:4 gift_box:4 cardboard_box:4 mystery_box:4 phone_number:4 ice_box:4 jigsaw_box:4
 phone_number	phone:12 address:6 lucky_number:6 bucket_list:6 birthday_wish:5 inside_joke:5 number_caller:4 phone_box:4
-photo_album	album:12 baby_photo:9 mayor_s_framed_photo:4 profile_photo:4 middle_name:4 nickname:3 truth_or_dare:3 sock:2
-photography	sculpture:4 sketch:4 shopping:3 collecting:2 sequel:2
+photo_album	photography:15 album:12 baby_photo:9 mayor_s_framed_photo:4 profile_photo:4 middle_name:4 nickname:3 truth_or_dare:3 sock:2
+photography	camera:15 photo_album:15 sculpture:4 sketch:4 shopping:3 collecting:2 sequel:2
 piano	organ:6 castle:4 theatre:4 palace:3 banjo:2 synthesizer:2 cowbell:2 trombone:2
 pick_up_line	heartbreak:5 line_cutter:4 line_cook:4 romance:4 girlfriend:4 love_song:4 hangover:3 love_mixtape:2
 picket_fence	fence:12 bone_fence:4 welded_fence:4 fence_patroller:4
 pickle	pickle_barrel:8 pancake:2 ramen:2 takoyaki:2 cupcake:2 curry:2 black_licorice:2 melon_bread:2
 pickle_barrel	pickle:12 cider_barrel:4
-picnic	picnic_set:8 picnic_blanket:8 picnic_planner:8 picnic_spot:8 picnic_crate:8 barbecue:5 cooking:4 buffet:4
+picnic	park:15 riverbank:15 picnic_set:8 picnic_blanket:8 picnic_planner:8 picnic_spot:8 picnic_crate:8 barbecue:5 cooking:4 buffet:4
 picnic_blanket	picnic:12 blanket:12 picnic_spot:4 picnic_planner:4 blanket_folder:4 picnic_crate:4 picnic_set:4 tuck_in_blanket:4
 picnic_crate	picnic:12 picnic_blanket:4 picnic_planner:4 picnic_set:4 picnic_spot:4
 picnic_date	picnic:15 date:12 double_date:6 movie_date:6 picnic_set:4 blind_date:4 picnic_spot:4 first_date:4
@@ -2024,7 +2024,7 @@ possessed	sick:2 happy:2 embarrassed:2 scared:2 apologetic:2 terrified:2 creeped
 possession	meltdown:4 tantrum:4 season_finale:4 plot_twist:4 urban_legend:4 goosebumps:4 cliffhanger:3 pentagram:3
 possessor	imps:4 ghost_story:4 ritual:2 pentagram:2 fallen_angel:2 hellspawn:2 doorman:2 demon:2
 post_office	office:15 office_party:4 golf:4 weekday:4 bank:3 committee:3 school:3 bus_stop:2
-postcard	mascotty_postcard:8 birthday_card:4 text_message:2 map:2 poster:2 sign:2 flyer:2 ticket:2
+postcard	letter:15 mascotty_postcard:8 birthday_card:4 text_message:2 map:2 poster:2 sign:2 flyer:2 ticket:2
 poster	concert_poster:8 heart_poster:8 band_poster:8 mural:3 wallpaper:3 map:2 letter:2 ticket:2
 posture	disguise:4 name:3 habit:3 reputation:2 luck:2 smile:2 mohawk:2 moustache:2
 pot_pie	pie:15 shepherds_pie:10 pie_and_mash:10 pot_roast:9 apple_pie:8 roast:6 toad_in_the_hole:6 lasagne:6
@@ -2125,7 +2125,7 @@ reality_show	chat_show:10 tv_show:6 puppet_show:6 magic_show:6 game_show:6 radio
 realtor_s_sign	sign:12 star_sign:4 mini_town_sign:4 days_since_fire_sign:4 tomb_realtor:4
 receipt	paperwork:2 savings:2 bargain:2 coin:2 fortune:2 allowance:2 piggy_bank:2 wallet:2
 recess	playdate:6 day_trip:4 sulk:4 field_trip:4 naptime:3 comic_strip:3 comic:3 break_time:3
-recipe	two_sided_recipe:8 nana_s_recipe_card:8 nana_s_recipe_board:8 birthday_card:5 mission:4 bow_and_arrow:3 inside_joke:3 twenty_questions:3
+recipe	baking:15 two_sided_recipe:8 nana_s_recipe_card:8 nana_s_recipe_board:8 birthday_card:5 mission:4 bow_and_arrow:3 inside_joke:3 twenty_questions:3
 recital	talent_show:6 open_mic:5 school_play:3 mosh_pit:2 music_festival:2 encore:2 sing_along:2 concert:2
 record_player	bone_ball_player:4 ukulele_player:4 tuba_player:4 gold_record:4
 recorder	kazoo:4 guitar:2 cowbell:2 banjo:2 flute:2 organ:2 xylophone:2 harmonica:2
@@ -2171,7 +2171,7 @@ risotto	cheesecake:5 coleslaw:4 mac_and_cheese:4 shepherds_pie:4 mashed_potato:4
 ritual	haunting:4 summoning:4 curse:4 life:3 fortune_telling:3 fan_fiction:3 life_story:3 shadow:3
 rival	smarty_pants:5 know_it_all:5 show_off:3 celebrity:3 team:3 nemesis:2 pet_peeve:2 brother:2
 river	waterfall:4 rock_pool:4 swamp:4 shore:4 rain:3 sleet:3 skiing:3 water:3
-riverbank	fishing:15 fishing_trip:15 countryside:7 valley:6 farm:4 swamp:4 pumpkin_patch:4 campsite:4
+riverbank	picnic:15 fishing:15 fishing_trip:15 countryside:7 valley:6 farm:4 swamp:4 pumpkin_patch:4 campsite:4
 rivet	toolbox:15 workshop:15 wrench:15 welding:15 hellsteel:15 rivet_s_toolbox:8 rivet_s_oil_rag:8 rivet_s_coat_hook:8
 rivet_s_coat_hook	coat:12 rivet:12 coat_hook:9 rivet_s_workshop:4 golden_hook:4 rivet_s_oil_rag:4 rivet_s_toolbox:4 lab_coat:4
 rivet_s_oil_rag	oil:12 rivet:12 snake_oil_seller:4 rivet_s_coat_hook:4 rivet_s_toolbox:4 rivet_s_workshop:4
@@ -2323,7 +2323,7 @@ shepherds_pie	pie:14 pie_and_mash:10 pot_pie:10 roast:7 toad_in_the_hole:6 lasag
 shield	sword:4 woodwork:3 hard_hat:3 hammer:2 magnifying_glass:2 button:2 shovel:2 snowman:2
 shift	night_shift:12 night_shift_worker:8 night_shift_guard:8 overtime:6 customer_service:5 graveyard:5 internship:4 paycheck:4
 shock_jock	jock:12
-shooting_star	star:14 northern_lights:7 comet:6 eclipse:5 pop_star:4 gold_star:4 star_sign:4 star_polisher:4
+shooting_star	stargazing:15 star:14 northern_lights:7 comet:6 eclipse:5 pop_star:4 gold_star:4 star_sign:4 star_polisher:4
 shop	pet_shop:8 charity_shop:8 corner_shop:8 chip_shop_ghoul:8 chip_shop:8 toy_shop:8 candle_shop_owner:8 flower_shop:8
 shopping	shopping_trolley:8 shopping_list:8 window_shopping:8 hiking:3 photography:3 jogging:3 moving_day:3 overtime:3
 shopping_list	list:15 shopping:12 password:5 shopping_trolley:4 bucket_list:4 window_shopping:4 coupon:4 map:3
@@ -2505,7 +2505,7 @@ star_polisher	star:12 shooting_star:4 chain_polisher:4 pop_star:4 dodge_star:4 r
 star_sign	sign:12 star:12 roller_derby_star:4 star_polisher:4 days_since_fire_sign:4 unboxing_star:4 gold_star:4 shooting_star:4
 stare	nail_polish:2 wig:2 braid:2 hairstyle:2 disguise:2 beard:2 mohawk:2 style:2
 starfish	sea_turtle:4 flamingo:3 pig:3 worm:3 chameleon:2 tortoise:2 lobster:2 pufferfish:2
-stargazing	cloud_watching:2 dancing:2 graffiti:2 baking:2 bubble_blowing:2 welding:2 birdwatching:2 seance:2
+stargazing	constellation:15 shooting_star:15 cloud_watching:2 dancing:2 graffiti:2 baking:2 bubble_blowing:2 welding:2 birdwatching:2 seance:2
 staring_contest	costume_contest:10 hot_dog_contest:7 musical_chairs:6 game_night:4 football:4 laser_tag:4 tug_of_war:4 bake_off:4
 starstruck	creeped_out:2 spooked:2 excited:2 sleepy:2 furious:2 thankful:2 ashamed:2 worried:2
 static	static_ghost:8 cursed_tape:7 vhs_tape:5 scary_doll:4 mascot_suit:4 clown_nose:4 training_tape:4 dead_eyes:4
@@ -2632,7 +2632,7 @@ tax_imp	imp:12 taxes:12 tow_truck_imp:4 slot_imp:4 imp_market:4 tax_helper:4 imp
 tax_season	taxes:12 tax_imp:4 rainy_season:4 tax_helper:4 season_finale:4 tax_bill:4 popping_balloons:2 vacuum_cleaner:2
 taxes	tax_bill:11 tax_season:8 tax_imp:8 tax_helper:8 falling:4 crowds:4 small_spaces:4 monster_under_the_bed:4
 taxi	submarine:4 bus:4 rent:3 artwork:3 measuring_tape:2 camera:2 plane:2 rocket:2
-tea	iced_tea:9 herbal_tea:9 tea_bot:8 tea_master:8 tea_sommelier:8 tea_kettle:8 bubble_tea:8 tea_leaf_reader:8
+tea	bakery:15 iced_tea:9 herbal_tea:9 tea_bot:8 tea_master:8 tea_sommelier:8 tea_kettle:8 bubble_tea:8 tea_leaf_reader:8
 tea_bot	tea:12 tea_sommelier:4 iced_tea:4 tea_kettle:4 herbal_tea:4 cleaning_bot:4 firewall_bot:4 bubble_tea:4
 tea_kettle	tea:12 kettle:12 tea_sommelier:4 tea_leaf_reader:4 tea_bot:4 iced_tea:4 bubble_tea:4 herbal_tea:4
 tea_leaf_reader	tea:12 tea_master:4 tea_bot:4 bubble_tea:4 tea_sommelier:4 iced_tea:4 tea_kettle:4 four_leaf_clover:4
@@ -2912,7 +2912,7 @@ wife	spouse:9 partner:9 husband:7 mother:6 father:6 parent:6 family:6 fiance:5
 wig	haircut:4 disguise:4 uniform:4 moustache:4 allergy:3 halo:3 posture:2 smile:2
 wild_card	gift_card:4 card_game:4 birthday_card:4 card_trickster:4 card_sharp:4 tarot_card:4 card_dealer:4 report_card:4
 willow	waterfall:4 fountain:2 flower_shop:2 rock_pool:2 cliff:2 mountain:2 sea:2 forest:2
-wind	blizzard:7 storm:5 weather:5 tornado:4 snowball_fight:4 rain:4 sleet:4 snow:4
+wind	kite:15 blizzard:7 storm:5 weather:5 tornado:4 snowball_fight:4 rain:4 sleet:4 snow:4
 windmill	windmill_keeper:8 haunted_house:5 bridge:4 porch:4 tower:4 creaky_door:4 train_station:3 treehouse:3
 windmill_keeper	windmill:12 lighthouse_keeper:4 parrot_keeper:4 bath_house_keeper:4 stamp_keeper:4 crypt_keeper:4 orchard_keeper:4 pond_keeper:4
 window_candle	candle:12 out_window_candle:9 lancet_window:4 round_window:4 cloud_window:4 wired_window:4 candle_shop_owner:4 pastel_window:4

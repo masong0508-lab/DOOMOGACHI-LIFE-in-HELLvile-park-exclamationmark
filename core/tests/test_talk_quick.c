@@ -582,6 +582,22 @@ TEST(talk_quick_personal_semantic_bridge_is_earned_and_opt_in)
     s.conv.mem_topic[0] = TC_NONE;
     n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
     CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    /* Rehearsed topics supply the same optional bridge without a saved
+     * last topic, and a bridge avoids circling back to the prior subject. */
+    talk_link_note(ID_NANA, s.conv.avatar, band, song);
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    talk_link_note(ID_NANA, s.conv.avatar, band, song);
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(n >= 3);
+    if (n >= 3) {
+        CHECK_EQ(g[n - 1].act, TA_CHANGE_TOPIC);
+        CHECK_EQ(g[n - 1].topic, song);
+    }
+    s.topic_stack[1] = song;
+    n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    s.topic_stack[1] = TC_NONE;
     s.conv.mem_topic[0] = song;
     put_line(&s, 0, -1, TA_TELL, band, TLF_SINCERE);
     n = talk_quick_replies(&s, 0, band, TC_NONE, 33u, g);

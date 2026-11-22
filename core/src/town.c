@@ -16,6 +16,9 @@
 #include "doomo/sim.h"                 /* sim_life_stage (LS0 migration) */
 #include "doomo/res_live.h"            /* GBA-500: the 500 a new island moves in */
 #include "doomo/save.h"                /* GBA-500: save_moved_away_forget */
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 DoomoTown doomo_town;
 
@@ -109,6 +112,9 @@ void town_free(int id)
 {
     int i, n;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+#ifdef DOOMO_HAS_TALK
+    talk_link_forget(id);
+#endif
     town_unbind(id);
     rel_remove_all(id);
     /* forget its graves too, so a new citizen in the slot is not mourned */
@@ -162,6 +168,9 @@ void town_free(int id)
 {
     int i, n;
     if (id < 0 || id >= DOOMO_MAX_RESIDENTS) return;
+#ifdef DOOMO_HAS_TALK
+    talk_link_forget(id);
+#endif
     memset(&doomo_town.res[id], 0, sizeof(DoomoResident));
     rel_remove_all(id);
     /* forget its graves too, so a new citizen in the slot is not mourned */

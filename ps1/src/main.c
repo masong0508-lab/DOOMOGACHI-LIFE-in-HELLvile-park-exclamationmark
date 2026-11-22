@@ -113,6 +113,7 @@ static void plat_init_hw(void)
     partstore_boot();         /* CR10: PARTS.BIN (the part scripts) -> SPU RAM above the effects */
 #endif
 #ifdef DOOMO_SPRITES_SPU
+    talkdisc_prewarm();
     packart_boot();
 #endif
     dbg("ps1: hardware ready (%s)\n", plat_name());

@@ -15,6 +15,7 @@
 #include "doomo/talk.h"
 #include "doomo/lang.h"
 #include "doomo/roster.h"
+#include "doomo/save.h"
 #include "doomo/sim.h"
 #include "doomo/town.h"
 #include "doomo/rng.h"
@@ -571,6 +572,52 @@ TEST(talk_outcome_remembers_who_answered_each_topic)
     talk_outcome_begin(&s, HERO, ids, 2, 4243u);
     CHECK_EQ(s.conv.mem_topic[0], pie);
     CHECK_EQ(s.conv.mem_topic[1], song);
+    talk_db_close();
+}
+
+TEST(talk_outcome_reinforces_a_topic_link_once_per_chat_for_the_actual_pair)
+{
+    static const int ids[] = { ID_NANA, ID_RIVET };
+    TalkState s;
+    uint16_t pie, weather, funeral;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    weather = concept("weather");
+    funeral = concept("funeral");
+    CHECK(pie && weather && funeral && pie != weather);
+
+    talk_outcome_begin(&s, HERO, ids, 2, 4242u);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    play(&s, TA_ASK_ABOUT, weather, 1);
+    talk_outcome_end(&s, NULL, NULL);
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, pie, weather), 0);
+    CHECK_EQ(talk_link_weight(ID_RIVET, HERO, pie, weather), 0);
+
+    talk_outcome_begin(&s, HERO, ids, 1, 4242u);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    play(&s, TA_ASK_ABOUT, weather, 0);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, pie, weather), 0);
+    talk_outcome_end(&s, NULL, NULL);
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, pie, weather), 1);
+    CHECK_EQ(talk_link_pick(ID_NANA, HERO, pie, TC_NONE), TC_NONE);
+
+    talk_outcome_begin(&s, HERO, ids, 1, 4242u);
+    play(&s, TA_ASK_ABOUT, weather, 0);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    talk_outcome_end(&s, NULL, NULL);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, weather, pie), 2);
+    CHECK_EQ(talk_link_pick(ID_NANA, HERO, pie, TC_NONE), weather);
+    CHECK_EQ(talk_link_pick(ID_NANA, ID_RIVET, pie, TC_NONE), TC_NONE);
+    CHECK_EQ(talk_link_pick(ID_RIVET, HERO, pie, TC_NONE), TC_NONE);
+    talk_outcome_begin(&s, HERO, ids, 1, 4242u);
+    play(&s, TA_ASK_ABOUT, pie, 0);
+    play(&s, TA_ASK_ABOUT, funeral, 0);
+    talk_outcome_end(&s, NULL, NULL);
+    CHECK_EQ(talk_link_weight(ID_NANA, HERO, pie, funeral), 0);
     talk_db_close();
 }
 

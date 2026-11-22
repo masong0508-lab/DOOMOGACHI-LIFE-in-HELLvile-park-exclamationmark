@@ -145,6 +145,25 @@ uint32_t save_budget_declared_max(uint32_t tag);
 #endif
 #define SAVE_EXT_MAX_TEVT (1u + SAVE_TEVT_EVENTS * 6u)
 #define SAVE_BUDGET_TEVT_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TEVT) + SAVE_BUDGET_CHUNK_HDR)
+/* Six bytes per learned topic link. Story shares its smaller slot with
+ * authored state and the outing archive. Free Play has more room. */
+#define SAVE_TLNK_WIRE_LINKS 96u
+#if defined(DOOMO_PLATFORM_GBA)
+#define SAVE_TLNK_STORY_LINKS 12u
+#define SAVE_TLNK_FREE_LINKS 16u
+#elif defined(DOOMO_PLATFORM_PS1)
+#define SAVE_TLNK_STORY_LINKS 20u
+#define SAVE_TLNK_FREE_LINKS 32u
+#elif defined(DOOMO_PLATFORM_DC)
+#define SAVE_TLNK_STORY_LINKS 20u
+#define SAVE_TLNK_FREE_LINKS 64u
+#else
+#define SAVE_TLNK_STORY_LINKS 20u
+#define SAVE_TLNK_FREE_LINKS SAVE_TLNK_WIRE_LINKS
+#endif
+#define SAVE_EXT_MAX_TLNK (1u + SAVE_TLNK_FREE_LINKS * 6u)
+#define SAVE_BUDGET_TLNK_STORY_WORST (SAVE_BUDGET_LZ_WORST(1u + SAVE_TLNK_STORY_LINKS * 6u) + SAVE_BUDGET_CHUNK_HDR)
+#define SAVE_BUDGET_TLNK_FREE_WORST (SAVE_BUDGET_LZ_WORST(SAVE_EXT_MAX_TLNK) + SAVE_BUDGET_CHUNK_HDR)
 /* --- end T0 --- */
 
 /* --- LV0 (levels plan 8.5): 'BRCH', the newer levels' records and the

@@ -1430,7 +1430,8 @@ static void write_exts(void)
         if (!e || !e->write) continue;
         len = e->size ? e->size() : DOOMO_SAVE_EXT_MAX;
         /* A town with no journal data needs no optional history chunk. */
-        if (!len && (e->tag == SAVE_EXT_TAG_TVIS || e->tag == SAVE_EXT_TAG_TEVT)) continue;
+        if (!len && (e->tag == SAVE_EXT_TAG_TVIS || e->tag == SAVE_EXT_TAG_TEVT ||
+                     e->tag == SAVE_EXT_TAG_TLNK)) continue;
         if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }
         len = e->write(Z.stage, len);
         if (len > DOOMO_SAVE_EXT_MAX) { Z.ext_err = 1; continue; }

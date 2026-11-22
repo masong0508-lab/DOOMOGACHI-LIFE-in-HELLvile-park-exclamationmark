@@ -73,6 +73,11 @@ def controller_bank(image, keys):
             raw = len(data)
             flags &= ~talkc.TBF_DC_ONLY
         banks.append((name, kind, flags, data, raw))
+    # Keep the controller, safety and grammar together at the front. The
+    # PS1 copies a bounded prefix to SPU RAM at boot to avoid scattered
+    # seeks for a first reply. Banks beyond that prefix still stream.
+    warm = {name: i for i, name in enumerate(("CATS", "PARSE", "BEATS", "SAFETY", "GRAMMAR", "CATNAMES"))}
+    banks.sort(key=lambda bank: warm.get(bank[0], len(warm)))
     return talkc.pack_bin(banks, lang, concepts, SimpleNamespace(hash=dictionary))
 
 

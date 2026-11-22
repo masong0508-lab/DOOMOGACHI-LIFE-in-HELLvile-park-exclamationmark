@@ -841,6 +841,26 @@ TEST(talk_scene_journal_can_revisit_older_trips_to_the_same_place)
     CHECK(box.text && strstr(box.text, "park") && strstr(box.text, "Y1 "));
 }
 
+TEST(talk_scene_saved_outing_can_lead_to_a_conversation_about_the_place)
+{
+    TalkSceneDebug d;
+    int row;
+    town();
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1)); press(BTN_A);
+    go_to(find_row("journal", -1, -1)); press(BTN_A);
+    go_to(find_row("journalvisit", 0, ACT_CAFE)); press(BTN_A);
+    CHECK(read_talk_reply());
+    row = find_row("followup", 0, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "Brimstone Bites") != NULL);
+}
+
 TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
 {
     int i, row;
@@ -1153,6 +1173,32 @@ TEST(talk_scene_linked_topics_ask_and_continue_the_conversation)
     go_to(row); press(BTN_A);
     CHECK(talk_scene_debug(&d) && d.busy);
     CHECK(strstr(d.you, "lyric") != NULL);
+}
+
+TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
+{
+    TalkSceneDebug d;
+    uint16_t pie, weather;
+    int row;
+    char label[48];
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("pie", &pie, NULL, NULL) >= 0);
+    CHECK(talk_lex_find("weather", &weather, NULL, NULL) >= 0);
+    talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
+    talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A);
+    go_to(find_row("pick", 0, pie)); press(BTN_A);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    press(BTN_A);
+    row = find_row("topiclink", 1, weather);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK_STR(label, "Revisit weather");
+    if (row < 0) return;
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK(strstr(d.you, "weather") != NULL);
 }
 
 TEST(talk_scene_history_repeat_play_really_changes_simulation)

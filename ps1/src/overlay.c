@@ -60,6 +60,20 @@ static int      s_part;                  /* H4: its part in, 0 = none    */
 static int      s_depth;                 /* nesting of scene calls       */
 static uint8_t  s_run[OVL_NEST];         /* the group of each scene call */
 static uint32_t s_loads;
+#ifdef DOOMO_HAS_TALK
+static const DoomoScene *s_pending_scene;
+static int s_pending_arg;
+
+void plat_scene_push_after_call(const DoomoScene *s, int arg)
+{
+    if (!s_depth) {
+        scene_push(s, arg);
+        return;
+    }
+    s_pending_scene = s;
+    s_pending_arg = arg;
+}
+#endif
 
 /* --- H3 (SPEC C4/C5): a group linked below the slot (the house, ovl_plan.py
  * BORROW) also covers the .bss of world.c and view3d.c. Its loads count
@@ -253,6 +267,15 @@ void plat_scene_code_end(int prev)
         load(pg);
     if (s_depth > 0 && pp && pp != s_part && ps1_ovl_part_group[pp] == s_cur)
         load(pp);
+#ifdef DOOMO_HAS_TALK
+    if (!s_depth && s_pending_scene) {
+        const DoomoScene *s = s_pending_scene;
+        s_pending_scene = NULL;
+        /* There is no overlaid caller left on the stack. The group we
+         * load now stays in the slot for the next draw. */
+        scene_push(s, s_pending_arg);
+    }
+#endif
 }
 
 /* --- H4 (platform.h): the group's common code asks for one of its parts;

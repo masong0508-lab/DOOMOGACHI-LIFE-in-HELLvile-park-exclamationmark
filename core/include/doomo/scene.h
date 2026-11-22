@@ -42,6 +42,10 @@ const DoomoScene *scene_drawn_above(void);
  * scene.c) do nothing. Never call a scene's functions directly. */
 int  plat_scene_code(const DoomoScene *s);
 void plat_scene_code_end(int token);
+/* Request a push as the caller's last action. A platform can wait for the
+ * enclosing scene update or modal callback to return before loading code.
+ * The weak default pushes immediately. Do not call this from a draw. */
+void plat_scene_push_after_call(const DoomoScene *s, int arg);
 /* --- H4 (additive): a scene's code may also come in PARTS that share one
  * address range (ps1/tools/ovl_plan.py PARTS): the code of one mode of a
  * scene. Before the scene's own code calls into a part it asks for it;

@@ -1278,7 +1278,11 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
         if (resp >= 0 && s->part[resp].engage > 10) s->part[resp].engage = (uint8_t)(s->part[resp].engage - 10);
     }
     if (g == TG_DISTRESS) s->tension = (uint8_t)(s->tension > 1 ? s->tension - 1 : 0);
-    if (g != TG_PASS) { s->last_act = (uint8_t)act; return g; }  /* a refusal, a deflection, distress, hate: the answer only */
+    if (g != TG_PASS) {                      /* a refusal, a deflection, distress, hate: the answer only */
+        for (k = 0; k < s->nparts; k++) s->answered_topic[k] &= TALK_MAX_CONCEPTS;
+        s->last_act = (uint8_t)act;
+        return g;
+    }
     /* Only a line that actually passed the audience/safety gate can be
      * recorded as a social experience. A blocked insult isn't a remembered
      * insult, and a bystander isn't its recipient. */
@@ -1720,6 +1724,20 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     return 1;
 }
 
+#ifdef DOOMO_HAS_TALK
+static void observe_topic_link(TalkState *s, int who, uint16_t previous, uint16_t topic)
+{
+    uint32_t key;
+    int i;
+    uint16_t other = previous & TALK_MAX_CONCEPTS;
+    if (!(previous & TALK_LINK_SOURCE) || other == topic) return;
+    key = DOOMO_MIN(other, topic) | ((uint32_t)DOOMO_MAX(other, topic) << 12) | ((uint32_t)who << 24);
+    for (i = 0; i < TALK_LINK_OBSERVATIONS; i++) if (s->topic_links[i] == key) return;
+    memmove(&s->topic_links[1], s->topic_links, sizeof(uint32_t) * (TALK_LINK_OBSERVATIONS - 1u));
+    s->topic_links[0] = key;
+}
+#endif
+
 int talk_dm_step(TalkState *s, TalkTrace *tr)
 {
     if (!s) return 0;
@@ -1748,11 +1766,29 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         if (who >= 0 && who < s->nparts) {
             s->part[who].flags |= TPF_SPOKE;
             s->conv.spoke |= (uint8_t)(1u << who);
-            /* Greetings and thanks can carry the active topic as context. */
-            if (kind == DK_ANSWER && s->gate == TG_PASS && L->act &&
-                !(L->flags & (TLF_SAFE | TLF_FALLBACK)) && talk_gen_topic_act(s->in.act[0]) &&
-                talk_gen_concept_ok(s->in.topic[0], &s->conv.aud))
-                s->answered_topic[who] = s->in.topic[0];
+            /* Only a real topic answer can connect two subjects. A
+             * fallback or sensitive turn breaks the learning thread. */
+            if (kind == DK_ANSWER && talk_gen_topic_act(s->in.act[0]) && s->in.topic[0]) {
+                uint16_t topic = s->in.topic[0];
+                unsigned learned = 0;
+#ifdef DOOMO_HAS_TALK
+                uint16_t previous = s->answered_topic[who];
+#endif
+                s->answered_topic[who] &= TALK_MAX_CONCEPTS;
+                if (s->gate == TG_PASS && L->act && !(L->flags & (TLF_SAFE | TLF_FALLBACK))) {
+#ifdef DOOMO_HAS_TALK
+                    if (!(L->flags & TLF_SINCERE) && !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE &&
+                        (previous == (topic | TALK_LINK_SOURCE) || talk_link_topic_safe(topic))) {
+                        observe_topic_link(s, who, previous, topic);
+                        learned = TALK_LINK_SOURCE;
+                    }
+#endif
+                    /* The learning check is stricter than the ordinary
+                     * audience gate. Reuse it for the common case. */
+                    if (learned || talk_gen_concept_ok(topic, &s->conv.aud))
+                        s->answered_topic[who] = (uint16_t)(topic | learned);
+                }
+            }
         }
         hist_push(s, who, L->act, hf, to, L->topic);
         if (kind == DK_EXCUSE) {                            /* walks out */

@@ -925,4 +925,177 @@ static const DoomoSaveExt event_ext = {
     SAVE_EXT_TAG_TEVT, 1, event_size, event_write, event_read, event_reset, SAVE_EXT_MAX_TEVT
 };
 const DoomoSaveExt *const doomo_save_ext_tevt = &event_ext;
+
+/* TLNK v1: [u8 count], then six bytes per link. The first three hold
+ * resident, avatar (10 bits each) and weight (4 bits). The remaining
+ * three hold two sorted concept IDs (12 bits each). Newest use first. */
+#define TLNK_REC 6u
+static uint8_t link_rows[SAVE_TLNK_FREE_LINKS][TLNK_REC];
+static uint8_t link_count;
+
+DOOMO_STATIC_ASSERT(SAVE_TLNK_STORY_LINKS <= SAVE_TLNK_FREE_LINKS &&
+                    SAVE_TLNK_FREE_LINKS <= SAVE_TLNK_WIRE_LINKS && SAVE_TLNK_WIRE_LINKS <= 255 &&
+                    SAVE_EXT_MAX_TLNK <= DOOMO_SAVE_EXT_MAX, topic_links_fit_save);
+
+static unsigned link_capacity(void)
+{
+    return doomo_town.mode == TOWN_STORY ? SAVE_TLNK_STORY_LINKS : SAVE_TLNK_FREE_LINKS;
+}
+
+static uint32_t link_owner(const uint8_t *row)
+{
+    return get16(row) | ((uint32_t)(row[2] & 15u) << 16);
+}
+
+static uint32_t link_pair(const uint8_t *row)
+{
+    return get16(row + 3) | ((uint32_t)row[5] << 16);
+}
+
+static uint32_t link_key(uint16_t a, uint16_t b)
+{
+    if (!a || !b || a == b || a > TALK_MAX_CONCEPTS || b > TALK_MAX_CONCEPTS) return 0;
+    return a < b ? a | ((uint32_t)b << 12) : b | ((uint32_t)a << 12);
+}
+
+static int link_people_ok(int resident, int avatar)
+{
+    return visit_guest_ok(resident) && resident != avatar && avatar >= 0 && avatar < (int)NEWS_NONE &&
+           person_ok(resident) && person_ok(avatar);
+}
+
+static int link_find(uint32_t owner, uint32_t pair)
+{
+    int i;
+    for (i = 0; i < link_count; i++)
+        if (link_owner(link_rows[i]) == owner && link_pair(link_rows[i]) == pair) return i;
+    return -1;
+}
+
+static int link_oldest_weak(void)
+{
+    int i, oldest = link_count - 1;
+    unsigned best = 16;
+    for (i = oldest; i >= 0; i--) {
+        unsigned weight = link_rows[i][2] >> 4;
+        if (weight < best) { best = weight; oldest = i; }
+        if (best == 1) break;
+    }
+    return oldest;
+}
+
+int talk_link_topic_safe(uint16_t topic)
+{
+    TalkConcept c;
+    uint8_t flags;
+    return topic && talk_db_concept(topic, &c) && c.age == TAGE_ANY && c.reg == TR_CLEAN &&
+           !(c.flags & TCF_GRIEF) && talk_db_cat(c.cat, NULL, &flags) &&
+           (flags & TCAT_TALKABLE) && !(flags & (TCAT_GATED | TCAT_SAFETY));
+}
+
+void talk_link_note(int resident, int avatar, uint16_t a, uint16_t b)
+{
+    uint32_t owner = NEWS_IDS(resident, avatar, 0), pair = link_key(a, b);
+    unsigned weight = 1, cap = link_capacity();
+    int i;
+    if (!pair || !link_people_ok(resident, avatar)) return;
+    if (link_count > cap) link_count = (uint8_t)cap;
+    i = link_find(owner, pair);
+    if (i < 0) i = link_count < cap ? link_count++ : link_oldest_weak();
+    else weight = DOOMO_MIN(15u, (link_rows[i][2] >> 4) + 1u);
+    memmove(link_rows + 1, link_rows, TLNK_REC * (unsigned)i);
+    put16(link_rows[0], owner & 0xFFFFu);
+    link_rows[0][2] = (uint8_t)((owner >> 16) | (weight << 4));
+    put16(link_rows[0] + 3, pair & 0xFFFFu);
+    link_rows[0][5] = (uint8_t)(pair >> 16);
+}
+
+int talk_link_weight(int resident, int avatar, uint16_t a, uint16_t b)
+{
+    uint32_t pair = link_key(a, b);
+    int i;
+    if (!pair || !link_count || !link_people_ok(resident, avatar)) return 0;
+    i = link_find(NEWS_IDS(resident, avatar, 0), pair);
+    return i < 0 ? 0 : link_rows[i][2] >> 4;
+}
+
+uint16_t talk_link_pick(int resident, int avatar, uint16_t topic, uint16_t avoid)
+{
+    uint32_t owner = NEWS_IDS(resident, avatar, 0);
+    uint16_t best = TC_NONE;
+    int i, strength = TALK_LINK_REHEARSED - 1;
+    if (!topic || !link_count || !link_people_ok(resident, avatar)) return TC_NONE;
+    for (i = 0; i < link_count; i++) {
+        const uint8_t *row = link_rows[i];
+        int weight = row[2] >> 4;
+        uint32_t pair;
+        uint16_t a, b, other;
+        if (weight <= strength || link_owner(row) != owner) continue;
+        pair = link_pair(row);
+        a = (uint16_t)(pair & TALK_MAX_CONCEPTS);
+        b = (uint16_t)(pair >> 12);
+        other = a == topic ? b : b == topic ? a : TC_NONE;
+        if (!other || other == avoid || !talk_link_topic_safe(other)) continue;
+        best = other;
+        strength = weight;
+        if (strength == 15) break;
+    }
+    return best && talk_link_topic_safe(topic) ? best : TC_NONE;
+}
+
+void talk_link_forget(int id)
+{
+    unsigned i, kept = 0;
+    for (i = 0; i < link_count; i++) {
+        uint32_t owner = link_owner(link_rows[i]);
+        if ((owner & NEWS_NONE) == (unsigned)id || (owner >> 10) == (unsigned)id) continue;
+        if (kept != i) memcpy(link_rows[kept], link_rows[i], TLNK_REC);
+        kept++;
+    }
+    link_count = (uint8_t)kept;
+}
+
+static void link_reset(void) { link_count = 0; }
+
+static uint32_t link_size(void)
+{
+    unsigned count = DOOMO_MIN(link_count, link_capacity());
+    return count ? 1u + count * TLNK_REC : 0;
+}
+
+static uint32_t link_write(uint8_t *dst, uint32_t cap)
+{
+    uint32_t size = link_size();
+    if (!size || cap < size) return 0;
+    dst[0] = (uint8_t)((size - 1u) / TLNK_REC);
+    memcpy(dst + 1, link_rows, size - 1u);
+    return size;
+}
+
+static int link_read(const uint8_t *src, uint32_t len, uint16_t version)
+{
+    unsigned i, cap = link_capacity();
+    link_reset();
+    if (version != 1 || !len || src[0] > SAVE_TLNK_WIRE_LINKS || len != 1u + src[0] * TLNK_REC) return 0;
+    for (i = 0; i < src[0]; i++) {
+        const uint8_t *row = src + 1u + i * TLNK_REC;
+        uint32_t owner = link_owner(row), pair = link_pair(row);
+        unsigned a = pair & TALK_MAX_CONCEPTS, b = pair >> 12;
+        if (!a || a >= b || !link_people_ok(owner & NEWS_NONE, owner >> 10) ||
+            !(row[2] >> 4) || link_find(owner, pair) >= 0) continue;
+        if (link_count == cap) {
+            int drop = link_oldest_weak();
+            if ((row[2] >> 4) <= (link_rows[drop][2] >> 4)) continue;
+            link_count--;
+            memmove(link_rows + drop, link_rows + drop + 1, TLNK_REC * (unsigned)(link_count - drop));
+        }
+        memcpy(link_rows[link_count++], row, TLNK_REC);
+    }
+    return 1;
+}
+
+static const DoomoSaveExt link_ext = {
+    SAVE_EXT_TAG_TLNK, 1, link_size, link_write, link_read, link_reset, SAVE_EXT_MAX_TLNK
+};
+const DoomoSaveExt *const doomo_save_ext_tlnk = &link_ext;
 #endif /* DOOMO_HAS_TALK */

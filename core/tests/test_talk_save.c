@@ -51,6 +51,25 @@ static void premade_town(void)
     town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
 }
 
+TEST(talk_links_keep_a_rehearsed_pair_and_drop_a_departed_avatar)
+{
+    int avatar, replacement, i;
+    premade_town();
+    avatar = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 7u, "Sam", -1);
+    CHECK(avatar >= FAMILY_POOL_FIRST);
+    talk_link_note(ID_NANA, avatar, 1, 2);
+    talk_link_note(ID_NANA, avatar, 2, 1);
+    for (i = 3; i < 3 + (int)SAVE_TLNK_FREE_LINKS * 2; i++)
+        talk_link_note(ID_NANA, avatar, 1, (uint16_t)i);
+    CHECK_EQ(talk_link_weight(ID_NANA, avatar, 1, 2), 2);
+    CHECK_EQ(doomo_save_ext_tlnk->size(), SAVE_EXT_MAX_TLNK);
+    CHECK(family_remove(avatar));
+    replacement = family_pool_add(FAMROLE_HOUSEMATE, LIFE_ADULT, 13u, "Alex", -1);
+    CHECK_EQ(replacement, avatar);
+    CHECK_EQ(talk_link_weight(ID_NANA, replacement, 1, 2), 0);
+    CHECK_EQ(doomo_save_ext_tlnk->size(), 0);
+}
+
 TEST(talk_events_keep_real_participants_places_and_days_after_save)
 {
     TalkMemoryEvent events[4];

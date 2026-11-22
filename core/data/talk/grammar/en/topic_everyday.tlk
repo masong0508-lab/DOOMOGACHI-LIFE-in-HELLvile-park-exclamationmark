@@ -1,0 +1,102 @@
+# Everyday replies for the same topics at different times, in different company,
+# and when the speaker has an established taste. The named voices stay kid-safe.
+
+@rule core.ask_about.everyday_place_liked guard: root=places&stance=pro act: opine_pos
+  "{x:cap}? I'd take the long way just to get there."
+  "At {x:def}, I can eat lunch without watching the clock."
+  "I'd show you {x:def} first if you only had one day here."
+
+@rule core.ask_about.everyday_place_night guard: root=places&time=night&stance=neutral act: answer
+  "{x:cap} after dark? I'd check which way the lamps run first."
+  "For {x:def}, I'd bring a torch. The signs are hard enough to read in daylight."
+  "{x:cap} can wait till morning. I can't read a map with one eye open."
+
+@rule core.ask_opinion.everyday_place_friend guard: root=places&rel=friend act: answer
+  "{x:cap}? I'd go with you and leave the timetable at home."
+  "If we go to {x:def}, you choose the route. I always miss the little lanes."
+  "{x:cap}? I'd take a friend who knows where to sit out of the wind."
+
+@rule core.ask_about.everyday_food_favourite guard: root=food&likes_topic act: opine_pos
+  "{x:cap}? I'd save the last bite for after the washing-up."
+  "I plan the rest of the meal around {x}. Leftovers, too."
+  "{x:cap}? That's what I'd pick if the menu had only one line."
+
+@rule core.ask_opinion.everyday_food_disliked guard: root=food&hates_topic act: opine_neg
+  "{x:cap}? You can have my share. Hand me the bread instead."
+  "I've tried {x} politely. I'm saving my appetite this time."
+  "{x:cap} is the bit I'd leave on the plate, even if I helped make dinner."
+
+@rule core.ask_about.everyday_hobby_favourite guard: root=hobbies&likes_topic act: opine_pos
+  "Give me an unclaimed afternoon and I'll spend it on {x}."
+  "{x:cap}? I'd show a beginner the part I wish somebody had shown me."
+  "When I get time for {x}, I forget I was waiting for the kettle."
+
+@rule core.tell.everyday_hobby_friend guard: root=hobbies&rel=friend act: backchannel
+  "Tell me about {x}. What part took longer than you thought?"
+  "What's the first thing you'd show me about {x}?"
+  "{x:cap} sounds better with somebody there. Did you try it on your own?"
+
+@rule core.ask_about.everyday_hobby_disliked guard: root=hobbies&stance=con act: opine_neg
+  "{x:cap}? I'll keep you company. Let me bring something else to do."
+  "I tried to make time for {x}. I spent it looking for an excuse to stop."
+  "For {x}, I'd be better at putting the supplies away."
+
+@rule core.ask_about.everyday_music_favourite guard: root=music&likes_topic act: opine_pos
+  "{x:cap}? That's what I'd put on first to make the chores go faster."
+  "Play me some {x} while I'm cooking and I might forget to serve dinner."
+  "I like {x} best when someone nearby catches the beat too."
+
+@rule core.ask_opinion.everyday_music_night guard: root=music&time=night&stance=neutral act: answer
+  "{x:cap}? Keep it low enough to hear the kettle click off."
+  "I'd save loud {x} for daytime. Some of us have thin walls."
+  "{x:cap} depends on the room. At this hour, a quiet corner works for me."
+
+@rule core.ask_about.everyday_person_friend guard: root=lore&x.person&rel=friend act: answer
+  "{x:cap}? A walk gives people more room to talk than standing in a doorway."
+  "If you want to get to know {x}, try asking about an ordinary good day."
+  "{x:cap}? I'd start with a small invitation and leave room for them to say no."
+
+@rule core.ask_opinion.everyday_person_best guard: root=lore&x.person&rel=best act: answer
+  "{x:cap}? I'll listen if you want to tell me how it went."
+  "What put {x} on your mind today? The small part counts."
+  "I can think it through with you. Which bit about {x} sticks with you?"
+
+@rule core.ask_about.everyday_house_evening guard: root=house&time=evening&stance=neutral act: answer
+  "{x:cap}? I notice different things once the lamps come on."
+  "I'd think about {x} after supper. That's when I find out what's in my way."
+  "If {x} keeps coming to mind at bedtime, I'd jot it down for morning."
+
+@rule core.ask_about.everyday_time_morning guard: root=time&time=morning&stance=neutral act: answer
+  "{x:cap}? Ask me after I've made it past breakfast."
+  "About {x}: I judge the morning by what I managed before the kettle boiled."
+  "{x:cap}? The shopkeepers know more about the day than the clock does."
+
+@rule core.tell.everyday_places_close guard: root=places&rel=best act: backchannel
+  "{x:cap}? Show me the bit you always look at first."
+  "When you get to {x:def}, what tells you you've arrived?"
+  "What's changed the most since you first saw {x:def}?"
+
+@rule core.ask_about.everyday_nana_food guard: speaker=nana_puddin&root=food act: answer
+  "{x:cap}, sweet pea? Set out the little plates. Big plates make people hurry."
+  "Tell me who's coming, sugar. Then we'll see how much {x} to put out."
+  "{x:cap}? Sit down first, dear. I can't tell how hungry you are from the doorway."
+
+@rule core.ask_about.everyday_rivet_places guard: speaker=rivet&root=places act: answer
+  "{x:cap}? Look at the door hinges. They'll tell you how busy it gets."
+  "If we're walking to {x:def}, I'm checking the handrails. Habit."
+  "{x:cap}? Give me a minute to wipe the grease off my boots."
+
+@rule core.ask_about.everyday_hattie_music guard: speaker=hattie_haha&root=music act: answer
+  "{x:cap}? Leave a beat before the big finish. Let somebody think it's over."
+  "You can tell a lot about {x} by what people tap under the table."
+  "{x:cap}? Give me a rhythm and I'll tell you where the joke lands."
+
+@rule core.ask_about.everyday_pip_hobbies guard: speaker=pip&root=hobbies tags: kid act: answer
+  "{x:cap}? Mr. Flops wants the first go. He lets me do the fiddly bits."
+  "Can you make a tiny version of {x}? I've got a little box for the supplies."
+  "If I get good at {x}, can Mr. Flops sit next to me while I show you?"
+
+@rule core.ask_about.everyday_wisp_places guard: speaker=wisp&root=places tags: kid,lower act: answer
+  "{x}? i look for a lit window first. then i know where to wave."
+  "i could draw the way to {x:def}. i draw the turnings bigger."
+  "{x}? i'd like to see where the shadows go when somebody opens the door."

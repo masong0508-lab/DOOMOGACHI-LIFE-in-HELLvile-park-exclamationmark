@@ -811,6 +811,14 @@ void talk_event_note(int kind, int person, int other, int place);
 int talk_event_page(int guest, int avatar, int offset, TalkMemoryEvent *page, int capacity);
 int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event);
 int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind);
+/* Shared topics earn a symmetric link when one resident actually answers both.
+ * Notes are committed once per conversation. Suggestions require two chats. */
+#define TALK_LINK_REHEARSED 2
+int talk_link_topic_safe(uint16_t topic);
+void talk_link_note(int resident, int avatar, uint16_t a, uint16_t b);
+int talk_link_weight(int resident, int avatar, uint16_t a, uint16_t b);
+uint16_t talk_link_pick(int resident, int avatar, uint16_t topic, uint16_t avoid);
+void talk_link_forget(int resident_or_avatar);
 void talk_mem_know_like(int id, int which);
 int  talk_mem_like_known(int id, int which);
 /* TQ-QUESTS: the request id has put to the player, kept in the high bits of the memory entry (talk_save.c; no byte
@@ -1198,6 +1206,9 @@ typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic; } 
                                       TALK_CARE_TURNS player turns are answered by the sincere bank alone */
 #define TALK_CARE_TURNS 4          /* player turns of care after a distress line or a grief answer */
 
+#define TALK_LINK_OBSERVATIONS 3
+#define TALK_LINK_SOURCE 0x8000u    /* answered_topic: this was an ordinary answer eligible for learning */
+
 typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene scratch */
     TalkConv  conv;                 /* the generator's conversation (beat, consent, novelty, audience) */
     TalkPart  part[TALK_PARTS_MAX];
@@ -1229,7 +1240,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     uint16_t  call_to;              /* TM2e: resident id + 1 of the one called over (TEV_ACT_CALL), 0 none; the scene lets them in */
     struct { uint8_t kind; int8_t who, to; uint8_t arg; } plan[6];
     uint16_t  topic_stack[TALK_STACK_MAX];   /* newest first                          */
-    uint16_t  answered_topic[TALK_PARTS_MAX]; /* latest accepted question or remark each resident answered */
+    uint16_t  answered_topic[TALK_PARTS_MAX]; /* latest answered topic and TALK_LINK_SOURCE */
     TalkHist  hist[TALK_HIST];      /* newest first                                   */
     int8_t    pair_d[6];            /* resident pairs (0,1) (0,2) (0,3) (1,2) (1,3) (2,3) */
     TalkEvent ev[TALK_EVENTS_MAX];
@@ -1237,6 +1248,7 @@ typedef struct TalkState {          /* <= TALK_STATE_MAX, in the house's scene s
     TalkUtter in;                   /* the player's utterance (after the gate)        */
     uint8_t   place;                /* journal site, zero when the caller has no physical location */
     uint8_t   memory_order[TALK_PARTS_MAX]; /* up to three distinct 2-bit tones, newest in low bits */
+    uint32_t  topic_links[TALK_LINK_OBSERVATIONS]; /* two 12-bit topics and their actual respondent */
 } TalkState;
 
 /* What a session did, for T6-OUT (talk_outcome.c applies it to the sim with

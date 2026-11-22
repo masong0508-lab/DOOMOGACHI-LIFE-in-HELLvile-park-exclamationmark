@@ -18,6 +18,9 @@
 #include "doomo/town.h"
 #include "doomo/story.h"
 #include "sim_int.h"
+#ifdef DOOMO_HAS_TALK
+#include "doomo/talk.h"
+#endif
 
 static uint8_t will_ = 2;   /* F7 free will level (FAMILY_WILL_NORMAL), saved in the family section's spare byte */
 static FamilyMember fam_[FAMILY_MAX];
@@ -298,6 +301,9 @@ int family_remove(int id)
 {
     int i = find_slot(id);
     if (i < 0) return 0;
+#ifdef DOOMO_HAS_TALK
+    if (is_pool(id)) talk_link_forget(id);
+#endif
     ident_drop(id);
     memmove(&fam_[i], &fam_[i + 1], (size_t)(fam_n_ - i - 1) * sizeof(fam_[0]));
     memmove(&bond_[i], &bond_[i + 1], (size_t)(fam_n_ - i - 1));

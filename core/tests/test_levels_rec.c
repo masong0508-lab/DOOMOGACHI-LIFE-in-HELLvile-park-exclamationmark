@@ -348,9 +348,9 @@ TEST(levels_brch_budget_holds_in_both_slots)
     uint32_t home = (HOME_CHUNK_WORST * 129u + 127u) / 128u + SAVE_BUDGET_CHUNK_HDR;
     uint32_t chunks = home + SAVE_BUDGET_K0_WORST + SAVE_BUDGET_TALK_WORST +
                       SAVE_BUDGET_TVIS_WORST + SAVE_BUDGET_TEVT_WORST + SAVE_BUDGET_BRCH_WORST;
-    uint32_t story = 19342u + chunks;
-    uint32_t fp = SAVE_BUDGET_TOWN_BOUND_FP + chunks;
-    CHECK_EQ(SAVE_EXT_SLOTS, 16);
+    uint32_t story = 19342u + chunks + SAVE_BUDGET_TLNK_STORY_WORST;
+    uint32_t fp = SAVE_BUDGET_TOWN_BOUND_FP + chunks + SAVE_BUDGET_TLNK_FREE_WORST;
+    CHECK_EQ(SAVE_EXT_SLOTS, 17);
     CHECK_EQ(SAVE_EXT_MAX_BRCH, 160);
     CHECK(LV_BRCH_MAX <= SAVE_EXT_MAX_BRCH);
     CHECK_EQ(SAVE_BUDGET_BRCH_WORST, SAVE_BUDGET_LZ_WORST(160u) + SAVE_BUDGET_CHUNK_HDR);
@@ -363,7 +363,7 @@ TEST(levels_brch_budget_holds_in_both_slots)
     CHECK(fp + SAVE_BUDGET_MARGIN <= SAVE_SLOT_FP_CAP);
     /* a registered chunk is counted: its worst case lands in the live budget's bound */
     CHECK(save_ext_at(save_ext_count() - 1 - (doomo_save_ext_tvis != NULL) -
-                      (doomo_save_ext_tevt != NULL)) == doomo_save_ext_breach);
+                      (doomo_save_ext_tevt != NULL) - (doomo_save_ext_tlnk != NULL)) == doomo_save_ext_breach);
 }
 
 /* ---- the unlock rules ------------------------------------------------------------------ */

@@ -552,17 +552,17 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     q.fresh = fresh && !q.sincere && q_linked(q.topic, fresh) &&
               talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
               ? fresh : TC_NONE;
-    /* An associative callback must be earned: a remembered *person's*
-     * subject linked in the lexicon to today's actual thread, not a random
-     * nearby word. It is optional, kept separate from the ongoing replies. */
+    /* An associative callback must come from this speaker's real past
+     * with this avatar or a recently remembered subject in the lexicon. */
     if (!q.sincere && th && th->topic && q.topic == th->topic &&
-        s->turn >= 3 && slot >= 0 && slot < s->nparts &&
-        s->conv.mem_topic[slot] != TC_NONE &&
-        q_linked(q.topic, s->conv.mem_topic[slot]) &&
-        talk_gen_concept_ok(s->conv.mem_topic[slot], &s->conv.aud) &&
-        !q_grief(s->conv.mem_topic[slot])) {
-        q.fresh = s->conv.mem_topic[slot];
-        bridge = 1;
+        slot >= 0 && slot < s->nparts && s->last_act != TA_CHANGE_TOPIC &&
+        !(s->part[slot].flags & (TPF_LEFT | TPF_PET))) {
+        uint16_t familiar = TC_NONE, remembered = s->conv.mem_topic[slot];
+        if (s->turn && !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE)
+            familiar = talk_link_pick(s->part[slot].id, s->conv.avatar, q.topic, s->topic_stack[1]);
+        if (!familiar && s->turn >= 3 && q_linked(q.topic, remembered) &&
+            talk_gen_concept_ok(remembered, &s->conv.aud) && !q_grief(remembered)) familiar = remembered;
+        if (familiar) { q.fresh = familiar; bridge = 1; }
     }
     h = doomo_hash32(salt * 0x9E3779B1u + (uint32_t)act * 0x85EBCA6Bu + 0x7A1Bu);
 
@@ -948,6 +948,7 @@ static void build_journal(int mode, int offset)
     count = journal_page(mode, id, minor, offset, 1);
     if (!count) { build_history(); return; }
     T.page = PG_JOURNAL;
+    T.followup = TC_NONE;
     T.journal_mode = (uint8_t)mode;
     T.journal_offset = (uint16_t)offset;
     T.nrows = 0;
@@ -1270,13 +1271,13 @@ static void perform_care(int kind, int item)
     build_main();
 }
 
-static void topic_add(uint16_t c, int kind)
+static void topic_add(uint16_t c, int kind, int learned)
 {
     int i;
     if (c == TC_NONE) return;
     for (i = 0; i < T.nrows; i++)
         if (T.row[i].v == c && (T.row[i].kind == K_PICK || T.row[i].kind == K_TOPIC_LINK)) return;
-    add_row(kind, 0, c);
+    add_row(kind, learned, c);
 }
 
 static void build_topics(void)
@@ -1292,25 +1293,30 @@ static void build_topics(void)
     T.page = PG_TOPIC;
     T.nrows = 0;
     add_row(K_NOTOPIC, 0, 0);
-    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK);
+    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0);
     if (T.to >= 0 && T.to < T.n)
         for (w = 0; w < 5; w++)
-            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK);
+            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK, 0);
     /* Preserve the shortest path to the default topic. */
-    if (stock_start) topic_add(T.stock[0], K_PICK);
+    if (stock_start) topic_add(T.stock[0], K_PICK, 0);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
     if (!q_grief(active) && !sensitive_thread(thread)) {
+        if (!T.pending && T.nrows + stock_remaining < TROWS &&
+            !(T.s.flags & TDF_CARE) && T.s.tension < TALK_TENSION_ARGUE) {
+            uint16_t learned = talk_link_pick(speaker_of(T.to), T.avatar, active, TC_NONE);
+            if (followup_open(learned)) topic_add(learned, K_TOPIC_LINK, 1);
+        }
         for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + stock_remaining < TROWS; i++)
             if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
-                topic_add(concept, K_PICK);
+                topic_add(concept, K_PICK, 0);
         count = talk_db_assoc(active, links, NULL);
         for (i = 0; i < count && T.nrows + stock_remaining < TROWS; i++)
             if (links[i] != active && !q_grief(links[i]) &&
                 talk_gen_concept_ok(links[i], &T.s.conv.aud))
-                topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK);
+                topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK, 0);
     }
-    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK);
+    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK, 0);
     list_reset();
 }
 
@@ -1496,7 +1502,7 @@ static const char *row_text(int index, char *buf)
     case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
     case K_TOPIC_LINK:
         topic_name(r->v, tn, (int)sizeof tn);
-        doomo_snprintf(buf, 48, "Ask about %s", tn);
+        doomo_snprintf(buf, 48, r->arg ? "Revisit %s" : "Ask about %s", tn);
         break;
     case K_PICK:
         if (r->arg) doomo_snprintf(buf, 48, "%s", res_name(r->v));
@@ -1970,6 +1976,24 @@ static int recall_needs_cue(int id, int cue)
     return 1;
 }
 
+static uint16_t remembered_venue_topic(int venue)
+{
+    size_t i;
+    for (i = 0; i < DOOMO_COUNTOF(outing); i++) {
+        uint16_t topic = TC_NONE;
+        if (outing[i].venue != venue) continue;
+        return talk_lex_find(outing[i].key, &topic, NULL, NULL) >= 0 && followup_open(topic) ? topic : TC_NONE;
+    }
+    return TC_NONE;
+}
+
+static void journal_followup(void)
+{
+    if (T.nrows > 0 && T.row[T.nrows - 1].kind == K_FOLLOW_UP) T.nrows--;
+    if (T.followup) add_row(K_FOLLOW_UP, 0, T.followup);
+    T.list.count = T.nrows;
+}
+
 static void recall_meetup(int id, int venue, int cue, uint32_t day)
 {
     const DoomoResident *r = town_res(id);
@@ -1990,7 +2014,7 @@ static void recall_meetup(int id, int venue, int cue, uint32_t day)
         doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", place, ending);
     else
         doomo_snprintf(line, sizeof line, "I remember our %s outing to %s. %s", date, place, ending);
-    show_scene_reply(id, line, TC_NONE);
+    show_scene_reply(id, line, cue ? remembered_venue_topic(venue) : TC_NONE);
 }
 
 static void recall_event(int id, const TalkMemoryEvent *event)
@@ -1998,6 +2022,7 @@ static void recall_event(int id, const TalkMemoryEvent *event)
     const char *place = event_place_name(event->place);
     const char *other = event->other == T.avatar ? "you" : event_person(event->other);
     const char *where = event->place == TALK_PLACE_HOME ? " during a home visit" : "";
+    int venue = -1;
     char date[16], site[48], line[144];
     if (*place && !*where) {
         doomo_snprintf(site, sizeof site, " at %s", place);
@@ -2012,12 +2037,14 @@ static void recall_event(int id, const TalkMemoryEvent *event)
     }
     switch (event->kind) {
     case TALK_EV_ARGUMENT:
-    case TALK_EV_FIGHT:
+    case TALK_EV_FIGHT: {
+        int resolved = talk_event_after(id, T.avatar, event, TALK_EV_RECONCILED);
+        if (resolved && event->place > TALK_PLACE_HOME) venue = event->place - 1;
         doomo_snprintf(line, sizeof line, "I remember the %s with %s%s on %s. %s",
                        event->kind == TALK_EV_FIGHT ? "fight" : "argument", other, where, date,
-                       talk_event_after(id, T.avatar, event, TALK_EV_RECONCILED) ?
-                       "We talked it through later." : "That was a rough day.");
+                       resolved ? "We talked it through later." : "That was a rough day.");
         break;
+    }
     case TALK_EV_RECONCILED:
         doomo_snprintf(line, sizeof line, "I made peace with %s%s on %s. I'm glad we talked.", other, where, date);
         break;
@@ -2034,6 +2061,7 @@ static void recall_event(int id, const TalkMemoryEvent *event)
         break;
     case TALK_EV_FRIENDSHIP:
         doomo_snprintf(line, sizeof line, "On %s, %s and I became best friends%s.", date, other, where);
+        if (event->place > TALK_PLACE_HOME) venue = event->place - 1;
         break;
     case TALK_EV_BATTLE_LOST:
         doomo_snprintf(line, sizeof line, "The island journal records a defeat%s on %s. It was a hard day.", where, date);
@@ -2046,7 +2074,7 @@ static void recall_event(int id, const TalkMemoryEvent *event)
         break;
     default: return;
     }
-    show_scene_reply(id, line, TC_NONE);
+    show_scene_reply(id, line, venue >= 0 ? remembered_venue_topic(venue) : TC_NONE);
 }
 
 static void reminisce(unsigned selected)
@@ -2287,8 +2315,9 @@ static void activate(int i)
         break;
     }
     case K_FOLLOW_UP: case K_TOPIC_LINK: case K_HISTORY_TOPIC: {
-        int available = (r->kind == K_FOLLOW_UP) ? (r->v == T.followup && followup_open(r->v)) :
-                        (talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v));
+        int available = r->kind == K_FOLLOW_UP ? (r->v == T.followup && followup_open(r->v)) :
+                        r->kind == K_TOPIC_LINK && r->arg ? followup_open(r->v) :
+                        talk_gen_concept_ok(r->v, &T.s.conv.aud) && !q_grief(r->v);
         if (available) {
             T.topic = r->v;
             say_act(TA_ASK_ABOUT); /* A genuine Talk question, not just a label. */
@@ -2355,12 +2384,14 @@ static void activate(int i)
             const TalkVisit *visit = &T.journal.visits[r->arg];
             if (talk_visit_has(id, T.avatar, minor, visit)) {
                 recall_meetup(id, visit->venue, 1, visit->day);
+                journal_followup();
                 break;
             }
         } else if (minor >= 0) {
             const TalkMemoryEvent *event = &T.journal.events[r->arg];
             if (talk_event_has(T.journal_mode == JOURNAL_ISLAND ? -1 : id, T.avatar, event)) {
                 recall_event(id, event);
+                journal_followup();
                 break;
             }
         }
@@ -2807,7 +2838,7 @@ int home_talk_enter(int who)
 {
     if (who < 0 || who >= DOOMO_MAX_RESIDENTS || !town_alive(who)) return 0;
     if (who == playas_avatar() || !talk_ready()) return 0;
-    scene_push(&SCENE_TALK, who | (scene_top() == &SCENE_HOME ? TALK_ARG_HOME : 0));
+    plat_scene_push_after_call(&SCENE_TALK, who | (scene_top() == &SCENE_HOME ? TALK_ARG_HOME : 0));
     return 1;
 }
 

@@ -1898,6 +1898,11 @@ static void depth_plan(Gen *g, int act)
     in.thread_root = (uint8_t)root_of_topic(th);
     in.same = (uint8_t)(g->topic && same_thread(g->topic, th));
     in.grief = (uint8_t)grief_topic(g);
+#ifdef DOOMO_HAS_TALK
+    if (!in.same && !in.grief && !c->care && g->to_id == c->avatar &&
+        talk_link_weight(g->sid, c->avatar, g->topic, th) >= TALK_LINK_REHEARSED &&
+        talk_link_topic_safe(g->topic) && talk_link_topic_safe(th)) in.same = 1;
+#endif
     if (g->has_ts) {
         in.shy = (uint8_t)talk_traitset_has(&g->ts, TT_SHY);
         in.paranoid = (uint8_t)talk_traitset_has(&g->ts, TT_PARANOID);

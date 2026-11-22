@@ -4,6 +4,7 @@ wait 150
 expect-scene TITLE
 expect-log sprites: loaded
 expect-log effects (all)
+expect-log talk-prewarm: 72 sectors
 seed 1208
 # Start the Classic island so roster ID 1 (Nana Puddin) is alive.
 scene NEW_ISLAND
@@ -24,7 +25,7 @@ expect-log talkps1: TALK_EN.BIN available
 expect-log ovl: talk
 wait 30
 fpsend talk_entry
-expect-gap 2000 talk_entry
+expect-gap 900 talk_entry
 expect-scene DIALOG
 fps talk_dialogue
 wait 45
@@ -65,3 +66,5 @@ press A
 expect-scene DIALOG
 wait 35
 shot talk_04_recall
+# One overlay read for each of the two visits, including the reopened save.
+expect-count 2 ovl: talk (

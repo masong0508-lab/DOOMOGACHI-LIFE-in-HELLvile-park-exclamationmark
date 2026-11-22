@@ -16,7 +16,7 @@ typedef struct BudgetSnap {
     uint32_t seed;                               /* doomo_town.seed at the I/O */
     uint16_t size[SAVE_EXT_SLOTS];
 } BudgetSnap;
-DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 40, budget_snapshot_size);
+DOOMO_STATIC_ASSERT(sizeof(BudgetSnap) == 44, budget_snapshot_size);
 
 static BudgetSnap snap[2];
 static uint32_t seen_last_size;
@@ -137,6 +137,7 @@ uint32_t save_budget_declared_max(uint32_t tag)
     case SAVE_EXT_TAG_TALK: return SAVE_EXT_MAX_TALK;      /* T0 */
     case SAVE_EXT_TAG_TVIS: return SAVE_EXT_MAX_TVIS;
     case SAVE_EXT_TAG_TEVT: return SAVE_EXT_MAX_TEVT;
+    case SAVE_EXT_TAG_TLNK: return SAVE_EXT_MAX_TLNK;
     case SAVE_EXT_TAG_BRCH: return SAVE_EXT_MAX_BRCH;      /* LV0 */
     default: return 0;
     }
