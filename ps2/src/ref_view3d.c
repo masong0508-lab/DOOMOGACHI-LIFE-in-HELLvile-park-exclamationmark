@@ -32,7 +32,6 @@
  * off fast enough to reach the darkest step at it, so the cut is not a visible edge. 0 = the old values. */
 #define VIEW_MIN 8
 #define CLIP_MAX 64
-#define SKY_Z (100000)
 #define FADE_LAST 14
 #define FADE_DIV_MAX (MAX_DIST_UNITS / DOOMO_CELL_UNITS * 4)
 
@@ -53,6 +52,8 @@ static int64_t max_dist;        /* fix16 world units: rays stop here */
 static int fade_div;            /* world units per light step */
 static int fade_far;
 static uint8_t fade_step[FADE_LAST * FADE_DIV_MAX];
+static const uint8_t *sky;
+static uint8_t sky_rows[NAT_MAX_H];
 
 /* Before clipping to a cell, depth depends only on the plane height and
  * absolute screen row. Adjacent rays often sample the same plane. */
@@ -99,18 +100,17 @@ static const uint8_t *tex_of(int tex)
     return texture_pixels(tex, V->time);
 }
 
-/* vertical face column from world z_top..z_bot at distance d */
-static void face(int x, int64_t z_top, int64_t z_bot, int64_t d, int tex, int u,
+/* Vertical face between two projected rows (the bottom is exclusive). */
+static void face(int x, int ys, int bottom, int64_t d, int tex, int u,
                  int light, int ytop, int ybot)
 {
-    int ys = proj_y(z_top, d), ye = proj_y(z_bot, d) - 1, y;
-    const uint8_t *tp = tex_of(tex);
-    const uint8_t *cm = doomo_colormap[fade(light, d)];
-    uint8_t flat = tp ? 0 : texture_avg(tex);
-    if (z_top >= ((int64_t)SKY_Z * 65536)) ys = ytop;
+    int ye = bottom - 1, y;
     if (ys < ytop) ys = ytop;
     if (ye > ybot) ye = ybot;
     if (ys <= ye) {
+        const uint8_t *tp = tex_of(tex);
+        const uint8_t *cm = doomo_colormap[fade(light, d)];
+        uint8_t flat = tp ? 0 : texture_avg(tex);
         int den = 2 * focal;
         int64_t num = (int64_t)(2 * (ys - horizon) + 1) * d;
         int64_t step = d / focal;
@@ -138,17 +138,18 @@ static void face(int x, int64_t z_top, int64_t z_bot, int64_t d, int tex, int u,
     }
 }
 
-/* floor (is_floor) or ceiling of one cell between distances d0..d1 */
+/* Floor or ceiling between projected rows and distances d0..d1. */
 static void flat(int x, int64_t rdx, int64_t rdy, int64_t z, int64_t d0, int64_t d1,
-                 int tex, int light, int is_floor, int ytop, int ybot)
+                 int tex, int light, int ys, int bottom, int ytop, int ybot)
 {
-    int ys, ye, y;
-    const uint8_t *tp = tex_of(tex);
-    uint8_t avg = tp ? 0 : texture_avg(tex);
-    if (is_floor) { ys = proj_y(z, d1); ye = proj_y(z, d0) - 1; }
-    else { ys = proj_y(z, d0); ye = proj_y(z, d1) - 1; }
+    const uint8_t *tp;
+    uint8_t avg;
+    int ye = bottom - 1, y;
     if (ys < ytop) ys = ytop;
     if (ye > ybot) ye = ybot;
+    if (ys > ye) return;
+    tp = tex_of(tex);
+    avg = tp ? 0 : texture_avg(tex);
     for (y = ys; y <= ye; y++) {
         struct PlaneRow *row = &planes[y];
         int64_t d;
@@ -171,15 +172,10 @@ static void flat(int x, int64_t rdx, int64_t rdy, int64_t z, int64_t d0, int64_t
 
 static void sky_column(int x, int64_t rdx, int64_t rdy, int ytop, int ybot)
 {
-    const uint8_t *sp = sky_pixels(M->sky, V->time);
     int ang = fx_atan2((int32_t)(rdy >> 4), (int32_t)(rdx >> 4));
     int sx = (ang * SKY_W / DOOMO_ANG_FULL) & (SKY_W - 1), y;
-    int span = vh0 * 3 / 4;
-    for (y = ytop; y <= ybot; y++) {
-        int row = SKY_H - 8 - (horizon - y) * (SKY_H - 8) / (span ? span : 1);
-        row = DOOMO_CLAMP(row, 0, SKY_H - 1);
-        nat_fb[y * nat_w + vx0 + x] = sp ? sp[row * SKY_W + sx] : PAL_RAMP(RAMP_SKY, 5);
-    }
+    for (y = ytop; y <= ybot; y++)
+        nat_fb[y * nat_w + vx0 + x] = sky ? sky[sky_rows[y] * SKY_W + sx] : PAL_RAMP(RAMP_SKY, 5);
 }
 
 /* (action, additive) The roof of a roofed open cell seen from under the
@@ -230,22 +226,28 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
     int cur_sky = cur->ceil_tex == DOOMO_TEX_SKY;
     int cur_ftex = cur->floor_tex, cur_ctex = cur->ceil_tex, cur_light = light_at(cur);
     int64_t d0 = (int64_t)1 << 16;
+    int floor_row = proj_y(cur_f, d0);
+    int ceil_row = cur_sky ? 0 : proj_y(cur_c, d0);
 
     nclips[x] = 0;
     clip_top0[x] = (int16_t)ytop;
     clip_bot0[x] = (int16_t)ybot;
     /* local window: rows are absolute screen rows */
     for (step = 0; step < MAX_STEPS; step++) {
-        int side, nmx = mx, nmy = my, u;
+        int side, nmx = mx, nmy = my, u, far_floor, far_ceil;
         int64_t dcell, d1;
         const DoomoCell *n;
         if (sidex < sidey) { dcell = sidex; sidex += deltax; nmx += stepx; side = 0; }
         else { dcell = sidey; sidey += deltay; nmy += stepy; side = 1; }
         d1 = dcell * DOOMO_CELL_UNITS;
         if (d1 < d0) d1 = d0;
-        /* the current cell's floor and ceiling */
-        flat(x, rdx, rdy, cur_f, d0, d1, cur_ftex, cur_light, 1, ytop, ybot);
-        if (!cur_sky) flat(x, rdx, rdy, cur_c, d0, d1, cur_ctex, cur_light, 0, ytop, ybot);
+        /* A boundary projection serves both adjoining spans and also
+         * their faces and clip window. Carry it into the next step. */
+        far_floor = proj_y(cur_f, d1);
+        far_ceil = cur_sky ? 0 : proj_y(cur_c, d1);
+        flat(x, rdx, rdy, cur_f, d0, d1, cur_ftex, cur_light, far_floor, floor_row, ytop, ybot);
+        if (!cur_sky)
+            flat(x, rdx, rdy, cur_c, d0, d1, cur_ctex, cur_light, ceil_row, far_ceil, ytop, ybot);
         /* texture u along the face we hit */
         if (side == 0) u = (int)(((camy + ((rdy * d1) >> 16)) >> 16) & 63);
         else u = (int)(((camx + ((rdx * d1) >> 16)) >> 16) & 63);
@@ -253,6 +255,7 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
         n = map_cell_safe(M, nmx, nmy);
         if (n->wall) {
             int64_t top;
+            int wall_top;
             int lit = cur_light - side;
             if (cur_sky) {
                 top = n->ceil_h > n->floor_h ? ((int64_t)map_ceil_z(M, nmx, nmy) * 65536)
@@ -260,12 +263,13 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             } else {
                 top = cur_c;
             }
-            face(x, top, cur_f, d1, n->wall, u, lit, ytop, ybot);
+            wall_top = cur_sky ? proj_y(top, d1) : far_ceil;
+            face(x, wall_top, far_floor, d1, n->wall, u, lit, ytop, ybot);
             if (!cur_sky || nmx < 0 || nmy < 0 || nmx >= M->w || nmy >= M->h) {
                 if (cur_sky) {
                     /* the map's edge under the open sky: the sky above it
                      * (action, additive: as the GBA renderer does) */
-                    int ny = proj_y(top, d1) - 1;
+                    int ny = wall_top - 1;
                     if (ny < ybot) ybot = ny;
                     if (ytop <= ybot) sky_column(x, rdx, rdy, ytop, ybot);
                 }
@@ -274,10 +278,11 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
                 break;
             }
             {
-                int ny = proj_y(top, d1) - 1;
+                int ny = wall_top - 1;
                 if (ny < ybot) ybot = ny;
             }
             cur_f = top;
+            floor_row = wall_top;
             cur_ftex = n->floor_tex ? n->floor_tex : n->wall;
             cur_light = light_at(n);
             cur_sky = 1;
@@ -285,40 +290,37 @@ static void cast_column(int x, int64_t dirx, int64_t diry, int64_t plx, int64_t 
             int64_t nf = (int64_t)map_floor_z(M, nmx, nmy) * 65536;
             int64_t nc = (int64_t)map_ceil_z(M, nmx, nmy) * 65536;
             int nsky = n->ceil_tex == DOOMO_TEX_SKY;
-            int64_t open_top = cur_sky ? ((int64_t)SKY_Z * 65536) : cur_c;
-            int64_t new_top = nsky ? open_top : (nc < open_top ? nc : open_top);
-            int64_t new_bot = nf > cur_f ? nf : cur_f;
+            int next_floor = nf == cur_f ? far_floor : proj_y(nf, d1);
+            int next_ceil = nsky ? 0 : (!cur_sky && nc == cur_c ? far_ceil : proj_y(nc, d1));
             int lit = cur_light - side;
-            if (nf > cur_f) face(x, nf, cur_f, d1, n->floor_tex, u, lit - 1, ytop, ybot);
-            if (!nsky && nc < open_top) {
-                int64_t ftop = open_top;
+            if (nf > cur_f)
+                face(x, next_floor, far_floor, d1, n->floor_tex, u, lit - 1, ytop, ybot);
+            if (!nsky && (cur_sky || nc < cur_c)) {
+                int lintel_top = far_ceil;
                 if (cur_sky) {
                     /* (action, additive) a roofed cell seen from under the
                      * sky: sky above its roof, the lintel below; the roof
                      * is roof_of() or 256 units above the floor it is
                      * seen from (as the GBA renderer) */
                     int roof = roof_of(nmx, nmy), ys;
-                    ftop = roof != 127 ? (int64_t)roof * DOOMO_HEIGHT_STEP * 65536
-                                       : cur_f + ((int64_t)256 * 65536);
+                    int64_t ftop = roof != 127 ? (int64_t)roof * DOOMO_HEIGHT_STEP * 65536
+                                               : cur_f + ((int64_t)256 * 65536);
                     if (ftop < nc) ftop = nc;
-                    ys = proj_y(ftop, d1);
+                    lintel_top = proj_y(ftop, d1);
+                    ys = lintel_top;
                     if (ys > ybot + 1) ys = ybot + 1;
                     if (ys > ytop) { sky_column(x, rdx, rdy, ytop, ys - 1); ytop = ys; }
                 }
-                face(x, ftop, nc, d1, n->ceil_tex, u, lit - 1, ytop, ybot);
+                face(x, lintel_top, next_ceil, d1, n->ceil_tex, u, lit - 1, ytop, ybot);
             }
-            {
-                int nb = proj_y(new_bot, d1) - 1;
-                if (nb < ybot) ybot = nb;
-                if (new_top < ((int64_t)SKY_Z * 65536)) {
-                    int nt = proj_y(new_top, d1);
-                    if (nt > ytop) ytop = nt;
-                }
-            }
-            cur = n;
+            ybot = DOOMO_MIN(ybot, DOOMO_MIN(next_floor, far_floor) - 1);
+            if (!cur_sky && far_ceil > ytop) ytop = far_ceil;
+            if (!nsky && next_ceil > ytop) ytop = next_ceil;
             cur_f = nf;
             cur_c = nc;
-            cur_sky = nsky && (cur_sky || nsky);
+            floor_row = next_floor;
+            ceil_row = next_ceil;
+            cur_sky = nsky;
             cur_ftex = n->floor_tex;
             cur_ctex = n->ceil_tex;
             cur_light = light_at(n);
@@ -359,6 +361,9 @@ static void draw_sprite(int idx, int64_t dirx, int64_t diry)
     const DoomoBillboard *b = &V->sprites[idx];
     const DoomoImage *img = b->img;
     int64_t rx, ry, depth, lat, wwu, hwu;
+    uint32_t row_offsets[NAT_MAX_H];
+    const uint8_t *cm;
+    int first_row, last_row, y;
     int sw, sh, sx0, sy0, sx, cx, base_light, lvl, translucent;
     if (!img || !img->pix || !img->w || !img->h) return;
     rx = (int64_t)b->x - camx;
@@ -393,18 +398,27 @@ static void draw_sprite(int idx, int64_t dirx, int64_t diry)
             }
         }
     }
-    for (sx = sx0; sx < sx0 + sw; sx++) {
-        int top, bot, y, tx;
-        if (sx < 0 || sx >= vw0) continue;
+    first_row = DOOMO_MAX(sy0, vy0);
+    last_row = DOOMO_MIN(sy0 + sh, vy0 + vh0);
+    if (first_row >= last_row || sx0 >= vw0 || sx0 + sw <= 0) return;
+    /* A sprite row maps to the same texels in every column. Both
+     * screen deltas are bounded by four view dimensions, and sprite
+     * dimensions are uint16_t, so the products fit in uint32_t. */
+    for (y = first_row; y < last_row; y++) {
+        uint32_t ty = (uint32_t)(y - sy0) * img->h / (uint32_t)sh;
+        row_offsets[y] = ty * img->w;
+    }
+    cm = doomo_colormap[lvl];
+    for (sx = DOOMO_MAX(0, sx0); sx < DOOMO_MIN(vw0, sx0 + sw); sx++) {
+        int top, bot, tx;
         window_at(sx, depth >> 16, &top, &bot);
-        tx = (int)((int64_t)(sx - sx0) * img->w / sw);
+        tx = (int)((uint32_t)(sx - sx0) * img->w / (uint32_t)sw);
         if (b->flags & BB_FLIPX) tx = img->w - 1 - tx;
-        for (y = DOOMO_MAX(sy0, top); y < sy0 + sh && y <= bot; y++) {
-            int ty = (int)((int64_t)(y - sy0) * img->h / sh);
-            uint8_t c = img->pix[ty * img->w + tx];
+        for (y = DOOMO_MAX(first_row, top); y < last_row && y <= bot; y++) {
+            uint8_t c = img->pix[row_offsets[y] + tx];
             if (!c) continue;
             if (translucent && ((sx + y) & 1)) continue;
-            nat_fb[y * nat_w + vx0 + sx] = doomo_colormap[lvl][c];
+            nat_fb[y * nat_w + vx0 + sx] = cm[c];
         }
     }
 }
@@ -449,7 +463,15 @@ void plat_view3d(const DoomoView3D *v)
     camy = v->y;
     eye = (int64_t)v->z + ((int64_t)v->bob * 65536);
 
-    for (i = vy0; i < vy0 + vh0; i++) planes[i].height = INT64_MIN;
+    sky = sky_pixels(M->sky, V->time);
+    {
+        int span = DOOMO_MAX(1, vh0 * 3 / 4);
+        for (i = vy0; i < vy0 + vh0; i++) {
+            int row = SKY_H - 8 - (horizon - i) * (SKY_H - 8) / span;
+            sky_rows[i] = (uint8_t)DOOMO_CLAMP(row, 0, SKY_H - 1);
+            planes[i].height = INT64_MIN;
+        }
+    }
     for (x = 0; x < vw0; x++) cast_column(x, dirx, diry, plx, ply);
 
     /* billboards, far to near */

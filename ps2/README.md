@@ -50,8 +50,10 @@ texture transfer remains 150 KiB per changed frame.
   Triangle=Y, L/R shoulders, triggers, stick clicks, Start/Select;
   clean disconnection handling. The map is validated by a native test
   for every button and all-buttons pressed.
-- 60 field presentation cadence; **30 logic ticks per 60 field flips**,
-  avoiding the accelerated gameplay problem of per-vblank core ticks.
+- On-time frames take two display refreshes per logic tick, for a
+  nominal 30 Hz simulation. The 480p output holds the finished image
+  on the second refresh. The 480i output draws the alternate field
+  from the same resident texture.
 - Developer diagnostic UI (NOT a substitute for the actual game's
   title/Free Play/Story screens). Press D-pad to change a row,
   Cross or Start to toggle details, Circle to hide, Start+Select to exit.
@@ -87,8 +89,9 @@ Unlike the PS2-0 debug ELF, it **compiles and links all portable
 `core/src` and `core/gen` sources directly** and invokes the actual
 `doomo_init()` and `doomo_frame()` at 30 logic ticks per second.
 A fixed 320x240 indexed surface draws the shared font, UI, procedural
-portraits and reference room renderer; a fixed-size 512x256 RGBA GS
-texture is uploaded at 30Hz and presented at 60 fields/s.
+portraits and reference room renderer. Changed frames upload a
+320x240 RGB5551 GS texture, which both display modes sample with
+nearest filtering.
 The prototype now adapts the native reference map renderers: live
 world cells, authentic 64x64 floor/wall textures, raised faces, lighting,
 billboard feet sorting and occlusion, plus the actual first-person DDA
@@ -295,9 +298,16 @@ console during the PCSX2 and hardware acceptance walkthrough.
 The software raycaster reuses floor and ceiling depths by screen row and
 advances the wall texture sample with exact integer steps. This removes
 repeated divisions from both pixel loops. Distance shading uses a
-small table for the current view range. The row cache and shading
-table use 6.375 KiB of EE memory. Native runs matched 906 frame hashes
-across the Bone levels, general combat, and Hell Breach.
+small table for the current view range. Adjacent cells share projected
+edges with their faces and clipping windows. Sky rows are mapped once
+per view and billboard rows once per sprite. Native runs matched 906
+frame hashes across the Bone levels, general combat, and Hell Breach.
+
+The 60 fps target calls for a new image every refresh during motion,
+about 16.7 ms per frame in NTSC modes, with the current gameplay and
+audio timing preserved. The current loop still draws at most one new
+game image per two refreshes. Measure image updates separately from the
+display refresh rate when testing progress toward the target.
 
 ## PS2-9 compact disc images and low-storage CI artifacts
 

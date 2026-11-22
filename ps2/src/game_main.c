@@ -210,9 +210,18 @@ int main(void)
                        (unsigned long)hash);
             }
         }else{
+#if defined(PS2_PROGRESSIVE)
+            /* Progressive scanout keeps showing the completed front
+             * buffer. Wait for this refresh without drawing a duplicate
+             * into the back buffer or flipping it. */
+            gsKit_vsync_wait();
+            field++;
+            continue;
+#else
             /* Draw the same completed image from GS VRAM: no simulation
-             * tick or upload on alternate fields, and no black flicker. */
+             * tick or upload on the alternate interlaced field. */
             ps2_game2d_present(gs,0);
+#endif
         }
         gsKit_queue_exec(gs);
         gsKit_sync_flip(gs);
