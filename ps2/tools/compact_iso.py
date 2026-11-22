@@ -19,7 +19,7 @@ import tempfile
 from check_ps2_boot import verify_image_boot
 
 SECTOR_SIZE = 2048
-REQUIRED = {"SYSTEM.CNF", "DOOMOG.ELF", "TALK_EN.BIN", "AUDSRV.IRX"}
+REQUIRED = {"SYSTEM.CNF", "DOOMOG.ELF", "TALK_EN.BIN", "AUDSRV.IRX", "FREESD.IRX"}
 
 
 def run(*command):

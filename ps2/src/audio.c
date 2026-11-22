@@ -20,7 +20,12 @@ int ps2_audio_init(void)
     struct audsrv_fmt_t format;
     int mod;
     ps2_synth_reset(&synth);
-    (void)SifLoadModule("rom0:LIBSD",0,NULL);
+    running=0;
+    /* A real PS2 has LIBSD in ROM. BIOS-free emulators need the
+     * compatible PS2SDK FreeSD driver before audsrv can drive SPU2. */
+    if(SifLoadModule("rom0:LIBSD",0,NULL)<0 &&
+       SifLoadModule("cdrom0:\\FREESD.IRX;1",0,NULL)<0)
+        (void)SifLoadModule("host:freesd.irx",0,NULL);
     /* A homebrew ELF can load the IRX from the PCSX2 host filesystem.
      * In the packaged disc it lives at the root as AUDSRV.IRX. */
     mod=SifLoadModule("cdrom0:\\AUDSRV.IRX;1",0,NULL);

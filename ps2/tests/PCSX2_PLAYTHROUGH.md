@@ -3,7 +3,11 @@
 This is a **real-runtime** gate, not a successful-ELF-link or emulator-
 process-alive gate. A passing GitHub build is required first. The
 `doomogachi_ps2_game.iso` artifact contains `SYSTEM.CNF`, the shared
-game ELF, the generated `TALK_EN.BIN`, and the PS2SDK audsrv module.
+game ELF, the generated `TALK_EN.BIN`, and the audsrv and FreeSD
+modules from PS2SDK. Play! smoke tests cover title and Story controller
+input using that ISO. Local Play! tests have also exercised Talk, SPU2
+output, and Free Play save recovery. The PCSX2 and console acceptance
+checks below track the remaining release validation.
 
 ## Launch prerequisites
 

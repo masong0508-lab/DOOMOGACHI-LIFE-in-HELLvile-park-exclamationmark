@@ -155,7 +155,7 @@ jobs:
         # never interpreted as proof of a physical DualShock controller.
         run: |
           make -C ps2 story-probe story-idle -j2
-      - name: Package PS2 gameplay ISO with real Talk bank and audsrv
+      - name: Package PS2 gameplay ISO with the Talk bank and sound drivers
         run: |
           set -eu
           make -C ps2 disc
@@ -173,6 +173,7 @@ jobs:
             tee /tmp/ps2-iso-manifest.txt
           grep -q '/TALK_EN.BIN' /tmp/ps2-iso-manifest.txt
           grep -q '/AUDSRV.IRX' /tmp/ps2-iso-manifest.txt
+          grep -q '/FREESD.IRX' /tmp/ps2-iso-manifest.txt
           grep -q '/DOOMOG.ELF' /tmp/ps2-iso-manifest.txt
       - name: Upload lossless gameplay ISO for emulator and hardware tests
         uses: actions/upload-artifact@v4

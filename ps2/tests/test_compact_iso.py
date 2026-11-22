@@ -28,6 +28,7 @@ def sample_iso(tmp, omit=None, boot_path=r"cdrom0:\DOOMOG.ELF;1"):
         "DOOMOG.ELF": b"synthetic-elf-not-executable-" * 512,
         "TALK_EN.BIN": b"TALK" + bytes(range(256)) * 256,
         "AUDSRV.IRX": b"synthetic-irx-not-executable-" * 256,
+        "FREESD.IRX": b"synthetic-sound-driver-not-executable-" * 256,
     }
     for name, data in files.items():
         if name != omit:
@@ -62,6 +63,7 @@ class CompactImageTests(unittest.TestCase):
             self.assertEqual(len(report["images"]), 3)
             self.assertIn("TALK_EN.BIN", report["iso9660_files"])
             self.assertIn("AUDSRV.IRX", report["iso9660_files"])
+            self.assertIn("FREESD.IRX", report["iso9660_files"])
             for image_entry in report["images"]:
                 self.assertTrue(len(image_entry["sha256"]) == 64)
                 if image_entry["format"] != "iso":
@@ -91,18 +93,19 @@ class CompactImageTests(unittest.TestCase):
             self.assertFalse(list(out.glob("*.iso.zst")))
 
     def test_reject_missing_disc_assets(self):
-        with tempfile.TemporaryDirectory() as work:
-            tmp = Path(work)
-            iso = sample_iso(tmp, omit="TALK_EN.BIN")
-            out = tmp / "compact"
-            result = subprocess.run(
-                [sys.executable, str(PACKAGER), "--iso", str(iso),
-                 "--out-dir", str(out)],
-                text=True, capture_output=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("TALK_EN.BIN", result.stderr)
-            self.assertFalse(list(out.glob("*.chd")))
+        for asset in ("TALK_EN.BIN", "FREESD.IRX"):
+            with self.subTest(asset=asset), tempfile.TemporaryDirectory() as work:
+                tmp = Path(work)
+                iso = sample_iso(tmp, omit=asset)
+                out = tmp / "compact"
+                result = subprocess.run(
+                    [sys.executable, str(PACKAGER), "--iso", str(iso),
+                     "--out-dir", str(out)],
+                    text=True, capture_output=True,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(asset, result.stderr)
+                self.assertFalse(list(out.glob("*.chd")))
 
     def test_reject_invalid_iso_and_level(self):
         with tempfile.TemporaryDirectory() as work:

@@ -160,9 +160,10 @@ build/ref_view3d.o: src/ref_view3d.c src/frame_ref.h src/game2d.h
 
 # PS2-4 CD image for PCSX2 / PS2 homebrew disc launch. The English
 # language bank comes from the SAME generator as PS1 and Dreamcast, not
-# a new hand-maintained dialogue file. audsrv.irx ships from PS2SDK.
+# a new hand-maintained dialogue file. The audio modules come from PS2SDK.
 TALK_BIN := ../core/build/talk/TALK_en.BIN
 AUDSRV_IRX := $(PS2SDK)/iop/irx/audsrv.irx
+FREESD_IRX := $(PS2SDK)/iop/irx/freesd.irx
 DISC_ROOT := build/disc
 DISC_ISO := build/doomogachi_ps2_game.iso
 # Default: compact DVD ISO with no unnecessary mkisofs 300 KiB tail pad.
@@ -174,13 +175,14 @@ PS2_ZSTD_LEVEL ?= 15
 .PHONY: talk-bank disc
 talk-bank:
 	$(MAKE) -C ../core talk
-disc: $(GAME_DISC_BIN) talk-bank $(AUDSRV_IRX)
+disc: $(GAME_DISC_BIN) talk-bank $(AUDSRV_IRX) $(FREESD_IRX)
 	@command -v xorriso >/dev/null || (echo 'Install xorriso to build the PS2 ISO' && false)
 	@rm -rf $(DISC_ROOT)
 	@mkdir -p $(DISC_ROOT)
 	cp $(GAME_DISC_BIN) $(DISC_ROOT)/DOOMOG.ELF
 	cp $(TALK_BIN) $(DISC_ROOT)/TALK_EN.BIN
 	cp $(AUDSRV_IRX) $(DISC_ROOT)/AUDSRV.IRX
+	cp $(FREESD_IRX) $(DISC_ROOT)/FREESD.IRX
 	cp SYSTEM.CNF $(DISC_ROOT)/SYSTEM.CNF
 	xorriso -as mkisofs -iso-level 1 $(ISO_PAD_OPT) -V DOOMOGACHI -o $(DISC_ISO) $(DISC_ROOT)
 	python3 tools/check_ps2_boot.py --iso $(DISC_ISO) --source SYSTEM.CNF

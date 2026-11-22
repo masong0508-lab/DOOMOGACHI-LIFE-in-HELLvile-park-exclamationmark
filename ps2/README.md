@@ -21,7 +21,7 @@ export PS2SDK="$PS2DEV/ps2sdk"
 export GSKIT="$PS2DEV/gsKit"
 export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2SDK/bin"
 make -C ps2 -j2
-# Gameplay ISO with the generated Talk bank and audsrv module.
+# Gameplay ISO with the generated Talk bank and PS2SDK sound modules.
 make -C ps2 -j2 disc
 # Optional, if CMake is installed:
 # cmake -S ps2 -B ps2/build -DCMAKE_TOOLCHAIN_FILE="$PS2DEV/share/ps2dev.cmake"
@@ -112,7 +112,7 @@ On a stable digital reply from a capable DualShock, the game requests
 analog mode asynchronously. Temporary on-screen button labels reuse the PS1
 DualShock convention (Cross / Circle / Square / Triangle).
 
-## PS2-2 experimental memory-card persistence
+## PS2-2 memory-card persistence
 
 The **game** ELF now uses the PS2SDK `libmc` IOP service and the native
 `save_game()` / `load_game()` codec. A formatted PlayStation 2 memory card
@@ -130,13 +130,13 @@ unformatted card is a real error, never a successful volatile save.
 
 The save code uses 1 KiB of aligned IOP transfer scratch, no heap and no
 extra framebuffer. No auto-format or deletion of unrelated card content.
-The game does **not yet** include a PS2 Browser icon, an in-game card-slot
-selector, or a verified resume test after process restart/power loss.
-The host `save_journal_test` checks CRC, torn-write fallback, bounds and
-generation rollover. PS2-6 also tracks a formatted MCMAN card across
-successive `mcGetInfo` polls (where `fmt` remains zero) and resets the
-state on removal, as covered by the mocked-libmc tests. These are not a
-substitute for actual memory-card integration on PCSX2 or hardware. Treat the feature as **experimental until tested**.
+Play! verified two Free Play saves, reload after an emulator restart,
+and rollback after corrupting the newest generation in a copy of the
+test card. The host `save_journal_test` checks CRC, torn-write fallback,
+bounds and generation rollover. PS2-6 tracks a formatted card across
+successive MCMAN `mcGetInfo` polls and resets the state on removal.
+Story persistence, card removal during a write, and console playback
+remain part of the release walkthrough.
 
 The transport uses the PS2SDK's IOP open flags for libmc readback and writes.
 The host mock enforces those flags and rejects writes through read-only
@@ -152,9 +152,10 @@ PS2SDK audsrv, with four procedural tone channels and three overlapping
 SFX voices. PS2-6 adds actual left/center/right tone routing, -64..64
 sample stereo panning, semitone pitch adjustment and priority-aware
 replacement of overlapping SFX, without expanding the PCM buffer. The audio renderer advances even when SPU2 is behind, so
-skipped audio cannot accelerate or delay the simulation. If the IOP
-module is unavailable it logs and mutes instead of pretending audio
-works. Its audsrv.irx must come from the installed SDK.
+skipped audio cannot accelerate or delay the simulation. Where the ROM
+provides LIBSD, the game uses it. BIOS-free Play! can use `FREESD.IRX`
+from the disc. Load the sound driver before calling audsrv. If audsrv
+cannot initialize, the game logs the failure and continues muted.
 
 The disc path exposes the same `TALK_EN.BIN` compiled by
 `make -C core talk`; no new or hand-authored substitute language file
@@ -182,10 +183,9 @@ make -C ps2 disc
 ```
 
 This stage requires `xorriso`, Python 3, PS2SDK/gsKit, and the SDK's
-`$(PS2SDK)/iop/irx/audsrv.irx`. `SYSTEM.CNF`, the built ELF, the
-real Talk bank and audsrv are copied into the ISO root. The audsrv
-module is supplied by PS2SDK and has its own upstream licensing;
-do not distribute modified binaries without reviewing those terms.
+`audsrv.irx` and `freesd.irx`. `SYSTEM.CNF`, the built ELF, the
+Talk bank and both sound modules go into the ISO root. The original
+sound module sources are in [PS2SDK](https://github.com/ps2dev/ps2sdk/tree/master/iop/sound).
 
 GitHub's PS2 workflow now tests the PS2 host controls, audio mixer,
 Talk filename security, save-journal rollback and mocked libmc I/O.
@@ -208,8 +208,8 @@ sh ps2/tools/build_container.sh
 This uses the official `ps2dev/ps2dev:latest` cross-toolchain image,
 not the host's compiler. It installs Make, Python and xorriso in the
 temporary image, runs the diagnostic and real-game builds, and packages
-the disc-side TALK_EN.BIN and audsrv IRX. No copyrighted PS2 BIOS or
-original commercial game files are included.
+the disc-side `TALK_EN.BIN`, `AUDSRV.IRX` and `FREESD.IRX`. The
+image uses the game's own assets and open-source SDK modules.
 
 ### First real emulator attempt (no BIOS required)
 
@@ -291,8 +291,8 @@ Three outputs are available from the **same, real game build**:
 | CHD | Losslessly compressed DVD image for modern PCSX2 and other CHD-enabled emulators | Yes on compatible emulators; not a generic PS2 hardware/OPL format |
 | ISO.ZST | High-ratio Zstandard download/backup of the ISO | No. Decompress to ISO first |
 
-The native disc recipe includes **only** SYSTEM.CNF, DOOMOG.ELF,
-TALK_EN.BIN and AUDSRV.IRX. It now uses xorriso's -no-pad option by
+The native disc recipe includes `SYSTEM.CNF`, `DOOMOG.ELF`,
+`TALK_EN.BIN`, `AUDSRV.IRX` and `FREESD.IRX`. It uses xorriso's -no-pad option by
 default so the ISO does not carry the historical 300 KiB trailing pad.
 For a physical disc project where extra padding is desirable, use
 PS2_ISO_PAD=1. No gameplay resources, Talk words or music are discarded.
