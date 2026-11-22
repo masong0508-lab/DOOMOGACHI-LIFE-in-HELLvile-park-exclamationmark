@@ -33,6 +33,8 @@
 #define VIEW_MIN 8
 #define CLIP_MAX 64
 #define SKY_Z (100000)
+#define FADE_LAST 14
+#define FADE_DIV_MAX (MAX_DIST_UNITS / DOOMO_CELL_UNITS * 4)
 
 typedef struct { int32_t d; int16_t top, bot; } ClipEnt;   /* d: world units */
 static ClipEnt clips[NAT_MAX_W][CLIP_MAX];
@@ -49,6 +51,8 @@ static int horizon;             /* screen row */
 static int vx0, vy0, vw0, vh0;
 static int64_t max_dist;        /* fix16 world units: rays stop here */
 static int fade_div;            /* world units per light step */
+static int fade_far;
+static uint8_t fade_step[FADE_LAST * FADE_DIV_MAX];
 
 /* Before clipping to a cell, depth depends only on the plane height and
  * absolute screen row. Adjacent rays often sample the same plane. */
@@ -62,10 +66,20 @@ static int light_at(const DoomoCell *c)
     return DOOMO_CLAMP(l, 0, 15);
 }
 
+static void fade_setup(int div)
+{
+    int i;
+    if (div == fade_div) return;
+    fade_div = div;
+    fade_far = div * FADE_LAST;
+    for (i = 0; i < FADE_LAST; i++) memset(fade_step + i * div, i, (size_t)div);
+}
+
 static int fade(int light, int64_t dist_fx)
 {
-    int l = light - (int)((dist_fx >> 16) / fade_div);
-    return DOOMO_CLAMP(l, 1, 15);
+    unsigned distance = (unsigned)(dist_fx >> 16);
+    if (distance >= (unsigned)fade_far) return 1;
+    return DOOMO_CLAMP(light - fade_step[distance], 1, 15);
 }
 
 /* screen row of world height z (fix16) at distance d (fix16, > 0) */
@@ -423,10 +437,10 @@ void plat_view3d(const DoomoView3D *v)
         int vd = v->view_dist;
         if (vd < VIEW_MIN || vd > MAX_DIST_UNITS / DOOMO_CELL_UNITS) {
             max_dist = (int64_t)MAX_DIST_UNITS * 65536;
-            fade_div = 128;
+            fade_setup(128);
         } else {
             max_dist = (int64_t)vd * DOOMO_CELL_UNITS * 65536;
-            fade_div = vd * 4;               /* vd = 32 is the old 128; 12 cells: 48 units a step */
+            fade_setup(vd * 4);               /* vd = 32 is the old 128; 12 cells: 48 units a step */
         }
     }
     focal = (int)(((int64_t)vw0 / 2 * 65536) / plane);

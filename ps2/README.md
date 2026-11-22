@@ -294,9 +294,10 @@ console during the PCSX2 and hardware acceptance walkthrough.
 
 The software raycaster reuses floor and ceiling depths by screen row and
 advances the wall texture sample with exact integer steps. This removes
-repeated divisions from both pixel loops. The row cache costs 3.75 KiB
-of EE memory. Native runs matched 906 frame hashes across the Bone
-levels, the general combat route, and the Hell Breach playthrough.
+repeated divisions from both pixel loops. Distance shading uses a
+small table for the current view range. The row cache and shading
+table use 6.375 KiB of EE memory. Native runs matched 906 frame hashes
+across the Bone levels, general combat, and Hell Breach.
 
 ## PS2-9 compact disc images and low-storage CI artifacts
 
