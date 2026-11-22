@@ -203,6 +203,123 @@ TEST(talk_scene_day_plan_offers_live_venue_and_remembers_its_answer)
     CHECK_EQ(find_row("followup", -1, -1), -1);
 }
 
+TEST(talk_scene_day_plan_focuses_the_venue_and_rechecks_a_stale_shortcut)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    uint16_t cafe, wf;
+    uint32_t tags[4];
+    char label[48];
+    int row, bond, money;
+    town();
+    doomo_town.minute = 12 * 60;
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_lex_find("brimstone bites", &cafe, &wf, tags) >= 0);
+    r = town_res(ID_NANA);
+    r->activity = ACT_CAFE;
+    r->mood = MOOD_HAPPY;
+    r->stat[STAT_HUNGER] = r->stat[STAT_ENERGY] = r->stat[STAT_HEALTH] = 90;
+    bond = rel_value(ID_NANA, DOOMO_PLAYER_ID);
+    money = (int)doomo_town.money;
+
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+    row = find_row("out", -1, cafe);
+    CHECK_EQ(row, 1);
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "Brimstone Bites") != NULL);
+    go_to(row); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "outing");
+    CHECK_EQ(d.sel, find_row("outing", -1, cafe));
+    CHECK(d.sel > 0); /* the café is not the first valid option at noon */
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_INVITED));
+    CHECK_EQ(rel_value(ID_NANA, DOOMO_PLAYER_ID), bond);
+    CHECK_EQ((int)doomo_town.money, money);
+
+    press(BTN_B); /* cancel without making an offer */
+    row = find_row("out", -1, cafe);
+    CHECK_EQ(row, 1);
+    go_to(row);
+    r->activity = ACT_HOME;
+    press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "main");
+    CHECK_EQ(find_row("out", -1, cafe), -1);
+    CHECK(find_row("out", 0, 0) >= 0);
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+}
+
+TEST(talk_scene_outing_picker_explains_an_existing_appointment)
+{
+    TalkSceneDebug d;
+    TalkSummary sum = {0};
+    TalkOutcome o;
+    int i, saw_hint = 0;
+    town();
+    doomo_town.minute = 12 * 60;
+    town_res(ID_NANA)->activity = ACT_HOME;
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = sum.nev = 1;
+    sum.id[0] = ID_NANA;
+    sum.ev[0].kind = TEV_ACT_INVITE;
+    sum.ev[0].b = ACT_CAFE;
+    talk_outcome_apply(&sum, &o);
+    CHECK_EQ(o.invited, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("out", 0, 0)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "main");
+    for (i = 0; ui_toast_text(i); i++)
+        if (strstr(ui_toast_text(i), "Brimstone Bites")) saw_hint = 1;
+    CHECK(saw_hint);
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), ACT_CAFE);
+}
+
+TEST(talk_scene_day_plan_invitation_round_trips_the_confirmed_destination)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    int attempt, k, row;
+    town();
+    doomo_town.minute = 12 * 60;
+    r = town_res(ID_NANA);
+    /* A trusted friend is likely to accept. The real reply still decides. */
+    for (attempt = 0; attempt < 8 && talk_outcome_meet_plan(ID_NANA) < 0; attempt++) {
+        rel_adjust(ID_NANA, DOOMO_PLAYER_ID, 100);
+        rel_adjust(DOOMO_PLAYER_ID, ID_NANA, 100);
+        r->stat[STAT_HUNGER] = r->stat[STAT_ENERGY] = r->stat[STAT_HEALTH] = 90;
+        CHECK(open_talk(ID_NANA));
+        r->activity = ACT_CAFE;
+        r->mood = MOOD_HAPPY;
+        go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+        CHECK(read_talk_reply());
+        row = find_row("out", -1, -1);
+        CHECK_EQ(row, 1);
+        go_to(row); press(BTN_A);
+        CHECK(talk_scene_debug(&d) && strcmp(d.page, "outing") == 0);
+        CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_INVITED));
+        press(BTN_A);  /* Offer the highlighted café. */
+        read_talk_reply();
+        if (talk_scene_debug(&d) && !d.busy) press(BTN_B);
+        for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) {
+            frames(0, 90); press(BTN_A);
+        }
+        CHECK(!talk_scene_debug(&d));
+    }
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), ACT_CAFE);
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_INVITED));
+    CHECK(!talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED));
+    CHECK(save_game(1));
+    talk_outcome_reset();
+    CHECK(load_game(1));
+    sim_init();
+    CHECK_EQ(talk_outcome_meet_ready(ACT_CAFE), ID_NANA);
+    CHECK_EQ(talk_outcome_meet_kind(ID_NANA, ACT_CAFE, TALK_MEET_CHAT), ID_NANA);
+    CHECK(talk_mem_shared(ID_NANA, TALK_SHARED_PLAYED));
+}
+
 TEST(talk_scene_day_plan_offer_expires_when_you_turn_to_someone_else)
 {
     TalkSceneDebug d;
@@ -389,7 +506,7 @@ TEST(talk_scene_real_outing_menu_and_play_action)
 {
     TalkSceneDebug d;
     DoomoResident *r;
-    int row, i, has_real_venue = 0, happy, energy;
+    int row, i, venues = 0, happy, energy;
     town();
     doomo_town.minute = 12 * 60;  /* park and outdoor venues open */
     r = town_res(ID_NANA);
@@ -409,11 +526,15 @@ TEST(talk_scene_real_outing_menu_and_play_action)
         const char *kind = "";
         int arg, value;
         talk_scene_row_debug(i, &kind, &arg, &value, NULL);
-        if (strcmp(kind, "outing") == 0 && value > 0 &&
-            talk_act_venue_of((uint16_t)value) == ACT_PARK)
-            has_real_venue = 1;
+        if (strcmp(kind, "outing") == 0 && value > 0) {
+            int venue = talk_act_venue_of((uint16_t)value);
+            CHECK(venue >= 0 && venue < ACT_COUNT);
+            venues |= 1 << venue;
+        }
     }
-    CHECK(has_real_venue);          /* only valid world destinations are shown */
+    CHECK_EQ(venues, (1 << ACT_PARK) | (1 << ACT_CAFE) | (1 << ACT_SHOP) |
+                     (1 << ACT_CHURCH) | (1 << ACT_WORKSHOP) | (1 << ACT_BEACH) |
+                     (1 << ACT_CONCERT) | (1 << ACT_VAPE_SHOP));
     press(BTN_B);                   /* back without promising an outing */
     CHECK(talk_scene_debug(&d) && strcmp(d.page, "main") == 0);
     row = find_row("play", -1, -1);

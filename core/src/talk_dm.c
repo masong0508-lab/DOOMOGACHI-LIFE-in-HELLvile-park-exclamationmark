@@ -253,23 +253,33 @@ static int res_id(const TalkState *s, int k)
     return id >= 0 && id < DOOMO_MAX_RESIDENTS && !is_pet(s, k) && !talk_safe_is_pet(id) ? id : -1;
 }
 
-/* 0: the resident will go (venue set); else why not (TAW_*): a rule (a minor, a date, a closed venue), a cap, the sim */
+int talk_dm_invite_why(const TalkState *s, int who, int venue)
+{
+    int id, why;
+    if (!s || !talker(s, who)) return TAW_SIM;
+    id = res_id(s, who);
+    if (id < 0) return TAW_SIM;
+    if (!talk_act_invite_ok(TA_INVITE, venue, minor_room(s), town_hour())) return TAW_RULE;
+    why = talk_outcome_why_in(s, TEV_ACT_INVITE, id);
+    if (why) return why;
+    return sim_nudge_ok(id, venue) ? TAW_NONE : TAW_SIM;
+}
+
+/* Resolve the requested venue, then use the same live rules as the picker. */
 static int invite_plan(const TalkState *s, int who, int *venue)
 {
-    int id = res_id(s, who), v, hour = town_hour(), minor = minor_room(s), why;
+    int id = res_id(s, who), v, why;
     static const uint8_t fall[2] = { ACT_PARK, ACT_CAFE };
     if (id < 0) return TAW_SIM;
     v = talk_act_venue_of(s->in.topic[0]);
     if (v < 0) {                                           /* no venue named: where their favourite hobby is practised, else a kid-safe one */
         int j, f = sim_favourite_venue(id);
         v = ACT_PARK;
-        if (f != ACT_VAPE_SHOP && talk_act_invite_ok(TA_INVITE, f, minor, hour) && sim_nudge_ok(id, f)) v = f;
+        if (f != ACT_VAPE_SHOP && talk_act_invite_ok(TA_INVITE, f, minor_room(s), town_hour()) && sim_nudge_ok(id, f)) v = f;
         else for (j = 0; j < 2; j++) if (sim_nudge_ok(id, fall[j])) { v = fall[j]; break; }
     }
-    if (!talk_act_invite_ok(TA_INVITE, v, minor, hour)) return TAW_RULE;
-    why = talk_outcome_why_in(s, TEV_ACT_INVITE, id);
+    why = talk_dm_invite_why(s, who, v);
     if (why) return why;
-    if (!sim_nudge_ok(id, v)) return TAW_SIM;
     *venue = v;
     return TAW_NONE;
 }

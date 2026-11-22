@@ -184,7 +184,9 @@ this version has no PS2 keyboard backend.
 
 In groups, residents remember the topic they personally answered. A
 day-plan reply uses the resident's actual activity and names the place
-they are visiting. In Free Play, meeting a care or item need raised in
+they are visiting. **Plan a visit** highlights that destination in the
+outing picker when the resident can receive an invitation. In Free Play,
+meeting a care or item need raised in
 Talk earns Helping Paw and its Pigtails reward through the shared
 simulation. The existing memory-card format stores the results.
 

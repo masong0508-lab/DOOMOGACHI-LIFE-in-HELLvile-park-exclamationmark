@@ -56,6 +56,12 @@ player switches to another resident or moves the conversation on. Taking
 the follow-up starts a normal exchange, which records a topic only if
 the resident answers it.
 
+If the resident can receive an invitation there, **Plan a visit** opens
+the outing picker with that venue highlighted. The player confirms a
+destination and the resident answers through Talk. The shortcut checks
+the resident and their activity again when chosen. If they have already
+accepted an invitation today, Talk can remind the player of the plan.
+
 | Starting topic | Linked subjects | What to cover in the next writing pass |
 |---|---|---|
 | Band | Song, lyrics, microphone, concert, encore | Ask what they like to play, give a reason, then follow up about a song or a performance. |
@@ -239,13 +245,11 @@ state, showing their actual simulation response. An unavailable resident
 is refused by the normal care rules. These UI actions are in the shared
 Talk scene; ports without Talk compiled do not magically gain it.
 
-Test through `test_talk_scene.c` using real UI input: the outing picker
-must contain an allowed park at noon, and the play choice must change
-resident stats. Keep scripted invitation outcome tests and all minor,
-status and per-day action caps in `test_talk_actions.c`. Further work:
-showing a specific inventory item, giving it with confirmation, moving
-the player's avatar with the guest, and recording the outing as an
-episodic memory. Do not label these unimplemented behaviors complete.
+Controller tests in `test_talk_scene.c` check the eight eligible noon
+destinations, a focused café invitation through save and reload, and
+the stat changes from playing together. `test_talk_actions.c` covers
+minor, status and daily action limits. The sections below describe the
+inventory actions, shared memories, and the on-site meetup.
 
 ## Inventory-backed showcasing (implemented shared core)
 

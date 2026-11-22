@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Talk day-plan invitations (2026-11-22):** The current venue can lead
+  directly to a focused outing choice. The picker lists named venues
+  through normalized language-bank keys and surfaces an existing plan
+  when the daily invitation limit applies.
 - **Saved Talk appointments (2026-11-22):** Same-day plans keep their
   guest, venue, current availability, and original inviter through a
   reload. Used plans still count toward the daily limit. The optional

@@ -59,7 +59,7 @@ static struct TalkScn {
     TRow      row[TROWS];
     uint16_t  stock[TSTOCK];
     TalkSugg  quick[TALK_QUICK_MAX];     /* the replies to what was just said (top of the main page) */
-    uint8_t   nquick;
+    uint8_t   nquick, followup_place;    /* outing index + 1 from the last day-plan reply */
     uint32_t  qsalt;
     UiList    list;
     char      you[TALK_SHOWN_MAX];
@@ -124,13 +124,13 @@ static const char *const stock_key[] = {
  * extra resident state or venue-specific allocations. */
 static const struct { const char *key; const char *label; uint8_t venue; } outing[] = {
     { "park", "the park", ACT_PARK },
-    { "Brimstone Bites", "Brimstone Bites", ACT_CAFE },
+    { "brimstone bites", "Brimstone Bites", ACT_CAFE },
     { "shop", "the shop", ACT_SHOP },
-    { "St. Cuddles", "St. Cuddles", ACT_CHURCH },
+    { "st cuddles", "St. Cuddles", ACT_CHURCH },
     { "workshop", "the workshop", ACT_WORKSHOP },
     { "beach", "the beach", ACT_BEACH },
     { "concert hall", "the concert hall", ACT_CONCERT },
-    { "Cloud Nine Vapor", "Cloud Nine Vapor", ACT_VAPE_SHOP }
+    { "cloud nine vapor", "Cloud Nine Vapor", ACT_VAPE_SHOP }
 };
 
 /* ---- quick replies (T6b): what to say to what was just said ------------------------------------
@@ -688,6 +688,19 @@ static int followup_open(uint16_t topic)
     return talk_gen_concept_ok(topic, &aud) && !q_grief(topic);
 }
 
+/* The shortcut refers to where this resident said they were. A normal
+ * invitation can still be offered for another eligible venue. */
+static int followup_place_open(void)
+{
+    const DoomoResident *r;
+    int venue;
+    if (!T.followup || !T.followup_place) return 0;
+    venue = outing[T.followup_place - 1].venue;
+    if (talk_dm_invite_why(&T.s, T.to, venue) != TAW_NONE) return 0;
+    r = town_res(speaker_of(T.to));
+    return r && r->activity == venue;
+}
+
 /* ---- the rows ------------------------------------------------------------------------------ */
 static void add_row(int kind, int arg, int v)
 {
@@ -722,11 +735,14 @@ static void quick_refresh(void)
 
 static void build_main(void)
 {
-    int c;
+    int c, planned_place = 0;
     T.page = PG_MAIN;
     T.nrows = 0;
-    if (followup_open(T.followup)) add_row(K_FOLLOW_UP, 0, T.followup);
-    else T.followup = TC_NONE;
+    if (followup_open(T.followup)) {
+        add_row(K_FOLLOW_UP, 0, T.followup);
+        planned_place = followup_place_open();
+        if (planned_place) add_row(K_OUT, T.followup_place, T.followup);
+    } else T.followup = TC_NONE;
     quick_refresh();
     for (c = 0; c < T.nquick; c++) add_row(K_QUICK, c, 0);
     for (c = 0; c < C_COUNT; c++) {
@@ -735,7 +751,7 @@ static void build_main(void)
     }
     /* Deliberate shared-life actions are below the old categories so the
      * classic quick-reply and four-press compliment budgets stay intact. */
-    add_row(K_OUT, 0, 0);
+    if (!planned_place) add_row(K_OUT, 0, 0);
     add_row(K_PLAY, 0, 0);
     add_row(K_SHOW, 0, 0);
     add_row(K_GIVE, 0, 0);
@@ -927,28 +943,46 @@ static void build_acts(int c)
  * "Invite someone" on the Options page is a distinct room-membership action.
  * The underlying DM accepts/refuses this invitation by character personality
  * and applies an accepted change to the person's real activity. */
-static void build_outings(void)
+static void build_outings(int preferred)
 {
-    int i, target, minor;
+    int i, target, why, selected = -1;
     if (T.to < 0 || T.to >= T.n) {
         ui_toast("Choose one person first.");
         build_main();
         return;
     }
     target = T.ids[T.to];
-    minor = T.s.conv.aud.any_minor || talk_safe_minor(target);
+    why = talk_outcome_why_in(&T.s, TEV_ACT_INVITE, target);
+    if (why != TAW_NONE) {
+        int venue = talk_outcome_meet_plan(target);
+        if (venue >= 0) {
+            char hint[72];
+            doomo_snprintf(hint, sizeof hint, "You already planned to meet at %s.", sim_venue_name(venue));
+            ui_toast(hint);
+        } else if (why == TAW_CAP_DAY) ui_toast("They've already accepted an invitation today.");
+        else if (why == TAW_CAP_TOWN) ui_toast("Today's outing limit is reached.");
+        else ui_toast("They can't make plans right now.");
+        build_main();
+        return;
+    }
     T.page = PG_OUTING;
     T.nrows = 0;
     for (i = 0; i < (int)(sizeof outing / sizeof outing[0]); i++) {
         uint16_t concept = TC_NONE, wf = 0;
         uint32_t tags[4];
-        if (!talk_act_invite_ok(TA_INVITE, outing[i].venue, minor, town_hour()) ||
-            !sim_nudge_ok(target, outing[i].venue))
+        if (talk_dm_invite_why(&T.s, T.to, outing[i].venue) != TAW_NONE)
             continue;
         if (talk_lex_find(outing[i].key, &concept, &wf, tags) < 0 || !concept ||
             talk_act_venue_of(concept) != outing[i].venue)
             continue;
+        if (preferred == i + 1) selected = T.nrows;
         add_row(K_OUTING, i, concept);
+    }
+    if (preferred && selected < 0) {
+        T.followup_place = 0;
+        ui_toast("That destination is unavailable now.");
+        build_main();
+        return;
     }
     if (!T.nrows) {
         ui_toast("No outings available right now.");
@@ -956,6 +990,7 @@ static void build_outings(void)
         return;
     }
     list_reset();
+    if (selected >= 0) T.list.sel = selected;
 }
 
 /* Only the player's actually-held, safe non-key items appear. Keys are
@@ -1088,6 +1123,7 @@ static void cb_after(void);
 static void show_scene_reply(int speaker, const char *reply, uint16_t followup)
 {
     T.followup = followup;
+    T.followup_place = 0;
     if (followup) topic_name(followup, T.followup_name, (int)sizeof T.followup_name);
     ui_say(speaker, reply);
     T.busy = 1;
@@ -1223,7 +1259,10 @@ static const char *row_text(int index, char *buf)
         doomo_snprintf(buf, 48, "To: %s <>", T.to < 0 ? "everyone" : res_name(T.ids[T.to]));
         break;
     case K_INVITE: doomo_snprintf(buf, 48, "Add someone to chat >"); break;
-    case K_OUT: doomo_snprintf(buf, 48, "Ask to go somewhere >"); break;
+    case K_OUT:
+        if (r->arg) doomo_snprintf(buf, 48, "Plan a visit to %s >", outing[r->arg - 1].label);
+        else doomo_snprintf(buf, 48, "Ask to go somewhere >");
+        break;
     case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
     case K_SHOW: doomo_snprintf(buf, 48, "Show an item >"); break;
     case K_SHOWITEM: doomo_snprintf(buf, 48, "Show %s", doomo_items[r->arg].name); break;
@@ -1409,8 +1448,8 @@ static void finish(void)
         for (k = 0; k < sum.nev; k++)
             if (sum.ev[k].kind == TEV_ACT_INVITE) { v = sum.ev[k].b; break; }
         if (v >= 0 && v < ACT_COUNT)
-            doomo_snprintf(msg, sizeof msg, "Meet today: %s (City Map)", doomo_activity_names[v]);
-        else doomo_snprintf(msg, sizeof msg, "Outing accepted! Check City Map.");
+            doomo_snprintf(msg, sizeof msg, "Meet at %s today.", sim_venue_name(v));
+        else doomo_snprintf(msg, sizeof msg, "Outing accepted!");
     }
     else if (o.made_up) doomo_snprintf(msg, sizeof msg, "They made up! Bond %s", sgn);
     else if (o.dating) doomo_snprintf(msg, sizeof msg, "A new couple! Bond %s", sgn);
@@ -1651,7 +1690,7 @@ static void tell_oddity(void)
  * changes no sim, friendship, money, memory or news. */
 static void tell_day_plan(void)
 {
-    int id, act;
+    int id, act, place_idx = 0;
     size_t i;
     uint16_t subject = TC_NONE, form;
     uint32_t tags[4];
@@ -1691,6 +1730,7 @@ static void tell_day_plan(void)
             for (i = 0; i < sizeof outing / sizeof outing[0]; i++) {
                 if (outing[i].venue != act) continue;
                 if (talk_lex_find(outing[i].key, &subject, &form, tags) < 0) subject = TC_NONE;
+                if (subject) place_idx = (int)i + 1;
                 break;
             }
         }
@@ -1698,6 +1738,7 @@ static void tell_day_plan(void)
     }
     doomo_snprintf(T.you, sizeof T.you, "How's your day going?");
     show_scene_reply(id, line, subject);
+    T.followup_place = (uint8_t)place_idx;
 }
 
 static void concern_reply(int id, const char *reply, const char *you)
@@ -1858,7 +1899,7 @@ static void say_quick(int i)
     g = &T.quick[i];
     /* A suggested invitation with no specified real venue must open the
      * destination picker. Never promise an arbitrary nearby activity. */
-    if (g->act == TA_INVITE) { build_outings(); return; }
+    if (g->act == TA_INVITE) { build_outings(0); return; }
     if (g->act == TA_OFFER)  { build_care(); return; }
     if (g->act == TA_GIVE)   { build_give_items(); return; }
     memset(&u, 0, sizeof u);
@@ -1914,7 +1955,7 @@ static void say_typed(void)
         T.to = u.target;
         T.followup = TC_NONE;
     }
-    if (u.act[0] == TA_INVITE) { build_outings(); return; }
+    if (u.act[0] == TA_INVITE) { build_outings(0); return; }
     if (u.act[0] == TA_OFFER) { build_care(); return; }
     if (u.act[0] == TA_GIVE) { build_give_items(); return; }
     say_utter(&u);
@@ -1966,14 +2007,20 @@ static void activate(int i)
     switch (r->kind) {
     case K_CAT: build_acts(r->arg); break;
     case K_ACT:
-        if (r->arg == TA_INVITE) { build_outings(); break; }
+        if (r->arg == TA_INVITE) { build_outings(0); break; }
         if (r->arg == TA_OFFER) { build_care(); break; }
         if (r->arg == TA_GIVE) { build_give_items(); break; }
         if (wants_topic(r->arg) && T.topic == TC_NONE) { T.pending = r->arg; build_topics(); }
         else say_act(r->arg);
         break;
     case K_QUICK: say_quick(r->arg); break;
-    case K_OUT: build_outings(); break;
+    case K_OUT:
+        if (r->arg && (r->v != T.followup || r->arg != T.followup_place ||
+                       !followup_open(r->v) || !followup_place_open())) {
+            ui_toast("That outing suggestion has changed.");
+            build_main();
+        } else build_outings(r->arg);
+        break;
     case K_PLAY: play_together(); break;
     case K_SHOW: build_show_items(); break;
     case K_SHOWITEM: show_item(r->arg); break;
@@ -2067,7 +2114,7 @@ static void activate(int i)
             !talk_mem_shared(T.ids[T.to], r->arg)) { build_history(); break; }
         if (r->arg == TALK_SHARED_PLAYED) play_together();
         else if (r->arg == TALK_SHARED_GIFTED) build_give_items();
-        else if (r->arg == TALK_SHARED_INVITED) build_outings();
+        else if (r->arg == TALK_SHARED_INVITED) build_outings(0);
         break;
     case K_QUIRK: tell_oddity(); break;
     case K_DAY_PLAN: tell_day_plan(); break;

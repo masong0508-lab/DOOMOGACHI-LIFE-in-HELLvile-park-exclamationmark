@@ -1356,6 +1356,9 @@ enum { TACT_NONE = 0,
        TACT_COUNT };
 /* why a plan refused an invitation (TalkPart.actw) */
 enum { TAW_NONE = 0, TAW_CAP_DAY, TAW_CAP_TOWN, TAW_RULE, TAW_SIM };
+/* Live eligibility for an explicit destination. Personality still decides
+ * how the resident answers once an invitation is spoken. */
+int talk_dm_invite_why(const TalkState *s, int who, int venue);
 /* The pure rules (talk_act.c; the exhaustive tables are tests). venue is an ACT_* (sim.h); the hour 0..23.
  * minor_room is 1 when a minor speaks, listens or is the player. TA_ASK_OUT (a date) is never an invitation. */
 int  talk_act_invite_ok(int act, int venue, int minor_room, int hour);
