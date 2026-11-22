@@ -182,6 +182,12 @@ their day and a real social-memory ledger. On an ELF boot without the
 language disc it does not advertise Talk. Typed entry is off because
 this version has no PS2 keyboard backend.
 
+In groups, residents remember the topic they personally answered. A
+day-plan reply uses the resident's actual activity and names the place
+they are visiting. In Free Play, meeting a care or item need raised in
+Talk earns Helping Paw and its Pigtails reward through the shared
+simulation. The existing memory-card format stores the results.
+
 The 320x240 indexed software surface is shared with 3D. Its RGB5551
 presentation texture uses 150 KiB of EE staging and 160 KiB of
 page-aligned GS VRAM. The prior 512x256 RGB5551 path used 256 KiB in

@@ -12,6 +12,7 @@
  * templates so the ticker always has something to say.
  */
 #include "doomo/playas.h"
+#include "fp_int.h"
 #include "sim_int.h"
 
 const char *const doomo_problem_names[PROB_COUNT] = {
@@ -98,6 +99,12 @@ void sim_problem_remove(int index)
             (size_t)(sim_s.nprob - index - 1) * sizeof(DoomoProblem));
     sim_s.nprob--;
     prob_rebuild();
+}
+
+void sim_problem_complete(int index)
+{
+    sim_problem_remove(index);
+    if (doomo_town.mode == TOWN_FREEPLAY) fp_achieve(UL_FP_HELPER);
 }
 
 void sim_problem_drop_for(int id)
@@ -277,8 +284,7 @@ void sim_problem_resolve(int index)
     default: break;
     }
     /* the advice helpers may already have removed it */
-    index = sim_problem_find(id, p.kind);
-    if (index >= 0) sim_problem_remove(index);
+    sim_problem_complete(sim_problem_find(id, p.kind));
     reward(r, id, 10 + sim_rand(16));
     sim_mood_of(id);
 }

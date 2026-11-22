@@ -135,6 +135,27 @@ Also repeat the test mid-chapter at different times, in different homes
 and venues, and after interrupting a group chat. Track time from a button
 press to the first response and frame time through all of the transitions.
 
+### Free Play and unlock progression
+
+Cover Empty, Classic, and Random islands with the same Talk rules.
+An Empty island starts with the people the player creates. Classic and
+Random islands can offer local introductions, familiar places, and
+existing relationships from the first day. Give players new reasons to
+visit those places as friendships, routines, and shared plans develop.
+
+Completing a care or item concern through Talk or the resident's menu
+now counts toward the existing **Helping Paw** achievement and its
+Pigtails reward in Free Play. The problem must be resolved. Inspecting
+a concern or trying to deliver a missing item leaves it open.
+
+Use that rule for future unlocks that grow the island. A shared activity
+could open a club, recurring meetups could make a new outing available,
+and completed projects could add shop stock or change a public space.
+Show what opened in the game and give participating residents a grounded
+reason to mention it. Keep rewards tied to the action and save them
+through the unlock system. Test every earned reward after reload, and
+exercise repeat actions and the equivalent Talk and menu paths.
+
 ## Next milestones, in priority order
 
 1. **Coherence/fact tests**: 10+ turn scripted conversations with explicit

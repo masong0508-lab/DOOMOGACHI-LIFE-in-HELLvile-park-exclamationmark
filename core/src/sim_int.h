@@ -120,6 +120,7 @@ void sim_check_problems(int id, DoomoResident *r);
 void sim_problem_drop_for(int id);       /* forget every problem of id     */
 int  sim_problem_find(int id, int kind); /* index or -1                    */
 void sim_problem_remove(int index);
+void sim_problem_complete(int index);   /* The player helped. -1 if the action already removed it. */
 void sim_news_welcome(int pop);          /* sim_init's greeting (LS1)     */
 void sim_news_fluff(void);               /* ambient town headline          */
 void sim_news_daily(void);

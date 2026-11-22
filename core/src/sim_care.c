@@ -92,7 +92,7 @@ static void apply_item(DoomoResident *r, int item, int pct)
 static void resolve_kind(int id, int kind)
 {
     int pi = sim_problem_find(id, kind);
-    if (pi >= 0) sim_problem_remove(pi);
+    if (pi >= 0) sim_problem_complete(pi);
 }
 
 static const char *missing(int item)
@@ -293,7 +293,7 @@ const char *sim_gift(int id, int item)
     {
         int pi = sim_problem_find(id, PROB_WANTS_ITEM);
         if (pi >= 0 && sim_problem(pi)->item == item) {
-            sim_problem_remove(pi);
+            sim_problem_complete(pi);
             sim_stat_add(r, STAT_HAPPY, 20);
         }
     }

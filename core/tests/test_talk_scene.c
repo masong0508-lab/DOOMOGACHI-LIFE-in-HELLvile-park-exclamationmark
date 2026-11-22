@@ -16,6 +16,7 @@
 #include "doomo/ui.h"
 #include "doomo/items.h"
 #include "doomo/sim.h"
+#include "../src/fp_int.h"          /* Free Play achievement IDs */
 #include "../src/ui_internal.h"     /* UiDialogDebug */
 
 #define ID_NANA 1
@@ -148,6 +149,7 @@ TEST(talk_scene_thought_bubble_leads_to_real_care)
     DoomoResident *r;
     int row, k;
     town();
+    sim_init();
     r = town_res(ID_NANA);
     CHECK(r != NULL);
     r->stat[STAT_HYGIENE] = 20;
@@ -163,6 +165,7 @@ TEST(talk_scene_thought_bubble_leads_to_real_care)
     go_to(row); press(BTN_A);
     CHECK(talk_scene_debug(&d) && d.busy);
     CHECK(sim_problem_for(ID_NANA) >= 0); /* listening is not free problem resolution */
+    CHECK(!unlock_has(UL_FP_HELPER));
     for (k = 0; k < 40 && talk_scene_debug(&d) && d.busy; k++) {
         frames(0, 60); press(BTN_A);
     }
@@ -172,6 +175,7 @@ TEST(talk_scene_thought_bubble_leads_to_real_care)
     go_to(row); press(BTN_A);
     CHECK(r->stat[STAT_HYGIENE] >= 95);
     CHECK_EQ(sim_problem_for(ID_NANA), -1);
+    CHECK(unlock_has(UL_FP_HELPER));
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
@@ -197,10 +201,12 @@ TEST(talk_scene_thought_item_requires_inventory_and_delivers_once)
     CHECK(sim_problem_for(ID_NANA) >= 0);
     CHECK_EQ((int)doomo_town.money, cash);
     CHECK_EQ(inv_count(item), 0);
+    CHECK(!unlock_has(UL_FP_HELPER));
     CHECK(inv_add(item, 1) >= 1);
     press(BTN_A); /* the same live row now has the missing item */
     CHECK_EQ(inv_count(item), 0);
     CHECK_EQ(sim_problem_for(ID_NANA), -1);
+    CHECK(unlock_has(UL_FP_HELPER));
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
