@@ -17,6 +17,7 @@ expect-log ET blittest ok
 expect-log ET blit2test ok
 expect-log ET upscale ok
 expect-log ET postfx backdrop ok
+expect-log ET palette vblank ok
 expect-log ET audio: tones
 shot et01_courtyard_fp
 wait 60

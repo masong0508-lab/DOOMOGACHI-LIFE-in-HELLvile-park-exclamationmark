@@ -29,18 +29,24 @@ static int16_t  corpse_count;
 static uint16_t actor_end;       /* one past the highest possibly used slot */
 
 #if defined(DOOMO_PLATFORM_GBA)
-/* One bit per solid slot, grouped by its world-space X stripe. Nearby
- * movement attempts walk only the intersected stripes, then run the
- * existing exact body and height checks in original slot order. */
+/* One bit per solid slot in each of its world-space X and Y stripes.
+ * Intersect the candidate sets, then run the exact body and height
+ * checks in original slot order. */
 #define SOLID_STRIPES 32
 #define SOLID_WORDS ((ACTOR_MAX + 31) / 32)
-static uint32_t solid_bits[SOLID_STRIPES][SOLID_WORDS];
+static uint32_t solid_bits[2][SOLID_STRIPES][SOLID_WORDS];
 static unsigned solid_radius;
 static uint8_t solid_dirty = 1;
 
-static int solid_stripe(int world_x)
+void actor_solid_bounds_changed(const DoomoActor *a)
 {
-    return DOOMO_CLAMP(world_x >> 7, 0, SOLID_STRIPES - 1);
+    if ((a->flags & (AF_USED | AF_SOLID)) == (AF_USED | AF_SOLID))
+        solid_dirty = 1;
+}
+
+static int solid_stripe(int coordinate)
+{
+    return DOOMO_CLAMP(coordinate >> 7, 0, SOLID_STRIPES - 1);
 }
 
 static void solid_rebuild(void)
@@ -51,28 +57,36 @@ static void solid_rebuild(void)
     for (i = 0; i < actor_end; i++) {
         const DoomoActor *a = &doomo_actors[i];
         if ((a->flags & (AF_USED | AF_SOLID)) != (AF_USED | AF_SOLID)) continue;
-        solid_bits[solid_stripe(FIX2INT(a->x))][i >> 5] |= 1u << (i & 31);
+        solid_bits[0][solid_stripe(FIX2INT(a->x))][i >> 5] |= 1u << (i & 31);
+        solid_bits[1][solid_stripe(FIX2INT(a->y))][i >> 5] |= 1u << (i & 31);
         if (a->radius > solid_radius) solid_radius = a->radius;
     }
     solid_dirty = 0;
 }
 
-static int solid_candidates(uint8_t *near, fix16 x, int radius, int omit)
+static int solid_candidates(uint8_t *near, fix16 x, fix16 y, int radius, int omit)
 {
     /* Low-bit index via a multiply on ARM7TDMI, which has no CLZ. */
     static const uint8_t bit_index[32] = {
          0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8,
         31,27,13,23,21,19,16, 7,26,12,18, 6,11, 5,10, 9
     };
-    int wx = FIX2INT(x), lo, hi, word, n = 0;
+    int wx = FIX2INT(x), wy = FIX2INT(y), xlo, xhi, ylo, yhi, word, n = 0;
     if (solid_dirty) solid_rebuild();
     radius += (int)solid_radius;
-    lo = solid_stripe(wx - radius);
-    hi = solid_stripe(wx + radius);
+    xlo = solid_stripe(wx - radius);
+    xhi = solid_stripe(wx + radius);
+    ylo = solid_stripe(wy - radius);
+    yhi = solid_stripe(wy + radius);
     for (word = 0; word < SOLID_WORDS; word++) {
         int lane;
-        uint32_t bits = solid_bits[lo][word];
-        for (lane = lo + 1; lane <= hi; lane++) bits |= solid_bits[lane][word];
+        uint32_t bits = solid_bits[0][xlo][word];
+        uint32_t ybits;
+        for (lane = xlo + 1; lane <= xhi; lane++) bits |= solid_bits[0][lane][word];
+        if (!bits) continue;
+        ybits = solid_bits[1][ylo][word];
+        for (lane = ylo + 1; lane <= yhi; lane++) ybits |= solid_bits[1][lane][word];
+        bits &= ybits;
         if ((omit >> 5) == word) bits &= ~(1u << (omit & 31));
         while (bits) {
             uint32_t low = bits & (0u - bits);
@@ -665,11 +679,16 @@ static int demon_try_move_filtered(int idx, fix16 dx, fix16 dy,
     }
 #if defined(DOOMO_PLATFORM_GBA)
     if (!solid_dirty && (a->flags & AF_SOLID)) {
-        int from = solid_stripe(FIX2INT(a->x)), to = solid_stripe(FIX2INT(nx));
-        if (from != to) {
-            uint32_t bit = 1u << (idx & 31);
-            solid_bits[from][idx >> 5] &= ~bit;
-            solid_bits[to][idx >> 5] |= bit;
+        int xfrom = solid_stripe(FIX2INT(a->x)), xto = solid_stripe(FIX2INT(nx));
+        int yfrom = solid_stripe(FIX2INT(a->y)), yto = solid_stripe(FIX2INT(ny));
+        uint32_t bit = 1u << (idx & 31);
+        if (xfrom != xto) {
+            solid_bits[0][xfrom][idx >> 5] &= ~bit;
+            solid_bits[0][xto][idx >> 5] |= bit;
+        }
+        if (yfrom != yto) {
+            solid_bits[1][yfrom][idx >> 5] &= ~bit;
+            solid_bits[1][yto][idx >> 5] |= bit;
         }
     }
 #endif
@@ -687,7 +706,7 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
 #if defined(DOOMO_PLATFORM_GBA)
     uint8_t near[ACTOR_MAX];
     const DoomoActor *a = &doomo_actors[idx];
-    int count = solid_candidates(near, a->x + dx, a->radius, idx);
+    int count = solid_candidates(near, a->x + dx, a->y + dy, a->radius, idx);
     return demon_try_move_filtered(idx, dx, dy, near, count);
 #else
     return demon_try_move_filtered(idx, dx, dy, 0, 0);
@@ -715,7 +734,7 @@ static void demon_walk(int idx, int want_angle)
         want_angle = ai_dir[idx];
     }
 #if defined(DOOMO_PLATFORM_GBA)
-    nnear = solid_candidates(near, a->x, a->radius + FIX2INT(step) + 1, idx);
+    nnear = solid_candidates(near, a->x, a->y, a->radius + FIX2INT(step) + 1, idx);
 #endif
     for (k = 0; k < 6; k++) {
         int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;

@@ -177,6 +177,10 @@ fix16 cw_trace(fix16 x0, fix16 y0, fix16 z0, fix16 dx, fix16 dy, fix16 slope,
 
 /* ---- actors (actor.c) ---- */
 void actors_clear(void);
+#if defined(DOOMO_PLATFORM_GBA)
+/* Notify the collision index when a solid changes position or radius outside actor.c. */
+void actor_solid_bounds_changed(const DoomoActor *a);
+#endif
 int  actor_alloc(int effect);                    /* -1 if full */
 int  actor_spawn_thing(const DoomoThing *t, int appear);
 int  actor_spawn_demon(int type, fix16 x, fix16 y, int appear, int tflags, int arg);

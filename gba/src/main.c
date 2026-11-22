@@ -243,7 +243,7 @@ void plat_end_frame(void)
 
 void video_flip(void)
 {
-    int waited = 0, tiles;
+    int waited = 0, tiles, page = -1;
     uint16_t bb_oam[OBJ_BB_ENT_N * 4] __attribute__((aligned(4)));  /* G6: obj.c */
     obj_bb_buffer(bb_oam);
     cv_pre_flip();              /* G5: finish a tile frame (or convert it) */
@@ -289,13 +289,11 @@ void video_flip(void)
         }
     }
     if (!waited && REG_VCOUNT < 160) vblank_intr_wait();
-    /* G5: a tile frame copies its canvas into VRAM the screen shows: that
-     * must start and end inside one vblank (lines 160..227), or the top
-     * rows of the next picture show the old tiles. A frame that arrives
-     * late in a vblank, or after it (the VBlank IRQ's mixer can take most
-     * of one), waits for the next. */
+    /* Visible tile and palette transfers must finish before scanout.
+     * The VBlank IRQ's mixer can use much of the blank, so check the
+     * actual scanline before publishing either display mode. */
     {
-        int need = cv_vblank_lines();
+        int need = cv_vblank_lines() + postfx_vblank_lines();
         while (need) {
             uint32_t vc = REG_VCOUNT;
             if (vc >= 160 && vc + (uint32_t)need <= 227) break;
@@ -305,14 +303,18 @@ void video_flip(void)
     /* G5: a tile frame shows Mode 0 (maps + canvas copied in now); a Mode 4
      * frame shows the page it was drawn into */
     tiles = cv_vblank();
-    if (!tiles && hold_building()) {
+    if (!tiles && !hold_building()) {
+        page = gba_back == (uint16_t *)VRAM_PAGE1;
+        REG_BG2CNT = 0;
+        REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
+    }
+    postfx_vblank(tiles);       /* publish palette, affine, BLDY and OAM in this blank */
+
+    if (!tiles && page < 0) {
         /* I10: a frame is being built in the hidden page over several ticks: the shown page is presented again
          * (its news strip moves), no flip; the pacing above kept this at 30 Hz */
         stage_flipped(-1);                      /* SP7: neither page holds a stage frame */
     } else if (!tiles) {
-        int page = gba_back == (uint16_t *)VRAM_PAGE1;
-        REG_BG2CNT = 0;
-        REG_DISPCNT = (uint16_t)(DCNT_MODE4 | DCNT_BG2 | DCNT_OBJ | DCNT_OBJ_1D | (page ? DCNT_PAGE : 0));
         /* S2-10: a busy card was painted on the page that was shown (loadfade.c): ld_flipped copies its rows back
          * from the page shown now, so a held frame holds in both pages again (U4: the hold stays, a full redraw
          * there was +58 ms after a load); kept panels and a stage frame are drawn again */
@@ -330,7 +332,6 @@ void video_flip(void)
         stage_flipped(-1);
         gba_back = (uint16_t *)VRAM_PAGE1;      /* the next Mode 4 frame: page 1 */
     }
-    postfx_vblank(tiles);       /* S1: BG2 affine, BLDY, palette, OAM DMA */
     obj_bb_buffer(NULL);
     last_flip_vbl = gba_vblanks;
 }

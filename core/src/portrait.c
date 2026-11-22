@@ -15,6 +15,9 @@
 #include "doomo/family.h"
 #include "doomo/playas.h"
 #include "doomo/parts.h"
+#if defined(DOOMO_PLATFORM_GBA)
+#include "doomo/scenes.h"
+#endif
 
 /* CR3: the _d calls take a resolved set. Without the gene's fields (the PS1, look_fields.h) they are
  * the plain calls (portrait.h macros) and these bodies are file-local: no extra resident code. */
@@ -546,23 +549,58 @@ void bodyspr_render(const DoomoLook *l, int status, int dir, int frame, uint8_t 
 
 /* ====================================================================== */
 /* third-person fighter                                                      */
-static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t *out)
+static void setup_fighter(PCtx *c, int view, int anim, int wframe, uint8_t *out)
 {
-    /* run cycle: left stride, left passing (bob up), right stride, right passing */
+    /* Run cycle: left stride, left passing (bob up), right stride, right passing. */
     static const int8_t steps[4] = { -1, -2, 1, 2 };
     const DoomoLook *l = c->l;
-    int yaw, rx, ry, cy, step = 0, hx, hy, tt, H;
-    view = DOOMO_CLAMP(view, 0, 4);
-    anim = DOOMO_CLAMP(anim, 0, 6);
-    yaw = 4 - view;
-    if (anim < 4) step = steps[anim];
+    int yaw = 4 - view, step = anim < 4 ? steps[anim] : 0;
+    int rx, ry, cy, hx, hy, tt, H;
     c->breath = (anim & 1) && anim < 4;
     c->wag = anim & 1;
     c->blink = 0;
     if (anim == 6) c->expr = EXPR_SHOCK;
     else if (anim == 4) c->expr = c->creepy ? c->expr : EXPR_ANGRY;
     pc_begin(out, FIGHTER_W, FIGHTER_H);
+    pb_layout(c, VK_FIGHTER, yaw, step, anim);
+    H = (c->bh * 2);
+    tt = pb_torso_top();
+    /* both hands on the weapon */
+    switch (view) {
+    case 0: hx = c->bx + PX(5); hy = tt + PCT(H, 50); break;
+    case 1: hx = c->bx - PX(3); hy = tt + PCT(H, 55); break;
+    case 2: hx = c->bx - PX(3); hy = tt + PCT(H, 60); break;
+    case 3: hx = c->bx - PX(2); hy = tt + PCT(H, 65); break;
+    default: hx = c->bx + PX(1); hy = tt + PCT(H, 62); break;
+    }
+    if (anim == 6) { hx += PX(1); hy -= PX(2); }
+    pb_set_hand(0, hx - PX(2), hy + 8);
+    pb_set_hand(1, hx + PX(2), hy - 8);
+    if (view == 2) { pb_set_hand(0, hx - PX(3), hy); pb_set_hand(1, hx + PX(1), hy + PX(1)); }
+    rx = PX(9) + l->head_size * 2;
+    ry = PCT(rx, 90);
+    cy = pb_head_y(c, ry);
+    if (anim == 6) cy -= PX(1);
+    if (anim == 4) cy += 8;
+    phead_set(&c->h, PX(16) + (anim == 6 ? PX(1) : 0), cy, rx, ry, yaw, LOD_MID);
+    g_wframe = wframe;
+    g_wview = view;
+    g_wanim = anim;
+    g_whx = hx;
+    g_why = hy;
+    if (pb_nolegs()) float_shadow(c, 16, FIGHTER_H - 1, 5);
+}
+
+static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t *out)
+{
+    view = DOOMO_CLAMP(view, 0, 4);
+    anim = DOOMO_CLAMP(anim, 0, 6);
     if (anim == 5) {
+        const DoomoLook *l = c->l;
+        int yaw = 4 - view, rx, ry, tt;
+        c->breath = c->blink = 0;
+        c->wag = 1;
+        pc_begin(out, FIGHTER_W, FIGHTER_H);
         /* dodge roll: a plush ball tumbling, seen from the camera's angle */
         PMat m = c->top;
         int sp = l->top == TOP_NONE ? 1 : 0;
@@ -598,33 +636,7 @@ static void render_fighter_ctx(PCtx *c, int view, int anim, int wframe, uint8_t 
         if (view == 2) pc_flipx();
         return;
     }
-    pb_layout(c, VK_FIGHTER, yaw, step, anim);
-    H = (c->bh * 2);
-    tt = pb_torso_top();
-    /* both hands on the weapon */
-    switch (view) {
-    case 0: hx = c->bx + PX(5); hy = tt + PCT(H, 50); break;
-    case 1: hx = c->bx - PX(3); hy = tt + PCT(H, 55); break;
-    case 2: hx = c->bx - PX(3); hy = tt + PCT(H, 60); break;
-    case 3: hx = c->bx - PX(2); hy = tt + PCT(H, 65); break;
-    default: hx = c->bx + PX(1); hy = tt + PCT(H, 62); break;
-    }
-    if (anim == 6) { hx += PX(1); hy -= PX(2); }
-    pb_set_hand(0, hx - PX(2), hy + 8);
-    pb_set_hand(1, hx + PX(2), hy - 8);
-    if (view == 2) { pb_set_hand(0, hx - PX(3), hy); pb_set_hand(1, hx + PX(1), hy + PX(1)); }
-    rx = PX(9) + l->head_size * 2;
-    ry = PCT(rx, 90);
-    cy = pb_head_y(c, ry);
-    if (anim == 6) cy -= PX(1);
-    if (anim == 4) cy += 8;
-    phead_set(&c->h, PX(16) + (anim == 6 ? PX(1) : 0), cy, rx, ry, yaw, LOD_MID);
-    g_wframe = wframe;
-    g_wview = view;
-    g_wanim = anim;
-    g_whx = hx;
-    g_why = hy;
-    if (pb_nolegs()) float_shadow(c, 16, FIGHTER_H - 1, 5);
+    setup_fighter(c, view, anim, wframe, out);
     draw_layers(c);
     g_wframe = -1;
 }
@@ -725,6 +737,9 @@ typedef struct Job {
     uint8_t  vac;               /* SP2: an empty slot's "?" silhouette (vacant()) when done */
     uint8_t  pf;                /* SP2: a prefetch (queued again if it is aborted) */
     uint8_t  si;                /* SP2: draws new content behind a stand-in (or nothing: hold 3) */
+#if defined(DOOMO_PLATFORM_GBA)
+    uint8_t  combat;            /* same-look stand-in allows a fixed quota per drawn frame */
+#endif
     uint32_t t0;                /* the tick it started */
     uint32_t last;              /* SP2: the tick of its last slice (the platform's patience) */
     uint32_t fq_tick;           /* SP2: the tick fq was worked out for */
@@ -1034,8 +1049,13 @@ static uint8_t si_ticks = PC_STANDIN;
 static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const DoomoLook *l, const DoomoDeep *d,
                      int status, int expr, const Phase *p, int soft)
 {
-    CacheEnt *e = cache_alloc(kind, rid, key, look, kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W,
-                              kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H, soft);
+    int w = kind == CK_FIGURE ? FIGURE_W : PORTRAIT_W;
+    int h = kind == CK_FIGURE ? FIGURE_H : PORTRAIT_H;
+    CacheEnt *e;
+#if defined(DOOMO_PLATFORM_GBA)
+    if (kind == CK_FIGHTER) { w = FIGHTER_W; h = FIGHTER_H; }
+#endif
+    e = cache_alloc(kind, rid, key, look, w, h, soft);
     if (!e) return 0;
     e->busy = 1;
     job_hold = 0;
@@ -1047,6 +1067,9 @@ static int job_begin(int kind, int rid, uint32_t key, uint32_t look, const Doomo
     job.vac = 0;
     job.pf = 0;
     job.si = 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    job.combat = 0;
+#endif
     job.fq_tick = now() - 1;
     job.kind = (uint8_t)kind;
     job.e = (int8_t)(e - ent);
@@ -1090,7 +1113,7 @@ __attribute__((weak)) void plat_portrait_slice_done(int cls) { (void)cls; }
 
 static int slice_class(void)
 {
-    int k = job.kind == CK_FIGURE ? 1 : job.kind == CK_BODY ? 2 : 0;
+    int k = job.kind == CK_FIGURE ? 1 : (job.kind == CK_BODY || job.kind == CK_FIGHTER) ? 2 : 0;
     int st = (job.step && pcv.gen != job.gen) ? SL_SETUP : job.step;   /* a clobbered canvas restarts */
     return k * SL_N + st;
 }
@@ -1118,6 +1141,14 @@ static void job_slice(void)
             pctx_init(c, &job.L, job.status, job.expr, job.bframe * 8);
             c->d = &job.D;
             body_setup(c, job.bdir, job.bframe, (uint8_t *)e->img.pix);
+#if defined(DOOMO_PLATFORM_GBA)
+        } else if (job.kind == CK_FIGHTER) {
+            int anim = (e->key >> 3) & 7;
+            pctx_init(c, &job.L, job.status, job.expr, anim * 8);
+            c->d = &job.D;
+            setup_fighter(c, e->key & 7, anim, (e->key >> 6) & 63, (uint8_t *)e->img.pix);
+            g_wframe = -1;
+#endif
         } else {
             pctx_init(c, &job.L, job.status, job.expr, 0);
             c->d = &job.D;
@@ -1126,7 +1157,13 @@ static void job_slice(void)
             else setup_portrait(c, (uint8_t *)e->img.pix);
         }
     } else {
+#if defined(DOOMO_PLATFORM_GBA)
+        if (job.kind == CK_FIGHTER) g_wframe = (e->key >> 6) & 63;
+#endif
         draw_any_piece(c, st - 1);
+#if defined(DOOMO_PLATFORM_GBA)
+        if (job.kind == CK_FIGHTER) g_wframe = -1;
+#endif
         if (st == SL_N - 1) {
             if (job.kind == CK_BODY && (job.bdir & 3) == 2) pc_flipx();
             if (job.vac) vacant((uint8_t *)e->img.pix, e->img.w, e->img.h);
@@ -1156,6 +1193,23 @@ static void job_slice(void)
  * says; the rest of the budget asks the platform. */
 static void job_pump(void)
 {
+#if defined(DOOMO_PLATFORM_GBA)
+    if (job.on && job.combat && job.restarts < 5) {
+        int i;
+        if (job.fq_tick == now()) return;
+        job.fq_tick = now();
+        /* Fast-forwarding logic on dropped frames must not batch the
+         * overdue pieces into the next draw. Two pieces guarantee forward
+         * progress per draw, in addition to whatever fits in idle time. */
+        for (i = 0; job.on && i < 2; i++) {
+            int cls = slice_class();
+            (void)plat_portrait_slice_ok(cls, -1);
+            job_slice();
+            plat_portrait_slice_done(cls);
+        }
+        return;
+    }
+#endif
     if (job.on && job.urgent && job.fq_tick != now()) {
         /* its share of this tick, once a tick however often it is asked for (idle-time slices shrink it) */
         /* A focused face completes in twelve ticks rather than waiting
@@ -1296,6 +1350,13 @@ static CacheEnt *standin(int kind, int rid, uint32_t key, uint32_t base, uint32_
                 job.focus = (uint8_t)focus;
                 job.si = 1;
                 job.vac = (uint8_t)vac;
+#if defined(DOOMO_PLATFORM_GBA)
+                if (o && none && !patient && !focus && kind == CK_PORTRAIT) {
+                    const DoomoScene *scene = scene_top();
+                    job.combat = scene == &SCENE_COMBAT || scene == &SCENE_BREACH ||
+                                 scene == &SCENE_ARENA || scene == &SCENE_ARENA_MODE;
+                }
+#endif
             }
         }
     }
@@ -1636,6 +1697,9 @@ static int body_job_start(const DoomoResident *r, int rid, uint32_t key, uint32_
     job.vac = 0;
     job.pf = 0;
     job.si = 0;
+#if defined(DOOMO_PLATFORM_GBA)
+    job.combat = 0;
+#endif
     job.kind = CK_BODY;
     job.e = (int8_t)(e - ent);
     job.want = job.t0 = job.last = now();
@@ -1822,6 +1886,33 @@ const DoomoImage *fighter_image(int resident_id, int view, int anim, int weapon_
     lh = look_hash(&L) ^ deep_hash(&D, 0);
     key = (uint32_t)(view | (anim << 3) | (weapon_frame << 6)) | ((uint32_t)status << 12);
     e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
+#if defined(DOOMO_PLATFORM_GBA)
+    {
+        const uint32_t pose_mask = ~(7u << 3); /* same camera facing, weapon, and status */
+        if (job_for(CK_FIGHTER, resident_id, lh, key, pose_mask)) {
+            job.want = now();
+            job_pump();
+            if (!e) e = cache_find(CK_FIGHTER, resident_id, key, lh, 0xFFFFFFFFu);
+        }
+        if (!e && anim != 5) {
+            CacheEnt *old = cache_find(CK_FIGHTER, resident_id, key, lh, pose_mask);
+            /* An ended dodge roll must recover immediately. */
+            if (old && ((old->key >> 3) & 7u) != 5u) {
+                job_reap();
+                if (job.on && !job.si && !job.urgent && !job_hold) job_abort();
+                if (!job.on) {
+                    Phase still = { 0 };
+                    if (job_begin(CK_FIGHTER, resident_id, key, lh, &L, &D,
+                                  status == RES_EMPTY ? RES_ALIVE : status, EXPR_NEUTRAL, &still, 1)) {
+                        job.si = job.combat = 1;
+                        job_pump();
+                    }
+                }
+                return &old->img;
+            }
+        }
+    }
+#endif
     if (e) return &e->img;
     job_reap();
     e = cache_alloc(CK_FIGHTER, resident_id, key, lh, FIGHTER_W, FIGHTER_H, 0);

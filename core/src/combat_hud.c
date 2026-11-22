@@ -91,10 +91,37 @@ static void panel(int x, int y, int w, int h, const HudPal *p)
     plat_rect(x + 3, y + h - 3, w - 6, 1, p->fill_lo);
 }
 
+#if defined(DOOMO_PLATFORM_GBA)
+#include "../gen/bone_digits.inc"
+enum { BONE_DIGIT_W = 12, BONE_DIGIT_H = 20 };
+static const uint8_t bone_digits[2][10][BONE_DIGIT_W * BONE_DIGIT_H] = {
+    BONE_DIGITS(PAL_WHITE, PAL_RAMP(RAMP_BONE, 7), PAL_RAMP(RAMP_BLOOD, 0)),
+    BONE_DIGITS(PAL_RAMP(RAMP_LAVA, 7), PAL_RAMP(RAMP_LAVA, 6), PAL_RAMP(RAMP_BLOOD, 0)),
+};
+#undef BONE_DIGITS
+
+static int is_bone_hud(void)
+{
+    return combat_s.map_id == MAPID_BONE_CATHEDRAL || combat_s.map_id == MAPID_BONE_CAPITAL;
+}
+#endif
+
 static void num_big(int x, int y, int value, uint8_t col, uint8_t out)
 {
     char buf[8];
     doomo_snprintf(buf, sizeof(buf), "%d", value);
+#if defined(DOOMO_PLATFORM_GBA)
+    if (is_bone_hud() && value >= 0 && value <= 999 && lang_tr(buf) == buf) {
+        DoomoImage glyph = { BONE_DIGIT_W, BONE_DIGIT_H, 0, 0 };
+        const char *digit;
+        int low = col == PAL_RAMP(RAMP_LAVA, 6);
+        for (digit = buf; *digit; digit++, x += BONE_DIGIT_W) {
+            glyph.pix = bone_digits[low][*digit - '0'];
+            plat_image(x - 1, y - 1, &glyph, 1, 0, 0);
+        }
+        return;
+    }
+#endif
     ui_text_big(x, y, buf, 2, col, out);
 }
 
@@ -575,6 +602,10 @@ static void health_panel(int x, int y, const HudPal *p)
      * The health panel remains legible and can be retained more often. */
     int hs = 5 + (low && beat < 2 ? 1 : 0);
     face_badge(x, y - 14, p);
+#if defined(DOOMO_PLATFORM_GBA)
+    /* Keep the health panel out of the face panel so both can be retained. */
+    if (is_bone_hud()) x += 3;
+#endif
     if (UI_PANELS) {                                      /* SP8 (see face_badge) */
         uint32_t key = ui_key_int(ui_panel_key(), (combat_s.hell >= 128) | (low ? hs << 1 : 0));
         key = ui_key_int(key, DOOMO_MAX(hp, 0));

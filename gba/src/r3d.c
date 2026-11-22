@@ -639,29 +639,6 @@ static void vtex_update(void)
     memset(r3d_texpix, 0, sizeof(r3d_texpix));
 }
 
-/* ------------------------------------------------------------------------ */
-/* view tint (damage / holy flash, vape haze): level/16 of the pixels go
- * through the tint map, 4x4 ordered dither (reference semantics) over the
- * 2-pixel columns, after the sprites. (SP8) THUMB in ROM: it runs once a
- * frame and only sets up r3d_tint_rows (r3d_loops.s, the 3D overlay). */
-
-void r3d_tint_pass(const uint8_t *tm, int level)
-{
-    static const uint8_t bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
-    uint8_t thr[16];
-    int i;
-    for (i = 0; i < 16; i++) thr[i] = bayer[i] < level;
-    /* a VRAM copy of the tint map (reads as fast as IWRAM; VRAM takes
-     * halfword / word writes only) */
-    if (((uintptr_t)tm & 3) == 0) {
-        dma3_copy32(R3D_TINT_LUT, tm, 256 / 4);
-    } else {
-        volatile uint16_t *d = (volatile uint16_t *)R3D_TINT_LUT;
-        for (i = 0; i < 128; i++) d[i] = (uint16_t)(tm[2 * i] | (tm[2 * i + 1] << 8));
-    }
-    r3d_tint_rows(r3f.dst, r3f.ncol, r3f.vh, R3D_TINT_LUT, thr);
-}
-
 void plat_view3d(const DoomoView3D *v)
 {
     uint32_t t0, t1, t2, t3;

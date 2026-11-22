@@ -76,8 +76,6 @@ extern R3DFrame r3f;
  * column / flat / face code calls "cm". */
 #define R3D_CM_GAP_A  ((uint8_t *)0x06009600)
 #define R3D_CM_GAP_B  ((uint8_t *)0x06013600)
-/* the view tint's 256-byte map follows rows 10-15 in the second gap */
-#define R3D_TINT_LUT  ((uint8_t *)0x06013C00)
 typedef const uint8_t *const *R3DRows;
 extern const uint8_t *r3d_cmrow[16];
 /* proj / (m + 0.5), 16.16, with 4 guard entries on each side (the flat
@@ -195,8 +193,6 @@ typedef struct R3DSprite {
     int32_t  shadow_hh;            /* shadow ellipse half height, pixels  */
 } R3DSprite;
 void r3d_draw_sprite(const R3DSprite *s) IWRAM_CALL;
-void r3d_tint_pass(const uint8_t *tm, int level);          /* r3d.c (SP8: ROM) */
-void r3d_tint_rows(uint16_t *row, int ncol, int vh, const uint8_t *tm, const uint8_t *thr) IWRAM_CALL;
 void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v, uint32_t dv,
                      const uint8_t *cm, int stride, int iw) IWRAM_CALL;
 

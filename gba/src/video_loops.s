@@ -519,55 +519,62 @@ r3d_up4:
 @ to five packed words containing 5a, 5b, 5c, 5d output pixels.
 @ Source and destination are the SAME Mode 4 VRAM page; reverse order
 @ preserves unread input. Even input rows repeat twice, odd rows thrice:
-@ 32*2 + 32*3 = 160 output rows. No scratch framebuffer, EWRAM, new
-@ texture or IWRAM overlay bytes; keep this routine in ROM.
+@ 32*2 + 32*3 = 160 output rows. The scaler uses the existing VRAM page.
+@ Keep setup in ROM and expand each row in IWRAM.
     .section .text.r3d_up5x2, "ax", %progbits
     .arm
     .align 2
     .global r3d_up5x2
     .type   r3d_up5x2, %function
 r3d_up5x2:
-    stmfd sp!, {r4-r11, lr}
+    stmfd   sp!, {r0, r4-r11, lr}
     mov     r1, #63
 .Lup5_row:
+    ldr     r0, [sp]
     mov     r10, #240
-    mla     r2, r1, r10, r0          @ source row start
+    mla     r2, r1, r10, r0         @ source row start
     add     r2, r2, #96             @ source row end (48 halfwords)
     add     r3, r1, r1, lsl #2      @ 5 * source row
     mov     r3, r3, lsr #1          @ floor(2.5 * source row)
     add     r3, r3, #1
     mla     r3, r10, r3, r0         @ end of first output row
-    add     r4, r3, #240           @ end of second output row
-    add     r5, r4, #240           @ end of optional third row
-    mov     lr, #12                @ 48 rays / 4 input rays per group
-.Lup5_pair:
-    ldmdb   r2!, {r6, r7}          @ aabb, ccdd (little endian)
-    mov     r8, r6, lsl #16
-    orr     r8, r8, r8, lsr #16    @ aaaa
-    mov     r9, r6, lsr #16
-    orr     r9, r9, r9, lsl #16    @ bbbb
-    mov     r10, r7, lsl #16
-    orr     r10, r10, r6, lsr #16  @ bbcc
-    bic     r9, r9, #0xFF
-    orr     r9, r9, r8, lsr #24   @ abbb, using the packed aaaa word
-    mov     r11, r7, lsl #16
-    orr     r11, r11, r11, lsr #16
-    bic     r11, r11, #0xFF000000
-    orr     r11, r11, r7, lsl #8  @ cccd
-    mov     r12, r7, lsr #16
-    orr     r12, r12, r12, lsl #16 @ dddd
-    stmdb   r3!, {r8-r12}
-    stmdb   r4!, {r8-r12}
-    @ In GNU as divided syntax the condition comes before the mode (DB).
-    tst     r1, #1
-    stmnedb r5!, {r8-r12}
-    subs    lr, lr, #1
-    bne     .Lup5_pair
+    add     r4, r3, #240            @ end of second output row
+    add     r5, r4, #240            @ end of optional third row
+    mov     r0, #12                 @ 48 rays / 4 input rays per group
+    ldr     r12, =r3d_up5x2_row
+    mov     lr, pc
+    bx      r12
     subs    r1, r1, #1
     bge     .Lup5_row
-    ldmfd sp!, {r4-r11, lr}
+    ldmfd   sp!, {r0, r4-r11, lr}
     bx      lr
+    .ltorg
     .size   r3d_up5x2, . - r3d_up5x2
+
+    .section .iwram_3d, "ax", %progbits
+    .align 2
+    .type   r3d_up5x2_row, %function
+r3d_up5x2_row:
+    ldmdb   r2!, {r6, r7}           @ a,a,b,b and c,c,d,d
+    mov     r8, r6, lsl #16
+    orr     r8, r8, r8, lsr #16     @ a,a,a,a
+    and     r9, r6, #0xFF000000
+    orr     r9, r9, r6, lsr #8      @ a,b,b,b
+    mov     r10, r7, lsl #16
+    orr     r10, r10, r6, lsr #16   @ b,b,c,c
+    and     r11, r7, #0xFF
+    orr     r11, r11, r7, lsl #8    @ c,c,c,d
+    mov     r12, r7, lsr #16
+    orr     r12, r12, r12, lsl #16  @ d,d,d,d
+    stmdb   r3!, {r8-r12}
+    stmdb   r4!, {r8-r12}
+    tst     r1, #1
+    stmnedb r5!, {r8-r12}
+    subs    r0, r0, #1
+    bne     r3d_up5x2_row
+    bx      lr
+    .size   r3d_up5x2_row, . - r3d_up5x2_row
+
 
 @ Expand an 80x54 full-screen view to 240x160, discarding one padded
 @ row at each end to keep the horizon centred. Draw backwards in place.

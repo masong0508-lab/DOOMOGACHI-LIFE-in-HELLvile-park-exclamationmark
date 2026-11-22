@@ -9,14 +9,12 @@
  *                   its HUD steady with a second E5)
  *   blend           white: BLDY brighten, black: BLDY darken (including backdrop);
  *                   any other colour: a palette lerp toward it
- *   pal_lerp        palette RAM lerp (camfx_pal_entry, one formula on
- *                   every platform), written straight into BG and OBJ
- *                   palette RAM in the vblank (about 30k cycles of the
- *                   80k vblank; no 512 B buffer), restored with
- *                   video_load_palette() on the first frame without it
+ *   pal_lerp        palette lerp (camfx_pal_entry, one formula on every
+ *                   platform) prepared in EWRAM, then copied to BG and
+ *                   OBJ palette RAM during the same vblank as the flip
  *   iris            the core's software spans (plat_weak_fx.c)
  *
- * RAM: 36 B of .bss and .data (+ obj.c).
+ * The prepared palette uses 512 bytes of EWRAM.
  */
 #include "postfx.h"
 #include "canvas_int.h"
@@ -36,7 +34,10 @@ static struct {
     uint8_t set;                          /* PF_* latched this frame           */
     uint8_t blend_c, blend_l, pal_id, pal_l;
     uint32_t live;                        /* what palette RAM holds, 0 = master */
+    uint32_t pending;                     /* palette selected for this flip     */
 } pf;
+
+EWRAM_BSS static uint16_t pending_palette[256] ALIGN4;
 
 /* ---- the plat_post_* hooks (camfx_apply) ------------------------------- */
 void plat_post_offset(int dx, int dy)
@@ -108,29 +109,67 @@ int postfx_bbox(int *x0, int *y0, int *x1, int *y1)
 }
 
 /* ---- flip ------------------------------------------------------------------ */
-void postfx_pre_flip(void)
-{
-    obj_pre_flip();
-}
-
 static int is_white(uint8_t c) { return doomo_palette[c] == 0x7FFF; }
 static int is_black(uint8_t c) { return (doomo_palette[c] & 0x7FFF) == 0; }
 
-static void palette_write(int id, int l, uint8_t c, int cl)
+/* A color-only blend can reuse the 32 possible results per channel.
+ * Use the same truncation toward zero as camfx_pal_entry. */
+static void prepare_blend(uint8_t color, int level)
 {
+    uint16_t r[32], g[32], b[32];
+    uint16_t target = doomo_palette[color];
+    int tr = target & 31, tg = (target >> 5) & 31, tb = (target >> 10) & 31;
     int i;
-    vu16 *bg = BG_PALETTE, *ob = OBJ_PALETTE;
-    for (i = 0; i < 256; i++) {
-        uint16_t v = camfx_pal_entry(i, id, l, c, cl);
-        bg[i] = v;
-        ob[i] = v;
+    for (i = 0; i < 32; i++) {
+        r[i] = (uint16_t)(i + (tr - i) * level / 16);
+        g[i] = (uint16_t)((i + (tg - i) * level / 16) << 5);
+        b[i] = (uint16_t)((i + (tb - i) * level / 16) << 10);
     }
+    for (i = 0; i < 256; i++) {
+        uint16_t p = doomo_palette[i];
+        pending_palette[i] = r[p & 31] | g[(p >> 5) & 31] | b[(p >> 10) & 31];
+    }
+}
+
+void postfx_pre_flip(void)
+{
+    int id = (pf.set & PF_PAL) ? pf.pal_id : 0;
+    int level = id ? pf.pal_l : 0;
+    int blend_level = 0;
+    uint8_t color = 0;
+
+    if ((pf.set & PF_BLEND) && !is_white(pf.blend_c) && !is_black(pf.blend_c)) {
+        color = pf.blend_c;
+        blend_level = pf.blend_l;
+    }
+    pf.pending = 0;
+    if ((id || blend_level) && camfx_pal_entry) {
+        int i;
+        pf.pending = 0x80000000u | (uint32_t)id | ((uint32_t)level << 8) |
+                     ((uint32_t)color << 16) | ((uint32_t)blend_level << 24);
+        if (pf.pending != pf.live) {
+            if (!id) {
+                prepare_blend(color, blend_level);
+            } else {
+                for (i = 0; i < 256; i++)
+                    pending_palette[i] = camfx_pal_entry(i, id, level, color, blend_level);
+            }
+        }
+    }
+    obj_pre_flip();
+}
+
+int postfx_vblank_lines(void)
+{
+    /* Reserve time for both palette banks and the display registers and
+     * OAM that must change in the same blank. Master restore costs two
+     * transfers as well. */
+    return pf.pending != pf.live ? 8 : 0;
 }
 
 void postfx_vblank(int tiles)
 {
-    int pid = 0, pl = 0, cl = 0, bldcnt = 0, bldy = 0;
-    uint8_t c = 0;
+    int bldcnt = 0, bldy = 0;
     /* BG2 affine: q = c + (p - d - c) / s, PA = PD = 65536 / s */
     if (pf.set & (PF_OFFSET | PF_SCALE)) {
         int s = (pf.set & PF_SCALE) ? pf.s : 256;
@@ -151,25 +190,19 @@ void postfx_vblank(int tiles)
             bldcnt = 0x0004 | 0x0010 | 0x0020 | (is_white(pf.blend_c) ? 0x0080 : 0x00C0);
             if (tiles) bldcnt |= 0x0001;         /* G5: + the canvas (BG0) */
             bldy = pf.blend_l;
-        } else {
-            c = pf.blend_c;
-            cl = pf.blend_l;
         }
     }
     ld_flip(&bldcnt, &bldy);                    /* SP5 G-LD: a loading fade lifts (loadfade.c) */
     REG_BLDCNT = (uint16_t)bldcnt;
     REG_BLDY = (uint16_t)bldy;
-    if (pf.set & PF_PAL) { pid = pf.pal_id; pl = pf.pal_l; }
-    if ((pid || cl) && camfx_pal_entry) {
-        uint32_t sig = 0x80000000u | (uint32_t)pid | ((uint32_t)pl << 8) | ((uint32_t)c << 16) |
-                       ((uint32_t)cl << 24);
-        if (pf.live != sig) {
-            palette_write(pid, pl, c, cl);
-            pf.live = sig;
+    if (pf.pending != pf.live) {
+        if (pf.pending) {
+            dma3_copy32((void *)BG_PALETTE, pending_palette, 128);
+            dma3_copy32((void *)OBJ_PALETTE, pending_palette, 128);
+        } else {
+            video_load_palette();
         }
-    } else if (pf.live) {
-        video_load_palette();
-        pf.live = 0;
+        pf.live = pf.pending;
     }
     obj_vblank();
     /* the next frame starts clean */

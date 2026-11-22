@@ -22,9 +22,10 @@
 
 /* ---- video_flip() hooks (main.c) ----------------------------------------
  * postfx_pre_flip(): before the vblank wait (OBJ overlap checks, OAM and
- * affine composition with the frame's shake / zoom). postfx_vblank(): in
+ * palette preparation). postfx_vblank(): in
  * the vblank right after the page flip (registers, OAM DMA, palette). */
 void postfx_pre_flip(void);
+int postfx_vblank_lines(void);      /* extra scanlines for a palette change */
 void postfx_vblank(int tiles);       /* tiles: Mode 0 (G5): blend BG0 too */
 void ld_flip(int *bldcnt, int *bldy);  /* SP5 G-LD (loadfade.c): a loading fade's level on a flip */
 int  ld_flipped(int page);              /* S2-10 (loadfade.c): a busy card since the last flip: 1 copied back, 2 on `page` */

@@ -368,7 +368,12 @@ int lv_make_boss(int a, int boss, int hp_scale8)
     ac->hp = (int16_t)DOOMO_CLAMP((int32_t)ac->hp * b->hp8 * hp_scale8 / 64, 1, 30000);
     /* a bigger body, but never wider than a corridor or taller than its room */
     r = DOOMO_MIN(ac->radius * b->scale / 256, 30);
-    if (r > ac->radius) ac->radius = (uint8_t)r;
+    if (r > ac->radius) {
+        ac->radius = (uint8_t)r;
+#if defined(DOOMO_PLATFORM_GBA)
+        actor_solid_bounds_changed(ac);
+#endif
+    }
     h = ac->height * DOOMO_MIN(b->scale, 384) / 256;
     {
         int cx = FIX2INT(ac->x) / CELLU, cy = FIX2INT(ac->y) / CELLU;
@@ -411,9 +416,15 @@ void lv_size_cls_set(int a, int cls)
 void lv_size_demon(int a, int cls)
 {
     DoomoActor *ac;
+#if defined(DOOMO_PLATFORM_GBA)
+    int old_radius;
+#endif
     if (a < 0 || a >= ACTOR_MAX) return;
     lv_size_cls_set(a, cls);
     ac = &doomo_actors[a];
+#if defined(DOOMO_PLATFORM_GBA)
+    old_radius = ac->radius;
+#endif
     switch (cls) {
     case LVS_TINY:
         ac->hp = (int16_t)DOOMO_MAX(ac->hp / 2, 1);
@@ -433,6 +444,9 @@ void lv_size_demon(int a, int cls)
     default:
         break;
     }
+#if defined(DOOMO_PLATFORM_GBA)
+    if (ac->radius != old_radius) actor_solid_bounds_changed(ac);
+#endif
 }
 
 static int track_alive(const LvTrack *t)
@@ -541,6 +555,9 @@ static void blink(const LvTrack *t)
         actor_fx(SPR_PUFF, a->x, a->y, a->z + INT2FIX(a->height / 3), 3);
         a->x = x;
         a->y = y;
+#if defined(DOOMO_PLATFORM_GBA)
+        actor_solid_bounds_changed(a);
+#endif
         a->z = INT2FIX(z);
         a->vx = a->vy = 0;
         actor_fx(SPR_PUFF, a->x, a->y, a->z + INT2FIX(a->height / 3), 3);

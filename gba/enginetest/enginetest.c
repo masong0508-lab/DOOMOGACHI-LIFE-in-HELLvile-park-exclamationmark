@@ -18,6 +18,7 @@
  * Holding SELECT at boot runs the flash save self-test first.
  */
 #include "gba_plat.h"
+#include "doomo/camfx.h"
 #include "doomo/doomo.h"
 #include "enginetest.h"
 #include "iwram_ovl.h"
@@ -379,6 +380,54 @@ static int load_core_map(int id)
 }
 
 /* ------------------------------------------------------------------------ */
+/* NOCORE engine tests keep the hardware brightness test only. */
+extern uint16_t camfx_pal_entry(int index, int id, int level, uint8_t color,
+                                int blend_level) __attribute__((weak));
+
+static int et_palette_publish(int index, uint16_t before, uint16_t after)
+{
+    uint32_t start, elapsed;
+    int prepared;
+
+    postfx_pre_flip();
+    prepared = postfx_vblank_lines() > 0 && BG_PALETTE[index] == before && OBJ_PALETTE[index] == before;
+    vblank_intr_wait();
+    start = gba_cycles();
+    postfx_vblank(0);
+    elapsed = gba_cycles() - start;
+    if (!prepared || REG_VCOUNT < 160 || elapsed >= 8u * 1232u ||
+        BG_PALETTE[index] != after || OBJ_PALETTE[index] != after) {
+        gba_logf("ET palette vblank FAIL prepared=%d cycles=%u bg=%x obj=%x", prepared, elapsed,
+                 (unsigned)BG_PALETTE[index], (unsigned)OBJ_PALETTE[index]);
+        return 0;
+    }
+    return 1;
+}
+
+static void et_palette_test(void)
+{
+    const int index = 128;
+    uint16_t base, tint, blend;
+    int i, tint_ok, blend_ok, restore_ok;
+
+    if (!camfx_pal_entry) return;
+    base = doomo_palette[index];
+    tint = camfx_pal_entry(index, PAL_HELLIFY, 16, PAL_UI_RED, 11);
+    plat_pal_lerp(PAL_HELLIFY, 16);
+    plat_post_blend(PAL_UI_RED, 11);
+    tint_ok = et_palette_publish(index, base, tint);
+    blend = camfx_pal_entry(index, PAL_LERP_NONE, 0, PAL_UI_RED, 3);
+    plat_post_blend(PAL_UI_RED, 3);
+    blend_ok = et_palette_publish(index, tint, blend);
+    for (i = 0; i < 256 && blend_ok; i++) {
+        uint16_t expected = camfx_pal_entry(i, PAL_LERP_NONE, 0, PAL_UI_RED, 3);
+        blend_ok = BG_PALETTE[i] == expected && OBJ_PALETTE[i] == expected;
+    }
+    restore_ok = et_palette_publish(index, blend, base);
+    if (tint_ok && blend_ok && restore_ok) gba_log("ET palette vblank ok");
+}
+
+/* ------------------------------------------------------------------------ */
 static void et_postfx_test(void)
 {
     uint16_t flash, fade;
@@ -423,6 +472,7 @@ void enginetest_main(void)
     et_blit2_test();
     et_upscale_test();
     et_postfx_test();
+    et_palette_test();
     if (save_test) et_save_test();
     load_own_map();
     px = (int32_t)tour[0].x8 << 19;

@@ -16,22 +16,22 @@ game ROM in headless mGBA.
 The all-screen tour at `49ca800f` reached **246/277** scripted windows near
 30 drawn FPS. Its GBA CI subset reached **79/94** at 29.5 FPS or higher.
 The more demanding 3D census is a separate set of 24 player-controlled
-windows across 11 mapped Breach levels and the arena, in both cameras. In
-the latest local 3D run, **8/24** reached 22 FPS and **0/24** reached 29.5 FPS.
-Each window passed its 29 logic TPS floor.
+windows across 11 mapped Breach levels and the arena, in both cameras.
+All 24 windows passed their existing regression floors. The Bone FPS
+below use presented frames divided by elapsed video refreshes at the
+GBA's 59.7275 Hz refresh rate.
 
-| Bone map and camera | Baseline `624fadfb` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
+| Bone map and camera | Baseline `4f23e628` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 15.9 | 15.9 | 30.0 | 53.6 / 77.1 ms |
-| Cathedral, third person | 15.9 | 15.9 | 29.9 | 51.6 / 112.2 ms |
-| Capital, first person | 17.4 | 17.4 | 30.1 | 50.1 / 70.1 ms |
-| Capital, third person | 17.8 | 18.2 | 30.0 | 46.2 / 63.6 ms |
+| Cathedral, first person | 15.85 | 17.30 | 29.98 | 48.3 / 68.6 ms |
+| Cathedral, third person | 15.79 | 18.15 | 29.86 | 46.6 / 63.2 ms |
+| Capital, first person | 17.30 | 19.30 | 29.86 | 43.8 / 53.9 ms |
+| Capital, third person | 18.15 | 19.76 | 29.86 | 42.9 / 57.5 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
-The longer-term target is **30 drawn FPS**. Both maps passed the existing
-15 FPS Cathedral and 17 FPS Capital regression floors. The final Capital
-geometry uses taller piers and changes the existing gate. A wider test
-arcade had dropped first person to 16.8 FPS in the same census.
+The longer-term target is **30 drawn FPS**. The largest Cathedral
+third-person gap fell from seven to four video refreshes, about 117 to
+67 ms. Mean frame work remains above 41.7 ms in every Bone window.
 
 ### Current Bone rendering budget
 
@@ -43,19 +43,25 @@ arcade had dropped first person to 16.8 FPS in the same census.
   the emergency tier). Capital uses 20 and 16. Max caps both maps at
   26 cells. The GBA-specific roof cap applies to decorative height.
   Collision, encounters, keys and exits use the authored maps.
-- The 96×64 scaler expands rows in place and conditionally writes the
+- The 96×64 scaler expands rows in place from IWRAM and writes the
   third copy of each odd-numbered input row. The engine test checks all
   38,400 output pixels and the guard immediately beyond the viewport.
-  The renderer resolves the Bone map flag once per view and reuses it for
-  distance, floor texture and actor lighting.
+- Bone health uses pre-rendered digits from the shared font. The face
+  and health panels can be retained independently. A previous fighter
+  pose or HUD face may remain visible briefly while the next one renders.
+  The sprite pixels in a completed pose match the immediate draw path.
+- The GBA collision index intersects X and Y ranges before checking
+  candidate actors in slot order. It refreshes when a boss teleports or
+  changes size. Damage tints prepare before the display flip and update
+  both hardware palette banks in the same VBlank.
 - The Cathedral's brighter red approach and closer stained-glass windows
   frame the stepped arch. Capital's taller piers and raised Ossuary Gate
   mark its approach. For visual checkpoints and caveats, see
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
-The measured game ROM uses 235,420 B of EWRAM and leaves 26,724 B free.
+The measured game ROM uses 236,452 B of EWRAM and leaves 25,692 B free.
 The IWRAM main stack reserve is 6,160 B against the 6,144 B minimum.
-Both values match the baseline build.
+The 3D overlay uses 10,200 B of its 10,304 B slot.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

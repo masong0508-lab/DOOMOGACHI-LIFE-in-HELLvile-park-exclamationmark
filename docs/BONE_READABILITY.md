@@ -38,13 +38,14 @@ the windows framing the arch later into the walk. The same map tiles
 keep their original solidity and height. Capital's navigation cues are
 its lit market roads, gates and contrasting stone.
 
-The headless mGBA census passed the existing Bone frame-rate and logic
-floors in both cameras. The 96×64 scaler engine test checked every
-pixel, including the boundary between 2- and 3-row repeats and the VRAM
-guard after the final row. These checks cover the sampled views. Use the
-approach, nave, choir, organ, market, lift and skybridge checkpoints
-below for a full visual review. The 24 and 30 drawn FPS targets remain
-open. See the [measured camera results](GBA.md#current-gba-performance-status).
+The current mGBA census drew 17.30 and 18.15 FPS in Cathedral and
+19.30 and 19.76 FPS in Capital, first and third person respectively.
+Every frame in those four windows used 96×64 or 120×80 for the world.
+The HUD was drawn at 240×160. The engine checks every 96×64 scaler
+output pixel and the VRAM guard after the final row. It also checks that
+both palette banks change inside VBlank, including during a damage tint.
+The 24 and 30 drawn FPS targets remain open. See the
+[measured camera results](GBA.md#current-gba-performance-status).
 
 ## Earlier passes
 

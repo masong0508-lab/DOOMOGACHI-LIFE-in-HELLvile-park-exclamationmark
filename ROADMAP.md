@@ -21,6 +21,12 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone pacing and clarity (2026-11-22):** The 96×64 scaler and
+  health digits preserve their original pixels. Damage tints are published
+  within VBlank. Faster actor collision filtering and sliced portraits
+  reduced frame work and long stalls. The four Bone camera windows now
+  draw 17.30, 18.15, 19.30, and 19.76 FPS in mGBA. The 24 FPS target
+  remains open. See the [GBA census table](docs/GBA.md#current-gba-performance-status).
 - **Bone-level geometry and display polish (2026-11-22):** Bone Cathedral
   has a stepped stone entrance, and Bone Capital has taller carved piers
   and a raised Ossuary Gate. Both use the existing material bank and
