@@ -21,6 +21,13 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone room clarity and tier switches (2026-11-22):** ROM tables
+  eliminate the repeated projection calculation for three working
+  resolutions. Median 120×80 setup fell from 10.2 to 0.5 ms in mGBA.
+  Enclosed rooms can present completed frames sooner. Pale ribs and
+  recessed slate panels separate the vault from the walls. The tested
+  Cathedral rooms draw 18.38–19.99 FPS. See the
+  [GBA measurements](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone texture and sprite clarity (2026-11-22):** Restore both
   original masonry samples at every distance. Keep finer edges for
   living enemies and pickups when Smooth disables their shadows. Fix

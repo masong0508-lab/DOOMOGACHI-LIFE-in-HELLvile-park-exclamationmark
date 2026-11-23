@@ -85,17 +85,17 @@ def red_paving(x, y):
 
 
 def coffered_vault(x, y):
-    # One recessed panel per tile. Long ribs survive oblique views,
-    # where the small skull relief used to turn into a checkerboard.
+    # Broad stone ribs and one recessed panel per tile keep the vault
+    # distinct from the warmer skull masonry below it.
     u, v = min(x, 31 - x), min(y, 31 - y)
-    rim = min(u, v, (u + v - 3) // 2)
+    rim = min(u, v, (u + v - 4) // 2)
     if rim < 2:
-        return 'WOOD', 3
-    if rim < 4:
-        return 'WOOD', 5
-    if rim < 6:
-        return 'WOOD', 2
-    return 'WOOD', 3 if y < 19 else 2
+        return 'STONE', 3
+    if rim < 5:
+        return 'BONE', 4
+    if rim < 7:
+        return 'STONE', 1
+    return 'STONE', 2
 
 
 def bone_slab(x, y):

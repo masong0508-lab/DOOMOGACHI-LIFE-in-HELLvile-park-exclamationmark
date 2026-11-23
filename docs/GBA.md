@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 16.64 | 29.64 | 50.4 / 65.5 ms |
-| Cathedral, third person | 17.92 | 17.16 | 29.75 | 48.0 / 60.5 ms |
-| Capital, first person | 19.45 | 17.85 | 29.75 | 47.2 / 62.4 ms |
-| Capital, third person | 19.68 | 19.07 | 29.86 | 44.6 / 54.0 ms |
+| Cathedral, first person | 17.39 | 17.00 | 29.86 | 50.1 / 60.5 ms |
+| Cathedral, third person | 17.92 | 17.23 | 29.86 | 48.7 / 58.8 ms |
+| Capital, first person | 19.45 | 17.92 | 29.86 | 47.6 / 63.0 ms |
+| Capital, third person | 19.68 | 18.99 | 29.75 | 44.7 / 56.9 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -47,6 +47,13 @@ Bone window.
   at 120×80 and adapts independently of the exterior. A one-cell arch
   borrows the street budget and requires extra headroom before promoting
   to 120×80. Door and lift heights are read live for both cameras.
+- The 80, 96 and 120 pixel viewport widths copy exact projection tables
+  from ROM. All three FOV settings use the same coordinates as the
+  runtime calculation. Across the measured room switches, median
+  projection setup fell from 8.4 to 0.3 ms for 96×64 and from 10.2 to
+  0.5 ms for 120×80. The tables occupy 12,528 B of ROM and reuse the
+  existing working arrays. A completed 120×80 room frame can present
+  after two refreshes when it fits.
 - Each Bone wall ray shades a left and right texture sample. In the
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The
@@ -63,9 +70,10 @@ Bone window.
   dimension. Its centre and depth still come from the world position, so
   silhouettes stay visible as combat effects pass near the camera.
 - Bone floors and ceilings use dedicated horizontal materials. Recessed
-  vault panels replace skull mosaics overhead. Broad bone slabs and red
-  flagstones make steps and walkways easier to read. A map-local lookup
-  selects the material per span, and the existing pixel loops sample it.
+  slate panels and pale ribs separate the vault from the skull masonry.
+  Broad bone slabs and red flagstones make steps and walkways easier to
+  read. A map-local lookup selects the material per span, and the
+  existing pixel loops sample it.
   Walls, step faces and stained-glass windows still use their face art.
 - Cathedral caps sightlines at 14 cells in Balanced and Smooth (12 in
   the emergency tier). Capital uses 20 and 16. Max caps both maps at
@@ -98,6 +106,16 @@ The fixed-point divider skips leading zero digits where it can prove
 that the quotient stays zero. The engine test compares quotients and
 remainders with its reference for both small and wide inputs.
 
+These matched Balanced-mode room checkpoints run for 130 live logic
+ticks. The east chapel in first person presents 21 draws at 120×80,
+up from 18 on `1cb3ea37`. All four views stay within four display
+refreshes between draws.
+
+| Cathedral checkpoint | `1cb3ea37` FPS, first / third | Current FPS, first / third |
+|---|---:|---:|
+| Nave, enclosed east wall | 18.38 / 18.77 | 18.38 / 19.07 |
+| East chapel | 19.91 / 19.68 | 19.99 / 19.76 |
+
 These headless mGBA checkpoints compare the room-culling build and the
 floor and ceiling art build. Each camera stayed in place for 130 live
 logic ticks while enemies remained active. Each cell is first / third
@@ -119,11 +137,12 @@ At a fixed 120×80, a native-size east chapel ceiling crop contained
 previous ROM. The test torch remained visible beyond all four tested
 portal views. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
 
-At fixed 120×80, the distant Capital courtyard masonry and the entire
-first-person Cathedral approach match the `bd8ac71e` screenshots pixel
-for pixel. A separate fixed-camera Cathedral test places a red key at
-several distances. The key remains visible as it grows between those
-positions, including ones where the older renderer missed it.
+At fixed 120×80, `1cb3ea37` matched the `bd8ac71e` distant Capital
+courtyard masonry and first-person Cathedral approach pixel for pixel.
+The current vault art is visible inside Cathedral's open arch. A
+separate fixed-camera Cathedral test placed a red key at several
+distances. The key stayed visible as it grew between those positions,
+including ones where the older renderer missed it.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

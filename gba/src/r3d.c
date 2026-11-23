@@ -91,10 +91,11 @@ uint32_t r3d_presentation_cap(int frame)
     /* The two lowest-detail tiers show every frame as soon as it fits
      * the two-vblank minimum. */
     if (frame >= 3) return 2;
-    /* Let the readable Bone view recover to 20 FPS immediately. */
+    /* Let a completed 120x80 room frame use the first eligible VBlank.
+     * An arch with an exterior view still follows the street pacing. */
     if (frame == 2 && r3f.map && bone_readability_map(r3f.map->def) &&
         opt_get(OPT_3D_FAST) == OPT3D_BALANCED)
-        return 3;
+        return r3f.interior_quality ? 2 : 3;
     return 4;
 }
 
@@ -186,7 +187,8 @@ void r3d_gov_flip(int frame, uint32_t took, uint32_t work)
         uint32_t half_cost = q->cost[1] ? q->cost[1] :
                              q->cost[3] + q->cost[3] / 2u;
         uint32_t extra = half_cost > q->cost[3] ? half_cost - q->cost[3] : 0;
-        if (work + extra + VBL_CYC / 4u <= budget)
+        uint32_t margin = r3f.interior_quality ? VBL_CYC / 8u : VBL_CYC / 4u;
+        if (work + extra + margin <= budget)
             q->detail = 1;
         q->wait = 16;
         return;
@@ -320,24 +322,39 @@ static void setup_viewport(int vw, int vh, int fov)
     static const int32_t plane[3] = { 36000, 43250, 52000 };
     int c, m;
     int ncol = vw >> 1;
-    int proj = (int)(((int32_t)(vw >> 1) << 16) / plane[fov < 0 || fov > 2 ? 1 : fov]);
-    if (proj < 16) proj = 16;
-    r3f.proj = proj;
-    r3f.invproj = 0xFFFFFFFFu / (uint32_t)proj;
+    int fov_index = fov < 0 || fov > 2 ? 1 : fov;
+    int preset = vw == 80 ? 0 : vw == 96 ? 1 : vw == 120 ? 2 : -1;
+    if (preset >= 0) {
+        /* A quality-tier switch copies the same tables from ROM instead
+         * of doing hundreds of divides and angle searches on that frame. */
+        const R3DViewportPreset *t = &gba_viewport_presets[preset][fov_index];
+        r3f.proj = t->proj;
+        r3f.invproj = t->invproj;
+        memcpy(r3d_colt, t->colt, ncol * sizeof(*r3d_colt));
+        memcpy(r3d_colang, t->colang, ncol * sizeof(*r3d_colang));
+        memcpy(r3d_rowk, t->rowk, sizeof(t->rowk));
+    } else {
+        int proj = (ncol << 16) / plane[fov_index];
+        if (proj < 16) proj = 16;
+        r3f.proj = proj;
+        r3f.invproj = 0xFFFFFFFFu / (uint32_t)proj;
+        for (c = 0; c < ncol; c++) {
+            int32_t x = 2 * c + 1 - ncol;
+            r3d_colt[c] = (x * 65536) / proj;
+            r3d_colang[c] = (int16_t)iatan16(r3d_colt[c]);
+        }
+        for (m = 0; m < R3D_KROWS; m++)
+            r3d_rowk[m] = (int32_t)(((uint32_t)proj << 17) / (uint32_t)(2 * m + 1));
+    }
     r3f.vw = vw;
     r3f.vh = vh;
     r3f.ncol = ncol;
-    r3f.halfw = vw >> 1;
+    r3f.halfw = ncol;
     for (c = 0; c < ncol; c++) {
-        int32_t X = 2 * c + 1 - (vw >> 1);
-        r3d_colt[c] = (int32_t)((X * 65536) / proj);
-        r3d_colang[c] = (int16_t)iatan16(r3d_colt[c]);
         /* 4-bit bit-reversed column index: a 1D ordered dither */
         r3d_dither[c] = (uint8_t)(((c & 1) << 3) | ((c & 2) << 1) | ((c & 4) >> 1) |
                                   ((c & 8) >> 3));
     }
-    for (m = 0; m < R3D_KROWS; m++)
-        r3d_rowk[m] = (int32_t)(((uint32_t)proj << 17) / (uint32_t)(2 * m + 1));
     for (m = 1; m <= 4; m++) {
         r3d_rowk[-m] = r3d_rowk[0];
         r3d_rowk[R3D_KROWS - 1 + m] = r3d_rowk[R3D_KROWS - 1];
@@ -470,7 +487,7 @@ static void setup_map(const DoomoMap *m)
         r3d_avgc[TEX_STAINED_GLASS] = PAL_RAMP(RAMP_VAPE, 4);
         r3d_avgc[TEX_BLOOD_BRICK] = PAL_RAMP(RAMP_BLOOD, 3);
         r3d_avgc[TEX_GORE_FLOOR] = PAL_RAMP(RAMP_BLOOD, 3);
-        r3d_avgc[BONE_VAULT] = PAL_RAMP(RAMP_WOOD, 3);
+        r3d_avgc[BONE_VAULT] = PAL_RAMP(RAMP_STONE, 2);
         r3d_avgc[BONE_SLAB] = PAL_RAMP(RAMP_WOOD, 4);
         r3d_avgc[BONE_FLAGSTONE] = PAL_RAMP(RAMP_BLOOD, 4);
     }

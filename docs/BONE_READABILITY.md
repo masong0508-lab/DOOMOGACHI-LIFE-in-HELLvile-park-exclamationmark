@@ -50,9 +50,9 @@ bands. The geometric edges and vertical rows still use the coarse ray
 grid.
 
 Distant bone masonry uses the two original wall texture samples. This
-preserves mortar joints and skull relief at a distance. The Capital
-courtyard's far walls and the full Cathedral approach match their
-`bd8ac71e` screenshots pixel for pixel at fixed 120×80.
+preserves mortar joints and skull relief at a distance. At fixed
+120×80, the Capital courtyard masonry matches the restored wall art.
+Cathedral's arch can show the revised vault from the approach.
 
 Opaque living enemies and pickups can shade two horizontal samples per
 ray through 2× magnification. The sprite can advance by half a ray even
@@ -65,9 +65,12 @@ during a fight.
 
 GBA floors and ceilings in both maps have dedicated materials. Broad
 stone joints show where the steps end, red flagstone marks the walkway,
-and recessed vault panels give the ceiling a readable shape. The rays
-still use the authored heights, light and collision. The horizontal
-materials also apply when a plane is visible through an opening.
+and recessed slate panels with wider pale ribs separate the vault from
+the wall. The rays still use the authored heights, light and collision.
+The horizontal materials also apply when a plane is visible through an
+opening. At fixed 120×80 in the east chapel, the changed pixels are all
+in the visible ceiling. Four matched portal views with a lit torch
+beyond the opening are pixel-identical to the previous ROM.
 
 Inside Cathedral's enclosed rooms, the renderer can skip the work of
 building and drawing billboards fully hidden by opaque walls. Open
@@ -77,8 +80,8 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The mGBA movement census drew 16.64 and 17.16 FPS in Cathedral and
-17.85 and 19.07 FPS in Capital, first and third person respectively.
+The mGBA movement census drew 17.00 and 17.23 FPS in Cathedral and
+17.92 and 18.99 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that
