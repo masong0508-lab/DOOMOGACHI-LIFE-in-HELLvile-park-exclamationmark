@@ -79,6 +79,7 @@ static void blit_sprite(const DoomoBillboard *b)
 {
     const DoomoImage *img = b->img;
     int scale, w, h, x0, y0, x, y, lvl, sx0, sx1, sy0, sy1;
+    uint64_t step_x;
     const uint8_t *cm;
     if (!img || !img->pix || !img->w || !img->h) return;
     /* Preserve fractional 8.8 billboard scales instead of truncating every
@@ -111,13 +112,19 @@ static void blit_sprite(const DoomoBillboard *b)
     sy0 = DOOMO_MAX(0, oy - y0);
     sy1 = DOOMO_MIN(h, oy + oh - y0);
     if (sx0 >= sx1 || sy0 >= sy1) return;
+    /* 40 fractional bits make nearest-neighbour destination-to-source
+     * sampling exact for uint16 images at 0.25x..4x scale, replacing a
+     * costly 64-bit division per pixel with one division per sprite. */
+    step_x = (((uint64_t)img->w << 40) + (uint64_t)w - 1) / (uint64_t)w;
     for (y = sy0; y < sy1; y++) {
         int sy = y0 + y;
-        for (x = sx0; x < sx1; x++) {
-            int sx = x0 + x, tx = (int)((int64_t)x * img->w / w);
+        const uint8_t *src = img->pix + ((uint64_t)y * img->h / (uint64_t)h) * img->w;
+        uint64_t u = (uint64_t)sx0 * step_x;
+        for (x = sx0; x < sx1; x++, u += step_x) {
+            int sx = x0 + x, tx = (int)(u >> 40);
             uint8_t c;
             if (b->flags & BB_FLIPX) tx = img->w - 1 - tx;
-            c = img->pix[((int64_t)y * img->h / h) * img->w + tx];
+            c = src[tx];
             if (!c) continue;
             if ((b->flags & BB_TRANSLUCENT) && ((sx + sy) & 1)) continue;
             nat_fb[sy * nat_w + sx] = cm[c];
