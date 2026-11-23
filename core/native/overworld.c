@@ -78,9 +78,9 @@ static void block_front(int px, int py, int tex, int lvl, int h)
 static void blit_sprite(const DoomoBillboard *b)
 {
     const DoomoImage *img = b->img;
-    int scale, w, h, x0, y0, x, y, lvl;
+    int scale, w, h, x0, y0, x, y, lvl, sx0, sx1, sy0, sy1;
     const uint8_t *cm;
-    if (!img || !img->pix) return;
+    if (!img || !img->pix || !img->w || !img->h) return;
     /* Preserve fractional 8.8 billboard scales instead of truncating every
      * value below 2x to 1x. Round the destination extent, then sample by
      * destination extent to avoid missing the last source row/column. */
@@ -103,13 +103,19 @@ static void blit_sprite(const DoomoBillboard *b)
                 }
             }
     }
-    for (y = 0; y < h; y++) {
+    /* Only process the destination pixels inside the viewport.  For
+     * oversized or mostly offscreen sprites this avoids scanning all the
+     * invisible rows and columns; the separate ground shadow is retained. */
+    sx0 = DOOMO_MAX(0, ox - x0);
+    sx1 = DOOMO_MIN(w, ox + ow - x0);
+    sy0 = DOOMO_MAX(0, oy - y0);
+    sy1 = DOOMO_MIN(h, oy + oh - y0);
+    if (sx0 >= sx1 || sy0 >= sy1) return;
+    for (y = sy0; y < sy1; y++) {
         int sy = y0 + y;
-        if (sy < oy || sy >= oy + oh) continue;
-        for (x = 0; x < w; x++) {
+        for (x = sx0; x < sx1; x++) {
             int sx = x0 + x, tx = (int)((int64_t)x * img->w / w);
             uint8_t c;
-            if (sx < ox || sx >= ox + ow) continue;
             if (b->flags & BB_FLIPX) tx = img->w - 1 - tx;
             c = img->pix[((int64_t)y * img->h / h) * img->w + tx];
             if (!c) continue;
