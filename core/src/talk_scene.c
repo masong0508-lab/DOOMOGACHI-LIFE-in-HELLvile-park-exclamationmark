@@ -2620,7 +2620,7 @@ static void activate(int i)
     case K_HEAL: build_care_items(1); break;
     case K_FEEDITEM: case K_HEALITEM: perform_care(r->kind, r->arg); break;
     case K_OUTING:
-        T.to = T.to < 0 ? 0 : T.to;
+        if (T.to < 0 || T.to >= T.n) { build_outings(0); break; }
         T.topic = r->v;
         say_act(TA_INVITE);
         break;
@@ -2706,12 +2706,17 @@ static void change_to(int to)
 {
     T.followup = TC_NONE;
     T.to = (int8_t)to;
-    if (T.page == PG_MORE) { int sel = T.list.sel; build_more(); T.list.sel = sel; }
-    else if (T.page == PG_TOPIC) build_topics();
+    if (T.page == PG_MORE) {
+        int sel = T.list.sel;
+        build_more();
+        if (sel < T.nrows) T.list.sel = sel;
+    } else if (T.page == PG_TOPIC && !T.pending) build_topics();
     else if (T.page == PG_HISTORY || T.page == PG_JOURNAL || T.page == PG_SHARED || T.page == PG_SHARED_PAIR)
         build_history();
-    else if (T.page == PG_MAIN) {
+    else {
+        /* A partly chosen action belongs to the previous listener. */
         int c;
+        T.pending = 0;
         build_main();
         /* Start on the first category after turning to someone. This preserves
          * the four presses for a compliment (SELECT, down, A, A). */

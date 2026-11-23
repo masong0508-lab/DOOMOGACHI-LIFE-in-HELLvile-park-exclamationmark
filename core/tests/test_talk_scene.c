@@ -520,6 +520,62 @@ TEST(talk_scene_needs_help_changes_real_sim_stats)
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
+TEST(talk_scene_changing_listener_closes_the_previous_outing_picker)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy");
+    town();
+    doomo_town.minute = 12 * 60;
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("out", -1, -1)); press(BTN_A);
+    CHECK(find_row("outing", -1, -1) >= 0);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_STR(d.page, "main");
+    CHECK_EQ(find_row("outing", -1, -1), -1);
+    go_to(find_row("out", -1, -1)); press(BTN_A);
+    CHECK(find_row("outing", -1, -1) >= 0);
+    press(BTN_SELECT);  /* Everyone cannot inherit a single resident's invitation. */
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    CHECK_STR(d.page, "main");
+    CHECK_EQ(find_row("outing", -1, -1), -1);
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+    CHECK_EQ(talk_outcome_meet_plan(other), -1);
+}
+
+TEST(talk_scene_a_pending_question_belongs_to_its_original_listener)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy");
+    town();
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("cat", talk_scene_act_cat(TA_ASK_ABOUT), -1)); press(BTN_A);
+    go_to(find_row("act", TA_ASK_ABOUT, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "topic") == 0);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_STR(d.page, "main");
+    CHECK(!d.busy && !d.you[0]);
+}
+
+TEST(talk_scene_everyone_options_keeps_the_cursor_on_a_visible_action)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy");
+    town();
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    press(BTN_SELECT);
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("history", -1, -1));
+    frames(BTN_SELECT, 1);  /* Check the first frame shown for Everyone. */
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    CHECK_STR(d.page, "more");
+    CHECK(d.sel >= 0 && d.sel < d.nrows);
+}
+
 TEST(talk_scene_real_outing_menu_and_play_action)
 {
     TalkSceneDebug d;

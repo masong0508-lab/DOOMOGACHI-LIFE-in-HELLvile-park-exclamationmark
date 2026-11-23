@@ -239,6 +239,10 @@ a general outing opens the same picker, rather than choosing a random
 venue. **The player is not automatically teleported**, nor is a new
 navigation path invented; true joint traversal is a later milestone.
 
+In group Talk, changing listeners cancels an unfinished invitation, gift, care
+action, or question. The new listener gets their own available actions. The
+standalone topic browser stays open and refreshes for the new listener.
+
 **Play together** now invokes `sim_play` using the selected resident and
 immediately updates their actual Joy, Energy, Social and relationship
 state, showing their actual simulation response. An unavailable resident
