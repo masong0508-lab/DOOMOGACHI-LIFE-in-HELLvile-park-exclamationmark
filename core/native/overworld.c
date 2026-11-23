@@ -78,12 +78,15 @@ static void block_front(int px, int py, int tex, int lvl, int h)
 static void blit_sprite(const DoomoBillboard *b)
 {
     const DoomoImage *img = b->img;
-    int s, w, h, x0, y0, x, y, lvl;
+    int scale, w, h, x0, y0, x, y, lvl;
     const uint8_t *cm;
     if (!img || !img->pix) return;
-    s = DOOMO_CLAMP((b->scale ? b->scale : 256) / 256, 1, 4);
-    w = img->w * s;
-    h = img->h * s;
+    /* Preserve fractional 8.8 billboard scales instead of truncating every
+     * value below 2x to 1x. Round the destination extent, then sample by
+     * destination extent to avoid missing the last source row/column. */
+    scale = DOOMO_CLAMP(b->scale ? b->scale : 256, 64, 1024);
+    w = DOOMO_MAX(1, (img->w * scale + 128) / 256);
+    h = DOOMO_MAX(1, (img->h * scale + 128) / 256);
     x0 = ox + (int)((b->x >> 16) / UNITS_PER_PX) - scrollx - w / 2;
     y0 = oy + (int)((b->y >> 16) / UNITS_PER_PX) - scrolly - h - (int)((b->z >> 16) / UNITS_PER_PX);
     lvl = (b->flags & BB_FULLBRIGHT) ? 15 : DOOMO_CLAMP(day_level + b->light, 2, 15);
@@ -104,11 +107,11 @@ static void blit_sprite(const DoomoBillboard *b)
         int sy = y0 + y;
         if (sy < oy || sy >= oy + oh) continue;
         for (x = 0; x < w; x++) {
-            int sx = x0 + x, tx = x / s;
+            int sx = x0 + x, tx = (int)((int64_t)x * img->w / w);
             uint8_t c;
             if (sx < ox || sx >= ox + ow) continue;
             if (b->flags & BB_FLIPX) tx = img->w - 1 - tx;
-            c = img->pix[(y / s) * img->w + tx];
+            c = img->pix[((int64_t)y * img->h / h) * img->w + tx];
             if (!c) continue;
             if ((b->flags & BB_TRANSLUCENT) && ((sx + sy) & 1)) continue;
             nat_fb[sy * nat_w + sx] = cm[c];
