@@ -21,6 +21,11 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone distant masonry (2026-11-22):** Filtered stone colors reduce
+  distant texture noise and draw with one sample per ray. Fixed-point
+  division skips zero digits and enemies compute headings when used.
+  Capital's third-person movement window rose from 18.31 to 18.77 FPS.
+  See the [GBA measurements](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone sprite motion (2026-11-22):** Opaque mid-distance sprites
   can advance by half a ray, and close impact bursts have bounded screen
   coverage. All 24 GBA 3D regression windows pass. The four Bone movement

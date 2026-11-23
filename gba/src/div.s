@@ -195,15 +195,21 @@ __aeabi_ldivmod:
     mov     r1, r2
     bl      .Ludivmod_core          @ r0 = n_hi / d, r1 = n_hi % d
     mov     r2, r0                  @ q_hi
-    mov     r12, #32
+    @ If even the largest possible low 16 bits cannot reach the divisor,
+    @ shift those numerator bits into the remainder in one step. The
+    @ high 16 quotient digits from this limb are all zero.
+    cmp     r1, r6, lsr #16
+    movlo   r1, r1, lsl #16
+    orrlo   r1, r1, r5, lsr #16
+    movlo   r5, r5, lsl #16
+    movlo   r12, #16
+    movhs   r12, #32
 5:  adds    r5, r5, r5              @ next numerator bit out of n_lo ...
     adcs    r1, r1, r1              @ ... into the remainder (33 bits: C)
-    bcs     6f
-    cmp     r1, r6
-    blo     7f
-6:  sub     r1, r1, r6
-    orr     r5, r5, #1              @ the quotient bit, where n_lo's left
-7:  subs    r12, r12, #1
+    cmpcc   r1, r6                  @ carry already proves a subtract fits
+    subcs   r1, r1, r6
+    orrcs   r5, r5, #1              @ the quotient bit, where n_lo's left
+    subs    r12, r12, #1
     bne     5b
     mov     r0, r5                  @ q = r2 : r5, remainder r1
     mov     r5, r1

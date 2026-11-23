@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 17.00 | 29.86 | 50.1 / 64.7 ms |
-| Cathedral, third person | 17.92 | 17.23 | 29.86 | 48.0 / 61.4 ms |
-| Capital, first person | 19.45 | 17.92 | 29.86 | 47.4 / 63.7 ms |
-| Capital, third person | 19.68 | 18.31 | 29.75 | 45.7 / 55.3 ms |
+| Cathedral, first person | 17.39 | 16.93 | 29.75 | 50.0 / 64.4 ms |
+| Cathedral, third person | 17.92 | 17.16 | 29.75 | 48.6 / 60.9 ms |
+| Capital, first person | 19.45 | 17.92 | 29.86 | 47.4 / 63.4 ms |
+| Capital, third person | 19.68 | 18.77 | 29.75 | 44.7 / 62.0 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -51,6 +51,10 @@ Bone window.
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The engine
   test checks mixed pairs at 2×, 2.5× and 3×, with guards around the view.
+- Distant bone walls and skull mosaics use colors averaged over blocks
+  of four by four texels when a vertical pixel covers at least four
+  texels. A single sample then covers the ray. Close carvings and glass
+  keep both samples. The distant textures share the existing VRAM cache.
 - Opaque Bone sprites with shadows also resolve two horizontal samples
   when drawn at or below their texture scale. This gives their outlines
   two- and three-pixel steps at 96×64. Magnified sprites use the cached
@@ -88,9 +92,12 @@ Bone window.
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
 The measured game ROM uses 236,548 B of EWRAM and leaves 25,596 B free.
-The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
-The 3D overlay uses 10,188 B of its 10,304 B slot. The three materials
-add 12 KiB of pixels in ROM and use the existing texture cache.
+The IWRAM main stack reserve is 6,144 B. The 3D overlay uses 10,236 B
+of its 10,304 B slot. The dedicated floor and ceiling materials add
+12 KiB of pixels in ROM. The two distant wall textures add 8 KiB.
+The fixed-point divider skips leading zero digits where it can prove
+that the quotient stays zero. The engine test compares quotients and
+remainders with its reference for both small and wide inputs.
 
 These headless mGBA checkpoints compare the room-culling build and the
 floor and ceiling art build. Each camera stayed in place for 130 live
@@ -112,6 +119,12 @@ At a fixed 120×80, a native-size east chapel ceiling crop contained
 116 abrupt horizontal brightness transitions, down from 240 on the
 previous ROM. The test torch remained visible beyond all four tested
 portal views. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
+
+In the distance-filtered build, a 68×40-pixel far wall crop in Capital
+contains 834 adjacent brightness differences of at least 16 out of 255,
+down from 1,586 in the matching 120×80 view. The latest third-person
+Capital movement window rose from 18.31 to 18.77 drawn FPS and its mean
+frame work fell from 45.7 to 44.7 ms. Its P99 rose from 55.3 to 62.0 ms.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

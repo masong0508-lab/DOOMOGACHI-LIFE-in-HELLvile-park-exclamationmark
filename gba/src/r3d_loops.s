@@ -844,6 +844,19 @@ ba_face:                              @ (named for the profiler)
     sub     r5, r1, r0                  @ n
     mov     r9, r3                      @ light
     and     r0, r2, #63
+    ldr     r8, [r11, #CS_PAIR]
+    cmp     r8, #0
+    beq     .Lface_tex
+    ldr     r6, [r11, #CS_D16]
+    ldr     r7, [r11, #CS_PROJ]
+    cmp     r6, r7, lsl #18            @ at least four source texels per pixel
+    blo     .Lface_tex
+    ldr     r6, =r3d_far_face_ids
+    ldrb    r7, [r6, r0]
+    cmp     r7, #0
+    movne   r0, r7
+    movne   r8, #0                     @ the filtered texture needs one sample per ray
+.Lface_tex:
     ldr     r6, =r3d_texpix             @ pixels per texture (VRAM cache)
     add     r6, r6, r0, lsl #1
     ldrh    r7, [r6]
@@ -877,8 +890,7 @@ ba_face:                              @ (named for the profiler)
     bic     r12, r12, #0x00C00000
     ldr     r0, [r11, #CS_INVPROJ]
     umull   r1, r7, r2, r0              @ v step, 16.16
-    ldr     r0, [r11, #CS_PAIR]
-    cmp     r0, #0
+    cmp     r8, #0
     bne     .Lba_split_u
     add     r6, r6, r12, lsr #16
     mov     r8, r6

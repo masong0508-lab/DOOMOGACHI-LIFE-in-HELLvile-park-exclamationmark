@@ -49,6 +49,11 @@ reliefs and glass have visible detail inside the previous five-pixel
 bands. The geometric edges and vertical rows still use the coarse ray
 grid.
 
+Distant bone masonry now samples colors averaged from the existing
+stone palette. This leaves broader shapes visible where the small skull
+details previously broke into checkerboard noise. The foreground retains
+its carved reliefs and the stained glass keeps its colored panes.
+
 Opaque Bone sprites at or below their texture scale also shade two
 horizontal samples per ray. A replay of the Capital street encounter
 showed the red Impling moving steadily in world units while its old
@@ -71,8 +76,8 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The mGBA movement census drew 17.00 and 17.23 FPS in Cathedral and
-17.92 and 18.31 FPS in Capital, first and third person respectively.
+The mGBA movement census drew 16.93 and 17.16 FPS in Cathedral and
+17.92 and 18.77 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that

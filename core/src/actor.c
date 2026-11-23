@@ -1003,7 +1003,7 @@ static void demon_think(int idx)
     const DemonInfo *di = DEMON(a->type);
     fix16 tx, ty, dx, dy;
     uint64_t distance_sq;
-    int tz, ang, z = FIX2INT(a->z);
+    int tz, z = FIX2INT(a->z);
     int think = ((a->anim + idx) & 3) == 0;
     a->anim++;
     if (ai_flash[idx]) ai_flash[idx]--;
@@ -1114,18 +1114,14 @@ static void demon_think(int idx)
     target_pos(a, &tx, &ty, &tz);
     dx = tx - a->x;
     dy = ty - a->y;
-    /* The charge lunge keeps its launch angle until it stops; it never
-     * reads ang. Windup and melee aim every tick, but never read the
-     * squared distance. Skip the otherwise expensive atan2 search and
-     * 64-bit squares in these states, retaining exactly the original
-     * values on every path that observes them (no AI/RNG changes). */
-    ang = a->state == AST_CHARGE ? 0 : fx_atan2(dy, dx);
+    /* Windup and melee only need a heading. Charges and pursuit use
+     * the squared range for attack decisions. */
     distance_sq = (a->state == AST_WINDUP || a->state == AST_MELEE) ? 0 :
                   (uint64_t)((int64_t)dx * dx) + (uint64_t)((int64_t)dy * dy);
 
     switch (a->state) {
     case AST_WINDUP:
-        a->angle = (int16_t)ang;
+        a->angle = (int16_t)fx_atan2(dy, dx);
         if (a->timer == 10 || (di->burst > 1 && a->timer > 10 && (a->timer - 10) % 5 == 0 &&
                                (a->timer - 10) / 5 < di->burst)) {
             if (a->type == THING_LORD_VAPULA) boss_attack(idx);
@@ -1139,7 +1135,7 @@ static void demon_think(int idx)
         }
         return;
     case AST_MELEE:
-        a->angle = (int16_t)ang;
+        a->angle = (int16_t)fx_atan2(dy, dx);
         if (a->timer == 8) demon_melee(idx);
         if (a->timer >= 16) { a->state = AST_CHASE; a->timer = 0; a->cooldown = 20; }
         return;
@@ -1195,12 +1191,12 @@ static void demon_think(int idx)
                 return;
             }
             if (di->ai == AI_CHARGER && los && range_lt(distance_sq, 5 * CELLU) && range_gt(distance_sq, 80)) {
-                a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)ang;
+                a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)fx_atan2(dy, dx);
                 audio_sfx(SFX_DEMON_ROAR);
                 return;
             }
             if (di->ai == AI_DIVER && los && range_lt(distance_sq, 6 * CELLU) && rng_chance(&doomo_rng, 6)) {
-                a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)ang;
+                a->state = AST_CHARGE; a->timer = 0; a->angle = (int16_t)fx_atan2(dy, dx);
                 return;
             }
             if (di->pk && los && think) {
@@ -1215,6 +1211,8 @@ static void demon_think(int idx)
         }
         /* movement */
         {
+            int hold = in_melee && !(a->flags & AF_FLYING) && di->ai != AI_SNIPER;
+            int ang = hold ? 0 : fx_atan2(dy, dx);
             int want = ang;
             switch (di->ai) {
             case AI_SKIRMISH:
@@ -1242,8 +1240,7 @@ static void demon_think(int idx)
                 if (los && (a->anim % 50) < 12) want = ang + a->strafe * 500;   /* sidestep */
                 break;
             }
-            if (in_melee && !(a->flags & AF_FLYING) && di->ai != AI_SNIPER) return;   /* hold the line */
-            demon_walk(idx, want & DOOMO_ANG_MASK);
+            if (!hold) demon_walk(idx, want & DOOMO_ANG_MASK);
         }
     }
 }

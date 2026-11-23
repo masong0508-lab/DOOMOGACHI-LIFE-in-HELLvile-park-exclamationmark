@@ -252,9 +252,12 @@ static int iatan16(int32_t t)
 
 /* These cache slots are level-local. The Bone maps use shared texture
  * IDs, so their flat-only materials can borrow three local slots. */
-enum { BONE_VAULT = DOOMO_TEXBANK_FIRST, BONE_SLAB, BONE_FLAGSTONE };
-DOOMO_STATIC_ASSERT(BONE_FLAGSTONE < R3D_MAXTEX, bone_plane_ids_fit);
+enum { BONE_VAULT = DOOMO_TEXBANK_FIRST, BONE_SLAB, BONE_FLAGSTONE, BONE_FAR_WALL, BONE_FAR_MOSAIC };
+DOOMO_STATIC_ASSERT(BONE_FAR_MOSAIC < R3D_MAXTEX, bone_material_ids_fit);
 uint8_t r3d_plane_ids[R3D_MAXTEX];
+const uint8_t r3d_far_face_ids[R3D_MAXTEX] = {
+    [TEX_BONE_WALL] = BONE_FAR_WALL, [TEX_SKULL_MOSAIC] = BONE_FAR_MOSAIC
+};
 
 static const uint8_t *view_texture_pixels(int id)
 {
@@ -268,6 +271,8 @@ static const uint8_t *view_texture_pixels(int id)
         case BONE_VAULT:        return coffered_vault_pixels;
         case BONE_SLAB:         return bone_slab_pixels;
         case BONE_FLAGSTONE:    return chapel_flagstone_pixels;
+        case BONE_FAR_WALL:     return bone_wall_far;
+        case BONE_FAR_MOSAIC:   return carved_mosaic_far;
         }
     }
     return texture_pixels(id, r3f.time);
