@@ -250,6 +250,12 @@ static int iatan16(int32_t t)
 
 #include "bone_materials.inc"
 
+/* These cache slots are level-local. The Bone maps use shared texture
+ * IDs, so their flat-only materials can borrow three local slots. */
+enum { BONE_VAULT = DOOMO_TEXBANK_FIRST, BONE_SLAB, BONE_FLAGSTONE };
+DOOMO_STATIC_ASSERT(BONE_FLAGSTONE < R3D_MAXTEX, bone_plane_ids_fit);
+uint8_t r3d_plane_ids[R3D_MAXTEX];
+
 static const uint8_t *view_texture_pixels(int id)
 {
     if (r3f.map && bone_readability_map(r3f.map->def)) {
@@ -259,6 +265,9 @@ static const uint8_t *view_texture_pixels(int id)
         case TEX_STAINED_GLASS: return stained_glass_pixels;
         case TEX_BLOOD_BRICK:   return brick_pixels;
         case TEX_GORE_FLOOR:    return red_paving_pixels;
+        case BONE_VAULT:        return coffered_vault_pixels;
+        case BONE_SLAB:         return bone_slab_pixels;
+        case BONE_FLAGSTONE:    return chapel_flagstone_pixels;
         }
     }
     return texture_pixels(id, r3f.time);
@@ -450,13 +459,20 @@ static void setup_map(const DoomoMap *m)
     cache_mapdef = m->def;
     cache_mw = m->w;
     cache_mh = m->h;
+    for (i = 0; i < R3D_MAXTEX; i++) r3d_plane_ids[i] = (uint8_t)i;
     memset(r3d_avgc, 0, sizeof(r3d_avgc));
     if (bone_readability_map(m->def)) {
+        r3d_plane_ids[TEX_SKULL_MOSAIC] = BONE_VAULT;
+        r3d_plane_ids[TEX_BONE_WALL] = BONE_SLAB;
+        r3d_plane_ids[TEX_TILE_FLOOR] = BONE_FLAGSTONE;
         r3d_avgc[TEX_BONE_WALL] = PAL_RAMP(RAMP_WOOD, 4);
         r3d_avgc[TEX_SKULL_MOSAIC] = PAL_RAMP(RAMP_WOOD, 3);
         r3d_avgc[TEX_STAINED_GLASS] = PAL_RAMP(RAMP_VAPE, 4);
         r3d_avgc[TEX_BLOOD_BRICK] = PAL_RAMP(RAMP_BLOOD, 3);
         r3d_avgc[TEX_GORE_FLOOR] = PAL_RAMP(RAMP_BLOOD, 3);
+        r3d_avgc[BONE_VAULT] = PAL_RAMP(RAMP_WOOD, 3);
+        r3d_avgc[BONE_SLAB] = PAL_RAMP(RAMP_WOOD, 4);
+        r3d_avgc[BONE_FLAGSTONE] = PAL_RAMP(RAMP_BLOOD, 4);
     }
 }
 

@@ -170,11 +170,12 @@ static void flat(uint16_t *col, int32_t rdx, int32_t rdy,
     fl->kp = &r3d_rowk[m0];
     fl->A = (rdx * hd4) >> 10;                  /* |rdx| < 2^17, hd4 < 2^14 */
     fl->B = (rdy * hd4) >> 10;
-    r3d_texpix[tex & (R3D_MAXTEX - 1)] += (uint16_t)(y1 - y0);
+    tex = r3d_plane_ids[tex & (R3D_MAXTEX - 1)];
+    r3d_texpix[tex] += (uint16_t)(y1 - y0);
     fl->tex = tex_get(tex);
     fl->L = light;
     fl->hd = (hd4 >> 4) + 1;
-    a = r3d_avgc[tex & (R3D_MAXTEX - 1)];
+    a = r3d_avgc[tex];
     fl->avg = a ? a : r3d_texavg(tex);
     r3d_flat_loop(fl);
 }

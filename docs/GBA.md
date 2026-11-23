@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 17.00 | 29.86 | 49.6 / 64.4 ms |
-| Cathedral, third person | 17.92 | 17.39 | 29.75 | 47.2 / 60.5 ms |
-| Capital, first person | 19.45 | 18.54 | 29.75 | 45.4 / 62.3 ms |
-| Capital, third person | 19.68 | 19.14 | 29.98 | 43.8 / 58.0 ms |
+| Cathedral, first person | 17.39 | 17.00 | 29.86 | 49.7 / 64.5 ms |
+| Cathedral, third person | 17.92 | 17.16 | 29.75 | 47.4 / 61.8 ms |
+| Capital, first person | 19.45 | 18.84 | 29.86 | 45.1 / 61.5 ms |
+| Capital, third person | 19.68 | 19.76 | 29.86 | 43.4 / 58.4 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -51,6 +51,11 @@ Bone window.
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The engine
   test checks mixed pairs at 2×, 2.5× and 3×, with guards around the view.
+- Bone floors and ceilings use dedicated horizontal materials. Recessed
+  vault panels replace skull mosaics overhead. Broad bone slabs and red
+  flagstones make steps and walkways easier to read. A map-local lookup
+  selects the material per span, and the existing pixel loops sample it.
+  Walls, step faces and stained-glass windows still use their face art.
 - Cathedral caps sightlines at 14 cells in Balanced and Smooth (12 in
   the emergency tier). Capital uses 20 and 16. Max caps both maps at
   26 cells. The GBA-specific roof cap applies to decorative height.
@@ -74,30 +79,30 @@ Bone window.
   visual checkpoints and caveats, see
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
-The measured game ROM uses 236,484 B of EWRAM and leaves 25,660 B free.
+The measured game ROM uses 236,548 B of EWRAM and leaves 25,596 B free.
 The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
-The 3D overlay uses 10,140 B of its 10,304 B slot.
+The 3D overlay uses 10,168 B of its 10,304 B slot. The three materials
+add 12 KiB of pixels in ROM and use the existing texture cache.
 
 These headless mGBA checkpoints held each camera in place for 130 live
 logic ticks while enemies remained active. Each cell is first / third
 person. The equivalent routes start from the same pose on each ROM.
 
-| Camera checkpoint | `bba66ac3` FPS | Room-aware FPS |
+| Camera checkpoint | `795374e5` FPS | Current FPS |
 |---|---:|---:|
-| Cathedral courtyard | 19.22 / 20.45 | 18.76 / 20.14 |
-| Cathedral nave, looking north | 16.83 / 16.71 | 16.02 / 16.31 |
-| Cathedral nave, looking at the enclosed east wall | 17.99 / 18.68 | 18.61 / 19.14 |
-| Cathedral east chapel | 19.45 / 19.53 | 19.99 / 19.37 |
-| Cathedral arch from inside | 18.31 / 19.83 | 18.38 / 19.45 |
-| Capital street | 17.76 / 18.22 | 17.76 / 18.22 |
-| Capital beneath the gateway | 19.91 / 24.44 | 20.60 / 25.96 |
-| Capital gateway from the market | 18.76 / 20.45 | 18.76 / 20.45 |
+| Cathedral courtyard | 18.76 / 20.14 | 18.76 / 19.53 |
+| Cathedral nave, looking north | 16.02 / 16.31 | 16.02 / 16.83 |
+| Cathedral nave, looking at the enclosed east wall | 18.61 / 19.14 | 18.61 / 18.91 |
+| Cathedral east chapel | 19.99 / 19.37 | 19.99 / 19.83 |
+| Cathedral arch from inside | 18.38 / 19.45 | 18.45 / 19.45 |
+| Capital street | 17.76 / 18.22 | 17.99 / 17.99 |
+| Capital beneath the gateway | 20.60 / 25.96 | 20.67 / 25.50 |
+| Capital gateway from the market | 18.76 / 20.45 | 19.07 / 20.21 |
 
-The east nave skipped up to 18 hidden billboards per draw. The east
-chapel spent 49 of 84 third-person draws at 120×80, up from 29 of 85.
-The faster Capital gateway stayed at 96×64. In Smooth mode all 64
-matched frames across four portal views kept the test torch visible
-beyond the opening. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
+At a fixed 120×80, a native-size east chapel ceiling crop contained
+116 abrupt horizontal brightness transitions, down from 240 on the
+previous ROM. The test torch remained visible beyond all four tested
+portal views. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

@@ -49,6 +49,12 @@ reliefs and glass have visible detail inside the previous five-pixel
 bands. The geometric edges and vertical rows still use the coarse ray
 grid.
 
+GBA floors and ceilings in both maps have dedicated materials. Broad
+stone joints show where the steps end, red flagstone marks the walkway,
+and recessed vault panels give the ceiling a readable shape. The rays
+still use the authored heights, light and collision. The horizontal
+materials also apply when a plane is visible through an opening.
+
 Inside Cathedral's enclosed rooms, the renderer can skip the work of
 building and drawing billboards fully hidden by opaque walls. Open
 arches and windows still show the scene beyond them, which was checked
@@ -57,14 +63,14 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The current mGBA movement census drew 17.00 and 17.39 FPS in Cathedral
-and 18.54 and 19.14 FPS in Capital, first and third person respectively.
+The current mGBA movement census drew 17.00 and 17.16 FPS in Cathedral
+and 18.84 and 19.76 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that
 both palette banks change inside VBlank, including during a damage tint.
 The 24 and 30 drawn FPS targets remain open across both levels. The
-third-person Capital gateway checkpoint reached 25.96 FPS. See the
+third-person Capital gateway checkpoint reached 25.50 FPS. See the
 [measured camera results](GBA.md#current-gba-performance-status).
 
 ## Earlier passes

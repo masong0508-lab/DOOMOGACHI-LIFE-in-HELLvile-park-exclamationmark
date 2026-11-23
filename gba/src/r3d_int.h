@@ -90,6 +90,7 @@ extern uint8_t  r3d_dither[R3D_MAXCOLS];   /* 0..15 ordered dither by column */
 extern const uint8_t *r3d_texc[R3D_MAXTEX]; /* per-frame texture cache (IWRAM) */
 extern uint16_t r3d_texpix[R3D_MAXTEX];      /* pixels drawn per texture this frame */
 extern uint8_t r3d_avgc[R3D_MAXTEX];        /* texture average colours (IWRAM) */
+extern uint8_t r3d_plane_ids[R3D_MAXTEX];   /* material IDs for floors and ceilings */
 
 /* per-column clip checkpoints, in the raycaster's arena region (bigbuf.c) */
 #define r3d_clips ((R3DClip (*)[R3D_MAXCP])(gba_r3d + GBA_BIG_CLIPS))

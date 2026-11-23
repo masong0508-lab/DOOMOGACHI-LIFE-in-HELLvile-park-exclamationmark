@@ -21,6 +21,12 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone interior art (2026-11-22):** Vault panels, broad stone slabs
+  and red flagstone give the floors and ceilings a distinct pattern.
+  The matched east chapel ceiling crop has about half as many abrupt
+  brightness transitions at the same resolution. The Capital gateway
+  draws at 25.50 FPS in third person. The full movement tests draw
+  17.00–19.76 FPS. See the [GBA rendering notes](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone interior rendering (2026-11-22):** Opaque walls cull hidden
   billboards, and real rooms have their own adaptive detail budget. All four
   tested opening views kept the outside torch visible. The enclosed east

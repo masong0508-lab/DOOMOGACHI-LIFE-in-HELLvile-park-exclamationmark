@@ -748,6 +748,8 @@ ba_flat:                              @ (named for the profiler)
     bxge    lr
     stmfd   sp!, {r4-r11, lr}
     and     r1, r1, #63                 @ texture id
+    ldr     r7, =r3d_plane_ids          @ flat-only material table
+    ldrb    r1, [r7, r1]
     ldr     r6, =r3d_texc
     ldr     r6, [r6, r1, lsl #2]        @ pixels (per-frame cache)
     ldr     r7, =r3d_avgc
