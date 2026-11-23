@@ -49,18 +49,19 @@ reliefs and glass have visible detail inside the previous five-pixel
 bands. The geometric edges and vertical rows still use the coarse ray
 grid.
 
-Distant bone masonry now samples colors averaged from the existing
-stone palette. This leaves broader shapes visible where the small skull
-details previously broke into checkerboard noise. The foreground retains
-its carved reliefs and the stained glass keeps its colored panes.
+Distant bone masonry uses the two original wall texture samples. This
+preserves mortar joints and skull relief at a distance. The Capital
+courtyard's far walls and the full Cathedral approach match their
+`bd8ac71e` screenshots pixel for pixel at fixed 120×80.
 
-Opaque Bone sprites at or below their texture scale also shade two
-horizontal samples per ray. A replay of the Capital street encounter
-showed the red Impling moving steadily in world units while its old
-outline shifted by entire ray columns. Independent samples let the
-outline move by half a ray. Close transient effects now retain their
-projected centres at a capped size, which keeps impact bursts from
-covering the view during a fight.
+Opaque living enemies and pickups can shade two horizontal samples per
+ray through 2× magnification. The sprite can advance by half a ray even
+when Smooth turns off its ground shadow. Signed horizontal texture
+offsets keep clipped and near sprites visible. A fixed-camera Cathedral
+checkpoint shows a red key that was lost at the same position on the
+older renderer. Close transient effects retain their projected centres
+at a capped size, which keeps impact bursts from covering the view
+during a fight.
 
 GBA floors and ceilings in both maps have dedicated materials. Broad
 stone joints show where the steps end, red flagstone marks the walkway,
@@ -76,8 +77,8 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The mGBA movement census drew 16.93 and 17.16 FPS in Cathedral and
-17.92 and 18.77 FPS in Capital, first and third person respectively.
+The mGBA movement census drew 16.64 and 17.16 FPS in Cathedral and
+17.85 and 19.07 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that

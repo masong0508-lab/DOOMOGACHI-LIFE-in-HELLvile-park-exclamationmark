@@ -21,10 +21,13 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
-- **GBA Bone distant masonry (2026-11-22):** Filtered stone colors reduce
-  distant texture noise and draw with one sample per ray. Fixed-point
-  division skips zero digits and enemies compute headings when used.
-  Capital's third-person movement window rose from 18.31 to 18.77 FPS.
+- **GBA Bone texture and sprite clarity (2026-11-22):** Restore both
+  original masonry samples at every distance. Keep finer edges for
+  living enemies and pickups when Smooth disables their shadows. Fix
+  signed texture offsets that could hide close sprites. Capital's far
+  walls and the Cathedral approach match the earlier captures.
+  Fixed-point division and on-demand enemy headings retain the
+  previous speedups. The four Bone windows draw 16.64–19.07 FPS.
   See the [GBA measurements](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone sprite motion (2026-11-22):** Opaque mid-distance sprites
   can advance by half a ray, and close impact bursts have bounded screen

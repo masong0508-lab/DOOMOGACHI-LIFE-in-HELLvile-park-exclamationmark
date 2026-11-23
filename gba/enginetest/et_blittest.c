@@ -445,14 +445,22 @@ static void et_sprite_pairs_test(void)
     static const uint16_t expected[2][3] = {
         { 0x22A2, 0x33A2, 0xB144 }, { 0xB1A2, 0x6655, 0xB1A2 }
     };
+    static const uint16_t magnified[3][4] = {
+        { 0x22A2, 0xB122, 0x3333, 0xB144 },
+        { 0x22A2, 0xB122, 0x3333, 0xB144 },
+        { 0xB1A2, 0x55A2, 0x6666, 0xB1A2 }
+    };
     const DoomoImage image = { 4, 2, pixels, 0 };
-    const R3DSprite sprite = { .img = &image, .depth16 = 32 << 16,
+    R3DSprite sprite = { .img = &image, .depth16 = 32 << 16,
         .x0_12 = 1 << 12, .step16 = 1 << 16, .w12 = 4 << 12, .h12 = 2 << 12, .pairs = 1 };
     R3DFrame saved = r3f;
     const uint8_t *saved_lit = r3d_cmrow[0];
-    uint8_t saved_nclips[3];
+    uint8_t saved_nclips[4];
     vu16_t *dst = PAGE_B;
-    int y, x, matched = 1;
+    int y, x;
+    /* Signed pre-edge offsets and 32-bit overflow on a cropped sprite. */
+    int matched = r3d_sprite_u16(-0x800, 0xA000u) == 0xFFFFB000u &&
+                  r3d_sprite_u16(0x20000, 0x20000u) == 0x400000u;
     memcpy(saved_nclips, r3d_nclips, sizeof(saved_nclips));
     memset(r3d_nclips, 0, sizeof(saved_nclips));
     r3d_cmrow[0] = lit;
@@ -465,6 +473,21 @@ static void et_sprite_pairs_test(void)
     for (y = 0; y < 3; y++)
         for (x = 0; x < 4; x++) {
             uint16_t want = y < 2 && x < 3 ? expected[y][x] : 0xB1A2;
+            if (dst[y * LINE + x] != want) matched = 0;
+        }
+    /* At 1.6x the first texture row repeats. Check the shared lanes,
+     * distinct lanes and both one-sided silhouette edges. */
+    sprite.step16 = 0xA000;
+    sprite.w12 = 0x6666;
+    sprite.h12 = 0x3333;
+    r3f.ncol = 4;
+    r3f.vh = 3;
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 5; x++) dst[y * LINE + x] = 0xB1A2;
+    r3d_draw_sprite(&sprite);
+    for (y = 0; y < 4; y++)
+        for (x = 0; x < 5; x++) {
+            uint16_t want = y < 3 && x < 4 ? magnified[y][x] : 0xB1A2;
             if (dst[y * LINE + x] != want) matched = 0;
         }
     memcpy(r3d_nclips, saved_nclips, sizeof(saved_nclips));

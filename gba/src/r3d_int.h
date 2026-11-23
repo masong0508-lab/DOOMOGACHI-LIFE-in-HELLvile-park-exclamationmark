@@ -217,6 +217,13 @@ typedef struct R3DSprite {
     int32_t  shadow_y12;           /* floor y under the feet (shadow)     */
     int32_t  shadow_hh;            /* shadow ellipse half height, pixels  */
 } R3DSprite;
+
+/* A clipped sprite can start with an offset on either side of its edge. */
+static inline uint32_t r3d_sprite_u16(int32_t offset12, uint32_t step16)
+{
+    return (uint32_t)(((int64_t)offset12 * step16) >> 12);
+}
+
 void r3d_draw_sprite(const R3DSprite *s) ROM_CALL;
 void r3d_render_sprite(const R3DSprite *s, int r0, int r1, int32_t vr0) IWRAM_CALL;
 void r3d_draw_sprite_pairs(const R3DSprite *s, int r0, int r1, int32_t vr0) ROM_CALL;

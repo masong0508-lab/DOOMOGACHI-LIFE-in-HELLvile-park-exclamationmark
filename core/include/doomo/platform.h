@@ -150,7 +150,8 @@ typedef struct DoomoBillboard {
     uint8_t  light;             /* 0..15 extra brightness (fullbright fx) */
 } DoomoBillboard;
 enum { BB_FLIPX = 1, BB_FULLBRIGHT = 2, BB_TRANSLUCENT = 4, BB_SHADOW = 8,
-       BB_EFFECT = 16 };                /* transient visual effect, not a projectile */
+       BB_EFFECT = 16,                 /* transient visual effect, not a projectile */
+       BB_DETAIL = 32 };                /* refine opaque sprite edges independently of shadows */
 
 typedef struct DoomoView3D {
     const DoomoMap *map;

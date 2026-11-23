@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 16.93 | 29.75 | 50.0 / 64.4 ms |
-| Cathedral, third person | 17.92 | 17.16 | 29.75 | 48.6 / 60.9 ms |
-| Capital, first person | 19.45 | 17.92 | 29.86 | 47.4 / 63.4 ms |
-| Capital, third person | 19.68 | 18.77 | 29.75 | 44.7 / 62.0 ms |
+| Cathedral, first person | 17.39 | 16.64 | 29.64 | 50.4 / 65.5 ms |
+| Cathedral, third person | 17.92 | 17.16 | 29.75 | 48.0 / 60.5 ms |
+| Capital, first person | 19.45 | 17.85 | 29.75 | 47.2 / 62.4 ms |
+| Capital, third person | 19.68 | 19.07 | 29.86 | 44.6 / 54.0 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -49,17 +49,16 @@ Bone window.
   to 120×80. Door and lift heights are read live for both cameras.
 - Each Bone wall ray shades a left and right texture sample. In the
   96×64 tier those samples occupy two and three screen pixels. Both
-  samples share the same ray intersection and vertical rows. The engine
-  test checks mixed pairs at 2×, 2.5× and 3×, with guards around the view.
-- Distant bone walls and skull mosaics use colors averaged over blocks
-  of four by four texels when a vertical pixel covers at least four
-  texels. A single sample then covers the ray. Close carvings and glass
-  keep both samples. The distant textures share the existing VRAM cache.
-- Opaque Bone sprites with shadows also resolve two horizontal samples
-  when drawn at or below their texture scale. This gives their outlines
-  two- and three-pixel steps at 96×64. Magnified sprites use the cached
-  texel-run loop. The engine test checks both transparent sprite lanes,
-  the viewport guard and the two-source pixel kernel.
+  samples share the same ray intersection and vertical rows. The
+  original skull and masonry textures use this sampling at every
+  distance. The engine test checks mixed pairs at 2×, 2.5× and 3×,
+  with guards around the view.
+- Opaque living enemies and pickups in Bone can use two horizontal
+  samples from a distance through 2× magnification, including when
+  Smooth disables their shadows. Larger sprites use the cached texel-run
+  loop. The engine test checks transparent lanes and the viewport guard
+  for both 1× and magnified sprites. The first column uses a signed
+  64-bit product so a negative offset can advance across the sprite.
 - A close visual impact burst can cover up to half the viewport in each
   dimension. Its centre and depth still come from the world position, so
   silhouettes stay visible as combat effects pass near the camera.
@@ -92,9 +91,9 @@ Bone window.
   [Bone level legibility](BONE_READABILITY.md#current-gba-validation).
 
 The measured game ROM uses 236,548 B of EWRAM and leaves 25,596 B free.
-The IWRAM main stack reserve is 6,144 B. The 3D overlay uses 10,236 B
+The IWRAM main stack reserve is 6,144 B. The 3D overlay uses 10,188 B
 of its 10,304 B slot. The dedicated floor and ceiling materials add
-12 KiB of pixels in ROM. The two distant wall textures add 8 KiB.
+12 KiB of pixels in ROM.
 The fixed-point divider skips leading zero digits where it can prove
 that the quotient stays zero. The engine test compares quotients and
 remainders with its reference for both small and wide inputs.
@@ -120,11 +119,11 @@ At a fixed 120×80, a native-size east chapel ceiling crop contained
 previous ROM. The test torch remained visible beyond all four tested
 portal views. See the [Bone legibility notes](BONE_READABILITY.md#current-gba-validation).
 
-In the distance-filtered build, a 68×40-pixel far wall crop in Capital
-contains 834 adjacent brightness differences of at least 16 out of 255,
-down from 1,586 in the matching 120×80 view. The latest third-person
-Capital movement window rose from 18.31 to 18.77 drawn FPS and its mean
-frame work fell from 45.7 to 44.7 ms. Its P99 rose from 55.3 to 62.0 ms.
+At fixed 120×80, the distant Capital courtyard masonry and the entire
+first-person Cathedral approach match the `bd8ac71e` screenshots pixel
+for pixel. A separate fixed-camera Cathedral test places a red key at
+several distances. The key remains visible as it grows between those
+positions, including ones where the older renderer missed it.
 
 ```sh
 make -C gba test-speed2 SPEED2="action creator library story" SPEED2_GATES=1

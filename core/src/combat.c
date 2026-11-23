@@ -1998,6 +1998,7 @@ static void combat_view_sprites(DoomoView3D *v)
 #endif
 #if defined(DOOMO_PLATFORM_GBA)
     unsigned culled = 0;
+    int bone = combat_s.map_id == MAPID_BONE_CATHEDRAL || combat_s.map_id == MAPID_BONE_CAPITAL;
     if (opaque_depth < INT32_MAX) {
         int i, used = 0;
         /* Preserve the original nearest-first cap in a crowded scene. */
@@ -2046,6 +2047,10 @@ static void combat_view_sprites(DoomoView3D *v)
             int flags, scale, zoff;
             const DoomoImage *img = actor_image(a, &flags, &scale, &zoff);
             if (!img) continue;
+#if defined(DOOMO_PLATFORM_GBA)
+            if (bone && ((IS_DEMON(a->type) && a->state < AST_DYING) || (a->flags & AF_PICKUP)))
+                flags |= BB_DETAIL;
+#endif
             bbs[n].x = a->x;
             bbs[n].y = a->y;
             bbs[n].z = a->z + INT2FIX(zoff);

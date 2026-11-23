@@ -252,12 +252,9 @@ static int iatan16(int32_t t)
 
 /* These cache slots are level-local. The Bone maps use shared texture
  * IDs, so their flat-only materials can borrow three local slots. */
-enum { BONE_VAULT = DOOMO_TEXBANK_FIRST, BONE_SLAB, BONE_FLAGSTONE, BONE_FAR_WALL, BONE_FAR_MOSAIC };
-DOOMO_STATIC_ASSERT(BONE_FAR_MOSAIC < R3D_MAXTEX, bone_material_ids_fit);
+enum { BONE_VAULT = DOOMO_TEXBANK_FIRST, BONE_SLAB, BONE_FLAGSTONE };
+DOOMO_STATIC_ASSERT(BONE_FLAGSTONE < R3D_MAXTEX, bone_plane_ids_fit);
 uint8_t r3d_plane_ids[R3D_MAXTEX];
-const uint8_t r3d_far_face_ids[R3D_MAXTEX] = {
-    [TEX_BONE_WALL] = BONE_FAR_WALL, [TEX_SKULL_MOSAIC] = BONE_FAR_MOSAIC
-};
 
 static const uint8_t *view_texture_pixels(int id)
 {
@@ -271,8 +268,6 @@ static const uint8_t *view_texture_pixels(int id)
         case BONE_VAULT:        return coffered_vault_pixels;
         case BONE_SLAB:         return bone_slab_pixels;
         case BONE_FLAGSTONE:    return chapel_flagstone_pixels;
-        case BONE_FAR_WALL:     return bone_wall_far;
-        case BONE_FAR_MOSAIC:   return carved_mosaic_far;
         }
     }
     return texture_pixels(id, r3f.time);
@@ -540,7 +535,7 @@ void r3d_draw_sprite_pairs(const R3DSprite *s, int r0, int r1, int32_t vr0)
     int end = DOOMO_MIN(r3f.ncol, (x1 + 0x17FF) >> 13);
     int32_t left = (c << 13) + 0x800;
     uint32_t step = s->step16;
-    uint32_t u = (uint32_t)(((int64_t)(left - x0) * step) >> 12);
+    uint32_t u = r3d_sprite_u16(left - x0, step);
     for (; c < end; c++, left += 0x2000, u += step << 1) {
         int top, bot, from, to, u0, u1;
         uint32_t v;
@@ -678,8 +673,7 @@ static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, u
         {
             int c0 = (s.x0_12 - 1) >> 13;
             if (c0 < 0) c0 = 0;
-            s.u16_start = (uint32_t)(int32_t)
-                (((int64_t)((((c0 * 2 + 1) << 12) - s.x0_12) * s.step16)) >> 12);
+            s.u16_start = r3d_sprite_u16(((c0 * 2 + 1) << 12) - s.x0_12, s.step16);
         }
         if (b->flags & BB_FULLBRIGHT) {
             level = 15;
@@ -703,10 +697,11 @@ static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, u
         s.flags = b->flags;
         s.trans = (b->flags & BB_TRANSLUCENT) ||
                   (i >= 0 && spr_order[i].idx == v->player_sprite && depth < (40 << 16));
-        /* Refine the sprites most prone to a whole ray of lateral snap.
-         * Close, magnified sprites use the cached texel-run kernel. */
-        s.pairs = r3f.pair_wall && (b->flags & BB_SHADOW) && !s.trans &&
-                  s.step16 >= (1u << 16);
+        /* Keep the outline of small and mid-size combat sprites precise
+         * even when Smooth turns their shadows off. Large sprites use runs. */
+        s.pairs = r3f.pair_wall && !s.trans &&
+                  (b->flags & BB_DETAIL ? s.step16 >= 0x8000u :
+                   (b->flags & BB_SHADOW) && s.step16 >= 0x10000u);
         s.shadow_y12 = 0;
         s.shadow_hh = 0;
         if (b->flags & BB_SHADOW) {
