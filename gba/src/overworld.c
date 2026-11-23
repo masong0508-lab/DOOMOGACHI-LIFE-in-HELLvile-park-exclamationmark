@@ -431,7 +431,7 @@ static void draw_sprite(const DoomoBillboard *b)
  * ever sees it. On the red-hazed invaded town (TINT_RED, the only map with it) a frame whose work (the last
  * frame's gba_work_last) is over GBA_GOV_MS draws fewer sprites, nearest to the screen centre first, until the
  * frames fit 30 fps; with GOV_ROOM ms to spare they come back. Never dropped: off-screen billboards (they cost
- * nothing), fullbright ones (quest markers, sparkles) and the nearest sprite (the player). */
+ * nothing), fullbright ones (quest markers, sparkles) and sprites marked as essential by the scene. */
 #ifndef GBA_GOV_MS
 #define GBA_GOV_MS 26
 #endif
@@ -498,14 +498,18 @@ static void gov_pick_inner(const DoomoOverworldView *v, int n, uint32_t drop[4])
         x0 = owf.ox + (int)((b->x >> 16) / UNITS_PER_PX) - owf.scrollx - bw / 2;
         y0 = owf.oy + (int)((b->y >> 16) / UNITS_PER_PX) - owf.scrolly - bh - (int)((b->z >> 16) / UNITS_PER_PX);
         if (x0 >= owf.ox + owf.ow || x0 + bw <= owf.ox || y0 >= owf.oy + owf.oh || y0 + bh <= owf.oy) continue;
+        gov_area[i] = (uint16_t)DOOMO_MIN(bw * bh, 65535);
+        total += gov_area[i];
+        if (b->flags & BB_KEEP_VISIBLE) {
+            cum += gov_area[i];
+            continue;
+        }
         dx = x0 + bw / 2 - cx;
         dy = y0 + bh / 2 - cy;
         d2 = (uint32_t)(dx * dx + dy * dy);
         if (d2 < nearest_d) { nearest_d = d2; nearest = i; }
-        gov_area[i] = (uint16_t)DOOMO_MIN(bw * bh, 65535);
         gov_bkt[i] = (uint8_t)DOOMO_MIN(d2 >> 9, GOV_NB - 1);
         barea[gov_bkt[i]] += gov_area[i];
-        total += gov_area[i];
     }
     /* adapt: shrink by 1/8 of what the last frame drew when it was over budget, grow by 1/8 when it had room */
     if (gov_budget == GOV_FREE)      budget = total - total / 8;
@@ -516,16 +520,17 @@ static void gov_pick_inner(const DoomoOverworldView *v, int n, uint32_t drop[4])
     else                             budget = gov_budget;
     if (budget < GOV_MIN) budget = GOV_MIN;
     if (budget >= total) { gov_budget = GOV_FREE; gov_kept = total; return; }
-    if (nearest >= 0) {                                             /* the nearest sprite (the player) always stays */
+    if (!cum && nearest >= 0) {   /* Views without a marked subject, e.g. credits. */
         cum = gov_area[nearest];
-        barea[gov_bkt[nearest]] -= gov_area[nearest];
+        barea[gov_bkt[nearest]] -= cum;
+        gov_bkt[nearest] = 0xFF;
     }
     for (k = 0; k < GOV_NB; k++) {                                  /* whole buckets, nearest first */
         if (cum + barea[k] <= budget) cum += barea[k];
         else barea[k] = 0xFFFFFFFFu;                                /* this bucket is dropped */
     }
     for (i = 0; i < n; i++)
-        if (gov_bkt[i] != 0xFF && i != nearest && barea[gov_bkt[i]] == 0xFFFFFFFFu) drop[i >> 5] |= 1u << (i & 31);
+        if (gov_bkt[i] != 0xFF && barea[gov_bkt[i]] == 0xFFFFFFFFu) drop[i >> 5] |= 1u << (i & 31);
     gov_budget = budget;
     gov_kept = cum;
 }

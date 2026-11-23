@@ -250,17 +250,26 @@ void ownpc_spawn_all(void)
     }
 }
 
+/* Keep the two bodies readable at greeting distance (Talk reaches 46 units).
+ * Existing saves and scripted moves can start closer, so allow steps apart. */
+static int crowds_resident(int32_t dx, int32_t dy, int32_t old_dx, int32_t old_dy)
+{
+    const int32_t gap = 36 * OWQ;
+    int32_t d2;
+    if (dx <= -gap || dx >= gap || dy <= -gap || dy >= gap) return 0;
+    d2 = dx * dx + dy * dy;
+    if (d2 >= gap * gap) return 0;
+    if (old_dx <= -gap || old_dx >= gap || old_dy <= -gap || old_dy >= gap) return 1;
+    return d2 <= old_dx * old_dx + old_dy * old_dy;
+}
+
 int ownpc_blocks(int32_t x, int32_t y, int self)
 {
     int i;
     for (i = 0; i < ow_npc_count; i++) {
         const OwNpc *n = &ow_npcs[i];
-        int32_t dx, dy;
-        if (i == self || n->kind != NK_RESIDENT) continue;
-        dx = (n->x - x) / OWQ;
-        dy = (n->y - y) / OWQ;
-        if (dx > 20 || dx < -20 || dy > 20 || dy < -20) continue;
-        if (dx * dx + dy * dy * 2 < 13 * 13) return 1;
+        if (i == self || n->kind != NK_RESIDENT || n->id == playas_avatar()) continue;
+        if (crowds_resident(n->x - x, n->y - y, n->x - ow.px, n->y - ow.py)) return 1;
     }
     return 0;
 }
@@ -344,13 +353,19 @@ void ownpc_update(void)
             if (dy > sp) sy = sp; else if (dy < -sp) sy = -sp; else sy = dy;
             if (sx) {
                 int32_t nx = n->x + sx;
-                int32_t ddx = (nx - ow.px) / OWQ, ddy = (n->y - ow.py) / OWQ;
-                if (ow_walkable_cell(nx / OW_CELL, n->y / OW_CELL, fh) && ddx * ddx + ddy * ddy * 2 > 14 * 14) { n->x = nx; moved = 1; }
+                if (ow_walkable_cell(nx / OW_CELL, n->y / OW_CELL, fh) &&
+                    !crowds_resident(nx - ow.px, n->y - ow.py, n->x - ow.px, n->y - ow.py)) {
+                    n->x = nx;
+                    moved = 1;
+                }
             }
             if (sy) {
                 int32_t ny = n->y + sy;
-                int32_t ddx = (n->x - ow.px) / OWQ, ddy = (ny - ow.py) / OWQ;
-                if (ow_walkable_cell(n->x / OW_CELL, ny / OW_CELL, fh) && ddx * ddx + ddy * ddy * 2 > 14 * 14) { n->y = ny; moved = 1; }
+                if (ow_walkable_cell(n->x / OW_CELL, ny / OW_CELL, fh) &&
+                    !crowds_resident(n->x - ow.px, ny - ow.py, n->x - ow.px, n->y - ow.py)) {
+                    n->y = ny;
+                    moved = 1;
+                }
             }
             if (sx && (sx < 0 ? -sx : sx) >= (sy < 0 ? -sy : sy)) n->dir = sx < 0 ? 1 : 2;
             else if (sy) n->dir = sy < 0 ? 3 : 0;
@@ -433,6 +448,7 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
             if ((n->sflags & NSF_CLOCK) == BCLK_DOUBLE) bx += (int32_t)((t & 2) ? OWQ : -OWQ);   /* panic jitter */
             if ((n->sflags & NSF_TWITCH) && fx_sin((int)t * 4430) > 0x8000) bx += OWQ;        /* possessed twitch */
             z += n->hop;
+            if (n->flags & (NPCF_MAIN | NPCF_SIDE | NPCF_READY)) fl |= BB_KEEP_VISIBLE;
             ow_add_billboard(bx, n->y, z, bodyspr_image(n->id, n->dir, f), fl, 0);
             if (n->flags & (NPCF_MAIN | NPCF_SIDE | NPCF_READY)) {
                 int bob = ui_wave((int)t + n->phase, 36, 6);

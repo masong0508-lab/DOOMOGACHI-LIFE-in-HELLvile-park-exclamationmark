@@ -1083,7 +1083,7 @@ static void build_billboards(void)
         if (!p->spr || x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
         z = ow_floor_h(p->x / DOOMO_CELL_UNITS, p->y / DOOMO_CELL_UNITS) * DOOMO_HEIGHT_STEP;
         frame = OWP_NFR(p) > 1 ? (int)((t5 + (uint32_t)i) % (uint32_t)OWP_NFR(p)) : 0;
-        add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), OWP_FL(p), 0);
+        add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), OWP_FL(p) | (p->type == THING_PROP_FOUNTAIN ? BB_KEEP_VISIBLE : 0), 0);
     }
     ownpc_add_billboards(vx0, vy0, vx1, vy1);
     /* side quest spots (the hero's) */
@@ -1118,7 +1118,7 @@ static void build_billboards(void)
         z = ow_floor_h(cx, cy) * DOOMO_HEIGHT_STEP;
         if (!ow.moving && ((t / 20) & 1)) z += 2;        /* breathing */
         bodyspr_lazy(2);        /* V11, SP2 (every map): slice a new facing's render; never skip the player */
-        add_bb(ow.px, ow.py, z, bodyspr_image(playas_avatar(), ow.dir, f), BB_SHADOW, 1);
+        add_bb(ow.px, ow.py, z, bodyspr_image(playas_avatar(), ow.dir, f), BB_SHADOW | BB_KEEP_VISIBLE, 1);
         bodyspr_lazy(0);
     }
     /* PA4: the hero, left where you switched away */

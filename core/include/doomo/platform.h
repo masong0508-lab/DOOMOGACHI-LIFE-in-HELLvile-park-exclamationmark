@@ -151,7 +151,8 @@ typedef struct DoomoBillboard {
 } DoomoBillboard;
 enum { BB_FLIPX = 1, BB_FULLBRIGHT = 2, BB_TRANSLUCENT = 4, BB_SHADOW = 8,
        BB_EFFECT = 16,                 /* transient visual effect, not a projectile */
-       BB_DETAIL = 32 };                /* refine opaque sprite edges independently of shadows */
+       BB_DETAIL = 32,                 /* refine opaque sprite edges independently of shadows */
+       BB_KEEP_VISIBLE = 64 };         /* retain this overworld sprite under frame pressure */
 
 typedef struct DoomoView3D {
     const DoomoMap *map;

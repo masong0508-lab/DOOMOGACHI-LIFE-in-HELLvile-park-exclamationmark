@@ -4,6 +4,7 @@
 #include "test.h"
 #include "doomo/doomo.h"
 #include "doomo/beat.h"
+#include "doomo/roster.h"
 #include "doomo/camfx.h"
 #include "doomo/txt.h"
 #include "doomo/textures.h"
@@ -32,6 +33,45 @@ static void on_map(int beat)
  * lava, slime and prop frame selection must use the latter or the host PVR
  * reference and Dreamcast can freeze two different animation frames. */
 extern void ow_view_fill(DoomoOverworldView *v);
+
+TEST(ow_plaza_keeps_both_speakers_when_sprite_work_is_limited)
+{
+    DoomoOverworldView view;
+    int i, mayor, player_visible = 0, mayor_visible = 0;
+    on_map(BEAT_C1_MAYOR);
+    mayor = ownpc_find(ROSTER_ID_MAYOR);
+    CHECK(mayor >= 0);
+    if (mayor < 0) return;
+    ow_view_fill(&view);
+    for (i = 0; i < view.sprite_count; i++) {
+        const DoomoBillboard *b = &view.sprites[i];
+        if (!(b->flags & BB_KEEP_VISIBLE) || !(b->flags & BB_SHADOW)) continue;
+        if ((b->x >> 16) == ow.px / OWQ && (b->y >> 16) == ow.py / OWQ)
+            player_visible = 1;
+        if ((b->x >> 16) == ow_npcs[mayor].x / OWQ && (b->y >> 16) == ow_npcs[mayor].y / OWQ)
+            mayor_visible = 1;
+    }
+    CHECK(player_visible);
+    CHECK(mayor_visible);
+}
+
+TEST(ow_plaza_leaves_greeting_space_and_allows_walking_out_of_old_overlap)
+{
+    int mayor;
+    int32_t x, y;
+    on_map(BEAT_C1_MAYOR);
+    mayor = ownpc_find(ROSTER_ID_MAYOR);
+    CHECK(mayor >= 0);
+    if (mayor < 0) return;
+    x = ow_npcs[mayor].x;
+    y = ow_npcs[mayor].y;
+    ow.px = x;
+    ow.py = y + 40 * OWQ;
+    CHECK(ownpc_blocks(x, y + 30 * OWQ, -1));
+    ow.py = y + 8 * OWQ;
+    CHECK(!ownpc_blocks(x, y + 9 * OWQ, -1));
+    CHECK(ownpc_blocks(x, y + 7 * OWQ, -1));
+}
 
 TEST(ow_script_dialogue_freezes_overworld_texture_phase)
 {
