@@ -470,6 +470,52 @@ TEST(talk_quick_reopens_last_subject_without_forgetting_the_thread)
     talk_db_close();
 }
 
+TEST(talk_quick_resumes_the_selected_residents_group_subject)
+{
+    TalkState s;
+    TalkSugg picks[TALK_QUICK_MAX];
+    TalkSugg question = {TA_ASK_ABOUT, TONE_PLAIN, TC_NONE, -1, "Tell me about it."};
+    uint16_t garden, band;
+    int turn, n;
+
+    premade_town();
+    CHECK(open_db());
+    garden = concept("gardening");
+    band = concept("band");
+    CHECK(garden && band);
+    begin2(&s, ID_NANA, ID_RIVET, 171u);
+    question.topic = garden;
+    CHECK(say(&s, &question, 0) > 0);
+    CHECK_EQ(s.answered_topic[0] & TALK_MAX_CONCEPTS, garden);
+
+    n = talk_quick_replies(&s, 1, garden, TC_NONE, 2u, picks);
+    CHECK(n > 0);
+    if (n > 0) CHECK_EQ(picks[0].topic, TC_NONE); /* Rivet hasn't discussed gardening. */
+
+    question.topic = band;
+    CHECK(say(&s, &question, 1) > 0);
+    CHECK_EQ(s.answered_topic[1] & TALK_MAX_CONCEPTS, band);
+    n = talk_quick_replies(&s, -1, band, TC_NONE, 2u, picks);
+    CHECK(n > 0);
+    CHECK_EQ(picks[0].topic, TC_NONE); /* Everyone starts without either person's topic. */
+    for (turn = 0; turn < 10; ++turn) {
+        int who = turn & 1;
+        uint16_t own = who ? band : garden, previous = who ? garden : band;
+        n = talk_quick_replies(&s, who, previous, TC_NONE, (uint32_t)turn, picks);
+        CHECK(n > 0);
+        if (n <= 0) break;
+        CHECK_MSG(picks[0].act == TA_ASK_ABOUT,
+                  "turn %d slot %d: act %u, prior act %u, target %d, topic %u, saved 0x%x, gate %u, flags 0x%x, argument %u, lines %u",
+                  turn, who, picks[0].act, s.in.act[0], s.in.target, picks[0].topic,
+                  s.answered_topic[who], s.gate, s.flags, s.arg_step, s.nlines);
+        CHECK_EQ(picks[0].topic, own);
+        CHECK_EQ(picks[0].to, who);
+        CHECK(say(&s, &picks[0], who) > 0);
+        CHECK_EQ(s.line[0].who, who);
+    }
+    talk_db_close();
+}
+
 /* A seasoned conversation should not keep proposing the player's last
  * sentence just because the seeded list happened to rotate to it. The
  * deliberative ranker uses the real DM reaction model, then applies a small

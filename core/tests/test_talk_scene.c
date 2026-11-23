@@ -862,6 +862,53 @@ TEST(talk_scene_saved_outing_can_lead_to_a_conversation_about_the_place)
     CHECK(strstr(d.you, "Brimstone Bites") != NULL);
 }
 
+TEST(talk_scene_venue_answers_can_recall_the_latest_shared_date)
+{
+    TalkSceneDebug d;
+    UiDialogDebug box;
+    DoomoResident *r;
+    char label[48];
+    int other = roster_find("Steamy"), row;
+    town();
+    CHECK(other >= 0);
+    doomo_town.day = 7;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    doomo_town.day++;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    doomo_town.day++;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    talk_visit_note(ID_NANA, other, ACT_PARK);
+    CHECK(save_game(1) && load_game(1));
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK_EQ(find_row("topicmemory", -1, -1), -1);
+    r = town_res(ID_NANA);
+    r->activity = ACT_PARK;
+    r->mood = MOOD_HAPPY;
+    go_to(find_row("dayplan", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+    go_to(find_row("followup", -1, -1)); press(BTN_A);
+    CHECK(read_talk_reply());
+
+    row = find_row("topicmemory", ACT_PARK, 8);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    CHECK(talk_scene_row_debug(row, NULL, NULL, NULL, label));
+    CHECK(strstr(label, "park") && strstr(label, "Y1 4/9"));
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_EQ(find_row("topicmemory", -1, -1), -1);
+    press(BTN_SELECT); /* Everyone. */
+    CHECK_EQ(find_row("topicmemory", -1, -1), -1);
+    press(BTN_SELECT);
+    go_to(find_row("topicmemory", ACT_PARK, 8)); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "park") && strstr(box.text, "Y1 4/9"));
+    CHECK(read_talk_reply());
+    CHECK_EQ(find_row("topicmemory", -1, -1), -1);
+    CHECK(find_row("followup", -1, -1) >= 0);
+}
+
 TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
 {
     int i, row;

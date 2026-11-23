@@ -664,6 +664,18 @@ int talk_visit_has(int guest, int avatar, int minor, const TalkVisit *visit)
     return 0;
 }
 
+uint32_t talk_visit_latest_date(int guest, int avatar, int minor, int venue)
+{
+    uint32_t key;
+    int i;
+    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE ||
+        !talk_act_invite_ok(TA_INVITE, venue, minor, 12)) return TALK_VISIT_UNDATED;
+    key = NEWS_IDS(guest, avatar, venue);
+    for (i = 0; i < visits.count; ++i)
+        if (visit_key(visits.rows[i]) == key) return visit_day(visits.rows[i]);
+    return TALK_VISIT_UNDATED;
+}
+
 static void visit_reset(void)
 {
     visits.count = 0;

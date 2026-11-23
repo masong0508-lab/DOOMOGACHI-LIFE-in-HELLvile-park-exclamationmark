@@ -786,6 +786,8 @@ typedef struct TalkVisit {
     uint32_t day;
     int venue;
 } TalkVisit;
+/* Newest dated visit to this venue for these two people, or UNDATED. */
+uint32_t talk_visit_latest_date(int guest, int avatar, int minor, int venue);
 /* Fetch a page, newest first. A null page counts the matching records,
  * up to capacity. Records made before dates were saved use UNDATED. */
 int talk_visit_page(int guest, int avatar, int minor, int offset, TalkVisit *page, int capacity);

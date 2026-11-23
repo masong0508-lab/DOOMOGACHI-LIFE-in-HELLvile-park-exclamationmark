@@ -506,6 +506,16 @@ selected resident, with the most recently used pairs first. Pick a pair,
 then choose either subject to ask about it. An older page shows the rest
 of the saved pairs for these two people.
 
+In a group chat, turning to someone after a directed exchange can offer
+**Can we talk more about …?** using the last ordinary subject that person
+answered. Addressing everyone after a directed exchange starts a shared
+thread. A resident's answer about a venue can also put a dated **Recall**
+choice on the main Talk page. It uses the newest recorded visit to that
+venue shared by the selected resident and the current avatar. The date
+can help an elder recall details. A clear reply can lead back to a
+question about the place. Both choices reuse the active conversation and
+existing journal records.
+
 A clear journal recall can lead back into conversation. After recalling an
 outing, choose **Ask about** to talk about its venue. A friendship milestone
 or an argument the residents already resolved can lead to the same option

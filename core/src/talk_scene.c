@@ -52,7 +52,7 @@ enum {
     K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN,
     K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL,
     K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT, K_SHARED_TOPICS, K_SHARED_PAIR,
-    K_SHARED_PAGE, K_SHARED_ASK, K_JOURNAL_REPAIR
+    K_SHARED_PAGE, K_SHARED_ASK, K_JOURNAL_REPAIR, K_TOPIC_MEMORY
 };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 enum { JOURNAL_OUTINGS, JOURNAL_PERSONAL, JOURNAL_ISLAND };
@@ -549,7 +549,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     TalkSugg tmp[TALK_QUICK_MAX];
     const TalkLine *th;
     const uint8_t *fl = NULL, *sl = NULL;
-    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, bridge = 0;
+    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, directed, resume = 0, bridge = 0;
     int8_t bridge_to = -1;
     uint32_t h;
     if (!s || !out || (s->flags & TDF_OVER)) return 0;
@@ -559,7 +559,8 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     q.s = s;
     q.salt = salt;
     th = talk_quick_thread(s, &tslot);
-    if (slot < 0 || slot >= s->nparts || (s->part[slot].flags & (TPF_LEFT | TPF_PET)))
+    directed = slot >= 0 && slot < s->nparts && !(s->part[slot].flags & (TPF_LEFT | TPF_PET));
+    if (!directed)
         slot = tslot >= 0 && tslot < s->nparts ? tslot : 0;
     q.pool = slot < s->nparts && is_pool_id(s->part[slot].id);
     if (th) act = th->act;
@@ -567,14 +568,19 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     /* grief and sincerity: only comfort, and the topic is not picked up */
     q.sincere = (th && (th->flags & TLF_SINCERE)) || TA_IS_SAFETY(act) || q_grief(th ? th->topic : TC_NONE) ||
                 q_grief(topic) || q_grief(s->topic_stack[0]);
-    /* Current conversational context wins. Only on a neutral opening
-     * may an otherwise empty thread resume the resident's saved subject.
-     * This comes from the saved per-port TALK memory; no extra
-     * long-lived tokens or sentence buffers per resident are allocated. */
-    q.topic = th && th->topic ? th->topic : topic ? topic : s->topic_stack[0];
-    if (!q.topic && slot >= 0 && slot < s->nparts &&
-        (!th || act == TA_GREET || act == TA_WAVE || act == TA_BACKCHANNEL)) {
-        q.topic = s->conv.mem_topic[slot];
+    /* A directed exchange cannot become another person's thread just
+     * because the player changes seats. Use an ordinary answer from
+     * the selected resident, while keeping room-wide care and mediation. */
+    if (s->nparts > 1 && s->in.act[0] != TA_NONE && s->in.target >= 0 &&
+        (!directed || s->in.target != slot) && !q.sincere && !s->arg_step && !(s->flags & TDF_CARE)) {
+        q.topic = directed ? s->answered_topic[slot] & TALK_MAX_CONCEPTS : TC_NONE;
+        resume = q.topic != TC_NONE;
+        th = NULL;
+        act = TA_NONE;
+    } else {
+        q.topic = th && th->topic ? th->topic : topic ? topic : s->topic_stack[0];
+        if (!q.topic && directed && (!th || act == TA_GREET || act == TA_WAVE || act == TA_BACKCHANNEL))
+            q.topic = s->conv.mem_topic[slot];
     }
     if (q.topic && (!talk_gen_concept_ok(q.topic, &s->conv.aud) || q_grief(q.topic))) q.topic = TC_NONE;
     q.fresh = fresh && !q.sincere && q_linked(q.topic, fresh) &&
@@ -582,9 +588,8 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
               ? fresh : TC_NONE;
     /* An associative callback must come from this speaker's real past
      * with this avatar or a recently remembered subject in the lexicon. */
-    if (!q.sincere && th && th->topic && q.topic == th->topic &&
-        slot >= 0 && slot < s->nparts && s->last_act != TA_CHANGE_TOPIC &&
-        !(s->part[slot].flags & (TPF_LEFT | TPF_PET))) {
+    if (!q.sincere && th && th->topic && q.topic == th->topic && directed &&
+        s->last_act != TA_CHANGE_TOPIC) {
         uint16_t familiar = TC_NONE, remembered = s->conv.mem_topic[slot];
         if (s->turn && !(s->flags & TDF_CARE) && s->tension < TALK_TENSION_ARGUE)
             familiar = talk_link_pick(s->part[slot].id, s->conv.avatar, q.topic, s->topic_stack[1]);
@@ -594,6 +599,12 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         if (familiar) { q.fresh = familiar; bridge = 1; }
     }
     h = doomo_hash32(salt * 0x9E3779B1u + (uint32_t)act * 0x85EBCA6Bu + 0x7A1Bu);
+
+    if (resume && q.topic) {
+        int8_t to = (int8_t)slot;
+        if (q_add(&q, &to, TA_ASK_ABOUT, h, tmp))
+            tmp[0].text = "Can we talk more about %t?";
+    }
 
     /* the reply that suits them is reserved first (the first of its list that can be said), so the thread's
      * reply never takes its act; it goes in the second place */
@@ -609,7 +620,7 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         q_add(&q, NULL, TA_MEDIATE, h, tmp);
         q_add(&q, &sp, TA_TAKE_SIDE, h >> 3, tmp);
         q_add(&q, &other, TA_DEFEND, h >> 5, tmp);
-    } else {
+    } else if (!q.n) {
         if (!th) { fl = ql_start; fn = (int)sizeof ql_start; }
         else if (q.sincere) { fl = ql_sinc; fn = (int)sizeof ql_sinc; }
         else fn = q_follow(act, &fl);
@@ -795,16 +806,18 @@ static void list_reset(void)
 static void quick_refresh(void)
 {
     uint16_t fresh = TC_NONE;
-    int i, slot = T.to >= 0 ? T.to : 0;
+    int i;
     uint32_t h = doomo_hash32(T.qsalt * 2654435761u + 0x51u);
     for (i = 0; i < T.nstock && !fresh; i++) {
         uint16_t c = T.stock[(h + (uint32_t)i) % (uint32_t)T.nstock];
         if (c != T.topic && c != T.s.topic_stack[0]) fresh = c;
     }
-    T.nquick = (uint8_t)talk_quick_replies(&T.s, slot, T.topic, fresh, T.qsalt++, T.quick);
+    T.nquick = (uint8_t)talk_quick_replies(&T.s, T.to, T.topic, fresh, T.qsalt++, T.quick);
 }
 
 static int last_meet_venue(int id);
+static uint32_t topic_memory(int id, int *venue);
+static void visit_date_label(char *buf, size_t cap, uint32_t day);
 
 static void build_main(void)
 {
@@ -865,11 +878,17 @@ static void build_main(void)
     }
     /* A shared-memory callback is offered only for a real prior event,
      * for this particular person. It cannot invent a past relationship. */
-    if (T.to >= 0 && T.to < T.n &&
-        (talk_mem_shared(T.ids[T.to], TALK_SHARED_PLAYED) ||
-         talk_mem_shared(T.ids[T.to], TALK_SHARED_GIFTED) ||
-         talk_mem_shared(T.ids[T.to], TALK_SHARED_INVITED) || last_meet_venue(T.ids[T.to]) >= 0))
-        add_row(K_REMEMBER, 0, 0);
+    if (T.to >= 0 && T.to < T.n) {
+        int id = T.ids[T.to], venue;
+        uint32_t day = topic_memory(id, &venue);
+        if (day != TALK_VISIT_UNDATED) {
+            visit_date_label(T.journal_label.rows[0], sizeof T.journal_label.rows[0], day);
+            add_row(K_TOPIC_MEMORY, venue, (int)day);
+        } else if (talk_mem_shared(id, TALK_SHARED_PLAYED) || talk_mem_shared(id, TALK_SHARED_GIFTED) ||
+                   talk_mem_shared(id, TALK_SHARED_INVITED) || last_meet_venue(id) >= 0) {
+            add_row(K_REMEMBER, 0, 0);
+        }
+    }
 #ifdef TALK_TYPING
     add_row(K_TYPE, 0, 0);
 #endif
@@ -910,6 +929,20 @@ static int last_meet_venue(int id)
 {
     int venue;
     return meet_memory_venues(id, &venue, 1) ? venue : -1;
+}
+
+static uint32_t topic_memory(int id, int *venue)
+{
+    int minor = meet_memory_minor(id);
+    uint16_t answer;
+    if (minor < 0 || T.followup) return TALK_VISIT_UNDATED;
+    answer = T.s.answered_topic[T.to];
+    if (!(answer & TALK_LINK_SOURCE)) return TALK_VISIT_UNDATED;
+    answer &= TALK_MAX_CONCEPTS;
+    if (!followup_open(answer)) return TALK_VISIT_UNDATED;
+    *venue = talk_act_venue_of(answer);
+    if (*venue < 0) return TALK_VISIT_UNDATED;
+    return talk_visit_latest_date(id, T.avatar, minor, *venue);
 }
 
 /* Snapshot the recorded facts on entry to History. */
@@ -1462,6 +1495,9 @@ static const char *row_text(int index, char *buf)
     case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
+    case K_TOPIC_MEMORY:
+        doomo_snprintf(buf, 48, "Recall %s (%s)", sim_venue_name(r->arg), T.journal_label.rows[0]);
+        break;
     case K_HISTORY:
         if (r->arg == 1)
             doomo_snprintf(buf, 48, r->v == TQS_READY ?
@@ -2364,6 +2400,15 @@ static void activate(int i)
     case K_GIVE: build_give_items(); break;
     case K_GIVEITEM: give_item(r->arg); break;
     case K_REMEMBER: reminisce(0); break;
+    case K_TOPIC_MEMORY: {
+        int id = speaker_of(T.to), venue;
+        uint32_t day = topic_memory(id, &venue);
+        if (day == r->v && venue == r->arg)
+            recall_meetup(id, venue, 1, day);
+        else
+            build_main();
+        break;
+    }
     case K_HISTORY: {
         int shortcut = r->arg;
         build_history();
@@ -2644,9 +2689,8 @@ static void change_to(int to)
     else if (T.page == PG_MAIN) {
         int c;
         build_main();
-        /* You turned to someone else: the quick replies answer what was said before, so the cursor
-         * waits on the first category instead. A kind word to them is then 4 presses (SELECT, down to
-         * "Be nice", A, A): the budget of docs/design/talk/TALK_DESIGN.md 2.3 (T8). */
+        /* Start on the first category after turning to someone. This preserves
+         * the four presses for a compliment (SELECT, down, A, A). */
         for (c = 0; c < T.nrows; c++)
             if (T.row[c].kind == K_CAT) { T.list.sel = c; break; }
     }
@@ -2938,7 +2982,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit", "sharedtopics", "sharedpair", "sharedpage", "sharedask", "journalrepair" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit", "sharedtopics", "sharedpair", "sharedpage", "sharedask", "journalrepair", "topicmemory" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
