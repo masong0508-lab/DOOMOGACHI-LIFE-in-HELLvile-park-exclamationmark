@@ -21,6 +21,11 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA projection setup (2026-11-22):** Bake the 60×40 and 240×160
+  projection tables alongside the three Bone tiers. Verify all fifteen
+  width and FOV combinations against the runtime calculation. In the
+  Vape Cellar, setup took 0.24 ms at 60×40 and 0.6 ms at 240×160. See
+  the [GBA measurements](docs/GBA.md#current-bone-rendering-budget).
 - **GBA Bone room clarity and tier switches (2026-11-22):** ROM tables
   eliminate the repeated projection calculation for three working
   resolutions. Median 120×80 setup fell from 10.2 to 0.5 ms in mGBA.

@@ -9,7 +9,7 @@ Tables (all const -> ROM, they cost no RAM):
                       cos(a) = gba_sin16[(a & 4095) + 1024]
   gba_recip8[32768]   2^26 / i  (i = a distance in 1/8 world units,
                       clamped to i >= 8): the renderer's 1/z table
-  gba_viewport_presets  projection tables for the three reduced Bone widths
+  gba_viewport_presets  projection tables for the standard 3D widths
   gba_missing_tex     64x64 checker for textures the core cannot supply
 """
 import math
@@ -29,24 +29,39 @@ def column_angle(sine, offset):
 
 
 def viewport_presets(write, sine):
+    widths = (60, 80, 96, 120, 240)
+    planes = (36000, 43250, 52000)
+    write(f"DOOMO_STATIC_ASSERT(R3D_VIEWPORT_PRESET_N == {len(widths)}, viewport_preset_count);")
     write("DOOMO_STATIC_ASSERT(R3D_KROWS == 256, viewport_preset_rows);")
-    write("const R3DViewportPreset gba_viewport_presets[3][3] = {")
-    for width in (80, 96, 120):
-        write("    {")
+    write("const uint8_t gba_viewport_widths[R3D_VIEWPORT_PRESET_N] = { "
+          + ", ".join(map(str, widths)) + " };")
+    write("")
+    for width in widths:
         ncol = width // 2
-        for plane in (36000, 43250, 52000):
+        for fov, plane in enumerate(planes):
             proj = (ncol << 16) // plane
             x = [2 * c + 1 - ncol for c in range(ncol)]
             # C truncates negative division toward zero.
             colt = [(abs(v) * 65536 // proj) * (-1 if v < 0 else 1) for v in x]
-            colang = [column_angle(sine, v) for v in colt]
+            for ctype, name, values in (("int32_t", "colt", colt),
+                                        ("int16_t", "colang", [column_angle(sine, v) for v in colt])):
+                write(f"static const {ctype} {name}_{width}_{fov}[{ncol}] = {{")
+                for i in range(0, len(values), 12):
+                    write("    " + ", ".join(map(str, values[i:i + 12])) + ",")
+                write("};")
+                write("")
+    write("const R3DViewportPreset gba_viewport_presets[R3D_VIEWPORT_PRESET_N][3] = {")
+    for width in widths:
+        write("    {")
+        for fov, plane in enumerate(planes):
+            proj = ((width // 2) << 16) // plane
             rowk = [(proj << 17) // (2 * y + 1) for y in range(256)]
             write(f"        {{ .proj = {proj}, .invproj = {0xFFFFFFFF // proj}u,")
-            for name, values in (("colt", colt), ("colang", colang), ("rowk", rowk)):
-                write(f"          .{name} = {{")
-                for i in range(0, len(values), 12):
-                    write("            " + ", ".join(map(str, values[i:i + 12])) + ",")
-                write("          },")
+            write(f"          .colt = colt_{width}_{fov}, .colang = colang_{width}_{fov},")
+            write("          .rowk = {")
+            for i in range(0, len(rowk), 12):
+                write("            " + ", ".join(map(str, rowk[i:i + 12])) + ",")
+            write("          },")
             write("        },")
         write("    },")
     write("};")

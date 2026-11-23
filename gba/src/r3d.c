@@ -242,7 +242,7 @@ static int iatan16(int32_t t)
     while (lo < hi) {
         int mid = (lo + hi + 1) >> 1;
         /* tan(mid) <= t  <=>  sin(mid) <= t * cos(mid) (cos > 0) */
-        int64_t lhs = (int64_t)isin(mid) << 16;
+        int64_t lhs = (int64_t)isin(mid) * 65536;
         int64_t rhs = (int64_t)t * icos(mid);
         if (lhs <= rhs) lo = mid;
         else hi = mid - 1;
@@ -323,8 +323,10 @@ static void setup_viewport(int vw, int vh, int fov)
     int c, m;
     int ncol = vw >> 1;
     int fov_index = fov < 0 || fov > 2 ? 1 : fov;
-    int preset = vw == 80 ? 0 : vw == 96 ? 1 : vw == 120 ? 2 : -1;
-    if (preset >= 0) {
+    int preset;
+    for (preset = 0; preset < R3D_VIEWPORT_PRESET_N; preset++)
+        if (vw == gba_viewport_widths[preset]) break;
+    if (preset < R3D_VIEWPORT_PRESET_N) {
         /* A quality-tier switch copies the same tables from ROM instead
          * of doing hundreds of divides and angle searches on that frame. */
         const R3DViewportPreset *t = &gba_viewport_presets[preset][fov_index];

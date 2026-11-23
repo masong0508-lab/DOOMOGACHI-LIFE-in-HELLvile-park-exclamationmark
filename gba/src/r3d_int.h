@@ -116,15 +116,17 @@ static inline void r3d_clip_at(int c, uint32_t depth8, int *top, int *bot)
 extern const int32_t  gba_sin16[5120];
 extern const uint32_t gba_recip8[32768];
 
-/* 80, 96 and 120 pixel working widths, with one preset per FOV. */
+/* Standard full-screen 3D tiers, with one preset per FOV. */
+#define R3D_VIEWPORT_PRESET_N 5
 typedef struct R3DViewportPreset {
     int32_t proj;
     uint32_t invproj;
-    int32_t colt[60];
-    int16_t colang[60];
+    const int32_t *colt;
+    const int16_t *colang;
     int32_t rowk[R3D_KROWS];
 } R3DViewportPreset;
-extern const R3DViewportPreset gba_viewport_presets[3][3];
+extern const uint8_t gba_viewport_widths[R3D_VIEWPORT_PRESET_N];
+extern const R3DViewportPreset gba_viewport_presets[R3D_VIEWPORT_PRESET_N][3];
 
 /* texture lookup with per-frame cache (r3d.c, THUMB). Never NULL. */
 const uint8_t *r3d_texture(int id) ROM_CALL;

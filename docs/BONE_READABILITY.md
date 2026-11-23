@@ -80,8 +80,8 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The mGBA movement census drew 17.00 and 17.23 FPS in Cathedral and
-17.92 and 18.99 FPS in Capital, first and third person respectively.
+The mGBA movement census drew 17.00 and 16.93 FPS in Cathedral and
+17.69 and 19.14 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that

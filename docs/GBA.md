@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 17.00 | 29.86 | 50.1 / 60.5 ms |
-| Cathedral, third person | 17.92 | 17.23 | 29.86 | 48.7 / 58.8 ms |
-| Capital, first person | 19.45 | 17.92 | 29.86 | 47.6 / 63.0 ms |
-| Capital, third person | 19.68 | 18.99 | 29.75 | 44.7 / 56.9 ms |
+| Cathedral, first person | 17.39 | 17.00 | 29.86 | 50.0 / 60.6 ms |
+| Cathedral, third person | 17.92 | 16.93 | 29.75 | 49.5 / 63.3 ms |
+| Capital, first person | 19.45 | 17.69 | 29.86 | 47.8 / 63.3 ms |
+| Capital, third person | 19.68 | 19.14 | 29.98 | 44.2 / 59.4 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -47,13 +47,14 @@ Bone window.
   at 120×80 and adapts independently of the exterior. A one-cell arch
   borrows the street budget and requires extra headroom before promoting
   to 120×80. Door and lift heights are read live for both cameras.
-- The 80, 96 and 120 pixel viewport widths copy exact projection tables
-  from ROM. All three FOV settings use the same coordinates as the
-  runtime calculation. Across the measured room switches, median
-  projection setup fell from 8.4 to 0.3 ms for 96×64 and from 10.2 to
-  0.5 ms for 120×80. The tables occupy 12,528 B of ROM and reuse the
-  existing working arrays. A completed 120×80 room frame can present
-  after two refreshes when it fits.
+- All five standard viewport widths copy exact projection tables from
+  ROM. All three FOV settings use the same coordinates as the runtime
+  calculation. In a matched Vape Cellar run, full-resolution setup took
+  0.6 ms with the tables and 17.9 ms with runtime calculation. Quarter
+  detail setup took 0.24 ms and 6.1 ms respectively. Earlier room
+  measurements showed 0.3 ms for 96×64 and 0.5 ms for 120×80 with
+  tables. All presets reuse the existing working arrays. A completed
+  120×80 room frame can present after two refreshes when it fits.
 - Each Bone wall ray shades a left and right texture sample. In the
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The
