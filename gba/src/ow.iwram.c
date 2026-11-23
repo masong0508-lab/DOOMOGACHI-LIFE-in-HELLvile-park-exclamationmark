@@ -156,7 +156,11 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
             const int b = xa & 2;
             for (k = 0; k < 16; k++) qq[k] = lc[owf.cls[k ^ b]];
         }
-        if (s == 1 && !flip && !trans) {
+        /* A rounded-down odd edge can lie outside the source image.
+         * Even masked pixels are fetched by the assembly loop, so only
+         * use direct ROM reads when the WHOLE aligned pair range fits. */
+        const int direct_ok = xa >= x0 && xb <= x0 + w;
+        if (s == 1 && !flip && !trans && direct_ok) {
             j.dst = gba_back + cy0 * LINE + (xa >> 1);
             j.src = img->pix + (cy0 - y0) * iw + (xa - x0);
             j.rows = cy1 - cy0;
@@ -169,7 +173,7 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
          * iw - 1 - (x - x0), so a row is the source row read backwards from there, four texels
          * a word read (ow_flip_row); the edge columns it reads outside the image are the ones
          * head / tail mask off */
-        const int mirror = s == 1 && flip && !trans;
+        const int mirror = s == 1 && flip && !trans && direct_ok;
         const int moff = iw - 1 - (xa - x0);
         if (!mirror)
             for (x = xa; x < xb; x++) {
