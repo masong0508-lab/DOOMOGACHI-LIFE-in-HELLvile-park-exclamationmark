@@ -21,6 +21,12 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Return outings and shared performance (2026-11-23):** After a clear
+  dated recall, Talk can open the invitation picker at the remembered
+  venue. A resident can accept or decline through the usual dialogue.
+  The Music Studio reuses its visible singer list on idle frames, and
+  combat stops counting demons as soon as a clear or spawn check has
+  enough information. PS2 CI now runs for shared core changes.
 - **GBA projection setup (2026-11-22):** Bake the 60×40 and 240×160
   projection tables alongside the three Bone tiers. Verify all fifteen
   width and FOV combinations against the runtime calculation. In the

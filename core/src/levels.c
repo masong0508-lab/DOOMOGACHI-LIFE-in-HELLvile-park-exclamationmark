@@ -593,7 +593,7 @@ static void portal_spawn(const LevelBoss *b)
 {
     int s, a, fl, ce;
     fix16 x, y;
-    if (!lv_run.portal_n || actor_demons_alive() >= 10) return;
+    if (!lv_run.portal_n || actor_demons_alive(10) >= 10) return;
     s = rng_range(&doomo_rng, lv_run.portal_n);
     x = INT2FIX(lv_run.portal_x[s] * CELLU + CELLU / 2);
     y = INT2FIX(lv_run.portal_y[s] * CELLU + CELLU / 2);
@@ -677,7 +677,7 @@ void lv_runtime_post(void)
         if (lv_run.bar < 0 || !track_alive(&lv_run.track[lv_run.bar])) lv_run.bar = (int8_t)i;
         t->t++;
         if ((b->flags & LBF_SUMMON) && t->t % 210 == 105 && doomo_actors[t->actor].hp < t->hp_max * 4 / 5 &&
-            actor_demons_alive() < 10)
+            actor_demons_alive(10) < 10)
             summon(t, b);
         if ((b->flags & LBF_BLINK) && t->t % 150 == 75) blink(t);
         if ((b->flags & LBF_ORGAN) && t->t % 75 == 40) organ_fire(t);

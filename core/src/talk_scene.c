@@ -89,7 +89,8 @@ static struct TalkScn {
     uint8_t   journal_mode, place;
     uint16_t  stock[TSTOCK];
     TalkSugg  quick[TALK_QUICK_MAX];     /* the replies to what was just said (top of the main page) */
-    uint8_t   nquick, followup_place;    /* outing index + 1 from the last day-plan reply */
+    uint8_t   nquick, followup_place;    /* outing index + 1 from the last reply */
+    uint16_t  followup_day;             /* dated outing being recalled, or TALK_VISIT_UNDATED */
     uint32_t  qsalt;
     UiList    list;
     char      you[TALK_SHOWN_MAX];
@@ -770,16 +771,24 @@ static int followup_open(uint16_t topic)
     return talk_gen_concept_ok(topic, &aud) && !q_grief(topic);
 }
 
-/* The shortcut refers to where this resident said they were. A normal
- * invitation can still be offered for another eligible venue. */
+static int meet_memory_minor(int id);
+
+/* Use the venue the resident just mentioned or the dated outing we
+ * just recalled. Both paths use the current invitation rules. */
 static int followup_place_open(void)
 {
     const DoomoResident *r;
-    int venue;
+    int id, venue;
     if (!T.followup || !T.followup_place) return 0;
     venue = outing[T.followup_place - 1].venue;
     if (talk_dm_invite_why(&T.s, T.to, venue) != TAW_NONE) return 0;
-    r = town_res(speaker_of(T.to));
+    id = speaker_of(T.to);
+    if (T.followup_day != TALK_VISIT_UNDATED) {
+        TalkVisit visit = { T.followup_day, venue };
+        int minor = meet_memory_minor(id);
+        return minor >= 0 && talk_visit_has(id, T.avatar, minor, &visit);
+    }
+    r = town_res(id);
     return r && r->activity == venue;
 }
 
@@ -1345,6 +1354,7 @@ static void show_scene_reply(int speaker, const char *reply, uint16_t followup)
 {
     T.followup = followup;
     T.followup_place = 0;
+    T.followup_day = TALK_VISIT_UNDATED;
     if (followup) topic_name(followup, T.followup_name, (int)sizeof T.followup_name);
     ui_say(speaker, reply);
     T.busy = 1;
@@ -1486,7 +1496,8 @@ static const char *row_text(int index, char *buf)
         break;
     case K_INVITE: doomo_snprintf(buf, 48, "Add someone to chat >"); break;
     case K_OUT:
-        if (r->arg) doomo_snprintf(buf, 48, "Plan a visit to %s >", outing[r->arg - 1].label);
+        if (r->arg) doomo_snprintf(buf, 48, T.followup_day == TALK_VISIT_UNDATED ?
+                                  "Plan a visit to %s >" : "Go back to %s >", outing[r->arg - 1].label);
         else doomo_snprintf(buf, 48, "Ask to go somewhere >");
         break;
     case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
@@ -2111,13 +2122,15 @@ static int recall_needs_cue(int id, int cue)
     return 1;
 }
 
-static uint16_t remembered_venue_topic(int venue)
+static uint16_t remembered_venue_topic(int venue, uint8_t *place)
 {
     size_t i;
     for (i = 0; i < DOOMO_COUNTOF(outing); i++) {
         uint16_t topic = TC_NONE;
         if (outing[i].venue != venue) continue;
-        return talk_lex_find(outing[i].key, &topic, NULL, NULL) >= 0 && followup_open(topic) ? topic : TC_NONE;
+        if (talk_lex_find(outing[i].key, &topic, NULL, NULL) < 0 || !followup_open(topic)) return TC_NONE;
+        if (place) *place = (uint8_t)(i + 1);
+        return topic;
     }
     return TC_NONE;
 }
@@ -2139,9 +2152,13 @@ static int journal_repair_open(int id, const TalkMemoryEvent *event)
 
 static void journal_actions(int repair)
 {
-    if (T.nrows > 0 && (T.row[T.nrows - 1].kind == K_FOLLOW_UP ||
-                        T.row[T.nrows - 1].kind == K_JOURNAL_REPAIR)) T.nrows--;
-    if (T.followup) add_row(K_FOLLOW_UP, 0, T.followup);
+    while (T.nrows > 0 && (T.row[T.nrows - 1].kind == K_OUT ||
+                           T.row[T.nrows - 1].kind == K_FOLLOW_UP ||
+                           T.row[T.nrows - 1].kind == K_JOURNAL_REPAIR)) T.nrows--;
+    if (T.followup) {
+        add_row(K_FOLLOW_UP, 0, T.followup);
+        if (followup_place_open()) add_row(K_OUT, T.followup_place, T.followup);
+    }
     else if (repair >= 0) add_row(K_JOURNAL_REPAIR, repair, 0);
     T.list.count = T.nrows;
 }
@@ -2151,6 +2168,8 @@ static void recall_meetup(int id, int venue, int cue, uint32_t day)
     const DoomoResident *r = town_res(id);
     const char *ending = "I'd like to catch up again sometime.";
     const char *place = sim_venue_name(venue);
+    uint16_t subject = TC_NONE;
+    uint8_t place_index = 0;
     char line[128], date[16];
     if (day == TALK_VISIT_UNDATED) doomo_snprintf(T.you, sizeof T.you, "Remember when we met at %s?", place);
     else {
@@ -2166,7 +2185,12 @@ static void recall_meetup(int id, int venue, int cue, uint32_t day)
         doomo_snprintf(line, sizeof line, "I remember seeing you at %s. %s", place, ending);
     else
         doomo_snprintf(line, sizeof line, "I remember our %s outing to %s. %s", date, place, ending);
-    show_scene_reply(id, line, cue ? remembered_venue_topic(venue) : TC_NONE);
+    if (cue) subject = remembered_venue_topic(venue, &place_index);
+    show_scene_reply(id, line, subject);
+    if (subject && day != TALK_VISIT_UNDATED) {
+        T.followup_place = place_index;
+        T.followup_day = (uint16_t)day;
+    }
 }
 
 static int recall_event(int id, const TalkMemoryEvent *event)
@@ -2226,7 +2250,7 @@ static int recall_event(int id, const TalkMemoryEvent *event)
         break;
     default: return 0;
     }
-    show_scene_reply(id, line, venue >= 0 ? remembered_venue_topic(venue) : TC_NONE);
+    show_scene_reply(id, line, venue >= 0 ? remembered_venue_topic(venue, NULL) : TC_NONE);
     return 1;
 }
 

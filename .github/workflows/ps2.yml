@@ -3,10 +3,12 @@ on:
   push:
     paths:
       - 'ps2/**'
+      - 'core/**'
       - '.github/workflows/ps2.yml'
   pull_request:
     paths:
       - 'ps2/**'
+      - 'core/**'
       - '.github/workflows/ps2.yml'
   workflow_dispatch:
 

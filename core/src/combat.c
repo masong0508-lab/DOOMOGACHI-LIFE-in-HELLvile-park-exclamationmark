@@ -105,7 +105,7 @@ int combat_set_result_quit(void)
 }
 const DoomoCombatStats *combat_stats(void) { return &combat_st; }
 int combat_finished(void) { return combat_s.finished; }
-int combat_demons_alive(void) { return actor_demons_alive(); }
+int combat_demons_alive(void) { return actor_demons_alive(ACTOR_MAX); }
 
 void combat_add_dmgnum(fix16 x, fix16 y, fix16 z, int value, int crit)
 {
@@ -1730,7 +1730,7 @@ void combat_tick(void)
         }
     }
     if (combat_s.goal == CGOAL_KILL_ALL && !combat_s.finished && combat_st.ticks > 30 &&
-        actor_demons_alive() == 0) {
+        actor_demons_alive(1) == 0) {
         combat_s.finished = 1;
         last_result = 1;
     }

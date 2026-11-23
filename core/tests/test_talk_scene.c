@@ -862,6 +862,46 @@ TEST(talk_scene_saved_outing_can_lead_to_a_conversation_about_the_place)
     CHECK(strstr(d.you, "Brimstone Bites") != NULL);
 }
 
+TEST(talk_scene_revisits_a_saved_venue_through_a_real_invitation)
+{
+    TalkSceneDebug d;
+    DoomoResident *r;
+    uint16_t cafe;
+    int attempt, row;
+    town();
+    doomo_town.minute = 12 * 60;
+    r = town_res(ID_NANA);
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    doomo_town.day++;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    rel_adjust(ID_NANA, DOOMO_PLAYER_ID, 100);
+    rel_adjust(DOOMO_PLAYER_ID, ID_NANA, 100);
+    for (attempt = 0; attempt < 8 && talk_outcome_meet_plan(ID_NANA) < 0; attempt++) {
+        CHECK(open_talk(ID_NANA));
+        CHECK(talk_lex_find("brimstone bites", &cafe, NULL, NULL) >= 0);
+        r->activity = ACT_HOME;
+        r->mood = MOOD_HAPPY;
+        r->stat[STAT_HUNGER] = r->stat[STAT_ENERGY] = r->stat[STAT_HEALTH] = 90;
+        go_to(find_row("more", -1, -1)); press(BTN_A);
+        go_to(find_row("history", -1, -1)); press(BTN_A);
+        go_to(find_row("journal", 0, -1)); press(BTN_A);
+        go_to(find_row("journalvisit", 1, ACT_CAFE)); press(BTN_A);
+        CHECK(read_talk_reply());
+        row = find_row("out", -1, cafe);
+        CHECK(row >= 0);
+        go_to(row); press(BTN_A);
+        CHECK(talk_scene_debug(&d) && strcmp(d.page, "outing") == 0);
+        CHECK_EQ(d.sel, find_row("outing", -1, cafe));
+        CHECK_EQ(talk_outcome_meet_plan(ID_NANA), -1);
+        press(BTN_A);
+        if (read_talk_reply()) { scene_pop(); frames(0, 1); }
+        CHECK(!talk_scene_debug(&d));
+    }
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), ACT_CAFE);
+    CHECK(save_game(1) && load_game(1));
+    CHECK_EQ(talk_outcome_meet_plan(ID_NANA), ACT_CAFE);
+}
+
 TEST(talk_scene_venue_answers_can_recall_the_latest_shared_date)
 {
     TalkSceneDebug d;

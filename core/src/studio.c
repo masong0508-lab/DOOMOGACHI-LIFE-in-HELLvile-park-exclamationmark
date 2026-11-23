@@ -538,7 +538,13 @@ static void popup_draw(void)
 
 /* ====================================================================== */
 /* citizen picker                                                           */
-static struct { const char *title; void (*done)(int id); uint16_t t; } pk;
+static struct {
+    const char *title;
+    void (*done)(int id);
+    uint16_t t;
+    int16_t ids[7];
+    uint8_t rows;
+} pk;
 
 static int seq_of(int id) { return id == DOOMO_PLAYER_ID ? 0 : id + 1; }
 static int id_of(int seq) { return seq == 0 ? DOOMO_PLAYER_ID : seq - 1; }
@@ -558,6 +564,7 @@ void st_pick_citizen(const char *title, int start_id, void (*done)(int id))
     pk.title = title;
     pk.done = done;
     pk.t = 0;
+    pk.rows = 0;
     studio.picking = 1;
     studio.pick_id = (int16_t)(st_alive(start_id) ? start_id : DOOMO_PLAYER_ID);
 }
@@ -610,21 +617,26 @@ void st_picker_draw(void)
     static const char sec_letter[SECTION_COUNT] = { 'S', 'A', 'T', 'B' };
     int sw = plat_screen_w(), sh = plat_screen_h(), wide = st_wide();
     int rows = wide ? 7 : 4, rh = 24, w, h, x, y;
-    int ids[7], i, mid = rows / 2, id, lw;
+    int i, mid = rows / 2, id, lw;
     const UiStyle *st = ui_style(WIN_CREAM);
     picker_rect(&x, &y, &w, &h);
     lw = w - 62;
     if (!ST_HELD) plat_shade_rect(0, 0, sw, sh, 9);
     if (!ui_window_pop(x, y, w, h, WIN_CREAM, pk.t)) return;
     ui_title(sw / 2, y - 5, pk.title ? pk.title : "Who sings?", WIN_CUTE);
-    ids[mid] = studio.pick_id;
-    for (i = mid - 1; i >= 0; i--) ids[i] = next_alive(ids[i + 1], -1);
-    for (i = mid + 1; i < rows; i++) ids[i] = next_alive(ids[i - 1], 1);
+    /* Town time stops in Studio. Refresh neighbors on entry, cursor
+     * movement or a layout change. Portrait warmup uses the same rows. */
+    if (pk.rows != rows || pk.ids[mid] != studio.pick_id) {
+        pk.rows = (uint8_t)rows;
+        pk.ids[mid] = studio.pick_id;
+        for (i = mid - 1; i >= 0; i--) pk.ids[i] = (int16_t)next_alive(pk.ids[i + 1], -1);
+        for (i = mid + 1; i < rows; i++) pk.ids[i] = (int16_t)next_alive(pk.ids[i - 1], 1);
+    }
     for (i = 0; i < rows; i++) {
         int yy = y + 10 + i * rh, sel = i == mid;
         const DoomoResident *r;
         char sl[2] = { 0, 0 };
-        id = ids[i];
+        id = pk.ids[i];
         r = town_res(id);
         if (sel) {
             ui_round_rect(x + 5, yy, lw, rh - 1, 4, st->accent);
@@ -649,8 +661,8 @@ void st_picker_draw(void)
         ui_round_rect(px - 2, py - 2, 52, 60, 6, st->fill_hi);
         if (img) plat_image(px, py, img, 1, 0, 0);
         /* S3-2: the neighbours' faces are drawn in idle time, so a step of the cursor lands on a cached one */
-        if (img && portrait_prefetch(next_alive(studio.pick_id, 1), EXPR_HAPPY))
-            (void)portrait_prefetch(next_alive(studio.pick_id, -1), EXPR_HAPPY);
+        if (img && portrait_prefetch(pk.ids[mid + 1], EXPR_HAPPY))
+            (void)portrait_prefetch(pk.ids[mid - 1], EXPR_HAPPY);
     }
     ui_scroll_arrows(x + lw / 2, y + 6, y + h - 6, 1, 1);
 }

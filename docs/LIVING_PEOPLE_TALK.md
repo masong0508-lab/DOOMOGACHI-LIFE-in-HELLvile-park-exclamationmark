@@ -520,6 +520,10 @@ A clear journal recall can lead back into conversation. After recalling an
 outing, choose **Ask about** to talk about its venue. A friendship milestone
 or an argument the residents already resolved can lead to the same option
 when it has a known venue and the resident is ready to talk about it.
+For a dated outing recalled clearly, **Go back to** opens the invitation
+picker with the remembered venue selected. Confirm it to ask the
+resident. Their answer and the existing invitation rules determine
+whether a new plan is added.
 When a resident clearly recalls a day the current avatar hurt them,
 **Apologize for past hurt** starts a normal Talk apology. It mentions the
 selected date and acknowledges earlier hurt between those two people.

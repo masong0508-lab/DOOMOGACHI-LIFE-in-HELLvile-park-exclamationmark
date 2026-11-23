@@ -194,7 +194,7 @@ int  actor_damage(int idx, int dmg, int src, int angle, int knock, int fx, int h
 void actor_splash(fix16 x, fix16 y, int z, int radius, int dmg, int src, int fx);
 void actor_wake_all(int noise_cx, int noise_cy, int radius_cells);
 void actor_event(int tag);                       /* dormant spawns */
-int  actor_demons_alive(void);
+int  actor_demons_alive(int limit);              /* capped count; ACTOR_MAX for the exact total */
 int  actor_kill_group_alive(int arg);
 void actor_gore(int idx, int overkill);
 int  combat_gore_style(void);                    /* WSTYLE_* for the current kill */

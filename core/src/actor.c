@@ -1709,15 +1709,15 @@ void actor_event(int tag)
     }
 }
 
-int actor_demons_alive(void)
+int actor_demons_alive(int limit)
 {
     int i, n = 0;
     for (i = 0; i < ACTOR_MAX; i++) {
         const DoomoActor *a = &doomo_actors[i];
         /* appearing and phase-changing demons count; dormant ones wait */
         if ((a->flags & AF_USED) && IS_DEMON(a->type) && a->hp > 0 && a->state != AST_DYING &&
-            a->state != AST_DEAD && a->state != AST_DORMANT)
-            n++;
+            a->state != AST_DEAD && a->state != AST_DORMANT && ++n == limit)
+            break;
     }
     return n;
 }
