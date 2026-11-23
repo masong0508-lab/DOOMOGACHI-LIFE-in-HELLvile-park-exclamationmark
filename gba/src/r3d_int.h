@@ -96,6 +96,23 @@ extern uint8_t r3d_plane_ids[R3D_MAXTEX];   /* material IDs for floors and ceili
 #define r3d_clips ((R3DClip (*)[R3D_MAXCP])(gba_r3d + GBA_BIG_CLIPS))
 extern uint8_t  r3d_nclips[R3D_MAXCOLS];
 
+static inline void r3d_clip_at(int c, uint32_t depth8, int *top, int *bot)
+{
+    const R3DClip *clips = r3d_clips[c];
+    int i = r3d_nclips[c];
+    *top = 0;
+    *bot = r3f.vh;
+    /* The most recent checkpoint at this depth gives the visible window. */
+    while (i) {
+        const R3DClip *cp = &clips[--i];
+        if (cp->d8 <= depth8) {
+            *top = cp->top;
+            *bot = cp->bot;
+            break;
+        }
+    }
+}
+
 extern const int32_t  gba_sin16[5120];
 extern const uint32_t gba_recip8[32768];
 
@@ -196,13 +213,17 @@ typedef struct R3DSprite {
     uint32_t step16;               /* texels per screen pixel, 16.16     */
     uint32_t u16_start;             /* tex u at first visible ray column  */
     int32_t  w12, h12;             /* screen size in pixels, 20.12       */
-    uint8_t  level, flags, trans, pad;
+    uint8_t  level, flags, trans, pairs;
     int32_t  shadow_y12;           /* floor y under the feet (shadow)     */
     int32_t  shadow_hh;            /* shadow ellipse half height, pixels  */
 } R3DSprite;
-void r3d_draw_sprite(const R3DSprite *s) IWRAM_CALL;
+void r3d_draw_sprite(const R3DSprite *s) ROM_CALL;
+void r3d_render_sprite(const R3DSprite *s, int r0, int r1, int32_t vr0) IWRAM_CALL;
+void r3d_draw_sprite_pairs(const R3DSprite *s, int r0, int r1, int32_t vr0) ROM_CALL;
 void r3d_sprite_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v, uint32_t dv,
                      const uint8_t *cm, int stride, int iw) IWRAM_CALL;
+void r3d_sprite_pair_loop(uint16_t *p, int n, const uint8_t *src, uint32_t v, uint32_t dv,
+                          const uint8_t *cm, int iw, int du) IWRAM_CALL;
 
 /* 32 x 32 -> 64-bit signed multiply: ARM smull in IWRAM (THUMB code
  * would call libgcc's generic __muldi3, ~10x slower) */

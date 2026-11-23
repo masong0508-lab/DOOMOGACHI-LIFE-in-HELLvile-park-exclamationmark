@@ -512,13 +512,74 @@ static unsigned wall_depth_bounds(uint16_t bins[WALL_BIN_N])
 static int behind_wall(const uint16_t bins[WALL_BIN_N], int32_t x0, int32_t x1, unsigned depth)
 {
     int start = DOOMO_MAX(0, (x0 - 1) >> 13);
-    int end = DOOMO_MIN(r3f.ncol, (x1 + 0xFFF) >> 13);
+    int end = DOOMO_MIN(r3f.ncol, (x1 + 0x17FF) >> 13);
     int b;
     if (start >= end) return 0;
     /* A drop shadow fits horizontally inside the sprite's projected span. */
     for (b = start >> WALL_BIN_SHIFT; b <= (end - 1) >> WALL_BIN_SHIFT; b++)
         if (depth < bins[b]) return 0;
     return 1;
+}
+
+/* Resolve two sprite samples per geometry ray. They share the wall
+ * checkpoint, but each lane has its own silhouette and transparency. */
+__attribute__((target("arm")))
+void r3d_draw_sprite_pairs(const R3DSprite *s, int r0, int r1, int32_t vr0)
+{
+    const DoomoImage *img = s->img;
+    const int iw = img->w;
+    const uint8_t *cm = r3d_cmrow[s->level];
+    const uint32_t depth8 = (uint32_t)s->depth16 >> 13;
+    const int32_t x0 = s->x0_12, x1 = x0 + s->w12;
+    int c = DOOMO_MAX(0, (x0 + 0x7FF) >> 13);
+    int end = DOOMO_MIN(r3f.ncol, (x1 + 0x17FF) >> 13);
+    int32_t left = (c << 13) + 0x800;
+    uint32_t step = s->step16;
+    uint32_t u = (uint32_t)(((int64_t)(left - x0) * step) >> 12);
+    for (; c < end; c++, left += 0x2000, u += step << 1) {
+        int top, bot, from, to, u0, u1;
+        uint32_t v;
+        volatile uint16_t *dst;
+        r3d_clip_at(c, depth8, &top, &bot);
+        from = DOOMO_MAX(r0, top);
+        to = DOOMO_MIN(r1, bot);
+        if (from >= to) continue;
+        u0 = left >= x0 && left < x1 ? DOOMO_CLAMP((int32_t)u >> 16, 0, iw - 1) : -1;
+        u1 = left + 0x1000 >= x0 && left + 0x1000 < x1 ?
+             DOOMO_CLAMP((int32_t)(u + step) >> 16, 0, iw - 1) : -1;
+        if (s->flags & BB_FLIPX) {
+            if (u0 >= 0) u0 = iw - 1 - u0;
+            if (u1 >= 0) u1 = iw - 1 - u1;
+        }
+        v = (uint32_t)vr0 + (uint32_t)(from - r0) * step;
+        dst = r3f.dst + from * (SCREEN_W / 2) + c;
+        if (u0 == u1) {
+            if (u0 >= 0)
+                r3d_sprite_loop((uint16_t *)dst, to - from, img->pix + u0, v, step, cm, SCREEN_W, iw);
+        } else if (u0 >= 0 && u1 >= 0) {
+            r3d_sprite_pair_loop((uint16_t *)dst, to - from, img->pix + u0, v, step, cm, iw, u1 - u0);
+        } else {
+            for (; from < to; from++, dst += SCREEN_W / 2, v += step) {
+                const uint8_t *row = img->pix + (v >> 16) * iw;
+                unsigned lo = u0 < 0 ? 0 : row[u0], hi = u1 < 0 ? 0 : row[u1];
+                if (lo) *dst = (uint16_t)((*dst & 0xFF00u) | cm[lo]);
+                else if (hi) *dst = (uint16_t)((*dst & 0xFFu) | (cm[hi] << 8));
+            }
+        }
+    }
+}
+
+/* Set up the texture rows once per billboard in ROM. The clipped
+ * pixel kernels stay in the IWRAM overlay. */
+__attribute__((target("arm")))
+void r3d_draw_sprite(const R3DSprite *s)
+{
+    int r0 = DOOMO_MAX(0, (s->ytop12 + 0x800) >> 12);
+    int r1 = DOOMO_MIN(r3f.vh, (s->ytop12 + s->h12 + 0x800) >> 12);
+    uint32_t v0 = (uint32_t)(((int64_t)(((r0 << 12) + 0x800) - s->ytop12) * s->step16) >> 12);
+    while (r1 > r0 && ((v0 + (uint32_t)(r1 - 1 - r0) * s->step16) >> 16) >= s->img->h)
+        r1--;
+    r3d_render_sprite(s, r0, r1, (int32_t)v0);
 }
 
 static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, unsigned far)
@@ -574,7 +635,20 @@ static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, u
         int32_t sx12 = (r3f.halfw << 12) + R3D_MULSHR(lat, k8, 12);
         int32_t w12 = R3D_MULSHR(ww16, k8, 12);
         int32_t h12 = R3D_MULSHR(wh16, k8, 12);
+        int32_t effect_center12 = 0;
+        int small_effect = 0;
         int level;
+        /* Impacts can start almost at the eye. Bound the burst's size
+         * around its projected centre and keep its true occlusion depth. */
+        if ((b->flags & BB_EFFECT) && (w12 > (r3f.vw << 11) || h12 > (r3f.vh << 11))) {
+            int32_t kw = (r3f.vw << 15) / (img->w * (int32_t)scale);
+            int32_t kh = (r3f.vh << 15) / (img->h * (int32_t)scale);
+            effect_center12 = r3f.hor12 + R3D_MULSHR(r3f.ez - (b->z + wh16 / 2), k8, 12);
+            k8 = DOOMO_MIN(kw, kh);
+            w12 = R3D_MULSHR(ww16, k8, 12);
+            h12 = R3D_MULSHR(wh16, k8, 12);
+            small_effect = 1;
+        }
         if (w12 < 0x400 || h12 < 0x400) continue;                  /* < 1/4 px */
         if (sx12 + (w12 >> 1) <= 0 || sx12 - (w12 >> 1) >= (r3f.vw << 12)) continue;
         if (bins && behind_wall(bins, sx12 - (w12 >> 1),
@@ -587,8 +661,8 @@ static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, u
         s.x0_12 = sx12 - (w12 >> 1);
         s.w12 = w12;
         s.h12 = h12;
-        s.ytop12 = r3f.hor12 +
-                   R3D_MULSHR(r3f.ez - (b->z + wh16), k8, 12);
+        s.ytop12 = small_effect ? effect_center12 - h12 / 2 :
+                   r3f.hor12 + R3D_MULSHR(r3f.ez - (b->z + wh16), k8, 12);
         {
             uint32_t den = scale * (uint32_t)k8;
             s.step16 = den ? 0xFFFFFFFFu / den : 0x10000u;
@@ -624,6 +698,10 @@ static void draw_sprites(const DoomoView3D *v, int bone, const uint16_t *bins, u
         s.flags = b->flags;
         s.trans = (b->flags & BB_TRANSLUCENT) ||
                   (i >= 0 && spr_order[i].idx == v->player_sprite && depth < (40 << 16));
+        /* Refine the sprites most prone to a whole ray of lateral snap.
+         * Close, magnified sprites use the cached texel-run kernel. */
+        s.pairs = r3f.pair_wall && (b->flags & BB_SHADOW) && !s.trans &&
+                  s.step16 >= (1u << 16);
         s.shadow_y12 = 0;
         s.shadow_hh = 0;
         if (b->flags & BB_SHADOW) {

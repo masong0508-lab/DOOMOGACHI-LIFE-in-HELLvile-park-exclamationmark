@@ -482,27 +482,11 @@ void r3d_columns(const RayStart *start)
  * find their checkpoint near the END of the list. Walking backwards avoids
  * repeatedly scanning the nearer checkpoints; no RAM, sampling or clipping
  * rules change (including equal-depth checkpoints). */
-static void clip_at(int c, uint32_t d8, int *top, int *bot)
-{
-    const R3DClip *k = r3d_clips[c];
-    int i = r3d_nclips[c];
-    *top = 0;
-    *bot = r3f.vh;
-    while (i) {
-        const R3DClip *cp = &k[--i];
-        if (cp->d8 <= d8) {
-            *top = cp->top;
-            *bot = cp->bot;
-            break;
-        }
-    }
-}
-
-void r3d_draw_sprite(const R3DSprite *s)
+void r3d_render_sprite(const R3DSprite *s, int r0, int r1, int32_t vr0)
 {
     R3DFrame *const f = &r3f;
     const DoomoImage *img = s->img;
-    const int iw = img->w, ih = img->h;
+    const int iw = img->w;
     const uint8_t *pix = img->pix;
     const uint32_t d8 = (uint32_t)s->depth16 >> 13;
     int32_t x0 = s->x0_12, x1 = s->x0_12 + s->w12;
@@ -511,15 +495,10 @@ void r3d_draw_sprite(const R3DSprite *s)
      * centre reaches x1. Clamp once, instead of testing the right edge
      * in every textured column; no sample, UV or clipping differences. */
     int cend = (x1 >> 13) + (((uint32_t)x1 & 0x1FFFu) > 0x1000u);
-    int c, r0, r1;
-    int32_t vr0;
+    int c;
     if (c0 < 0) c0 = 0;
     if (cend > f->ncol) cend = f->ncol;
     if (cend < 0) cend = 0;
-    r0 = (s->ytop12 + 0x800) >> 12;
-    r1 = (s->ytop12 + s->h12 + 0x800) >> 12;
-    if (r0 < 0) r0 = 0;
-    if (r1 > f->vh) r1 = f->vh;
 
     /* drop shadow: a darkened ellipse on the floor under the feet */
     if (s->flags & BB_SHADOW) {
@@ -554,7 +533,7 @@ void r3d_draw_sprite(const R3DSprite *s)
                 hc = (hh * (dx < edge4 ? 4 : dx < edge3 ? 3 :
                             dx < edge2 ? 2 : 1) + 2) >> 2;
                 if (hc < 1) hc = 1;
-                clip_at(c, d8, &top, &bot);
+                r3d_clip_at(c, d8, &top, &bot);
                 ya = sy - hc; yb = sy + hc;
                 if (ya < top) ya = top;
                 if (yb > bot) yb = bot;
@@ -569,10 +548,10 @@ void r3d_draw_sprite(const R3DSprite *s)
         }
     }
 
-    vr0 = (int32_t)(((int64_t)(((r0 << 12) + 0x800) - s->ytop12) * s->step16) >> 12);
-    /* rows whose texture row rounds past the image's last row: drop */
-    while (r1 > r0 && (uint32_t)(vr0 + (r1 - 1 - r0) * (int32_t)s->step16) >> 16 >= (uint32_t)ih)
-        r1--;
+    if (s->pairs) {
+        r3d_draw_sprite_pairs(s, r0, r1, vr0);
+        return;
+    }
     {
         const uint32_t dv = s->step16;
         uint32_t u16 = s->u16_start;
@@ -586,7 +565,7 @@ void r3d_draw_sprite(const R3DSprite *s)
             if (u >= iw) u = iw - 1;
             if (u < 0) u = 0;
             if (s->flags & BB_FLIPX) u = iw - 1 - u;
-            clip_at(c, d8, &top, &bot);
+            r3d_clip_at(c, d8, &top, &bot);
             ya = r0 > top ? r0 : top;
             yb = r1 < bot ? r1 : bot;
             if (ya >= yb) continue;

@@ -49,6 +49,14 @@ reliefs and glass have visible detail inside the previous five-pixel
 bands. The geometric edges and vertical rows still use the coarse ray
 grid.
 
+Opaque Bone sprites at or below their texture scale also shade two
+horizontal samples per ray. A replay of the Capital street encounter
+showed the red Impling moving steadily in world units while its old
+outline shifted by entire ray columns. Independent samples let the
+outline move by half a ray. Close transient effects now retain their
+projected centres at a capped size, which keeps impact bursts from
+covering the view during a fight.
+
 GBA floors and ceilings in both maps have dedicated materials. Broad
 stone joints show where the steps end, red flagstone marks the walkway,
 and recessed vault panels give the ceiling a readable shape. The rays
@@ -63,9 +71,8 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The mGBA movement census with the smoother pursuit code drew 16.77 and
-17.39 FPS in Cathedral and 17.92 and 18.68 FPS in Capital, first and third
-person respectively.
+The mGBA movement census drew 17.00 and 17.23 FPS in Cathedral and
+17.92 and 18.31 FPS in Capital, first and third person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that

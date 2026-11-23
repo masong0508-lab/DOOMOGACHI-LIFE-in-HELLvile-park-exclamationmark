@@ -8,6 +8,7 @@
 #include "doomo/platform.h"
 #include "enginetest.h"
 #include "iwram_ovl.h"
+#include "r3d_int.h"
 #include "doomo/plat_ext.h"
 
 void plat_checker_m4(int x, int y, int w, int h, uint8_t color) __attribute__((long_call));
@@ -436,6 +437,42 @@ static uint16_t scaler_pair(int x, int y)
     return (uint16_t)(scaler_pixel(x, y, 0) | (scaler_pixel(x, y, 1) << 8));
 }
 
+static void et_sprite_pairs_test(void)
+{
+    static const uint8_t pixels[] = { 2, 0, 3, 4, 0, 5, 6, 0 };
+    static const uint8_t lit[256] = { [2] = 0x22, [3] = 0x33, [4] = 0x44,
+                                      [5] = 0x55, [6] = 0x66 };
+    static const uint16_t expected[2][3] = {
+        { 0x22A2, 0x33A2, 0xB144 }, { 0xB1A2, 0x6655, 0xB1A2 }
+    };
+    const DoomoImage image = { 4, 2, pixels, 0 };
+    const R3DSprite sprite = { .img = &image, .depth16 = 32 << 16,
+        .x0_12 = 1 << 12, .step16 = 1 << 16, .w12 = 4 << 12, .h12 = 2 << 12, .pairs = 1 };
+    R3DFrame saved = r3f;
+    const uint8_t *saved_lit = r3d_cmrow[0];
+    uint8_t saved_nclips[3];
+    vu16_t *dst = PAGE_B;
+    int y, x, matched = 1;
+    memcpy(saved_nclips, r3d_nclips, sizeof(saved_nclips));
+    memset(r3d_nclips, 0, sizeof(saved_nclips));
+    r3d_cmrow[0] = lit;
+    r3f.ncol = 3;
+    r3f.vh = 2;
+    r3f.dst = PAGE_B;
+    for (y = 0; y < 3; y++)
+        for (x = 0; x < 4; x++) dst[y * LINE + x] = 0xB1A2;
+    r3d_draw_sprite(&sprite);
+    for (y = 0; y < 3; y++)
+        for (x = 0; x < 4; x++) {
+            uint16_t want = y < 2 && x < 3 ? expected[y][x] : 0xB1A2;
+            if (dst[y * LINE + x] != want) matched = 0;
+        }
+    memcpy(r3d_nclips, saved_nclips, sizeof(saved_nclips));
+    r3d_cmrow[0] = saved_lit;
+    r3f = saved;
+    gba_log(matched ? "ET sprite pairs ok" : "ET sprite pairs FAIL");
+}
+
 /* Check whole pages, including pixels outside the viewport. Mixed
  * source pairs exercise independent wall texture samples. */
 void et_upscale_test(void)
@@ -531,4 +568,5 @@ void et_upscale_test(void)
         }
     }
     gba_log("ET upscale ok");
+    et_sprite_pairs_test();
 }

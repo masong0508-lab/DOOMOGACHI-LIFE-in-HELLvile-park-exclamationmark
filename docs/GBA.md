@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 16.77 | 29.86 | 49.8 / 64.6 ms |
-| Cathedral, third person | 17.92 | 17.39 | 29.75 | 48.1 / 63.4 ms |
-| Capital, first person | 19.45 | 17.92 | 29.86 | 46.7 / 69.6 ms |
-| Capital, third person | 19.68 | 18.68 | 29.98 | 45.6 / 61.3 ms |
+| Cathedral, first person | 17.39 | 17.00 | 29.86 | 50.1 / 64.7 ms |
+| Cathedral, third person | 17.92 | 17.23 | 29.86 | 48.0 / 61.4 ms |
+| Capital, first person | 19.45 | 17.92 | 29.86 | 47.4 / 63.7 ms |
+| Capital, third person | 19.68 | 18.31 | 29.75 | 45.7 / 55.3 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -51,6 +51,14 @@ Bone window.
   96×64 tier those samples occupy two and three screen pixels. Both
   samples share the same ray intersection and vertical rows. The engine
   test checks mixed pairs at 2×, 2.5× and 3×, with guards around the view.
+- Opaque Bone sprites with shadows also resolve two horizontal samples
+  when drawn at or below their texture scale. This gives their outlines
+  two- and three-pixel steps at 96×64. Magnified sprites use the cached
+  texel-run loop. The engine test checks both transparent sprite lanes,
+  the viewport guard and the two-source pixel kernel.
+- A close visual impact burst can cover up to half the viewport in each
+  dimension. Its centre and depth still come from the world position, so
+  silhouettes stay visible as combat effects pass near the camera.
 - Bone floors and ceilings use dedicated horizontal materials. Recessed
   vault panels replace skull mosaics overhead. Broad bone slabs and red
   flagstones make steps and walkways easier to read. A map-local lookup
@@ -81,7 +89,7 @@ Bone window.
 
 The measured game ROM uses 236,548 B of EWRAM and leaves 25,596 B free.
 The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
-The 3D overlay uses 10,168 B of its 10,304 B slot. The three materials
+The 3D overlay uses 10,188 B of its 10,304 B slot. The three materials
 add 12 KiB of pixels in ROM and use the existing texture cache.
 
 These headless mGBA checkpoints compare the room-culling build and the

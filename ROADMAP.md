@@ -21,6 +21,10 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **GBA Bone sprite motion (2026-11-22):** Opaque mid-distance sprites
+  can advance by half a ray, and close impact bursts have bounded screen
+  coverage. All 24 GBA 3D regression windows pass. The four Bone movement
+  windows draw 17.00–18.31 FPS. See the [GBA rendering notes](docs/GBA.md#current-bone-rendering-budget).
 - **Enemy pursuit and player controls (2026-11-22):** Demons turn in
   steps and follow short detours at obstacles. The same code runs on
   every port. Player turns respond on reversal, and stick and D-pad

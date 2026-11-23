@@ -1828,7 +1828,12 @@ const DoomoImage *actor_image(const DoomoActor *a, int *flags, int *scale, int *
             if (sflags & SPRF_FULLBRIGHT) *flags |= BB_FULLBRIGHT;
             if (a->spr == SPR_PUFF) *flags |= BB_TRANSLUCENT;
         }
-        if (a->type == AK_EFFECT) *zoff = -(img->h * *scale / 512);
+        if (a->type == AK_EFFECT) {
+            *zoff = -(img->h * *scale / 512);
+#if defined(DOOMO_PLATFORM_GBA)
+            *flags |= BB_EFFECT;
+#endif
+        }
         return img;
     }
     if (!a->spr) return NULL;

@@ -1054,3 +1054,36 @@ r3d_sprite_loop:
     blo     .Lsm_skip
     b       .Lsm_texel
     .size   r3d_sprite_loop, . - r3d_sprite_loop
+
+@ A clipped opaque sprite span with distinct source columns. r2 = first
+@ column, du = signed offset to the second. Zero texels leave the VRAM
+@ lane below untouched. An opaque pair needs no read from VRAM.
+    .global r3d_sprite_pair_loop
+    .type   r3d_sprite_pair_loop, %function
+r3d_sprite_pair_loop:
+    push    {r4-r9}
+    add     r7, sp, #24
+    ldmia   r7, {r4-r7}                 @ dv, cm, iw, du
+1:  mov     r8, r3, lsr #16
+    mla     r9, r8, r6, r2
+    ldrb    r8, [r9]
+    ldrb    r9, [r9, r7]
+    orrs    r12, r8, r9
+    beq     2f
+    cmp     r8, #0
+    ldrneb  r8, [r5, r8]
+    ldreqh  r8, [r0]
+    andeq   r8, r8, #255
+    cmp     r9, #0
+    ldrneb  r9, [r5, r9]
+    ldreqh  r9, [r0]
+    moveq   r9, r9, lsr #8
+    orr     r8, r8, r9, lsl #8
+    strh    r8, [r0]
+2:  add     r0, r0, #240
+    add     r3, r3, r4
+    subs    r1, r1, #1
+    bne     1b
+    pop     {r4-r9}
+    bx      lr
+    .size   r3d_sprite_pair_loop, . - r3d_sprite_pair_loop
