@@ -44,10 +44,12 @@ python3 harness/run.py --cue build-talk/doomogachi.cue \
     --script harness/scripts/talk_smoke.txt --out /tmp/talk-smoke
 ```
 
-The Talk variant includes controller conversations and their saved history.
-Launch the CUE with its BIN so the game can read `TALK_EN.BIN`, `SPRITES.BIN`
-and the scene overlays from the disc. The default preset still builds the
-standard game disc. CI publishes Talk separately as `doomogachi-ps1-talk`.
+Choose **Talk** for controller conversations and saved conversation history.
+The Talk build streams its dialogue bank from CD and uses packed art and
+scene overlays to fit the PS1's 2 MB of RAM. Open the Talk folder's
+`doomogachi.cue` with its matching `doomogachi.bin` alongside it.
+**Standard** runs the game with the optional Talk system disabled.
+Each edition boots independently. CI publishes Talk as `doomogachi-ps1-talk`.
 
 ## Run
 

@@ -814,6 +814,8 @@ typedef struct TalkMemoryEvent {
 void talk_event_note(int kind, int person, int other, int place);
 int talk_event_page(int guest, int avatar, int offset, TalkMemoryEvent *page, int capacity);
 int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event);
+/* First subsequent matching event for the same people, or -1 if either record is missing. */
+int talk_event_next_day(int guest, int avatar, const TalkMemoryEvent *event, int kind);
 int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind);
 /* Whether this avatar hurt the resident since the last recorded apology. */
 int talk_event_pending_hurt(int guest, int avatar);

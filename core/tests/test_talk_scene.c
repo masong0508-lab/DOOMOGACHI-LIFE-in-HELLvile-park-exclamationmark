@@ -1037,6 +1037,7 @@ TEST(talk_scene_journal_jumps_between_the_oldest_and_newest_pages)
 TEST(talk_scene_personal_journal_can_apologize_for_saved_hurt)
 {
     TalkSceneDebug d;
+    UiDialogDebug box;
     TalkMemoryEvent saved[3] = {{0}};
     int row;
     town();
@@ -1069,6 +1070,8 @@ TEST(talk_scene_personal_journal_can_apologize_for_saved_hurt)
     go_to(find_row("history", -1, -1)); press(BTN_A);
     go_to(find_row("journal", 1, -1)); press(BTN_A);
     go_to(find_row("journalvisit", 1, TALK_EV_HURT)); press(BTN_A);
+    ui_dialog_debug(&box);
+    CHECK(box.text && strstr(box.text, "You apologized on Y1 4/13"));
     CHECK(read_talk_reply());
     CHECK_EQ(find_row("journalrepair", -1, -1), -1);
 }
@@ -1082,8 +1085,9 @@ TEST(talk_scene_event_journals_distinguish_personal_and_island_history)
     doomo_town.day = 8;
     talk_event_note(TALK_EV_ARGUMENT, ID_NANA, 13, ACT_CAFE + 1);
     rel_set_kind(ID_NANA, 13, REL_RIVAL);
+    doomo_town.day++;
     sim_make_up(ID_NANA, 13);
-    doomo_town.day += SIM_YEAR_DAYS;
+    doomo_town.day = 8 + SIM_YEAR_DAYS;
     talk_event_note(TALK_EV_BATTLE_LOST, -1, -1, TALK_PLACE_NEST_FUN_FAIR);
     CHECK(save_game(1));
     CHECK(load_game(1));
@@ -1100,7 +1104,7 @@ TEST(talk_scene_event_journals_distinguish_personal_and_island_history)
     go_to(row); press(BTN_A);
     ui_dialog_debug(&box);
     CHECK(box.text && strstr(box.text, "Rivet") && strstr(box.text, "Brimstone Bites") && strstr(box.text, "Y1 4/9"));
-    CHECK(box.text && strstr(box.text, "talked it through later"));
+    CHECK(box.text && strstr(box.text, "talked it through on Y1 4/10"));
     CHECK(read_talk_reply());
     press(BTN_B);
     row = find_row("journal", 2, -1);

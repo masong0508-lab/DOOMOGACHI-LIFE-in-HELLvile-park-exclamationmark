@@ -39,6 +39,10 @@ rules remain authoritative even when more language data is present.
   residents without a new per-resident emotion structure. Mood, needs and
   romance/age gates still belong to the simulation.
 
+When recalling a hurt, argument, or fight from the personal journal, a resident
+can give the date of the first recorded apology or reconciliation that followed
+it. The lookup uses the people involved and the order of events within a day.
+
 ## First everyday topics
 
 Open **Options → Topic** during Talk. **Band**, **Fishing** and **Gardening**

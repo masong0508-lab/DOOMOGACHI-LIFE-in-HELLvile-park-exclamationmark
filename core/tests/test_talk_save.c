@@ -307,6 +307,27 @@ TEST(talk_events_keep_real_participants_places_and_days_after_save)
     CHECK_EQ(events[0].day - events[1].day, 1);
 }
 
+TEST(talk_event_resolution_follows_the_saved_sequence_for_the_same_people)
+{
+    TalkMemoryEvent hurt;
+    premade_town();
+    doomo_town.day = 0;
+    talk_event_note(TALK_EV_APOLOGY, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    talk_event_note(TALK_EV_HURT, ID_NANA, DOOMO_PLAYER_ID, TALK_PLACE_HOME);
+    CHECK_EQ(talk_event_page(ID_NANA, DOOMO_PLAYER_ID, 0, &hurt, 1), 1);
+    CHECK_EQ(hurt.kind, TALK_EV_HURT);
+    talk_event_note(TALK_EV_APOLOGY, ID_RIVET, DOOMO_PLAYER_ID, ACT_PARK + 1);
+    CHECK_EQ(talk_event_next_day(ID_NANA, DOOMO_PLAYER_ID, &hurt, TALK_EV_APOLOGY), -1);
+    talk_event_note(TALK_EV_APOLOGY, ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE + 1);
+    doomo_town.day += SIM_YEAR_DAYS;
+    talk_event_note(TALK_EV_APOLOGY, ID_NANA, DOOMO_PLAYER_ID, ACT_PARK + 1);
+    CHECK(save_game(1) && load_game(1));
+    CHECK_EQ(talk_event_next_day(ID_NANA, DOOMO_PLAYER_ID, &hurt, TALK_EV_APOLOGY), 0);
+    CHECK_EQ(talk_event_next_day(ID_NANA, ID_RIVET, &hurt, TALK_EV_APOLOGY), -1);
+    hurt.place = ACT_PARK + 1;  /* An apology exists but this incident does not. */
+    CHECK(!talk_event_after(ID_NANA, DOOMO_PLAYER_ID, &hurt, TALK_EV_APOLOGY));
+}
+
 TEST(talk_events_keep_battle_milestones_under_social_churn)
 {
     const DoomoSaveExt *ext = doomo_save_ext_tevt;

@@ -888,18 +888,27 @@ int talk_event_has(int guest, int avatar, const TalkMemoryEvent *event)
     return 0;
 }
 
+int talk_event_next_day(int guest, int avatar, const TalkMemoryEvent *event, int kind)
+{
+    int i, next = -1;
+    if (!event || (guest != -1 && (!visit_guest_ok(guest) || !town_alive(guest)))) return -1;
+    /* Newest first, including insertion order within a day. Return the
+     * closest later match only once we reach the actual source record. */
+    for (i = 0; i < event_count; i++) {
+        uint32_t key = event_key(event_rows[i]);
+        int row_kind = event_kind(key), day = get16(event_rows[i] + 4);
+        if (day < event->day) break;
+        if (event_other(key, guest, avatar) != event->other) continue;
+        if (row_kind == event->kind && event_place(key) == event->place && day == event->day)
+            return next;
+        if (row_kind == kind) next = day;
+    }
+    return -1;
+}
+
 int talk_event_after(int guest, int avatar, const TalkMemoryEvent *event, int kind)
 {
-    int i;
-    for (i = 0; i < event_count && get16(event_rows[i] + 4) >= event->day; i++) {
-        uint32_t key = event_key(event_rows[i]);
-        int row_kind = event_kind(key);
-        if (event_other(key, guest, avatar) != event->other) continue;
-        if (row_kind == event->kind && event_place(key) == event->place &&
-            get16(event_rows[i] + 4) == event->day) break;
-        if (row_kind == kind) return 1;
-    }
-    return 0;
+    return talk_event_next_day(guest, avatar, event, kind) >= 0;
 }
 
 int talk_event_pending_hurt(int guest, int avatar)

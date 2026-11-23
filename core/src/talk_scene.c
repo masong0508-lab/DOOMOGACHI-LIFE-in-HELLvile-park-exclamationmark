@@ -2214,11 +2214,13 @@ static int recall_event(int id, const TalkMemoryEvent *event)
     switch (event->kind) {
     case TALK_EV_ARGUMENT:
     case TALK_EV_FIGHT: {
-        int resolved = talk_event_after(id, T.avatar, event, TALK_EV_RECONCILED);
-        if (resolved && event->place > TALK_PLACE_HOME) venue = event->place - 1;
-        doomo_snprintf(line, sizeof line, "I remember the %s with %s%s on %s. %s",
+        int day = talk_event_next_day(id, T.avatar, event, TALK_EV_RECONCILED);
+        char resolved[16];
+        if (day >= 0) visit_date_label(resolved, sizeof resolved, (uint32_t)day);
+        if (day >= 0 && event->place > TALK_PLACE_HOME) venue = event->place - 1;
+        doomo_snprintf(line, sizeof line, "I remember the %s with %s%s on %s. %s%s.",
                        event->kind == TALK_EV_FIGHT ? "fight" : "argument", other, where, date,
-                       resolved ? "We talked it through later." : "That was a rough day.");
+                       day >= 0 ? "We talked it through on " : "That was a rough day", day >= 0 ? resolved : "");
         break;
     }
     case TALK_EV_RECONCILED:
@@ -2227,11 +2229,14 @@ static int recall_event(int id, const TalkMemoryEvent *event)
     case TALK_EV_PRAISE:
         doomo_snprintf(line, sizeof line, "You said something kind to me%s on %s. It stayed with me.", where, date);
         break;
-    case TALK_EV_HURT:
-        doomo_snprintf(line, sizeof line, "I remember what you said%s on %s. %s", where, date,
-                       talk_event_after(id, T.avatar, event, TALK_EV_APOLOGY) ?
-                       "I remember your apology too." : "It hurt.");
+    case TALK_EV_HURT: {
+        int day = talk_event_next_day(id, T.avatar, event, TALK_EV_APOLOGY);
+        char apology[16];
+        if (day >= 0) visit_date_label(apology, sizeof apology, (uint32_t)day);
+        doomo_snprintf(line, sizeof line, "I remember what you said%s on %s. %s%s.", where, date,
+                       day >= 0 ? "You apologized on " : "It hurt", day >= 0 ? apology : "");
         break;
+    }
     case TALK_EV_APOLOGY:
         doomo_snprintf(line, sizeof line, "You apologized%s on %s. I remember you making the effort.", where, date);
         break;
