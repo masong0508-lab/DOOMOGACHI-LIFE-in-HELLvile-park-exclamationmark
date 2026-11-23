@@ -63,14 +63,16 @@ stay outside as the player crosses a threshold. The room budget starts
 when the eye actually goes under the ceiling. The east chapel spent
 more of its third-person draws at the sharper 120×80 tier in mGBA.
 
-The current mGBA movement census drew 17.00 and 17.16 FPS in Cathedral
-and 18.84 and 19.76 FPS in Capital, first and third person respectively.
+The mGBA movement census with the smoother pursuit code drew 16.77 and
+17.39 FPS in Cathedral and 17.92 and 18.68 FPS in Capital, first and third
+person respectively.
 Every frame in those four windows used 96×64 or 120×80 for the world.
 The HUD was drawn at 240×160. The engine checks every 96×64 scaler
 output pixel and the VRAM guard after the final row. It also checks that
 both palette banks change inside VBlank, including during a damage tint.
 The 24 and 30 drawn FPS targets remain open across both levels. The
-third-person Capital gateway checkpoint reached 25.50 FPS. See the
+floor and ceiling art build reached 25.50 FPS at the third-person
+Capital gateway checkpoint. See the
 [measured camera results](GBA.md#current-gba-performance-status).
 
 ## Earlier passes

@@ -21,6 +21,12 @@ portrait; its island-population-once-per-frame part is already in this tree), `d
 before redoing any of them; a zip without `.git` cannot tell.
 
 ### Done
+- **Enemy pursuit and player controls (2026-11-22):** Demons turn in
+  steps and follow short detours at obstacles. The same code runs on
+  every port. Player turns respond on reversal, and stick and D-pad
+  inputs can combine in combat and during overworld walks. The GBA
+  training demo still clears all 17 demons and returns to level select.
+  See the [shared controls](docs/GAME_DESIGN.md#4-controls).
 - **GBA Bone interior art (2026-11-22):** Vault panels, broad stone slabs
   and red flagstone give the floors and ceilings a distinct pattern.
   The matched east chapel ceiling crop has about half as many abrupt

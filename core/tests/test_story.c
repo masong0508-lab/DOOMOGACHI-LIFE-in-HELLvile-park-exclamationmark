@@ -553,6 +553,29 @@ TEST(story_stry_round_trips_at_every_episode_boundary)
     }
 }
 
+TEST(story_overworld_combines_dpad_and_stick_axes)
+{
+    int32_t x, y;
+    new_story(55);
+    story_debug_jump(1, BEAT_C1_FRIENDS);
+    settle();
+    ow_enter_map(MAPID_HAHALAND, 34, 26);
+    frames(5, 0);
+    x = ow.px;
+    y = ow.py;
+    input_set_analog(1, -105, 0, 0, 0, 0);
+    frames(5, BTN_UP);
+    input_set_analog(0, 0, 0, 0, 0, 0);
+    CHECK(ow.py < y);
+    CHECK(ow.px < x);
+    x = ow.px;
+    y = ow.py;
+    frames(5, BTN_LEFT | BTN_RIGHT | BTN_UP | BTN_DOWN);
+    CHECK_EQ(ow.px, x);
+    CHECK_EQ(ow.py, y);
+    story_debug_autowin(0);
+}
+
 TEST(story_overworld_walks_and_collides)
 {
     int32_t x0;

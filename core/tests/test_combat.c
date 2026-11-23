@@ -12,6 +12,94 @@
 static void frame(uint32_t b) { plat_begin_frame(); doomo_frame(b); plat_end_frame(); }
 static void tick(uint32_t b) { input_update(b); combat_tick(); }
 
+static void open_combat_floor(void)
+{
+    int i;
+    combat_start_at(MAPID_ARENA, CGOAL_ENDLESS, 10, 10, 0);
+    actors_clear();
+    for (i = 0; i < doomo_map.w * doomo_map.h; i++) {
+        DoomoCell *cell = &doomo_map.cells[i];
+        memset(cell, 0, sizeof(*cell));
+        cell->ceil_tex = DOOMO_TEX_SKY;
+    }
+    doomo_player.z = 0;
+}
+
+static DoomoActor *pursuing_demon(int x, int y, int angle)
+{
+    int slot = combat_spawn(THING_BONE_JESTER, x, y, angle);
+    DoomoActor *demon = &doomo_actors[slot];
+    demon->state = AST_CHASE;
+    demon->target = TARGET_PLAYER;
+    demon->cooldown = 255;
+    return demon;
+}
+
+TEST(combat_pursuit_turns_through_an_arc)
+{
+    DoomoActor *demon;
+    fix16 start;
+    int t;
+    open_combat_floor();
+    demon = pursuing_demon(13, 10, 0);
+    start = demon->x;
+    actors_tick();
+    CHECK(demon->x > start);           /* a target behind it cannot reverse its step instantly */
+    for (t = 0; t < 75; t++) {
+        int before = demon->angle;
+        int turn;
+        actors_tick();
+        turn = ((demon->angle - before + 2048) & DOOMO_ANG_MASK) - 2048;
+        CHECK(turn >= -256 && turn <= 256);
+    }
+    CHECK(demon->x < start - INT2FIX(32));
+}
+
+TEST(combat_pursuit_moves_around_a_wall_head_on)
+{
+    DoomoActor *demon;
+    int t, crossed = 0;
+    open_combat_floor();
+    doomo_map.cells[10 * doomo_map.w + 12].wall = TEX_BONE_WALL;
+    demon = pursuing_demon(13, 10, 2048);
+    for (t = 0; t < 160; t++) {
+        actors_tick();
+        CHECK(cw_fits(demon->x, demon->y, demon->radius, FIX2INT(demon->z),
+                      demon->height, DOOMO_STEP_UP, NULL, NULL));
+        if (demon->x < INT2FIX(12 * CELLU)) { crossed = 1; break; }
+    }
+    CHECK(crossed);
+}
+
+TEST(combat_controls_turn_the_new_way_on_reversal)
+{
+    int t, angle;
+    open_combat_floor();
+    opt_set(OPT_CONTROL_SCHEME, CONTROLS_MODERN);
+    opt_set(OPT_TURN_SWAP, 0);
+    input_set_feel(1);
+    for (t = 0; t < 12; t++) tick(BTN_R);
+    angle = doomo_player.angle;
+    tick(BTN_L);
+    input_set_feel(0);
+    CHECK(((doomo_player.angle - angle + 2048) & DOOMO_ANG_MASK) - 2048 < 0);
+}
+
+TEST(combat_controls_keep_digital_forward_with_analog_strafe)
+{
+    int t;
+    fix16 x, y;
+    open_combat_floor();
+    opt_set(OPT_CONTROL_SCHEME, CONTROLS_MODERN);
+    input_set_analog(1, 100, 0, 0, 0, 0);
+    x = doomo_player.x;
+    y = doomo_player.y;
+    for (t = 0; t < 8; t++) tick(BTN_UP);
+    input_set_analog(0, 0, 0, 0, 0, 0);
+    CHECK(doomo_player.x > x + INT2FIX(4));
+    CHECK(doomo_player.y > y + INT2FIX(4));
+}
+
 /* Render the current combat frame (view + HUD); returns how many view
  * pixels the renderer left unpainted (the frame is cleared to red first). */
 static int render_combat(const char *name)

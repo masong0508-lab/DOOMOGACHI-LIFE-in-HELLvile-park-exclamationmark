@@ -21,8 +21,8 @@
 
 DoomoActor doomo_actors[ACTOR_MAX];
 
-static uint8_t  ai_move[ACTOR_MAX];     /* ticks to keep the current move dir */
-static int16_t  ai_dir[ACTOR_MAX];      /* current move direction (angle)      */
+static uint8_t  ai_move[ACTOR_MAX];     /* ticks to commit to an obstacle detour */
+static int16_t  ai_dir[ACTOR_MAX];      /* detour heading (angle)                */
 static uint8_t  ai_flash[ACTOR_MAX];    /* hit flash ticks                     */
 static uint8_t  ai_los[ACTOR_MAX];      /* cached line of sight to the target  */
 static int16_t  corpse_count;
@@ -372,6 +372,7 @@ int actor_alloc(int effect)
     memset(&doomo_actors[oldest], 0, sizeof(DoomoActor));
     doomo_actors[oldest].flags = AF_USED;
     doomo_actors[oldest].target = NO_TARGET;
+    ai_move[oldest] = 0;
     return oldest;
 }
 
@@ -713,35 +714,38 @@ static int demon_try_move(int idx, fix16 dx, fix16 dy)
 #endif
 }
 
+static int walk_heading(int angle, int target)
+{
+    int turn = ((target - angle + 2048) & DOOMO_ANG_MASK) - 2048;
+    return (angle + DOOMO_CLAMP(turn, -256, 256)) & DOOMO_ANG_MASK;
+}
+
 static void demon_walk(int idx, int want_angle)
 {
     DoomoActor *a = &doomo_actors[idx];
     int sp = demon_speed(a);
     fix16 step = INT2FIX(sp) / 8;
     static const int16_t tries[6] = { 0, 512, -512, 1024, -1024, 1536 };
-    /* 128 bytes of transient stack; no heap, persistent RAM or allocations.
-     * Build only after the first three movement options all fail. A failed
-     * move does not change a->x/y, and no other actor can move during this
-     * call, so one envelope covers all five remaining angle attempts. */
+    /* All collision probes fit within one step of the starting position. */
     uint8_t near[ACTOR_MAX];
-    int nnear = 0;
-#if !defined(DOOMO_PLATFORM_GBA)
-    int use_near = actor_end > 12;
-#endif
-    int k;
+    const uint8_t *candidates = NULL;
+    int nnear = 0, k, heading, side = a->strafe > 0 ? 1 : -1;
     if (ai_move[idx] > 0) {
         ai_move[idx]--;
         want_angle = ai_dir[idx];
     }
+    heading = walk_heading(a->angle, want_angle);
 #if defined(DOOMO_PLATFORM_GBA)
     nnear = solid_candidates(near, a->x, a->y, a->radius + FIX2INT(step) + 1, idx);
+    candidates = near;
 #endif
     for (k = 0; k < 6; k++) {
-        int ang = (want_angle + (a->strafe > 0 ? tries[k] : -tries[k])) & DOOMO_ANG_MASK;
-        fix16 dx = FIXMUL(fx_cos(ang), step), dy = FIXMUL(fx_sin(ang), step);
+        int ang = (heading + side * tries[k]) & DOOMO_ANG_MASK;
+        fix16 stride = k ? step / 2 : step;
+        fix16 dx = FIXMUL(fx_cos(ang), stride), dy = FIXMUL(fx_sin(ang), stride);
         int moved;
 #if !defined(DOOMO_PLATFORM_GBA)
-        if (k == 1 && use_near) {
+        if (k == 1 && actor_end > 12) {
             int j;
             /* Allow a full world unit of rounding slack around the maximum
              * step. All six angles have |dx|, |dy| <= step + 1 world unit. */
@@ -759,39 +763,35 @@ static void demon_walk(int idx, int want_angle)
                     (int64_t)o->y - a->y < -rr) continue;
                 near[nnear++] = (uint8_t)j;
             }
+            candidates = near;
         }
 #endif
-        /* At cardinal angles one component is exactly zero. If the
-         * diagonal attempt failed, its identical axis attempt cannot
-         * succeed: rejected moves have no side effects. Still execute the
-         * distinct zero-displacement attempt where it was present, since
-         * it may apply a valid floor step. This is behavior-preserving. */
-#if defined(DOOMO_PLATFORM_GBA)
-        moved = demon_try_move_filtered(idx, dx, dy, near, nnear) ||
-                (dy && demon_try_move_filtered(idx, dx, 0, near, nnear)) ||
-                (dx && demon_try_move_filtered(idx, 0, dy, near, nnear));
-#else
-        if (k && use_near)
-            moved = demon_try_move_filtered(idx, dx, dy, near, nnear) ||
-                    (dy && demon_try_move_filtered(idx, dx, 0, near, nnear)) ||
-                    (dx && demon_try_move_filtered(idx, 0, dy, near, nnear));
-        else
-            moved = demon_try_move(idx, dx, dy) ||
-                    (dy && demon_try_move(idx, dx, 0)) ||
-                    (dx && demon_try_move(idx, 0, dy));
-#endif
-        if (moved) {
-            if (k > 0) {
-                ai_dir[idx] = (int16_t)ang;
-                ai_move[idx] = (uint8_t)(8 + rng_range(&doomo_rng, 16));
+        moved = (dx || dy) && demon_try_move_filtered(idx, dx, dy, candidates, nnear);
+        if (!moved && k == 0 && dx && dy) {
+            /* A slide keeps the unblocked component of the step. At
+             * cardinal headings there is no distinct nonzero axis step. */
+            if (demon_try_move_filtered(idx, dx, 0, candidates, nnear)) {
+                ang = dx > 0 ? 0 : 2048;
+                moved = 1;
+            } else if (demon_try_move_filtered(idx, 0, dy, candidates, nnear)) {
+                ang = dy > 0 ? 1024 : 3072;
+                moved = 1;
             }
-            a->angle = (int16_t)ang;
+        }
+        if (moved) {
+            if (ang != heading) {
+                ai_dir[idx] = (int16_t)ang;
+                ai_move[idx] = 6;
+            }
+            a->angle = (int16_t)(ang == heading ? heading : walk_heading(a->angle, ang));
             return;
         }
     }
-    /* stuck: pick a random direction for a while */
-    ai_dir[idx] = (int16_t)rng_range(&doomo_rng, 4096);
-    ai_move[idx] = 10;
+    /* If none of the steps fits, commit to turning to the same side and
+     * try again next tick. This also lets a demon turn in a narrow corner. */
+    ai_dir[idx] = (int16_t)((heading + side * 1024) & DOOMO_ANG_MASK);
+    ai_move[idx] = 6;
+    a->angle = (int16_t)walk_heading(a->angle, ai_dir[idx]);
 }
 
 static void demon_fire(int idx, int pk, int dmg, int speed, int spread)

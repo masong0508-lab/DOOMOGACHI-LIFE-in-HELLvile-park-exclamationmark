@@ -225,6 +225,17 @@ accessibility.
 | Strafe / lock-on | L / R | L1 / R2-lock, Square roll, Triangle weapon |
 | Look up/down | hold L + D-pad (classic) | L2/R2 or D-pad (modern) |
 
+Combat turns respond on the first tick of a reversal and build speed in
+the new direction. D-pad and stick inputs can control different movement
+axes in combat and during overworld walks. Opposite D-pad directions
+cancel each other. A mixed diagonal uses the same overall speed limit as
+its faster input.
+
+Demons turn into a new pursuit direction over several ticks. At a wall
+or another solid body they slide or briefly follow a detour, then turn
+back toward the target. Detours use the same collision checks as normal
+movement, including live door and lift heights.
+
 ### 4.1 UX budgets: presses per journey
 
 Every common journey has a press budget, measured by the journey meter

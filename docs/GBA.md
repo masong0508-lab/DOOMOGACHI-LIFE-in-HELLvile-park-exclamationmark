@@ -23,10 +23,10 @@ GBA's 59.7275 Hz refresh rate.
 
 | Bone map and camera | Baseline `fbdbc1c4` FPS | Current FPS | Current logic TPS | Current mean / P99 frame work |
 |---|---:|---:|---:|---:|
-| Cathedral, first person | 17.39 | 17.00 | 29.86 | 49.7 / 64.5 ms |
-| Cathedral, third person | 17.92 | 17.16 | 29.75 | 47.4 / 61.8 ms |
-| Capital, first person | 19.45 | 18.84 | 29.86 | 45.1 / 61.5 ms |
-| Capital, third person | 19.68 | 19.76 | 29.86 | 43.4 / 58.4 ms |
+| Cathedral, first person | 17.39 | 16.77 | 29.86 | 49.8 / 64.6 ms |
+| Cathedral, third person | 17.92 | 17.39 | 29.75 | 48.1 / 63.4 ms |
+| Capital, first person | 19.45 | 17.92 | 29.86 | 46.7 / 69.6 ms |
+| Capital, third person | 19.68 | 18.68 | 29.98 | 45.6 / 61.3 ms |
 
 The interim target is **24 drawn FPS** in all four Bone camera windows.
 The longer-term target is **30 drawn FPS**. The four windows spent their
@@ -84,11 +84,12 @@ The IWRAM main stack reserve is 6,156 B against the 6,144 B minimum.
 The 3D overlay uses 10,168 B of its 10,304 B slot. The three materials
 add 12 KiB of pixels in ROM and use the existing texture cache.
 
-These headless mGBA checkpoints held each camera in place for 130 live
+These headless mGBA checkpoints compare the room-culling build and the
+floor and ceiling art build. Each camera stayed in place for 130 live
 logic ticks while enemies remained active. Each cell is first / third
-person. The equivalent routes start from the same pose on each ROM.
+person. Both ROMs start from the same camera poses.
 
-| Camera checkpoint | `795374e5` FPS | Current FPS |
+| Camera checkpoint | `795374e5` FPS | `0a569a9a` FPS |
 |---|---:|---:|
 | Cathedral courtyard | 18.76 / 20.14 | 18.76 / 19.53 |
 | Cathedral nave, looking north | 16.02 / 16.31 | 16.02 / 16.83 |

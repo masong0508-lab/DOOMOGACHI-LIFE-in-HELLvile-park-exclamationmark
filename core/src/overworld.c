@@ -495,22 +495,33 @@ static void player_update(void)
      * D-pad bits the pad driver mirrors from the stick are the stick's) */
     mag = DOOMO_STICKS ? input_lstick(&sx, &sy) : 0;
     dp = mag ? ~input_stick_mask() : ~0u;
-    if (btn_down(BTN_LEFT & dp)) dx = -1;
-    if (btn_down(BTN_RIGHT & dp)) dx = 1;
-    if (btn_down(BTN_UP & dp)) dy = -1;
-    if (btn_down(BTN_DOWN & dp)) dy = 1;
+    dx = (btn_down(BTN_RIGHT & dp) != 0) - (btn_down(BTN_LEFT & dp) != 0);
+    dy = (btn_down(BTN_DOWN & dp) != 0) - (btn_down(BTN_UP & dp) != 0);
     ow.running = btn_down(BTN_B) ? 1 : 0;
     speed = ow.running ? RUN_SPEED : WALK_SPEED;
     if (dx && dy) speed = speed * 181 / 256;
     vx = dx * speed;
     vy = dy * speed;
-    if (!dx && !dy && mag) {
+    if (mag && (!dx || !dy)) {
         int q = ow_stick_speed_q8(mag, ow.running);      /* creep .. walk .. run */
         int u = q * WALK_SPEED / mag;                    /* per stick unit, 1/256 */
-        vx = sx * u / 256;
-        vy = sy * u / 256;
-        ow.running = (uint8_t)(q > 256);
-        ow.dir = (uint8_t)(sx * sx >= sy * sy ? (sx < 0 ? 1 : 2) : (sy < 0 ? 3 : 0));
+        if (!dx) vx = sx * u / 256;
+        if (!dy) vy = sy * u / 256;
+        if ((dx || dy) && vx && vy) {
+            /* A D-pad axis can combine with the other stick axis, with
+             * the same speed limit as its faster input. */
+            int limit = DOOMO_MAX(speed, q * WALK_SPEED / 256);
+            int length = FIX2INT(fx_dist(INT2FIX(vx), INT2FIX(vy)));
+            if (length > limit) {
+                vx = vx * limit / length;
+                vy = vy * limit / length;
+            }
+            ow.running = (uint8_t)(limit > WALK_SPEED);
+        } else if (!dx && !dy) {
+            ow.running = (uint8_t)(q > 256);
+        }
+        if (vx || vy)
+            ow.dir = (uint8_t)(vx * vx >= vy * vy ? (vx < 0 ? 1 : 2) : (vy < 0 ? 3 : 0));
         dx = vx || vy;                                   /* walking (a door push) */
     } else if (dx) {
         ow.dir = dx < 0 ? 1 : 2;
