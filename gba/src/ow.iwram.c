@@ -121,13 +121,14 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
     const int trans = flags & BB_TRANSLUCENT;
     const int flip = flags & BB_FLIPX;
     /* x / s = (x * inv) >> 16 (s == 1, nearly every sprite: no software divide) */
-    const uint32_t inv = s == 1 ? 65537u : 65536u / (uint32_t)s + 1u;
+    uint32_t inv;
     const uint8_t *lc[4];
     int x;
     /* House callers may briefly have no image during a scene transition;
      * never dereference a missing image or divide by an invalid scale. */
     if (!img || !img->pix || !img->w || !img->h || s < 1 || s > 4) return;
     w = img->w * s; h = img->h * s;
+    inv = s == 1 ? 65537u : 65536u / (uint32_t)s + 1u;
     cx0 = x0; cx1 = x0 + w; cy0 = y0; cy1 = y0 + h;
     if (cx0 < owf.ox) cx0 = owf.ox;
     if (cx1 > owf.ox + owf.ow) cx1 = owf.ox + owf.ow;
