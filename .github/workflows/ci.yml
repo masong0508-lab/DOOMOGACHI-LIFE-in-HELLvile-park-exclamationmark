@@ -158,7 +158,7 @@ jobs:
       - name: Headless harness (engine tour, flash save round trip, game smoke)
         run: |
           # same targets, same order as `make -C gba test`, with the seconds each one took
-          for t in test-et test-save test-game test-coresave test-story test-home test-ow test-lang; do
+          for t in test-et test-save test-game test-talk test-coresave test-story test-home test-ow test-lang; do
             s=$SECONDS
             make -C gba "$t"
             echo "::notice title=$t::took $((SECONDS - s)) s"
