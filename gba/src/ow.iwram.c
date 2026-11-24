@@ -74,7 +74,10 @@ void ow_ground(const uint8_t *const *tiles, int ntiles, int o, int y0, int y1, i
     }
 }
 
-__attribute__((optimize("Os")))
+/* Shadow colour remapping is infrequent compared with ground/sprite
+ * copying. Keep its small O(sprites) loop in ROM to recover IWRAM headroom
+ * while preserving the existing 6 KB main stack reserve. */
+ROM_COLD __attribute__((optimize("Os")))
 void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm)
 {
     int y;
