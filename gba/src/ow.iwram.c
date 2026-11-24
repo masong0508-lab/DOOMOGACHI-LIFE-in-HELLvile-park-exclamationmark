@@ -115,7 +115,7 @@ static inline uint8_t post(uint8_t c, int x, int y)
  * the rows' middles go to ow_spr_rows: four texels per word read (ROM is a
  * 16-bit bus: one word instead of four byte reads), transparent words
  * skipped, opaque pairs stored without a read. */
-void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm)
+/* Keep the 1x copy loop in hand-tuned ARM while shrinking its dispatch / clipping.\n * This translation unit lives in IWRAM and has a hard linker stack reserve. */\n__attribute__((optimize("Os")))\nvoid ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm)
 {
     int w, h, cx0, cx1, cy0, cy1, y;
     const int trans = flags & BB_TRANSLUCENT;
@@ -207,7 +207,7 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
 
 /* front face of a block: rows of 16 texels sampled with stride 4 from
  * texture row (y * 64 / h), lit through cm (+ night / tint dither) */
-void ow_front(int px, int sy0, int h, int y0, int y1, const uint8_t *tp, uint8_t avg,
+/* The narrow 16-pixel block-front setup is code-size oriented; row_out and\n * the full-width sprite assembly stay in IWRAM on their existing paths. */\n__attribute__((optimize("Os")))\nvoid ow_front(int px, int sy0, int h, int y0, int y1, const uint8_t *tp, uint8_t avg,
               const uint8_t *cm)
 {
     uint8_t lineb[16];
