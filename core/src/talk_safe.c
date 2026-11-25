@@ -108,8 +108,9 @@ typedef struct SafHdr {
 
 static int saf_hdr(SafHdr *h)
 {
-    uint8_t b[48];
-    if (!talk_db_read(TB_SAFETY, 0, b, 48) || le32(b) != SAF_MAGIC) return 0;
+    uint8_t scratch[48];
+    const uint8_t *b = talk_db_record(TB_SAFETY, 0, scratch, sizeof scratch);
+    if (!b || le32(b) != SAF_MAGIC) return 0;
     h->nreg = le32(b + 4); h->reg_off = le32(b + 8); h->salt_lo = le32(b + 12); h->salt_hi = le32(b + 16);
     h->nexact = le32(b + 20); h->exact_off = le32(b + 24); h->ndel = le32(b + 28); h->del_off = le32(b + 32);
     h->str_off = le32(b + 36); h->str_len = le32(b + 40);
@@ -135,11 +136,12 @@ static uint64_t fnv64(const SafHdr *h, const char *s, int len)
 static int in_set(uint32_t off, uint32_t n, uint64_t v)
 {
     int lo = 0, hi = (int)n - 1;
-    uint8_t b[8];
+    uint8_t scratch[8];
     while (lo <= hi) {
         int mid = (lo + hi) >> 1;
         uint64_t x;
-        if (!talk_db_read(TB_SAFETY, off + 8u * (uint32_t)mid, b, 8)) return 0;
+        const uint8_t *b = talk_db_record(TB_SAFETY, off + 8u * (uint32_t)mid, scratch, sizeof scratch);
+        if (!b) return 0;
         x = (uint64_t)le32(b) | ((uint64_t)le32(b + 4) << 32);
         if (x == v) return 1;
         if (x < v) lo = mid + 1; else hi = mid - 1;

@@ -288,6 +288,33 @@ TEST(talk_db_refuses_bad_files)
     CHECK_EQ(talk_db_verify(), TALK_DB_NONE);
 }
 
+TEST(talk_db_record_matches_bounded_reads)
+{
+    uint8_t copy[16], scratch[16];
+    const uint8_t *p;
+    uint32_t off, size;
+    int mode, bank;
+    for (mode = 0; mode < 2; mode++) {
+        CHECK_EQ(mode == 0 ? open_fixture() : talk_db_open(lang_find("en")), TALK_DB_OK);
+        for (bank = 1; bank < TB_COUNT; bank++) {
+            uint32_t at;
+            if (!talk_db_bank(bank, &off, &size, NULL) || size < sizeof copy) continue;
+            for (at = 0; at <= size - sizeof copy; at += 71u + size / 40u) {
+                CHECK(talk_db_read(bank, at, copy, sizeof copy));
+                p = talk_db_record(bank, at, scratch, sizeof scratch);
+                CHECK(p && !memcmp(p, copy, sizeof copy));
+                if (!mode) CHECK(p == fx() + off + at);
+            }
+            CHECK(!talk_db_record(bank, size, scratch, 1));
+            CHECK(!talk_db_record(bank, 0xFFFFFFFFu, scratch, 2));
+        }
+        CHECK(!talk_db_record(0, 0, scratch, 1));
+        CHECK(!talk_db_record(TB_COUNT, 0, scratch, 1));
+        talk_db_close();
+        CHECK(!talk_db_record(TB_CONCEPT, 0, scratch, 1));
+    }
+}
+
 TEST(talk_db_crc32_is_ieee)
 {
     static const uint8_t s[] = "123456789";

@@ -239,10 +239,25 @@ int talk_db_read(int id, uint32_t at, void *dst, uint32_t len)
     return rd_bank(id, at, dst, len);
 }
 
+/* Small immutable records: ROM-backed banks need no intermediate copy.
+ * Streamed banks retain the exact old read-through/cache behavior. */
+const uint8_t *talk_db_record(int id, uint32_t at, uint8_t *scratch, uint32_t len)
+{
+    const TalkBank *b;
+    if (!len || !db.open || id <= 0 || id >= TB_COUNT || !db.bank[id].present) return NULL;
+    b = &db.bank[id];
+    if (at > b->packed || len > b->packed - at) return NULL;
+    if (db.mem) return db.mem + b->off + at;
+    return scratch && rd(b->off + at, scratch, len) ? scratch : NULL;
+}
+
 int talk_db_concept(int id, TalkConcept *out)
 {
-    uint8_t r[8];
-    if (!out || id <= 0 || id > talk_db_nconcepts() || !rd_bank(TB_CONCEPT, 8u * (uint32_t)id, r, 8)) return 0;
+    uint8_t scratch[8];
+    const uint8_t *r;
+    if (!out || id <= 0 || id > talk_db_nconcepts()) return 0;
+    r = talk_db_record(TB_CONCEPT, 8u * (uint32_t)id, scratch, sizeof scratch);
+    if (!r) return 0;
     out->id = (uint16_t)id;
     out->cat = r[0];
     out->sent = (int8_t)((r[1] & 7) - 3);
@@ -256,9 +271,12 @@ int talk_db_concept(int id, TalkConcept *out)
 
 int talk_db_assoc(int id, uint16_t *ids, uint8_t *weights)
 {
-    uint8_t r[16];
+    uint8_t scratch[16];
+    const uint8_t *r;
     int i, n = 0;
-    if (id <= 0 || id > talk_db_nconcepts() || !rd_bank(TB_ASSOC, 16u * (uint32_t)id, r, 16)) return 0;
+    if (id <= 0 || id > talk_db_nconcepts()) return 0;
+    r = talk_db_record(TB_ASSOC, 16u * (uint32_t)id, scratch, sizeof scratch);
+    if (!r) return 0;
     for (i = 0; i < TALK_ASSOC_TOP; i++) {
         uint16_t v = le16(r + 2 * i);
         if (!v) break;
@@ -388,8 +406,11 @@ int talk_db_form(int id, int which, char *out, int cap)
 
 int talk_db_cat(int cat, uint8_t *parent, uint8_t *flags)
 {
-    uint8_t r[4];
-    if (cat <= 0 || cat > talk_db_ncats() || !rd_bank(TB_CATS, 4u + 4u * (uint32_t)cat, r, 4)) return 0;
+    uint8_t scratch[4];
+    const uint8_t *r;
+    if (cat <= 0 || cat > talk_db_ncats()) return 0;
+    r = talk_db_record(TB_CATS, 4u + 4u * (uint32_t)cat, scratch, sizeof scratch);
+    if (!r) return 0;
     if (parent) *parent = r[0];
     if (flags) *flags = r[1];
     return 1;

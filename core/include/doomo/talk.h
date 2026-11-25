@@ -283,6 +283,9 @@ int  talk_db_bank(int id, uint32_t *offset, uint32_t *packed, uint32_t *raw);
 /* len bytes at offset `at` of bank `id` (TB_*) into dst: 1 ok (T3 / T4
  * read TB_PARSE and TB_SAFETY with it). */
 int  talk_db_read(int id, uint32_t at, void *dst, uint32_t len);
+/* Bounded immutable record: mapped bank bytes or a read into the caller's
+ * len-byte scratch. NULL on failure. Never hold across close/reopen. */
+const uint8_t *talk_db_record(int id, uint32_t at, uint8_t *scratch, uint32_t len);
 /* Concept `id` (1..nconcepts): 1 ok, 0 out of range / not open. */
 int  talk_db_concept(int id, TalkConcept *out);
 /* Its top associations, strongest first: ids[] and weights 1..15; returns

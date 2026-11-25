@@ -103,8 +103,9 @@ static uint32_t le32(const uint8_t *p)
 
 static int ghdr(GHdr *h)
 {
-    uint8_t b[GR_HDR];
-    if (!talk_db_read(TB_GRAMMAR, 0, b, GR_HDR) || le32(b) != GR_MAGIC) return 0;
+    uint8_t scratch[GR_HDR];
+    const uint8_t *b = talk_db_record(TB_GRAMMAR, 0, scratch, sizeof scratch);
+    if (!b || le32(b) != GR_MAGIC) return 0;
     h->nrules = le16(b + 4); h->nalts = le16(b + 6); h->nterms = le16(b + 8); h->nsyms = le16(b + 10);
     h->nrefs = le16(b + 12); h->ncast = le16(b + 14); h->njobs = le16(b + 16); h->nacts = le16(b + 18);
     h->rules = le32(b + 20); h->alts = le32(b + 24); h->terms = le32(b + 28); h->syms = le32(b + 32);
@@ -115,8 +116,9 @@ static int ghdr(GHdr *h)
 
 static int g_u16(uint32_t off, uint16_t *v)
 {
-    uint8_t b[2];
-    if (!talk_db_read(TB_GRAMMAR, off, b, 2)) return 0;
+    uint8_t scratch[2];
+    const uint8_t *b = talk_db_record(TB_GRAMMAR, off, scratch, sizeof scratch);
+    if (!b) return 0;
     *v = le16(b);
     return 1;
 }
@@ -129,18 +131,28 @@ int talk_gen_ready(void)
 }
 
 /* ---- the acts table ---------------------------------------------------- */
+static int act_row_h(const GHdr *h, int act, uint8_t row[16])
+{
+    return act > 0 && act < TA_COUNT &&
+           talk_db_read(TB_GRAMMAR, h->acts + 16u * (uint32_t)act, row, 16);
+}
+
 static int act_row(int act, uint8_t row[16])
 {
     GHdr h;
-    if (act <= 0 || act >= TA_COUNT || !ghdr(&h)) return 0;
-    return talk_db_read(TB_GRAMMAR, h.acts + 16u * (uint32_t)act, row, 16);
+    return act > 0 && act < TA_COUNT && ghdr(&h) && act_row_h(&h, act, row);
+}
+
+static int adjacent_row(const uint8_t row[16], int reply)
+{
+    return reply > 0 && reply < TA_COUNT &&
+           ((le32(row + 4 * (reply >> 5)) >> (reply & 31)) & 1u);
 }
 
 int talk_gen_adjacent(int act, int reply)
 {
     uint8_t row[16];
-    if (reply <= 0 || reply >= TA_COUNT || !act_row(act, row)) return 0;
-    return (le32(row + 4 * (reply >> 5)) >> (reply & 31)) & 1u;
+    return reply > 0 && reply < TA_COUNT && act_row(act, row) && adjacent_row(row, reply);
 }
 
 /* TM2c: byte 14 of an act's row: the kinds it serves as a reply; byte 15: the kinds allowed after it */
@@ -153,14 +165,28 @@ int talk_gen_kinds_of(int reply_act)
 /* TM2F-Q8: the kinds a reply act serves, read against the player's act. The kinds are signed by the topic (agree = yes to
  * it, deny = no to it), but AGREE and DISAGREE are signed by the player's claim: after a negative opinion an AGREE is a
  * no to the topic and a DISAGREE is a yes. acts.tsv carries the plain reading; this turns it round for OPINE_NEG. */
-int talk_gen_kinds_reply(int player_act, int reply_act)
+static int adjust_reply_kinds(int player_act, int reply_act, int m)
 {
-    int m = talk_gen_kinds_of(reply_act);
     if (player_act == TA_OPINE_NEG) {
         if (reply_act == TA_AGREE) m = (m & ~(int)(TKM(TK_ACCEPT) | TKM(TK_AGREE))) | (int)TKM(TK_DENY);
         else if (reply_act == TA_DISAGREE) m = (m & ~(int)TKM(TK_DENY)) | (int)TKM(TK_AGREE);
     }
     return m;
+}
+
+int talk_gen_kinds_reply(int player_act, int reply_act)
+{
+    return adjust_reply_kinds(player_act, reply_act, talk_gen_kinds_of(reply_act));
+}
+
+/* Read only the reply-kind byte using the already checked header. */
+static int kinds_of_h(const GHdr *h, int reply)
+{
+    uint8_t scratch;
+    const uint8_t *v;
+    if (reply <= 0 || reply >= TA_COUNT) return 0;
+    v = talk_db_record(TB_GRAMMAR, h->acts + 16u * (uint32_t)reply + 14u, &scratch, 1);
+    return v ? *v : 0;
 }
 
 /* which side of the topic a reply act takes after the player's act: +1 for it, -1 against, 0 none */
@@ -799,9 +825,11 @@ static int terms_ok(Gen *g, uint16_t first, int n)
 {
     int i;
     for (i = 0; i < n; i++) {
-        uint8_t t[2];
+        uint8_t scratch[2];
+        const uint8_t *t;
         int r;
-        if (!talk_db_read(TB_GRAMMAR, g->h.terms + 2u * (uint32_t)(first + i), t, 2)) return 0;
+        t = talk_db_record(TB_GRAMMAR, g->h.terms + 2u * (uint32_t)(first + i), scratch, sizeof scratch);
+        if (!t) return 0;
         r = pred(g, t[0] & 0x7F, t[1]);
         if ((t[0] & 0x80) ? r : !r) return 0;
     }
@@ -813,8 +841,11 @@ typedef struct GAlt { uint16_t str; uint8_t weight, face; uint16_t term_first; u
 
 static int rd_rule(const GHdr *h, int k, GRule *r)
 {
-    uint8_t b[8];
-    if (k < 0 || k >= h->nrules || !talk_db_read(TB_GRAMMAR, h->rules + 8u * (uint32_t)k, b, 8)) return 0;
+    uint8_t scratch[8];
+    const uint8_t *b;
+    if (k < 0 || k >= h->nrules) return 0;
+    b = talk_db_record(TB_GRAMMAR, h->rules + 8u * (uint32_t)k, scratch, sizeof scratch);
+    if (!b) return 0;
     r->alt_first = le16(b); r->nalt = b[2]; r->act = b[3]; r->term_first = le16(b + 4); r->nterm = b[6];
     r->flags = b[7];
     return 1;
@@ -822,8 +853,11 @@ static int rd_rule(const GHdr *h, int k, GRule *r)
 
 static int rd_alt(const GHdr *h, int k, GAlt *a)
 {
-    uint8_t b[8];
-    if (k < 0 || k >= h->nalts || !talk_db_read(TB_GRAMMAR, h->alts + 8u * (uint32_t)k, b, 8)) return 0;
+    uint8_t scratch[8];
+    const uint8_t *b;
+    if (k < 0 || k >= h->nalts) return 0;
+    b = talk_db_record(TB_GRAMMAR, h->alts + 8u * (uint32_t)k, scratch, sizeof scratch);
+    if (!b) return 0;
     a->str = le16(b); a->weight = b[2]; a->face = b[3]; a->term_first = le16(b + 4); a->nterm = b[6];
     a->flags = b[7];
     return 1;
@@ -854,7 +888,7 @@ static int avoided(const int *avoid, int navoid, int a)
 static int kind_serves(const Gen *g, int act)
 {
     if (act <= 0 || act >= TA_COUNT) return 0;
-    return (talk_gen_kinds_reply(g->act, act) & (int)TKM(g->plan.kind)) != 0;
+    return (adjust_reply_kinds(g->act, act, kinds_of_h(&g->h, act)) & (int)TKM(g->plan.kind)) != 0;
 }
 
 /* TM2F-Q8: an opinion answer never takes the side the speaker's own stance is against (design 7.2, Q8a), unless the plan
@@ -867,16 +901,18 @@ static int stance_clash(const Gen *g, int act)
 
 static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt *selected)
 {
-    uint8_t s[4];
+    uint8_t s[4], adjacency[16];
     int i, best = -1, best_level = 3;
+    int check_adj = g->adj && g->depth == 0;
     uint32_t tot[3] = { 0, 0, 0 };
     if (sym < 0 || sym >= g->h.nsyms || !talk_db_read(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, s, 4)) return -1;
+    if (check_adj && !act_row_h(&g->h, g->act, adjacency)) return -1;
     for (i = 0; i < le16(s + 2); i++) {
         uint16_t rk;
         GRule r;
         int a;
         if (!g_u16(g->h.refs + 2u * (uint32_t)(le16(s) + i), &rk) || !rd_rule(&g->h, rk, &r)) return -1;
-        if (g->adj && g->depth == 0 && !talk_gen_adjacent(g->act, r.act)) continue;      /* K-10 banks */
+        if (check_adj && !adjacent_row(adjacency, r.act)) continue;                     /* K-10 banks */
         if (!terms_ok(g, r.term_first, r.nterm)) continue;
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
@@ -2007,12 +2043,13 @@ static int grief_line(Gen *g, int which, TalkLine *out, TalkTrace *tr)
 
 /* TM2c: the kinds a kid room still has after `act`: the cool reply acts (tease, mock, insult, threaten) are out,
  * so a kind only they served is out too (the bank's own cells are in row[15], this narrows them) */
-static int kinds_kid(int act, const uint8_t row[16])
+static int kinds_kid(const GHdr *h, const uint8_t row[16])
 {
     int r, m = 0;
-    for (r = 1; r < TA_COUNT; r++)
-        if (((le32(row + 4 * (r >> 5)) >> (r & 31)) & 1u) && !TALK_COOL_REPLY(r)) m |= talk_gen_kinds_of(r);
-    (void)act;
+    for (r = 1; r < TA_COUNT; r++) {
+        if (adjacent_row(row, r) && !TALK_COOL_REPLY(r)) m |= kinds_of_h(h, r);
+        if ((m & row[15]) == row[15]) break;
+    }
     return m & row[15];
 }
 
@@ -2024,14 +2061,15 @@ static void make_plan(Gen *g, int act)
     TalkConv *c = g->c;
     uint8_t row[16], drow[16];
     TalkTraitBias b;
-    int root = g->topic ? talk_db_cat_root(g->tc.cat) : 0, forced = (c->plain >> 1) & 7, i;
+    int root = gen_topic_root(g), forced = (c->plain >> 1) & 7, i, allowed;
     if (!g->r || c->id[g->who] == TALK_PET_ID || act <= 0 || act >= TA_COUNT || TA_IS_SAFETY(act) || act == TA_UNKNOWN ||
-        grief_topic(g) || !act_row(act, row) || !row[15] || !act_row(row[13], drow))
+        grief_topic(g) || !act_row_h(&g->h, act, row) || !row[15] || !act_row_h(&g->h, row[13], drow))
         return;
-    if (g->kid_room && !kinds_kid(act, row)) return;
+    allowed = g->kid_room ? kinds_kid(&g->h, row) : row[15];
+    if (!allowed) return;
     memset(&in, 0, sizeof in);
     in.act = (uint8_t)act;
-    in.allowed = g->kid_room ? (uint8_t)kinds_kid(act, row) : row[15];
+    in.allowed = (uint8_t)allowed;
     if (c->plain & TPLAIN_NOYES) in.allowed &= (uint8_t)~(TKM(TK_ACCEPT) | TKM(TK_AGREE));   /* TM2e: the action it would promise is not allowed */
     in.dflt = drow[14];
     in.lean = g->lean;
@@ -2052,7 +2090,7 @@ static void make_plan(Gen *g, int act)
             if (root && g->ts.dislike[i] == root) in.topic_pref = -1;
         }
     }
-    in.margin = (uint8_t)(talk_gen_act_class(act) == TAC_ASK ? PLAN_MARGIN_ASK : PLAN_MARGIN);
+    in.margin = (uint8_t)(row[12] == TAC_ASK ? PLAN_MARGIN_ASK : PLAN_MARGIN);
     in.seed = doomo_hash32(c->seed ^ 0x504C414Eu ^ ((uint32_t)c->turn << 8) ^ ((uint32_t)g->who * 0x9E3779B1u) ^
                            ((uint32_t)c->lines * 0x85EBCA6Bu));
     talk_plan_kind(&in, &g->plan);
@@ -2105,7 +2143,7 @@ static void depth_plan(Gen *g, int act)
     in.engage = c->engage ? c->engage : TALK_ENGAGE_START;
     rv = g->to_id >= 0 ? rel_value(g->sid, g->to_id) : 0;
     in.level = (uint8_t)(rv < 0 ? 0 : rv > 100 ? 100 : rv);
-    in.root = (uint8_t)(g->topic ? talk_db_cat_root(g->tc.cat) : 0);
+    in.root = (uint8_t)gen_topic_root(g);
     in.thread_root = (uint8_t)root_of_topic(th);
     in.same = (uint8_t)(g->topic && same_thread(g->topic, th));
     in.grief = (uint8_t)grief_topic(g);
