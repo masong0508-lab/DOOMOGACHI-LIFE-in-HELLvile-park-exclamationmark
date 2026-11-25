@@ -236,6 +236,7 @@ typedef struct QCtx {
     uint16_t topic, fresh;               /* the topic the replies stay on; one to steer to        */
     uint8_t  kid, sincere, pool, n;
     uint8_t  used[(TA_COUNT + 7) / 8];
+    uint8_t  reception[TA_COUNT];       /* stack-local; 0 unset, score + 11 */
 } QCtx;
 
 static int is_pool_id(int id) { return id >= FAMILY_POOL_FIRST && id <= FAMILY_POOL_LAST; }
@@ -310,11 +311,17 @@ static int q_add(QCtx *q, const int8_t *act_to, int act, uint32_t h, TalkSugg *o
  * never invents lines, outcomes or feelings: every option still passes q_text
  * and the normal dialogue/safety gate. This runs on a menu refresh, not each
  * frame; <= 7 candidates, <= 6 history entries and zero allocations. */
-static int q_candidate_score(const QCtx *q, int slot, int act, uint32_t h)
+static int q_candidate_score(QCtx *q, int slot, int act, uint32_t h)
 {
     const TalkState *s = q->s;
     int i, reception, score;
-    reception = talk_dm_expect(s, slot, act, q_tone(act), q_topic_of(q, act));
+    /* Candidate sets overlap. For this immutable menu snapshot the slot,
+     * tone and subject of each act are fixed; only the tie-break salt varies. */
+    if (q->reception[act]) reception = (int)q->reception[act] - 11;
+    else {
+        reception = talk_dm_expect(s, slot, act, q_tone(act), q_topic_of(q, act));
+        q->reception[act] = (uint8_t)(reception + 11);
+    }
     /* Negative reactions should matter: don't recommend a jab to somebody
      * who has repeatedly taken it badly just because it changes the text. */
     score = reception * 2 + (reception < 0 ? reception : 0);
