@@ -125,6 +125,51 @@ TEST(talk_quick_persona_changes_the_reaction)
     talk_db_close();
 }
 
+/* talk_gen_stance returns an enum, not a signed sentiment score. Both
+ * kinds of opinion must survive into the drama manager's live state. */
+TEST(talk_quick_resident_opinions_are_not_inverted)
+{
+    TalkState s;
+    TalkSugg g = {TA_ASK_ABOUT, TONE_PLAIN, TC_NONE, -1, "Tell me about it."};
+    uint16_t pro = TC_NONE, con = TC_NONE;
+    int i, base;
+    premade_town();
+    CHECK(open_db());
+    set_persona(ID_NANA, 6, 6, 6, 6, 6);
+    town_res(ID_NANA)->mood = MOOD_OK;
+    begin2(&s, ID_NANA, -1, 91u);
+    /* Find real, ordinary concepts this particular resident likes and
+     * dislikes; avoid assuming all residents share the same opinion. */
+    for (i = 1; i <= talk_db_nconcepts() && (!pro || !con); i++) {
+        uint16_t t = (uint16_t)i;
+        int stance;
+        if (!talk_link_topic_safe(t)) continue;
+        stance = talk_gen_stance(ID_NANA, t);
+        if (stance == TST_PRO && !pro) pro = t;
+        if (stance == TST_CON && !con) con = t;
+    }
+    CHECK(pro && con);
+    if (pro && con) {
+        base = talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, TC_NONE) -
+               talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, TC_NONE);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, pro) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, pro) > base);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, con) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, con) < base);
+
+        g.topic = pro;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_PRO);
+        begin2(&s, ID_NANA, -1, 92u);
+        g.topic = con;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_CON);
+    }
+    talk_db_close();
+}
+
 TEST(talk_quick_mood_and_bond_change_the_reaction)
 {
     TalkState s;
