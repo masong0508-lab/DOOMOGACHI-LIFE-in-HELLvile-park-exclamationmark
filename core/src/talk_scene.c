@@ -80,10 +80,16 @@ static struct TalkScn {
         TalkVisit visits[JOURNAL_PAGE + 1];
         TalkMemoryEvent events[JOURNAL_PAGE + 1];
         TalkTopicPair pairs[SHARED_PAGE + 1];
+        DoomoProblem concern;            /* snapshot while a concern page is open */
     } journal;
     union {
         char rows[JOURNAL_PAGE][16];     /* dates or short names of each shared pair */
         char subjects[2][36];           /* full labels on the selected pair page */
+        struct {
+            char date[16];
+            char topic[20];
+            char quick[TALK_QUICK_MAX][20];
+        } main;                         /* reuse journal scratch, not extra scene RAM */
     } journal_label;
     uint16_t  journal_offset;
     uint8_t   journal_mode, place;
@@ -99,6 +105,8 @@ static struct TalkScn {
 #endif
     char      followup_name[40];
 } T;
+
+DOOMO_STATIC_ASSERT(sizeof T.journal_label.main <= sizeof T.journal_label.rows, talk_menu_labels_reuse_scratch);
 
 static int extra_ids[TALK_PARTS_MAX - 1], extra_n;   /* the others the caller wants in the room */
 static uint32_t sessions;                            /* a new seed for every talk of a day      */
@@ -354,6 +362,7 @@ static int q_candidate_score(const QCtx *q, int slot, int act, uint32_t h)
 static int q_from(QCtx *q, const uint8_t *list, int n, int slot, uint32_t h, TalkSugg *out)
 {
     int i, best = -1, value = -10000;
+    if (q->n >= TALK_QUICK_MAX) return 0;    /* no more bank reads for a full list */
     if (q->s->turn >= 2 && q->s->nhist > 0) {
         for (i = 0; i < n; i++) {
             int act = list[i], score;
@@ -713,21 +722,29 @@ static void topic_name(uint16_t c, char *out, int cap)
     if (c == TC_NONE || talk_db_form(c, TF_LEMMA, out, cap) < 0) { doomo_snprintf(out, (size_t)cap, "that"); }
 }
 
-static void expand(const char *src, uint16_t topic, char *out, int cap)
+static void expand_named(const char *src, uint16_t topic, const char *name, char *out, int cap)
 {
+    char tn[20];
     int n = 0;
     while (*src && n < cap - 1) {
         if (src[0] == '%' && src[1] == 't') {
-            char tn[20];
             int k;
-            topic_name(topic, tn, (int)sizeof tn);
-            for (k = 0; tn[k] && n < cap - 1; k++) out[n++] = tn[k];
+            if (!name) {
+                topic_name(topic, tn, (int)sizeof tn);
+                name = tn;
+            }
+            for (k = 0; name[k] && n < cap - 1; k++) out[n++] = name[k];
             src += 2;
         } else {
             out[n++] = *src++;
         }
     }
     out[n] = 0;
+}
+
+static void expand(const char *src, uint16_t topic, char *out, int cap)
+{
+    expand_named(src, topic, NULL, out, cap);
 }
 
 static void phrase(int act, char *out, int cap)
@@ -849,13 +866,33 @@ static void build_main(void)
     int c, planned_place = 0;
     T.page = PG_MAIN;
     T.nrows = 0;
+    /* A dialogue/generation already owns the input. Rebuild exactly once
+     * on return to the live menu, not before the answer and again after it. */
+    if (T.busy || T.gen || T.after) {
+        T.nquick = 0;
+        list_reset();
+        return;
+    }
     if (followup_open(T.followup)) {
         add_row(K_FOLLOW_UP, 0, T.followup);
         planned_place = followup_place_open();
         if (planned_place) add_row(K_OUT, T.followup_place, T.followup);
     } else T.followup = TC_NONE;
     quick_refresh();
-    for (c = 0; c < T.nquick; c++) add_row(K_QUICK, c, 0);
+    topic_name(T.topic, T.journal_label.main.topic, sizeof T.journal_label.main.topic);
+    for (c = 0; c < T.nquick; c++) {
+        int i;
+        /* A bank form lookup belongs to menu construction, not frame drawing.
+         * Most replies share a subject, so resolve that form only once. */
+        for (i = 0; i < c && T.quick[i].topic != T.quick[c].topic; i++) {}
+        if (T.quick[c].topic == T.topic)
+            memcpy(T.journal_label.main.quick[c], T.journal_label.main.topic, sizeof T.journal_label.main.topic);
+        else if (i < c)
+            memcpy(T.journal_label.main.quick[c], T.journal_label.main.quick[i], sizeof T.journal_label.main.quick[c]);
+        else
+            topic_name(T.quick[c].topic, T.journal_label.main.quick[c], sizeof T.journal_label.main.quick[c]);
+        add_row(K_QUICK, c, 0);
+    }
     for (c = 0; c < C_COUNT; c++) {
         if (c == C_ROMANCE && !romance_open()) continue;
         add_row(K_CAT, c, 0);
@@ -907,7 +944,7 @@ static void build_main(void)
         int id = T.ids[T.to], venue;
         uint32_t day = topic_memory(id, &venue);
         if (day != TALK_VISIT_UNDATED) {
-            visit_date_label(T.journal_label.rows[0], sizeof T.journal_label.rows[0], day);
+            visit_date_label(T.journal_label.main.date, sizeof T.journal_label.main.date, day);
             add_row(K_TOPIC_MEMORY, venue, (int)day);
         } else if (talk_mem_shared(id, TALK_SHARED_PLAYED) || talk_mem_shared(id, TALK_SHARED_GIFTED) ||
                    talk_mem_shared(id, TALK_SHARED_INVITED) || last_meet_venue(id) >= 0) {
@@ -1155,7 +1192,7 @@ static void build_concern(void)
 {
     int pi;
     const DoomoProblem *p;
-    if (T.to < 0 || T.to >= T.n) {
+    if (!listener_here(T.to)) {
         ui_toast("Choose one person first.");
         build_main();
         return;
@@ -1168,6 +1205,7 @@ static void build_concern(void)
         return;
     }
     T.page = PG_CONCERN;
+    T.journal.concern = *p;
     T.nrows = 0;
     add_row(K_CONCERN_INFO, p->kind, 0);
     add_row(K_CONCERN_ACT, p->kind, 0);
@@ -1473,22 +1511,29 @@ static void build_topics(void)
 
 static void build_invite(void)
 {
-    int i, k, best, pick[6], np = 0, away = family_away_id();
+    int i, k, host = -1, pick[6], score[6], np = 0, away = family_away_id();
     T.page = PG_INVITE;
     T.nrows = 0;
-    for (k = 0; k < 6; k++) {
-        best = -1;
+    for (i = 0; i < T.n; i++)
+        if (listener_here(i)) { host = T.ids[i]; break; }
+    /* One town pass and one bond lookup per candidate, rather than six
+     * repeated scans. Strict insertion preserves resident-ID order on ties. */
+    if (host >= 0)
         for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
-            int j;
+            int j, value;
             if (i == T.avatar || i == away || !town_alive(i) || party_has(i)) continue;
-            for (j = 0; j < np && pick[j] != i; j++) {}
-            if (j < np) continue;
-            if (best < 0 || rel_value(T.ids[0], i) > rel_value(T.ids[0], best)) best = i;
+            value = rel_value(host, i);
+            for (k = 0; k < np && score[k] >= value; k++) {}
+            if (k >= (int)DOOMO_COUNTOF(pick)) continue;
+            if (np < (int)DOOMO_COUNTOF(pick)) np++;
+            for (j = np - 1; j > k; j--) {
+                pick[j] = pick[j - 1];
+                score[j] = score[j - 1];
+            }
+            pick[k] = i;
+            score[k] = value;
         }
-        if (best < 0) break;
-        pick[np++] = best;
-        add_row(K_PICK, 1, best);
-    }
+    for (k = 0; k < np; k++) add_row(K_PICK, 1, pick[k]);
     list_reset();
 }
 
@@ -1523,7 +1568,7 @@ static const char *row_text(int index, char *buf)
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
     case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
     case K_TOPIC_MEMORY:
-        doomo_snprintf(buf, 48, "Recall %s (%s)", sim_venue_name(r->arg), T.journal_label.rows[0]);
+        doomo_snprintf(buf, 48, "Recall %s (%s)", sim_venue_name(r->arg), T.journal_label.main.date);
         break;
     case K_HISTORY:
         if (r->arg == 1)
@@ -1651,14 +1696,17 @@ static const char *row_text(int index, char *buf)
         doomo_snprintf(buf, 48, "Visit %s", outing[r->arg].label);
         break;
     case K_MORE:                         /* the live settings ride on the row: "Options (Nana, pie) >" */
-        topic_name(T.topic, tn, (int)sizeof tn);
+        memcpy(tn, T.journal_label.main.topic, sizeof tn);
         if (T.n > 1 && T.topic != TC_NONE)
             doomo_snprintf(buf, 48, "Options (%s, %s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]), tn);
         else if (T.n > 1) doomo_snprintf(buf, 48, "Options (%s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]));
         else if (T.topic != TC_NONE) doomo_snprintf(buf, 48, "Options (%s) >", tn);
         else doomo_snprintf(buf, 48, "Options >");
         break;
-    case K_QUICK: expand(T.quick[r->arg].text, T.quick[r->arg].topic, buf, 48); break;
+    case K_QUICK:
+        expand_named(T.quick[r->arg].text, T.quick[r->arg].topic,
+                     T.journal_label.main.quick[r->arg], buf, 48);
+        break;
     case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
     case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
     case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
@@ -1691,12 +1739,12 @@ static void cb_after(void)
         T.handin = 0;
         talk_outcome_end(&T.s, &out, NULL);
         begin_talk();
+        T.after = 1;
         build_main();
         if (out.quests_done)
             doomo_snprintf(msg, sizeof msg, "Favor complete! H$%d earned", (int)out.reward);
         else doomo_snprintf(msg, sizeof msg, "Favor was not completed.");
         ui_toast(msg);
-        T.after = 1;
         return;
     }
     T.busy = 0;
@@ -2032,14 +2080,31 @@ static void concern_reply(int id, const char *reply, const char *you)
     build_main();
 }
 
+/* The page promises one specific problem. Its replacement must be reviewed
+ * before another action, item transfer or relationship decision is allowed. */
+static const DoomoProblem *current_concern(int *pi)
+{
+    const DoomoProblem *p, *shown = &T.journal.concern;
+    if (T.page != PG_CONCERN || !listener_here(T.to)) return NULL;
+    *pi = sim_problem_for(T.ids[T.to]);
+    p = sim_problem(*pi);
+    if (!p || p->resident != shown->resident || p->kind != shown->kind ||
+        p->other != shown->other || p->item != shown->item) return NULL;
+    return p;
+}
+
+static void concern_changed(void)
+{
+    ui_toast("Their concern has changed.");
+    build_concern();
+}
+
 static void concern_info(void)
 {
     int id, pi;
     char message[96];
-    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    if (!current_concern(&pi)) { concern_changed(); return; }
     id = T.ids[T.to];
-    pi = sim_problem_for(id);
-    if (pi < 0) { build_concern(); return; }
     sim_problem_text(pi, message, (int)sizeof message);
     doomo_snprintf(T.you, sizeof T.you, "What's on your mind?");
     show_scene_reply(id, message, TC_NONE);
@@ -2050,11 +2115,9 @@ static void concern_choice(int c)
     int id, pi;
     const DoomoProblem *p;
     const char *reply;
-    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    p = current_concern(&pi);
+    if (!p) { concern_changed(); return; }
     id = T.ids[T.to];
-    pi = sim_problem_for(id);
-    p = sim_problem(pi);
-    if (!p) { build_concern(); return; }
     switch (p->kind) {
     case PROB_CRUSH: case PROB_CONFESS_HELP:
         if (p->other == 0xFFFF) { build_concern(); return; }
@@ -2071,11 +2134,9 @@ static void concern_action(void)
 {
     int id, pi, minor;
     const DoomoProblem *p;
-    if (T.to < 0 || T.to >= T.n) { build_main(); return; }
+    p = current_concern(&pi);
+    if (!p) { concern_changed(); return; }
     id = T.ids[T.to];
-    pi = sim_problem_for(id);
-    p = sim_problem(pi);
-    if (!p) { build_concern(); return; } /* expired while the page was open */
     switch (p->kind) {
     case PROB_HUNGRY: build_care_items(0); return;
     case PROB_DIRTY: perform_care(K_CLEAN, 0); return;
@@ -2313,8 +2374,15 @@ static void say_quick(int i)
 {
     TalkUtter u;
     const TalkSugg *g;
+    int target;
     if (i < 0 || i >= T.nquick) return;
     g = &T.quick[i];
+    target = g->to >= 0 ? g->to : T.to;
+    if (target >= 0 && !listener_here(target)) {
+        ui_toast("That person has left this conversation.");
+        build_main();
+        return;
+    }
     /* A suggested invitation with no specified real venue must open the
      * destination picker. Never promise an arbitrary nearby activity. */
     if (g->act == TA_INVITE) { build_outings(0); return; }
@@ -2323,10 +2391,10 @@ static void say_quick(int i)
     memset(&u, 0, sizeof u);
     u.act[0] = g->act;
     u.topic[0] = g->topic;
-    u.target = g->to >= 0 ? g->to : T.to;
+    u.target = target;
     u.tone = g->tone;
     u.conf = 15;
-    expand(g->text, g->topic, u.shown, (int)sizeof u.shown);
+    expand_named(g->text, g->topic, T.journal_label.main.quick[i], u.shown, (int)sizeof u.shown);
     if (g->topic) T.topic = g->topic;                 /* the talk stays on it */
     say_utter(&u);
     build_main();
@@ -2715,7 +2783,6 @@ static void talk_enter(int arg)
     resolve_stock();
     T.active = 1;
     begin_talk();
-    build_main();
     if (talk_dm_open(&T.s)) {            /* the resident opens the talk and hands it to the player */
         gen_run(2);
     } else {
@@ -2723,6 +2790,7 @@ static void talk_enter(int arg)
         T.busy = 1;
         ui_say_done(cb_after);
     }
+    build_main();                     /* deferred until the opener is read */
 }
 
 static void talk_leave(void)
@@ -2963,7 +3031,7 @@ static void talk_draw(void)
     }
     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
-    if (!T.busy && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
+    if (!T.busy && !T.gen && !T.after && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
 #if DOOMO_POINTER
     pointer_draw();
 #endif
@@ -2979,7 +3047,7 @@ int talk_scene_view(int *page, int *sel, int *top, int *to, int *nrows, int *bus
     if (top) *top = T.list.top;
     if (to) *to = T.to;
     if (nrows) *nrows = T.nrows;
-    if (busy) *busy = T.busy;
+    if (busy) *busy = T.busy || T.gen;
     if (you) doomo_snprintf(you, TALK_SHOWN_MAX, "%s", T.you);
     return 1;
 }
