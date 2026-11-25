@@ -1025,6 +1025,7 @@ typedef struct TalkExchange {
 } TalkExchange;
 
 /* An alternative of the grammar, decoded (tests, the census). */
+#define TALK_RULE_BATCH 0x80u /* compiler-proven uniform contextual leaf */
 typedef struct TalkAltInfo {
     uint16_t rule;
     uint8_t  act;                   /* the rule's reply act                           */
