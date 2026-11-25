@@ -759,7 +759,9 @@ TEST(talk_gen_mapped_and_streamed_selection_match)
                 generated_count += generated[k];
             } else {
                 CHECK_EQ(got != 0, generated[k]);
-                CHECK_STR(l.text, expected[k].text);
+                CHECK_MSG(strcmp(l.text, expected[k].text) == 0,
+                          "mapped/streamed text differs at sample %d: %.95s != %.95s",
+                          k, l.text, expected[k].text);
                 CHECK_EQ(l.act, expected[k].act);
                 CHECK_EQ(l.face, expected[k].face);
                 CHECK_EQ(l.flags, expected[k].flags);
