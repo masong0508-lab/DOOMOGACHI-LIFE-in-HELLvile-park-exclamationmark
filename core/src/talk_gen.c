@@ -1546,6 +1546,72 @@ static int alt_topicy(const TalkAltInfo *ai)
     return 0;
 }
 
+/* Check the assembled parts, not a template's potential filler flags.
+ * A topic can be named by the core, the callback, or a retained reason.
+ * Use the topic's authored associations, exactly as the content census
+ * does; a reversed association need not be a suitable reply. */
+static int part_addresses_topic(const Part *p, uint16_t topic, const uint16_t *assoc, int n)
+{
+    int i, j;
+    for (i = 0; i < p->nsaid; i++) {
+        if (p->said[i] == topic) return 1;
+        for (j = 0; j < n; j++) if (p->said[i] == assoc[j]) return 1;
+    }
+    return 0;
+}
+
+/* The rare case where a fully fitted answer lost its subject while parts
+ * were shed. Try at most three authored naming reasons, keeping the core,
+ * the existing hook, and all safety fences. If none fits, keep the original
+ * fitted answer exactly, including its trace. No new persistent storage. */
+static int restore_topic_reason(Gen *g, Part *parts, int *use, char *line, int cap,
+                                int lower, const uint16_t *assoc, int n)
+{
+    static const uint8_t shed[] = { 3, 4, 0, 2 };
+    Part saved, candidate;
+    PartTrace trace;
+    PartTrace *dest_trace = parts[5].trace;
+    int avoid[3], trial[7], i, j, had_reason = use[5];
+    uint8_t depth = g->dlvl;
+    int sym = entry_sym(g, ENT_FIXED, TGE_REASON);
+    if (sym < 0) return 0;
+    if (had_reason) saved = parts[5];
+    candidate.trace = dest_trace ? &trace : NULL;
+    g->dlvl = 0;
+    for (i = 0; i < (int)DOOMO_COUNTOF(avoid); i++) {
+        if (!make_part_avoid(g, sym, 0, &candidate, avoid, i)) break;
+        avoid[i] = candidate.alt;
+        if (!part_addresses_topic(&candidate, g->topic, assoc, n)) continue;
+        if (lower) lower_codes(candidate.text);
+        parts[5] = candidate;
+        memcpy(trial, use, sizeof trial);
+        trial[5] = 1;
+        for (j = 0; j <= (int)DOOMO_COUNTOF(shed); j++) {
+            join(line, cap, parts, trial, 7, NULL, lower);
+            if (fits(line)) {
+                /* Keep the accepted part's genuine fill/alternative trace. */
+                if (dest_trace) *dest_trace = trace;
+                parts[5].trace = dest_trace;
+                memcpy(use, trial, sizeof trial);
+                g->dlvl = depth;
+                g->part = &parts[5];
+                return 1;
+            }
+            if (j < (int)DOOMO_COUNTOF(shed)) trial[shed[j]] = 0;
+        }
+    }
+    if (had_reason) parts[5] = saved;
+    else {
+        /* Unused part; only its trace pointer is read before a later fill. */
+        parts[5].trace = dest_trace;
+    }
+    g->dlvl = depth;
+    g->part = &parts[5];
+    /* Reconstruct the original line, not the last unsuccessful trial. */
+    join(line, cap, parts, use, 7, NULL, lower);
+    return 0;
+}
+
 /* the soft filters of the core pick: the plan's kind (not when the plan is open or missed), the kid room's cool acts, and
  * the stance (an opinion answer, a decided stance, no reason against the lean) */
 static uint8_t core_filters(const Gen *g)
@@ -1739,6 +1805,8 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         n = vis_len(line);
         want = n < 8 || (calm && n < 20) || (calm && kindly && !strchr(line, '?') && rng_range(&g->rng, 100) < 30);
         if (want) {
+            unsigned original_parts = 0;
+            for (k = 0; k < 7; k++) if (use[k]) original_parts |= 1u << k;
             g->hook_now = TH_ACK;
             use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
             if (use[6]) {                                    /* TM2F-Q8: another acknowledgement that fits before any part is shed */
@@ -1767,7 +1835,21 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
                 }
                 if (fits(line)) g->plan.hook = TH_ACK; else use[6] = 0;
             }
+            if (!use[6]) {
+                /* A failed optional hook must not delete a previously
+                 * fitting explanation or other accepted line parts. */
+                for (k = 0; k < 7; k++) use[k] = (original_parts >> k) & 1u;
+            }
         }
+    }
+    if (optional && g->topic && !g->grief && talk_gen_topic_act(g->act) &&
+        have_core_info && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) && !alt_topicy(&ai)) {
+        uint16_t assoc[TALK_ASSOC_TOP];
+        int n = talk_db_assoc(g->topic, assoc, NULL), named = 0;
+        for (k = 0; k < 7 && !named; k++)
+            if (use[k]) named = part_addresses_topic(&parts[k], g->topic, assoc, n);
+        if (!named)
+            restore_topic_reason(g, parts, use, line, (int)sizeof line, lower, assoc, n);
     }
     join(line, (int)sizeof line, parts, use, 7, tr, lower);
     excl_budget(line, g->pers[PERS_EXPRESSION]);
