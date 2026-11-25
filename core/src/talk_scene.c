@@ -3095,6 +3095,7 @@ int talk_scene_debug(TalkSceneDebug *o)
     if (!T.active) return 0;                       /* (the dialogue box is the top scene while a line is up) */
     o->active = 1;
     o->busy = T.busy || T.gen;                    /* (a sliced answer is still being made: the list is not up either) */
+    o->quick_refreshes = T.qsalt;
     o->page = pages[T.page < DOOMO_COUNTOF(pages) ? T.page : 0];
     o->sel = T.list.sel;
     o->nrows = T.nrows;
