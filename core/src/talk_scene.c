@@ -704,6 +704,28 @@ static int next_listener(int current)
     return -1;                 /* Everyone, then the first present listener */
 }
 
+static int present_count(void)
+{
+    int slot, n = 0;
+    for (slot = 0; slot < T.n; slot++) n += listener_here(slot);
+    return n;
+}
+
+/* Only compact after committing the old session: its outcome and memory
+ * records refer to its original slots. Keep the current live addressee. */
+static void compact_listeners(void)
+{
+    int i, n = 0, selected = -1;
+    int old_to = T.to;
+    for (i = 0; i < T.n; i++) {
+        if (!listener_here(i)) continue;
+        if (i == old_to) selected = n;
+        T.ids[n++] = T.ids[i];
+    }
+    T.n = n;
+    T.to = (int8_t)(old_to < 0 ? -1 : selected >= 0 ? selected : n > 0 ? 0 : -1);
+}
+
 static int party_has(int id)
 {
     int i;
@@ -966,7 +988,7 @@ static void build_more(void)
     T.nrows = 0;
     add_row(K_TOPIC, 0, 0);
     if (T.n > 1) add_row(K_TO, 0, 0);
-    if (T.n < TALK_PARTS_MAX && T.s.nparts < TALK_PARTS_MAX) add_row(K_INVITE, 0, 0);
+    if (present_count() < TALK_PARTS_MAX) add_row(K_INVITE, 0, 0);
     /* The history is deliberately below Topic and Invite: existing
      * conversation shortcuts and journey button budgets remain intact. */
     if (T.to >= 0 && T.to < T.n) add_row(K_HISTORY, 0, 0);
@@ -1727,6 +1749,18 @@ static const char *row_text(int index, char *buf)
 static void begin_talk(void);
 static void change_to(int to);
 
+/* A restarted session inside the same scene must not lose the room's
+ * existing kid-safe audience constraint when its membership changes. */
+static void restart_talk(void)
+{
+    int kid_safe = T.s.conv.aud.any_minor || (T.s.flags & TDF_KIDSAFE);
+    begin_talk();
+    if (kid_safe) {
+        T.s.conv.aud.any_minor = 1;
+        T.s.flags |= TDF_KIDSAFE;
+    }
+}
+
 static void cb_after(void)
 {
     if (T.handin) {
@@ -1738,7 +1772,12 @@ static void cb_after(void)
          * then seamlessly resume Talk in a fresh session. */
         T.handin = 0;
         talk_outcome_end(&T.s, &out, NULL);
-        begin_talk();
+        compact_listeners();
+        if (T.n > 0) restart_talk();
+        else {
+            T.busy = 0;
+            T.leaving = 1;
+        }
         T.after = 1;
         build_main();
         if (out.quests_done)
@@ -2461,20 +2500,23 @@ static void bye(void)
     T.leaving = 1;
 }
 
-static void invite(int id)
+static int invite(int id)
 {
     TalkOutcome o;
     char msg[40];
-    if (T.n >= TALK_PARTS_MAX || !can_join(id) || party_has(id)) return;
+    if (present_count() >= TALK_PARTS_MAX || !can_join(id) || party_has(id)) return 0;
     talk_outcome_end(&T.s, &o, NULL);            /* what the first talk did counts */
+    compact_listeners();
     T.ids[T.n++] = id;
-    begin_talk();
+    if (T.n == 1) T.to = 0;
+    restart_talk();
     doomo_snprintf(msg, sizeof msg, "%s joins in.", res_name(id));
     ui_toast(msg);
     ui_say(id, "Hey, what did I miss?");
     T.busy = 1;
     ui_say_done(cb_after);
     build_main();
+    return 1;
 }
 
 static void pick_topic(uint16_t c)
@@ -2741,8 +2783,12 @@ static void activate(int i)
     case K_INVITE: build_invite(); break;
     case K_BYE: bye(); break;
     case K_PICK:
-        if (r->arg) invite(r->v);
-        else pick_topic(r->v);
+        if (r->arg) {
+            if (!invite(r->v)) {
+                ui_toast("They can't join right now.");
+                build_invite();
+            }
+        } else pick_topic(r->v);
         break;
     default: break;
     }
@@ -2907,9 +2953,12 @@ static void talk_update(void)
 #endif
     if (T.after) {
         T.after = 0;
-        if (T.s.call_to && !T.leaving && !talk_dm_over(&T.s) && T.n < TALK_PARTS_MAX) {
-            invite((int)T.s.call_to - 1);                 /* TM2e: "I'll get someone": they come in (the event is applied by invite's talk_outcome_end) */
-            return;
+        if (T.s.call_to && !T.leaving && !talk_dm_over(&T.s)) {
+            if (invite((int)T.s.call_to - 1)) return;
+            /* The promised visitor may be gone or the room may be full.
+             * Consume the failed call and restore the actionable menu. */
+            T.s.call_to = 0;
+            ui_toast("They can't join right now.");
         }
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
         if (T.to >= 0 && !listener_here(T.to)) change_to(next_listener(T.to));
