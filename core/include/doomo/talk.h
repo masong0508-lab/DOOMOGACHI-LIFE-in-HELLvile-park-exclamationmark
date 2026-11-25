@@ -719,6 +719,7 @@ int talk_scene_view(int *page, int *sel, int *top, int *to, int *nrows, int *bus
 int talk_scene_find(const char *prefix);
 const char *talk_scene_row(int i, char *buf48);
 int talk_scene_person_x(int i);
+int talk_scene_panel_y(void);          /* actual panel top; -1 outside Talk */
 #endif
 
 /* ---- T6: talk memory (core/src/talk_save.c; docs/TALK.md 6e) ------------------
