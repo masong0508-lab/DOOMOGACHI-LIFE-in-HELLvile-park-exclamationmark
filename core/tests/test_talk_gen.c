@@ -713,7 +713,8 @@ TEST(talk_gen_mapped_and_streamed_selection_match)
     enum { SAMPLES = 96 };
     TalkLine expected[SAMPLES], l;
     uint16_t core[SAMPLES];
-    uint8_t parts[SAMPLES];
+    uint8_t parts[SAMPLES], generated[SAMPLES];
+    int generated_count = 0;
     TalkTrace tr;
     TalkConv c;
     uint8_t *image = NULL;
@@ -745,13 +746,19 @@ TEST(talk_gen_mapped_and_streamed_selection_match)
         }
         for (k = 0; k < SAMPLES; k++) {
             int ids[2] = { ID_NANA, (k & 1) ? ID_PIP : ID_VEX };
+            int got;
             talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 17u + (uint32_t)k * 7919u);
-            CHECK(talk_gen_line(&c, (k >> 1) & 1, -1,
+            memset(&l, 0, sizeof l);
+            memset(&tr, 0, sizeof tr);
+            got = talk_gen_line(&c, (k >> 1) & 1, -1,
                       acts[(unsigned)k % (sizeof acts / sizeof acts[0])],
-                      topics[(k >> 2) & 1], &l, &tr));
+                      topics[(k >> 2) & 1], &l, &tr);
             if (!mode) {
                 expected[k] = l; core[k] = tr.core_alt; parts[k] = tr.parts;
+                generated[k] = (uint8_t)(got != 0);
+                generated_count += generated[k];
             } else {
+                CHECK_EQ(got != 0, generated[k]);
                 CHECK_STR(l.text, expected[k].text);
                 CHECK_EQ(l.act, expected[k].act);
                 CHECK_EQ(l.face, expected[k].face);
@@ -762,6 +769,7 @@ TEST(talk_gen_mapped_and_streamed_selection_match)
             }
         }
     }
+    CHECK(generated_count > 0);
     talk_db_close();
     free(image);
 }

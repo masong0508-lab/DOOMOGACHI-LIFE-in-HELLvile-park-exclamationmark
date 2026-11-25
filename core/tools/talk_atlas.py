@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from talkc_safe import hate_key, load_hate
+from story_register import load_register
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "talk"
 GRAMMAR = DATA / "grammar" / "en"
@@ -244,12 +245,17 @@ def moments_grammar(profiles, followups, notes, moments, previous):
         raise ValueError(f"moments budget: {size} expanded bytes, {rows} stored alternatives")
     return result, added, rows
 
+def check_register_phrase(phrase, register, key):
+    for word in register:
+        if word.rx.search(phrase):
+            raise ValueError(f"{key}: register-class literal rejected by Talk: {phrase!r}")
+
+
 def check_literal_vocabulary(profiles, followups, notes, moments):
-    """Fail on the same exact squeezed-word matches as talkc_gen.
-    
-    Check authored clauses before expansion, rather than discovering a
-    rejected literal after thousands of generated alternatives. The full
-    grammar compiler still runs its other register and safety checks.
+    """Reject restricted literal vocabulary before generating thousands of
+    alternatives. Atlas clauses are intended for any audience; use the
+    same register matchers and exact squeezed-word hashes as the compiler.
+    The full grammar compiler still runs every safety check.
     """
     def die(where, message):
         raise ValueError(f"{where}: {message}")
@@ -257,9 +263,24 @@ def check_literal_vocabulary(profiles, followups, notes, moments):
     salt, exact, _ = load_hate(DATA / "safety" / "hate.hash", die, str)
     blocked = set(exact)
     checked = {}
+    checked_phrases = set()
+    register = load_register()
+    # The building-context wording that escaped the old hash-only preflight
+    # must be caught here, before generation. Safe architectural wording
+    # remains accepted by the very same matcher.
+    try:
+        check_register_phrase("I like door knockers", register, "selftest")
+    except ValueError:
+        pass
+    else:
+        raise ValueError("register preflight selftest accepted a restricted phrase")
+    check_register_phrase("I like brass handles", register, "selftest")
     for key, columns in profiles.items():
         for column in (*columns, followups[key], *notes[key], *moments[key]):
             for phrase in column:
+                if phrase not in checked_phrases:
+                    check_register_phrase(phrase, register, key)
+                    checked_phrases.add(phrase)
                 for word in re.findall(r"[A-Za-z0-9'][A-Za-z0-9'-]*", phrase):
                     if word not in checked:
                         checked[word] = hate_key(salt, word) not in blocked

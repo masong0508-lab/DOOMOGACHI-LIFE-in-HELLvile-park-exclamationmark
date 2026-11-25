@@ -6,7 +6,7 @@
 @rule core.tell.back act: backchannel
   "Uh huh. Go on. I'm listening with both ears."
   "Mmhm. Fascinating, truly. Keep going."
-  "Wow. {.}Wow. {.}Okay, that's enough wows."
+  "{x:cap}? Wow, that's a lot to take in."
 @rule core.tell.topic_pro guard: stance=pro act: opine_pos
   "{x:cap}! Now you're talking. Talk more."
   "Ooh, {x}. I'd follow {x.it} into a fire."
@@ -75,7 +75,7 @@
   "Agree to disagree. I win, though."
   "I respect that. I don't agree with it. Or respect it."
 @rule core.disagree.joke act: joke
-  "Fine. We'll settle it the old way. A bake-off."
+  "We disagree about {x}? Time for a bake-off."
 @rule core.disagree.blunt guard: blunt act: dismiss
   "Wrong. Next."
 @rule core.disagree.kid guard: kid_speaker tags: kid act: disagree
