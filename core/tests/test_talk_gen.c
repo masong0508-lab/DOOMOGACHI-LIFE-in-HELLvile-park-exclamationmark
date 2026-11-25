@@ -176,6 +176,74 @@ TEST(talk_gen_repair_replies_belong_to_the_avatar_in_the_journal)
     talk_db_close();
 }
 
+/* The complete English bank includes the large, uniformly sampled Atlas
+ * leaves. Verify that the compiler marked them, and observe them through
+ * the real generator, including a room with a child. */
+TEST(talk_gen_atlas_contextual_bank_and_selection)
+{
+    static const char *const keys[] = { "pie", "park", "song", "gardening", "weather" };
+    static const int ids[] = { ID_NANA, ID_PIP };
+    int a, i, batch = 0, selected = 0, kid_selected = 0, total = 0;
+    uint32_t lint0;
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(talk_gen_ready());
+    lint0 = talk_safe_lint_hits();
+    for (a = 0; a < talk_gen_nalts(); a++) {
+        TalkAltInfo ai;
+        int j, cat = 0;
+        CHECK(talk_gen_alt_info(a, &ai));
+        if (!(ai.rflags & TALK_RULE_BATCH)) continue;
+        batch++;
+        CHECK_EQ(ai.weight, 1);
+        for (j = 0; j < ai.nterm; j++)
+            if (ai.term[2 * j] == TGP_CATEGORY) cat = ai.term[2 * j + 1];
+        CHECK(cat > 0);
+    }
+    CHECK_EQ(batch, 19487);
+    for (i = 0; i < (int)DOOMO_COUNTOF(keys); i++) {
+        uint16_t topic = concept(keys[i]);
+        TalkConcept tc;
+        int k;
+        CHECK(topic && talk_db_concept(topic, &tc));
+        if (!topic || !talk_db_concept(topic, &tc)) continue;
+        for (k = 0; k < 160; k++) {
+            TalkConv c;
+            TalkLine reply;
+            TalkTrace trace;
+            int j, got = 0, said = 0;
+            int kid = k & 1;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, kid ? 2 : 1, (uint32_t)(k + 5000 * i));
+            c.plain = 1;
+            if (!talk_gen_line(&c, 0, -1, TA_ASK_ABOUT, topic, &reply, &trace)) continue;
+            total++;
+            for (j = 0; j < trace.nalt; j++) {
+                TalkAltInfo ai;
+                int t, cat = -1;
+                CHECK(talk_gen_alt_info(trace.alt[j], &ai));
+                if (!(ai.rflags & TALK_RULE_BATCH)) continue;
+                for (t = 0; t < ai.nterm; t++)
+                    if (ai.term[2 * t] == TGP_CATEGORY) cat = ai.term[2 * t + 1];
+                CHECK_EQ(cat, tc.cat);
+                got = 1;
+            }
+            if (!got) continue;
+            for (j = 0; j < trace.nsaid; j++) said |= trace.said[j] == topic;
+            CHECK(said);
+            CHECK_EQ(reply.topic, topic);
+            CHECK(!(reply.flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)));
+            CHECK(talk_gen_adjacent(TA_ASK_ABOUT, reply.act));
+            selected++;
+            if (kid) kid_selected++;
+        }
+    }
+    CHECK(total > 0 && selected > 0 && kid_selected > 0);
+    CHECK_EQ(talk_safe_lint_hits(), lint0);
+    printf("      Atlas: %d batch alternatives, %d selected replies (%d kid-room) / %d generated\n",
+           batch, selected, kid_selected, total);
+    talk_db_close();
+}
+
 /* ---- the modifiers and fields ------------------------------------------- */
 TEST(talk_gen_modifiers)
 {
