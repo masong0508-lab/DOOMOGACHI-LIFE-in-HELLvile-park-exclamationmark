@@ -2883,6 +2883,9 @@ static void home_draw(void)
         score_box(sw, sh, &bx, &by, &bw, &bh);
         plat_room_ui_opaque(bx + 4, by + 4, bw - 8, bh - 8);
     }
+#if defined(DOOMO_HAS_TALK) && !defined(DOOMO_PLATFORM_PS1)
+    if (scene_drawn_above() == &SCENE_TALK) talk_scene_room_opaque();
+#endif
     plat_room(&v);
     if (plat_draw_skipped()) { camfx_apply(); return; }
 #if !defined(DOOMO_PLATFORM_PS1)

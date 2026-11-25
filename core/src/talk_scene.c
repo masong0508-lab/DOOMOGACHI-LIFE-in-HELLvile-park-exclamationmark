@@ -3034,6 +3034,22 @@ static int layout(int *rows_out)
     return sh - ph;
 }
 
+/* The house draws before this overlay. Only promise the interior of the
+ * rounded windows: shadows/corners remain dependent on the live room.
+ * The current layout is used even when a dialogue is covering Talk. */
+void talk_scene_room_opaque(void)
+{
+    int sw, sh, py;
+    if (!T.active) return;
+    sw = plat_screen_w();
+    sh = plat_screen_h();
+    py = layout(NULL);
+    if (sw <= 8) return;
+    plat_room_ui_opaque(4, 4, sw - 8, 16);
+    if (sh - py > 8)
+        plat_room_ui_opaque(4, py + 4, sw - 8, sh - py - 8);
+}
+
 #if DOOMO_POINTER
 /* T9: a click is exactly the pad press it stands for (docs/TALK.md "The pointer"):
  *   a name in the people strip   SELECT until you speak to them (only with more than one in the room)

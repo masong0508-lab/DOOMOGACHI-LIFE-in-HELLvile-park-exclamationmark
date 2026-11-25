@@ -712,6 +712,9 @@ typedef struct TalkConv {
 #define TC_SET_UNK_SAID(c)    ((void)(c))
 #endif
 
+/* Before plat_room(), name the opaque interior of the active Talk panels. */
+void talk_scene_room_opaque(void);
+
 /* ---- T9: the Talk screen's pointer (core/src/talk_scene.c; docs/TALK.md "The pointer") ------------
  * Only where DOOMO_POINTER (input.h): a console build declares and links none of it. The view is for the
  * runner's expect-talk and the pointer test. talk_scene_view: 0 when no Talk screen is open; page 0 replies,
