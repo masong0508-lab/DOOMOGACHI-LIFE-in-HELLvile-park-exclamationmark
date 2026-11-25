@@ -270,6 +270,45 @@ static int has_act(const TalkSugg *g, int n, int act)
     return 0;
 }
 
+TEST(talk_quick_opening_topic_stays_within_three_presses)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie, band, song;
+    int i, j, n;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    band = concept("band");
+    song = concept("song");
+    CHECK(pie && band && song);
+    begin2(&s, ID_NANA, -1, 21u);
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, 0);
+    for (i = 0; i < 64; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, pie, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, pie);
+    }
+    /* A greeting that already mentions a topic offers a related choice,
+     * rather than depending on an unrelated stock subject or RNG. */
+    put_line(&s, 0, -1, TA_GREET, band, 0);
+    for (i = 0; i < 16; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, song, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, song);
+    }
+    s.flags |= TDF_CARE;
+    n = talk_quick_replies(&s, 0, TC_NONE, song, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    s.flags &= (uint8_t)~TDF_CARE;
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, TLF_SINCERE);
+    n = talk_quick_replies(&s, 0, TC_NONE, pie, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    talk_db_close();
+}
+
 TEST(talk_quick_replies_follow_what_was_said)
 {
     TalkState s;
