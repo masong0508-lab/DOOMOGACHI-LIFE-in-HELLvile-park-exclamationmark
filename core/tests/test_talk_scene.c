@@ -470,6 +470,42 @@ TEST(talk_scene_thought_item_requires_inventory_and_delivers_once)
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
+/* Replacing a request, even with the same kind of request, must not let
+ * an already-selected action consume a different item. */
+TEST(talk_scene_stale_concern_does_not_consume_a_replacement_item)
+{
+    TalkSceneDebug d;
+    int first = ITEM_PLUSHIE, second = ITEM_CUPCAKE;
+    int count1, count2, row, pi;
+    extern void sim_problem_remove(int index);
+    town();
+    CHECK(inv_add(first, 1) > 0);
+    CHECK(inv_add(second, 1) > 0);
+    CHECK(sim_problem_raise(ID_NANA, PROB_WANTS_ITEM, -1, first) >= 0);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("concern", PROB_WANTS_ITEM, -1)); press(BTN_A);
+    row = find_row("concernact", PROB_WANTS_ITEM, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row);
+    count1 = inv_count(first);
+    count2 = inv_count(second);
+    pi = sim_problem_for(ID_NANA);
+    CHECK(pi >= 0);
+    if (pi < 0) return;
+    sim_problem_remove(pi);
+    CHECK(sim_problem_raise(ID_NANA, PROB_WANTS_ITEM, -1, second) >= 0);
+    press(BTN_A);
+    CHECK_EQ(inv_count(first), count1);
+    CHECK_EQ(inv_count(second), count2);
+    CHECK(sim_problem_for(ID_NANA) >= 0);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "concern");
+    go_to(find_row("concernact", PROB_WANTS_ITEM, -1)); press(BTN_A);
+    CHECK_EQ(inv_count(first), count1);
+    CHECK_EQ(inv_count(second), count2 - 1);
+}
+
 TEST(talk_scene_needs_help_changes_real_sim_stats)
 {
     TalkSceneDebug d;
@@ -1585,6 +1621,64 @@ TEST(talk_scene_offer_and_give_are_real_actions)
     CHECK(talk_scene_debug(&d) && strcmp(d.page, "give") == 0);
     CHECK(find_row("giveitem", ITEM_PLUSHIE, -1) >= 0);
     CHECK(inv_count(ITEM_PLUSHIE) >= 1);
+}
+
+TEST(talk_scene_only_refreshes_replies_when_the_menu_returns)
+{
+    TalkSceneDebug d;
+    uint32_t before;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d));
+    CHECK_EQ(d.quick_refreshes, 1u);
+    before = d.quick_refreshes;
+    frames(0, 3);
+    CHECK(talk_scene_debug(&d) && d.quick_refreshes == before);
+    go_to(find_row("quick", 0, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK_EQ(d.quick_refreshes, before);
+    CHECK(read_talk_reply());
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(d.quick_refreshes, before + 1u);
+    CHECK(find_row("quick", 0, -1) >= 0);
+    frames(0, 3);
+    CHECK(talk_scene_debug(&d) && d.quick_refreshes == before + 1u);
+}
+
+/* The new bounded top-six selection must retain the old full-scan
+ * order, including ties, without considering the current participants. */
+TEST(talk_scene_invitation_picker_matches_stable_reference_ranking)
+{
+    TalkSceneDebug d;
+    int pick[6], n = 0, k, i, away;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "invite");
+    away = family_away_id();
+    for (k = 0; k < 6; k++) {
+        int best = -1;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+            int j;
+            if (i == ID_NANA || i == DOOMO_PLAYER_ID || i == away || !town_alive(i)) continue;
+            for (j = 0; j < n && pick[j] != i; j++) {}
+            if (j < n) continue;
+            if (best < 0 || rel_value(ID_NANA, i) > rel_value(ID_NANA, best)) best = i;
+        }
+        if (best < 0) break;
+        pick[n++] = best;
+    }
+    CHECK_EQ(d.nrows, n);
+    for (k = 0; k < n; k++) {
+        int arg = -1, value = -1;
+        const char *kind = NULL;
+        CHECK(talk_scene_row_debug(k, &kind, &arg, &value, NULL));
+        CHECK(kind && !strcmp(kind, "pick"));
+        CHECK_EQ(arg, 1);
+        CHECK_EQ(value, pick[k]);
+    }
 }
 
 TEST(talk_scene_a_quick_reply_is_one_press)
