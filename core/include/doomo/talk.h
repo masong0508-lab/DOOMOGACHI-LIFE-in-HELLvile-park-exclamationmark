@@ -1217,6 +1217,7 @@ typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic; } 
 #define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
 #define TDF_CARE      0x20u        /* the care window is open (K-11): after a distress line or a grief answer the next
                                       TALK_CARE_TURNS player turns are answered by the sincere bank alone */
+#define TDF_COMMITTED 0x40u        /* outcome applied once by talk_outcome_end; not a save field */
 #define TALK_CARE_TURNS 4          /* player turns of care after a distress line or a grief answer */
 
 #define TALK_LINK_OBSERVATIONS 3
@@ -1365,7 +1366,9 @@ typedef struct TalkOutcome {
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */
 void talk_outcome_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
 /* Close the conversation: the talk memory (topics, flags, refused today), then
- * talk_dm_end, then talk_outcome_apply. sum may be NULL. */
+ * talk_dm_end, then talk_outcome_apply. sum and out may be NULL.
+ * Repeated calls on the same session return zeroed results, without applying
+ * its effects again; talk_outcome_begin starts a fresh session. */
 void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 /* Apply a summary to the sim under the daily caps. Never sets a crush or a
  * dating edge: a yes to CONFESS / ASK_OUT only asks sim_confess. */
