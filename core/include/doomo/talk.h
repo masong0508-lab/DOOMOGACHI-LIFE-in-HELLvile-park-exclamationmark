@@ -1060,8 +1060,9 @@ void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u);
 /* The word the generator may name back from u (E1 to E6 and the kid-room length, not E7), lower case, into
  * out[18]: its length, or 0 when it must not be echoed. The adversarial-corpus test and the scene use it. */
 int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
-/* The speaker's stance on a concept: their likes +3, their hated food and
- * fear -3, Hellvile-born flips holy things, plus a fixed personal lean. */
+/* The speaker's TST_* stance category on a concept: their likes +3,
+ * hated food and fear -3, Hellvile-born flips holy things, plus a fixed
+ * personal lean. The signed raw score is internal to the generator. */
 int  talk_gen_stance(int id, uint16_t topic);
 /* May this concept be said in this room (age class, register, a child here)? */
 int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
