@@ -1681,6 +1681,55 @@ TEST(talk_scene_invitation_picker_matches_stable_reference_ranking)
     }
 }
 
+TEST(talk_scene_failed_invitation_refreshes_the_picker)
+{
+    TalkSceneDebug d;
+    int candidate = -1;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.nrows > 0);
+    CHECK(talk_scene_row_debug(0, NULL, NULL, &candidate, NULL));
+    CHECK(candidate >= 0 && candidate < DOOMO_MAX_RESIDENTS);
+    if (candidate < 0 || candidate >= DOOMO_MAX_RESIDENTS) return;
+    town_res(candidate)->status = RES_EMPTY;
+    go_to(0); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "invite");
+    CHECK_EQ(d.nparts, 1);
+    CHECK_EQ(find_row("pick", 1, candidate), -1);
+    CHECK(d.nrows > 0);
+}
+
+TEST(talk_scene_inviting_someone_does_not_restore_departed_listeners)
+{
+    TalkSceneDebug d;
+    int departed = roster_find("Steamy"), candidate = -1, i;
+    town();
+    CHECK(departed >= 0 && departed < DOOMO_MAX_RESIDENTS);
+    if (departed < 0 || departed >= DOOMO_MAX_RESIDENTS) return;
+    talk_scene_party(&departed, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d) && d.nparts == 2);
+    town_res(departed)->status = RES_EMPTY;
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.nrows > 0);
+    CHECK(talk_scene_row_debug(0, NULL, NULL, &candidate, NULL));
+    CHECK(candidate >= 0 && candidate < DOOMO_MAX_RESIDENTS && candidate != departed);
+    if (candidate < 0 || candidate >= DOOMO_MAX_RESIDENTS) return;
+    go_to(0); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(d.nparts, 2);
+    CHECK_EQ(d.to_id, ID_NANA);
+    CHECK_EQ(d.ids[0], ID_NANA);
+    CHECK_EQ(d.ids[1], candidate);
+    for (i = 0; i < d.nparts; i++) CHECK(d.ids[i] != departed);
+    CHECK(find_row("quick", 0, -1) >= 0);
+}
+
 TEST(talk_scene_a_quick_reply_is_one_press)
 {
     TalkSceneDebug d;
