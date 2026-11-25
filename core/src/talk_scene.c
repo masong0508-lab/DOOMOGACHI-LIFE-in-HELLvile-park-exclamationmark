@@ -679,6 +679,22 @@ static int can_join(int id)
     return id != playas_avatar() && id != family_away_id() && town_alive(id);
 }
 
+/* A resident who walked out remains in the session history, not in its
+ * actionable audience. Recheck the live town at input boundaries too. */
+static int listener_here(int slot)
+{
+    return slot >= 0 && slot < T.n && slot < T.s.nparts &&
+           !(T.s.part[slot].flags & TPF_LEFT) && can_join(T.ids[slot]);
+}
+
+static int next_listener(int current)
+{
+    int slot;
+    for (slot = current + 1; slot < T.n; slot++)
+        if (listener_here(slot)) return slot;
+    return -1;                 /* Everyone, then the first present listener */
+}
+
 static int party_has(int id)
 {
     int i;
@@ -2350,6 +2366,11 @@ static void say_typed(void)
     if (!talk_parse(T.typed, &pc, &u, info)) { ui_toast("Typing isn't available here."); return; }
     if (u.act[0] == TA_NONE) u.act[0] = TA_UNKNOWN;
     if (u.target < 0 && T.n == 1) u.target = 0;
+    if ((u.target >= 0 && !listener_here(u.target)) ||
+        (u.target < 0 && T.to >= 0 && !listener_here(T.to))) {
+        ui_toast("That person has left this conversation.");
+        return;
+    }
     /* Spoken intentions that promise an actual game action must not
      * turn into empty gestures. Use exactly the same verified target,
      * inventory and activity menus as the controller actions. */
@@ -2406,6 +2427,13 @@ static void activate(int i)
     const TRow *r;
     if (i < 0 || i >= T.nrows) return;
     r = &T.row[i];
+    /* Never apply a stale gift, care, outing or reply to a departed
+     * listener, or silently transfer that action to the next person. */
+    if (T.to >= 0 && !listener_here(T.to) && r->kind != K_BYE && r->kind != K_TO) {
+        change_to(next_listener(T.to));
+        ui_toast("That person has left this conversation.");
+        return;
+    }
     switch (r->kind) {
     case K_CAT: build_acts(r->arg); break;
     case K_ACT:
@@ -2640,7 +2668,7 @@ static void activate(int i)
         break;
 #endif
     case K_TO:
-        change_to(T.to + 1 >= T.n ? -1 : T.to + 1);
+        change_to(next_listener(T.to));
         break;
     case K_INVITE: build_invite(); break;
     case K_BYE: bye(); break;
@@ -2709,6 +2737,7 @@ static void talk_leave(void)
 /* who you speak to (SELECT, or a click on a name): the page that shows it is built again */
 static void change_to(int to)
 {
+    if (to >= 0 && !listener_here(to)) return;
     T.followup = TC_NONE;
     T.to = (int8_t)to;
     if (T.page == PG_MORE) {
@@ -2763,7 +2792,7 @@ static int pointer_click(int x, int y)
     if (y < 24) {
         int i = x / (sw / n);
         if (i >= n) i = n - 1;
-        if (T.n > 1 && i < T.n && i != T.to && !(T.s.part[i].flags & TPF_LEFT)) change_to(i);
+        if (T.n > 1 && i != T.to && listener_here(i)) change_to(i);
         return 1;
     }
     if (y < py) return 0;
@@ -2815,11 +2844,12 @@ static void talk_update(void)
             return;
         }
         if (T.leaving || talk_dm_over(&T.s)) { finish(); return; }
-        if (T.page == PG_MAIN) build_main();          /* new replies for what was just said */
+        if (T.to >= 0 && !listener_here(T.to)) change_to(next_listener(T.to));
+        else if (T.page == PG_MAIN) build_main();     /* new replies for what was just said */
     }
     if (btn_pressed(BTN_SELECT) && T.n > 1) {
         restart_idle_clock();
-        change_to(T.to + 1 >= T.n ? -1 : T.to + 1);
+        change_to(next_listener(T.to));
         return;
     }
 #if DOOMO_POINTER
