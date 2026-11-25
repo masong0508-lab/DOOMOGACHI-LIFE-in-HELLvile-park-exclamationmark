@@ -59,6 +59,7 @@
 #define RF_SINCERE 8u
 #define RF_CAST 16u
 #define RF_TIC 32u
+#define RF_BATCH 128u                       /* compiler-proven uniform Atlas leaf */
 #define RF_LOWER 64u                         /* a lower-case voice (Wisp, Vapula): the line as written */
 #define AF_SWEAR 1u
 #define AF_REGISTER 2u
@@ -742,6 +743,7 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_MOOD: return g->mood == v;
     case TGP_REL: return g->rel == v;
     case TGP_ROOT: return g->topic && talk_db_cat_root(g->tc.cat) == v;
+    case TGP_CATEGORY: return g->topic && g->tc.cat == v;
     case TGP_CHAPTER: return c->chapter == v;
     case TGP_TIME: return tod_band() == v;
     case TGP_BEAT: return c->beat == v;
@@ -848,6 +850,35 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
             if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
             if ((g->kf & KF_STANCE) && stance_clash(g, r.act)) continue;
+        }
+        /* A nested Atlas leaf has uniform weights, flags and predicates.
+         * The compiler proves that property, so read only the shared guard
+         * and the chosen row. Keep ordinary/novelty-sensitive rules unchanged. */
+        if ((r.flags & RF_BATCH) && g->depth > 0 && !novelty && r.nalt) {
+            GAlt al;
+            int count = r.nalt, j, rank;
+            uint32_t w;
+            if (!rd_alt(&g->h, r.alt_first, &al)) return -1;
+            if (!terms_ok(g, al.term_first, al.nterm)) continue;
+            for (j = 0; j < navoid; j++)
+                if (avoid[j] >= r.alt_first && avoid[j] < r.alt_first + r.nalt &&
+                    !avoided(avoid, j, avoid[j])) count--;
+            if (count <= 0) continue;
+            w = (uint32_t)count * al.weight;
+            tot[0] += w;
+            if ((uint32_t)rng_range(&g->rng, (int)(tot[0] > 65536u ? 65536u : tot[0])) < w) {
+                rank = rng_range(&g->rng, count);
+                a = r.alt_first;
+                if (!navoid) a += rank;
+                else for (; a < r.alt_first + r.nalt; a++) {
+                    if (avoided(avoid, navoid, a)) continue;
+                    if (rank-- == 0) break;
+                }
+                if (a >= r.alt_first + r.nalt || !rd_alt(&g->h, a, selected)) return -1;
+                best = a;
+                best_level = 0;
+            }
+            continue;
         }
         for (a = r.alt_first; a < r.alt_first + r.nalt; a++) {
             GAlt al;
@@ -1870,6 +1901,11 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     for (k = 0; k < 7; k++) if (use[k] && parts[k].face && !out->face) out->face = parts[k].face;
     if (parts[1].flags & AF_TOPIC) out->topic = g->topic;
     else if (parts[1].flags & AF_LIKE) out->topic = g->like_pick;
+    /* A sub-rule may explicitly name the topic even when its parent has
+     * no direct topic filler. Keep the real subject for subsequent turns. */
+    if (!out->topic && g->topic)
+        for (k = 0; k < parts[1].nsaid; k++)
+            if (parts[1].said[k] == g->topic) { out->topic = g->topic; break; }
     if (use[4]) out->flags |= TLF_HANDOFF;
     if (!use[6]) g->plan.hook = 0;
     if (tr) {
