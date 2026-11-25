@@ -41,9 +41,6 @@ press A
 wait 30
 expect-scene TALK
 shot visit_talk
-# Measure the real in-house menu separately; retain the existing title-backed
-# benchmark below so the baseline still compares like for like.
-fps talk visit menu
 press B
 wait 40
 press A

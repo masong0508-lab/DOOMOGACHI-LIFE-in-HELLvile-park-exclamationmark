@@ -332,6 +332,9 @@ test-talk: harness
 	@mkdir -p $(SHOTS)/talk && rm -f $(BUILD)/talktest.sav
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/talk.txt \
 	    --shots $(SHOTS)/talk --save $(BUILD)/talktest.sav
+	@mkdir -p $(SHOTS)/talk_visit && rm -f $(BUILD)/talkvisittest.sav
+	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/talk_visit_perf.txt \
+	    --shots $(SHOTS)/talk_visit --save $(BUILD)/talkvisittest.sav
 
 # the core's streamed save_game / load_game on flash, across two runs
 test-coresave: harness

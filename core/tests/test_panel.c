@@ -17,6 +17,7 @@
 #include "../src/combat_int.h"     /* SP8: combat_hurt_player */
 #include "doomo/library.h"         /* S2-8 */
 #include "../src/weld_int.h"       /* S2-9: weld_pending */
+#include "doomo/talk.h"
 
 #define MAXF 420
 
@@ -629,3 +630,54 @@ TEST(panel_cache_off_draws_everything)
     CHECK_EQ(plat_panel_begin(PANEL_DIALOG, 0, 0, 10, 10, 1), 1);
     CHECK_EQ(nat_panel_stats.begins, 0);
 }
+
+#ifdef DOOMO_HAS_TALK
+/* Compare a single live session at a frozen logic tick: starting two
+ * sessions would intentionally generate different resident lines/seeds. */
+static int talk_panel_picture(void)
+{
+    uint32_t want, kept;
+    int i;
+    nat_panel_cache = 0;
+    plat_begin_frame(); scene_draw(); plat_end_frame();
+    want = fb_hash();
+    nat_panel_reset();
+    nat_panel_cache = 1;
+    for (i = 0; i < 3; i++) {
+        plat_begin_frame(); scene_draw(); plat_end_frame();
+        if (fb_hash() != want) { nat_panel_cache = 0; return 0; }
+    }
+    kept = nat_panel_stats.kept;
+    CHECK_EQ_U(nat_panel_stats.rule, 0);
+    nat_panel_cache = 0;
+    return kept >= 4;
+}
+
+TEST(panel_talk_keeps_unchanged_strip_and_replies)
+{
+    int i, size;
+    for (size = 0; size < 2; size++) {
+        set_res(size ? 320 : 240, size ? 240 : 160);
+        test_reset();
+        town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+        scene_set(&SCENE_TITLE, 0);
+        CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+        CHECK(home_talk_enter(1));
+        for (i = 0; i < 60; i++) {
+            int busy = 1;
+            if (scene_top() == &SCENE_TALK &&
+                talk_scene_view(NULL, NULL, NULL, NULL, NULL, &busy, NULL) && !busy) break;
+            frame(BTN_A); frame(0); frame(0); frame(0);
+        }
+        CHECK(scene_top() == &SCENE_TALK);
+        if (scene_top() == &SCENE_TALK) {
+            CHECK(talk_panel_picture());
+            frame(BTN_DOWN); frame(0);
+            CHECK(talk_panel_picture());
+        }
+        scene_set(&SCENE_TITLE, 0);
+        talk_db_close();
+    }
+    set_res(240, 160);
+}
+#endif

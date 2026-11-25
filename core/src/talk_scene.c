@@ -31,6 +31,7 @@
 #include "doomo/sim.h"
 #include "doomo/items.h"
 #include "doomo/talk_traits.h"
+#include "doomo/plat_ext.h"
 
 #ifdef DOOMO_HAS_TALK
 
@@ -3205,12 +3206,59 @@ static void talk_card(int y)
     ui_prompts_at(p, 2, WIN_CUTE, y, ui_prompts_maxw());
 }
 
+#if UI_PANELS
+/* Retain real pixels, not a second framebuffer or a copy of the full
+ * Talk state. Include live labels, language, cursor/arrow phases and
+ * listener engagement; a later overlay touching a panel invalidates it. */
+static uint32_t people_panel_key(void)
+{
+    uint32_t key = ui_key_int(ui_panel_key(), T.s.nparts);
+    int i;
+    key = ui_key_int(key, T.to);
+    for (i = 0; i < T.s.nparts; i++) {
+        const TalkPart *p = &T.s.part[i];
+        key = ui_key_int(key, (p->flags & TPF_LEFT) != 0);
+        key = ui_key_str(key, p->id == TALK_PET_ID ? "Pet" : res_name(p->id));
+        if (!(p->flags & TPF_LEFT) && (T.to < 0 || i == T.to))
+            key = ui_key_int(key, p->engage);
+    }
+    return key;
+}
+
+static uint32_t reply_panel_key(const char *title, const char *mood)
+{
+    uint32_t key = ui_key_str(ui_panel_key(), title);
+    int i, end = DOOMO_MIN(T.list.count, T.list.top + T.list.visible);
+    char label[48];
+    key = ui_key_str(key, mood);
+    key = ui_key_int(key, T.list.count);
+    key = ui_key_int(key, T.list.sel);
+    key = ui_key_int(key, T.list.top);
+    key = ui_key_int(key, T.list.visible);
+    if (T.list.count > 0)
+        key = ui_key_int(key, ui_wave((int)doomo_frame_count(), 20, 2));
+    if (T.list.count > T.list.visible)
+        key = ui_key_int(key, ui_wave((int)doomo_frame_count(), 24, 1));
+    for (i = T.list.top; i < end; i++) {
+        const char *text = row_text(i, label);
+        key = ui_key_str(key, text);
+        key = ui_key_str(key, lang_tr(text));
+        key = ui_key_int(key, ui_list_locked_fn && ui_list_locked_fn(i));
+    }
+    return key;
+}
+#endif
+
 static void talk_draw(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
-    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, rows, mw = 0;
+    int sw = plat_screen_w(), sh = plat_screen_h(), i, ph, py, colw, mw = 0;
     char ttl[48];
-    const char *mood = mood_word();
+    const char *mood = mood_word(), *title;
+#if UI_PANELS
+    int menu_panel;
+#endif
+    if (plat_draw_skipped()) return;
 #ifdef DOOMO_PLATFORM_PS1
     /* Talk and the scene below it share the CD overlay slot. Paint our
      * own background so drawing never swaps their code every frame. */
@@ -3218,35 +3266,58 @@ static void talk_draw(void)
 #endif
     ui_glint_hold(1);
     /* the people: a name and (for who you speak to) how much they are into it */
-    ui_window(0, 0, sw, 24, WIN_CUTE);
-    colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
-    for (i = 0; i < T.s.nparts; i++) {
-        const TalkPart *p = &T.s.part[i];
-        int x = i * colw + 6;
-        if (i == T.to) ui_text_clip(x - 5, 4, ">", st->text, x - 5, x);
-        ui_text_clip(x, 4, p->id == TALK_PET_ID ? "Pet" : res_name(p->id), st->text, x, x + colw - 8);
-        if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
-        else if (T.to < 0 || i == T.to) {
 #if UI_PANELS
-            ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
-#else
-            ui_bar(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+    if (!plat_panel_begin(PANEL_TALK_PEOPLE, 0, 0, sw, 27, people_panel_key())) {
+        ui_window_shadow(0, 0, sw, 24);
+        plat_panel_end();
+    } else {
 #endif
+        ui_window(0, 0, sw, 24, WIN_CUTE);
+        colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
+        for (i = 0; i < T.s.nparts; i++) {
+            const TalkPart *p = &T.s.part[i];
+            int x = i * colw + 6;
+            if (i == T.to) ui_text_clip(x - 5, 4, ">", st->text, x - 5, x);
+            ui_text_clip(x, 4, p->id == TALK_PET_ID ? "Pet" : res_name(p->id), st->text, x, x + colw - 8);
+            if (p->flags & TPF_LEFT) ui_text_clip(x, 14, "(left)", st->text_dim, x, x + colw - 8);
+            else if (T.to < 0 || i == T.to) {
+#if UI_PANELS
+                ui_bar_still(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+#else
+                ui_bar(x, 15, colw - 14, 5, p->engage, 100, st->accent);
+#endif
+            }
         }
+#if UI_PANELS
+        plat_panel_end();
     }
-    py = layout(&rows);
+#endif
+    py = layout(NULL);
     ph = sh - py;
-    ui_window(0, py, sw, ph, WIN_CUTE);
-    /* Separate the instruction from the selectable rows with one quiet
-     * hairline. Keep both panels free of moving window glints. */
-    plat_rect(8, py + 15, sw - 16, 1, st->fill_lo);
-    if (mood) {
-        mw = ui_text_width(mood);
-        ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
+    title = panel_title(ttl, (int)sizeof ttl);
+#if UI_PANELS
+    /* The dialogue box continually draws over this region while speaking.
+     * Skip capture in that case rather than paying for a spoiled panel. */
+    menu_panel = !T.busy && !T.gen && !T.after;
+    if (menu_panel && !plat_panel_begin(PANEL_TALK_MENU, 0, py, sw, ph, reply_panel_key(title, mood))) {
+        ui_window_shadow(0, py, sw, ph);
+        plat_panel_end();
+        ui_style_use(WIN_CUTE);
+    } else {
+#endif
+        ui_window(0, py, sw, ph, WIN_CUTE);
+        plat_rect(8, py + 15, sw - 16, 1, st->fill_lo);
+        if (mood) {
+            mw = ui_text_width(mood);
+            ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
+        }
+        ui_text_clip(8, py + 5, title, st->text, 8, sw - 12 - mw);
+        ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
+#if UI_PANELS
+        if (menu_panel) plat_panel_end();
     }
-    ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
-    ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
-    if (!T.busy && !T.gen && !T.after && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
+#endif
+    if (!T.busy && !T.gen && !T.after && py - 14 >= 26) talk_card(py - 14);
     ui_glint_hold(0);
 #if DOOMO_POINTER
     pointer_draw();
