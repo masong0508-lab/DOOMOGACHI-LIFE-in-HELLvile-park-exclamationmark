@@ -85,7 +85,7 @@ static struct TalkScn {
     union {
         char rows[JOURNAL_PAGE][16];     /* dates or short names of each shared pair */
         char subjects[2][36];           /* full labels on the selected pair page */
-        char menu_topic[40];             /* Options/acts: decode on entry, not on draw */
+        char menu_topic[20];             /* Options/acts: decode on entry, not on draw */
         struct {
             char date[16];
             char topic[20];
@@ -897,12 +897,34 @@ static void add_row(int kind, int arg, int v)
     T.nrows++;
 }
 
+/* Keep the conversation's main panel stable during replies. Shorter
+ * submenus get only the height they need. Recompute on a viewport change
+ * too, so pad scrolling and touch hit-testing always share the same rows. */
+static int menu_visible(void)
+{
+    int available = (plat_screen_h() - 26 - 18) / UI_LIST_ROW_H;
+    int rows = T.page == PG_MAIN ? 6 : DOOMO_CLAMP(T.nrows, 1, 6);
+    return DOOMO_CLAMP(DOOMO_MIN(rows, available), 1, 6);
+}
+
+static void menu_fit(void)
+{
+    int vis = menu_visible();
+    T.list.visible = vis;
+    if (T.nrows <= 0) { T.list.sel = T.list.top = 0; return; }
+    T.list.sel = DOOMO_CLAMP(T.list.sel, 0, T.nrows - 1);
+    if (T.list.sel < T.list.top) T.list.top = T.list.sel;
+    if (T.list.sel >= T.list.top + vis) T.list.top = T.list.sel - vis + 1;
+    T.list.top = DOOMO_CLAMP(T.list.top, 0, DOOMO_MAX(0, T.nrows - vis));
+}
+
 static void list_reset(void)
 {
     T.list.items = NULL;
     T.list.count = T.nrows;
     T.list.sel = 0;
     T.list.top = 0;
+    menu_fit();
 }
 
 /* the replies to what was just said: for the one you are talking to, staying on the topic; a stock topic
@@ -2328,6 +2350,7 @@ static void journal_actions(int repair)
     }
     else if (repair >= 0) add_row(K_JOURNAL_REPAIR, repair, 0);
     T.list.count = T.nrows;
+    menu_fit();
 }
 
 static void recall_meetup(int id, int venue, int cue, uint32_t day)
@@ -2948,10 +2971,10 @@ static void back_page(void)
 /* the panel: header 16 px + the list rows (the draw and the pointer share it) */
 static int layout(int *rows_out)
 {
-    int sh = plat_screen_h(), rows = 6, ph = 18 + rows * UI_LIST_ROW_H;
-    if (ph > sh - 26) { ph = sh - 26; rows = (ph - 18) / UI_LIST_ROW_H; }
-    T.list.visible = rows < 1 ? 1 : rows;
-    if (rows_out) *rows_out = rows;
+    int sh = plat_screen_h(), ph;
+    menu_fit();
+    ph = DOOMO_MIN(sh - 26, 18 + T.list.visible * UI_LIST_ROW_H);
+    if (rows_out) *rows_out = T.list.visible;
     return sh - ph;
 }
 
@@ -3041,6 +3064,7 @@ static void talk_update(void)
         }
     }
 #endif
+    menu_fit();
     r = ui_list_update(&T.list);
     if (r == UI_SELECT) { restart_idle_clock(); activate(T.list.sel); }
     else if (r == UI_CANCEL) {
@@ -3186,6 +3210,9 @@ int talk_scene_find(const char *prefix)
 }
 
 /* the player's name of the people strip is drawn at the column x of person i: where to click */
+/* Same panel coordinates used by the real draw and pointer handlers. */
+int talk_scene_panel_y(void) { return T.active ? layout(NULL) : -1; }
+
 int talk_scene_person_x(int i)
 {
     int sw = plat_screen_w(), n = T.s.nparts > 0 ? T.s.nparts : 1;
