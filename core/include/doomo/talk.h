@@ -780,6 +780,7 @@ int  talk_mem_shared(int id, unsigned event_flags);
  * The speaker and avatar both have to match. Minor-room rules apply to recall. */
 void talk_visit_note(int guest, int avatar, int venue);
 void talk_visit_import_news(void);
+/* A null venues buffer counts distinct matching destinations, up to capacity. */
 int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity);
 #define TALK_VISIT_UNDATED 0xFFFFu
 typedef struct TalkVisit {
