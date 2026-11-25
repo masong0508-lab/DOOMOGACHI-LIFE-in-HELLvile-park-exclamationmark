@@ -46,6 +46,9 @@ TEST(talk_census_smoke)
     talk_db_close();
     cfg.contexts = g.smoke_contexts;
     cfg.conversations = g.smoke_conversations;
+    /* Print the actual problematic answer, context and grammar alternative
+     * in CI. Aggregate counts alone cannot guide a targeted writing fix. */
+    cfg.q8fails = stdout;
     CHECK(cfg.contexts >= 10000 && cfg.conversations >= 500);
     CHECK_MSG(talk_census_run(&cfg, &r, err, (int)sizeof err) == 0, "%s", err);
     talk_census_print(&r, stdout);
@@ -69,6 +72,10 @@ TEST(talk_census_smoke)
     CHECK_MSG(r.q8[Q8_HOOK] * 200 <= r.q8_n[Q8_HOOK], "Q8d %llu of %llu", (unsigned long long)r.q8[Q8_HOOK], (unsigned long long)r.q8_n[Q8_HOOK]);
     CHECK_MSG(r.q8[Q8_FILLER] == 0, "Q8e %llu of %llu", (unsigned long long)r.q8[Q8_FILLER], (unsigned long long)r.contexts);
     CHECK_MSG(r.q8[Q8_CONTENT] * 200 <= r.q8_n[Q8_CONTENT], "Q8b %llu of %llu", (unsigned long long)r.q8[Q8_CONTENT], (unsigned long long)r.q8_n[Q8_CONTENT]);
+    /* Fixed grid, previously nine missing-subject replies. Preserve the
+     * existing percentage gate and forbid regressions on this baseline. */
+    CHECK_MSG(r.q8[Q8_CONTENT] <= 9, "Q8b missing-subject regression: %llu (baseline 9)",
+              (unsigned long long)r.q8[Q8_CONTENT]);
     CHECK_MSG(r.plan_lines * 10 >= r.contexts * 8, "only %llu answer lines have a plan", (unsigned long long)r.plan_lines);
     CHECK_MSG(r.plan_miss * 100 <= r.plan_lines, "soft-filter misses %llu of %llu (over 1%%)", (unsigned long long)r.plan_miss,
               (unsigned long long)r.plan_lines);
@@ -564,7 +571,9 @@ TEST(talk_census_q8_report)
         CHECK(r.q8[n] <= r.q8_n[n]);
         CHECK_EQ(r.fail[QF_Q8_KIND + n], 0);                  /* report mode: not a quality failure */
     }
-    CHECK(r.q8_any > 0 && r.q8_any <= r.contexts);
+    /* Zero reported failures is a valid improvement. The constructed
+     * q8_checks test independently proves that bad replies are detected. */
+    CHECK(r.q8_any <= r.contexts);
     CHECK_EQ(r.q8_n[Q8_FILLER], r.contexts - r.fail[QF_Q1_FALLBACK] - r.fail[QF_Q6_LINT]);
     CHECK_MSG((r.contexts - r.exchanges_ok) * 100 <= r.contexts, "report mode changed the quality failures");
 }
