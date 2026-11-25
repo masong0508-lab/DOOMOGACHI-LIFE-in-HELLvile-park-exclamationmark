@@ -642,6 +642,7 @@ enum {
     TGP_QKIND,                       /* TQ: the request's kind, TQK_* (qkind=fetch) */
     TGP_QPHASE,                      /* TQ: the phase of the request, TQP_* (qphase=ask) */
     TGP_FACT_PAST_HURT,               /* Boolean: the addressed avatar left unaddressed hurt */
+    TGP_CATEGORY,                    /* exact topic leaf, append-only guard ID */
     TGP_COUNT
 };
 
