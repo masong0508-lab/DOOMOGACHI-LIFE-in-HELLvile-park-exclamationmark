@@ -486,6 +486,7 @@ typedef struct Gen {
     uint8_t secret;               /* TM2d: the secret guard (secret=), TSEC_* + 1, 0 none */
     uint8_t unk;                  /* TM2d: the unknown-line guard (unk=), TU_* */
     uint8_t unk_fail;             /* TM2d: the named line failed the S3 probe: ask without the echo */
+    uint8_t root_cat, root_value; /* per-line category/root lookup, including changed unknown guesses */
     uint8_t qkind, qphase, qitem; /* TQ: the request's kind (qkind=), phase (qphase=) and item ({item}) */
     int16_t qtarget;              /* TQ: the resident a request is about ({target}), -1 none */
     int8_t  lean;                 /* the stance as the plan sees it, -2..2 */
@@ -650,6 +651,16 @@ static int pred(Gen *g, int p, int v)
     return pred_raw(g, p, v);
 }
 
+static int gen_topic_root(Gen *g)
+{
+    if (!g->topic) return 0;
+    if (g->root_cat != g->tc.cat) {
+        g->root_cat = g->tc.cat;
+        g->root_value = (uint8_t)talk_db_cat_root(g->tc.cat);
+    }
+    return g->root_value;
+}
+
 static int pred_raw(Gen *g, int p, int v)
 {
     TalkConv *c = g->c;
@@ -731,7 +742,7 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_X_PLURAL: return g->topic && (g->tc.flags & TCF_PLURAL);
     case TGP_X_GERUND: return g->topic && (g->tc.flags & TCF_GERUND);
     case TGP_X_PERSON:
-        return g->topic && (talk_db_cat_root(g->tc.cat) == TCR_PEOPLE || cat_is(g->tc.cat, "lore.cast"));
+        return g->topic && (gen_topic_root(g) == TCR_PEOPLE || cat_is(g->tc.cat, "lore.cast"));
     case TGP_X_ADJ: return g->topic && attr_pick(g, g->topic, 0, NULL);
     case TGP_X_GOOD: return g->topic && attr_pick(g, g->topic, 1, NULL);
     case TGP_X_BAD: return g->topic && attr_pick(g, g->topic, -1, NULL);
@@ -742,7 +753,7 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_TYPE: return g->type == v;
     case TGP_MOOD: return g->mood == v;
     case TGP_REL: return g->rel == v;
-    case TGP_ROOT: return g->topic && talk_db_cat_root(g->tc.cat) == v;
+    case TGP_ROOT: return g->topic && gen_topic_root(g) == v;
     case TGP_CATEGORY: return g->topic && g->tc.cat == v;
     case TGP_CHAPTER: return c->chapter == v;
     case TGP_TIME: return tod_band() == v;
