@@ -183,7 +183,7 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
 {
     static const char *const keys[] = { "pie", "park", "song", "gardening", "weather" };
     static const int ids[] = { ID_NANA, ID_PIP };
-    int a, i, batch = 0, selected = 0, kid_selected = 0, total = 0;
+    int a, i, batch = 0, selected = 0, kid_selected = 0, total = 0, notes_selected = 0;
     uint32_t lint0;
     premade_town();
     CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
@@ -211,7 +211,7 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
             TalkConv c;
             TalkLine reply;
             TalkTrace trace;
-            int j, got = 0, said = 0;
+            int j, got = 0, said = 0, notes = 0;
             int kid = k & 1;
             talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, kid ? 2 : 1, (uint32_t)(k + 5000 * i));
             c.plain = 1;
@@ -221,9 +221,15 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
                 TalkAltInfo ai;
                 int t, cat = -1;
                 CHECK(talk_gen_alt_info(trace.alt[j], &ai));
-                if (!(ai.rflags & TALK_RULE_BATCH)) continue;
                 for (t = 0; t < ai.nterm; t++)
                     if (ai.term[2 * t] == TGP_CATEGORY) cat = ai.term[2 * t + 1];
+                if (cat > 0 && !ai.act && ai.weight > 1 && (ai.aflags & 16u) &&
+                    !(ai.rflags & TALK_RULE_BATCH)) {
+                    CHECK_EQ(cat, tc.cat);
+                    notes = 1;                  /* factored branch explicitly names the topic */
+                    got = 1;
+                }
+                if (!(ai.rflags & TALK_RULE_BATCH)) continue;
                 CHECK_EQ(cat, tc.cat);
                 got = 1;
             }
@@ -234,10 +240,12 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
             CHECK(!(reply.flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)));
             CHECK(talk_gen_adjacent(TA_ASK_ABOUT, reply.act));
             selected++;
+            if (notes) notes_selected++;
             if (kid) kid_selected++;
         }
     }
-    CHECK(total > 0 && selected > 0 && kid_selected > 0);
+    CHECK(total > 0 && selected > 0 && kid_selected > 0 && notes_selected > 0);
+    printf("      Atlas fieldnotes: %d selected replies\n", notes_selected);
     CHECK_EQ(talk_safe_lint_hits(), lint0);
     printf("      Atlas: %d batch alternatives, %d selected replies (%d kid-room) / %d generated\n",
            batch, selected, kid_selected, total);

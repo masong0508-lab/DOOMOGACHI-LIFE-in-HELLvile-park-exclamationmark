@@ -202,7 +202,7 @@ TEST(home_mart_asks_for_the_platform_ui_loops_each_frame)
 
 #ifdef DOOMO_HAS_TALK
 /* Native room registration uses the same geometry as Talk's pointer and
- * draw paths, with a conservative inset on all rounded corners. */
+ * draw paths. Both matte strips are opaque to their edges. */
 TEST(home_talk_names_only_opaque_panel_interiors)
 {
     int i, found_top = 0, found_bottom = 0, py;
@@ -224,16 +224,16 @@ TEST(home_talk_names_only_opaque_panel_interiors)
     frame(0);
     for (i = 0; i < opq_n; i++) {
         const OpqCall *c = &opq[i];
-        if (c->x != 4 || c->w != plat_screen_w() - 8) continue;
-        CHECK(!c->after_room);
-        if (c->y == 4 && c->h == 16) found_top++;
-        if (c->y == py + 4 && c->h == plat_screen_h() - py - 8) found_bottom++;
+        if (c->x != 0 || c->w != plat_screen_w() || c->after_room) continue;
+        if (c->y == 0 && c->h == 24) found_top++;
+        if (c->y == py && c->h == plat_screen_h() - py) found_bottom++;
     }
     CHECK_EQ(found_top, 1);
     CHECK_EQ(found_bottom, 1);
     scene_set(&SCENE_HOME, 3);
     frame(0);
-    for (i = 0; i < opq_n; i++) CHECK(opq[i].x != 4);
+    for (i = 0; i < opq_n; i++)
+        CHECK(opq[i].after_room || opq[i].w != plat_screen_w() || opq[i].h <= 12);
     talk_db_close();
 }
 #endif

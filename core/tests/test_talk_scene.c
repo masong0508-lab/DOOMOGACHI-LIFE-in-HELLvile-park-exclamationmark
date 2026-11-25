@@ -716,6 +716,43 @@ TEST(talk_scene_topic_picker_has_unique_audience_safe_choices)
     CHECK(count >= 10);
 }
 
+TEST(talk_scene_browse_topics_keeps_quick_menu_and_audience_rules)
+{
+    TalkSceneDebug d;
+    TalkAudience aud;
+    int group, child = ID_PIP;
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("topic", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    CHECK_EQ(find_row("notopic", -1, -1), 0);
+    CHECK_EQ(find_row("browse", -1, -1), d.nrows - 1);
+    go_to(find_row("browse", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    CHECK_EQ(d.nrows, 14);
+    talk_safe_ctx(playas_avatar(), d.ids, d.nparts, d.to, &aud);
+    CHECK(aud.any_minor);
+    for (group = 0; group < 14; group++) {
+        int i;
+        go_to(find_row("browsegroup", group, -1)); press(BTN_A);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browsetopics"));
+        CHECK(d.nrows >= 2);
+        for (i = 0; i < d.nrows; i++) {
+            int value = 0;
+            CHECK(talk_scene_row_debug(i, NULL, NULL, &value, NULL));
+            CHECK(talk_gen_casual_topic_ok((uint16_t)value, &aud));
+        }
+        press(BTN_B);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    }
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "main"));
+}
+
 TEST(talk_scene_real_outing_menu_and_play_action)
 {
     TalkSceneDebug d;

@@ -157,7 +157,7 @@ def fieldnotes_grammar(profiles, followups, notes, previous):
                     lines += choices + [""]
         result[GRAMMAR / f"zz_atlas_notes_{group}.tlk"] = "\n".join(lines) + "\n"
     size = sum(len(t.encode("ascii")) for t in added)
-    if size < 1_800_000 or rows > 8_000:
+    if size < 2_000_000 or rows > 8_000:
         raise ValueError(f"fieldnotes budget: {size} expanded bytes, {rows} stored alternatives")
     return result, added, rows, pairs
 

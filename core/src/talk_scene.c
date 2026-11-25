@@ -43,7 +43,8 @@
 
 enum {
     PG_MAIN = 0, PG_ACTS, PG_TOPIC, PG_INVITE, PG_MORE, PG_OUTING, PG_SHOW, PG_GIVE,
-    PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL, PG_SHARED, PG_SHARED_PAIR
+    PG_CARE, PG_FEED, PG_HEAL, PG_HISTORY, PG_CONCERN, PG_JOURNAL, PG_SHARED, PG_SHARED_PAIR,
+    PG_BROWSE, PG_BROWSE_TOPICS
 };
 enum {
     K_CAT = 0, K_ACT, K_TOPIC, K_TYPE, K_TO, K_INVITE, K_BYE, K_PICK, K_NOTOPIC, K_MORE,
@@ -53,7 +54,8 @@ enum {
     K_TOPIC_LINK, K_HISTORY_TONE, K_CONCERN, K_CONCERN_INFO, K_CONCERN_ACT, K_MEET_PLAN,
     K_QUIRK, K_HISTORY_LIKE, K_DAY_PLAN, K_FOLLOW_UP, K_MEET_MEMORY, K_JOURNAL,
     K_JOURNAL_NEWER, K_JOURNAL_OLDER, K_JOURNAL_VISIT, K_SHARED_TOPICS, K_SHARED_PAIR,
-    K_SHARED_PAGE, K_SHARED_ASK, K_JOURNAL_REPAIR, K_TOPIC_MEMORY
+    K_SHARED_PAGE, K_SHARED_ASK, K_JOURNAL_REPAIR, K_TOPIC_MEMORY,
+    K_BROWSE, K_BROWSE_GROUP
 };
 enum { C_CHAT = 0, C_NICE, C_COOL, C_ASK, C_TELL, C_OTHERS, C_GESTURE, C_ROMANCE, C_COUNT };
 enum { JOURNAL_OUTINGS, JOURNAL_PERSONAL, JOURNAL_ISLAND };
@@ -165,6 +167,43 @@ static const char *const stock_key[] = {
     "dinner", "dreams", "hellvile", "hillvile", "school", "money", "books", "coffee", "dancing", "stars",
     "family", "the park", "cake"
 };
+
+/* A small curated route into every Atlas subject family. Exact controller
+ * keys are also included in the PS1's compact disc lexicon. Resolve only
+ * the chosen group, never the entire word network on opening a menu. */
+static const char *const browse_key[] = {
+    "mum", "friend", "hoodie", "top hat", "hairstyle", "nickname", "quiet bookworm", "birthday",
+    "market", "forest", "cottage", "town hall", "park", "countryside", "library", "beach",
+    "cupcake", "pie", "pretzel", "cake", "tea", "apple", "carrot", "flour", "breakfast", "recipe", "brimstone bagel",
+    "chiptune", "guitar", "song", "concert", "jazz", "piano", "album", "karaoke night",
+    "gardening", "swimming", "football", "card game", "movie", "drawing", "nature walk", "knitting", "comic",
+    "slime", "cat", "cow", "deer", "owl", "octopus", "butterfly", "dragon", "dog",
+    "cloud bed", "kitchen", "light switch", "mug", "bath", "laundry", "house party", "bunny beanbag",
+    "mayor giggs", "purple fog", "town meeting", "boreagotchi egg", "nana puddin", "parade",
+    "demon", "lava", "imp gang", "smog",
+    "joy", "happy", "thanks", "apology", "peace of mind",
+    "actor", "job", "money", "meeting", "receipt",
+    "rain", "winter", "morning", "monday", "january", "halloween", "tomorrow", "moon", "shooting star",
+    "homework", "science", "teddy bear", "classroom", "building blocks",
+    "computer", "bike", "hammer", "shopping list", "flower", "pebble", "postcard", "snow globe",
+};
+static const struct { const char *label; uint8_t root, first, count; } browse_groups[] = {
+    { "People & family", TCR_PEOPLE, 0, 8 },
+    { "Places & outings", TCR_PLACES, 8, 8 },
+    { "Food & cooking", TCR_FOOD, 16, 11 },
+    { "Music & shows", TCR_MUSIC, 27, 8 },
+    { "Hobbies & games", TCR_HOBBIES, 35, 9 },
+    { "Animals & myths", TCR_CREATURES, 44, 9 },
+    { "Home & furniture", TCR_HOUSE, 53, 8 },
+    { "Island lore", TCR_LORE, 61, 6 },
+    { "Hellvile", TCR_HELLVILE, 67, 4 },
+    { "Feelings & kindness", TCR_FEELINGS, 71, 5 },
+    { "Work & money", TCR_WORK, 76, 5 },
+    { "Time & weather", TCR_TIME, 81, 9 },
+    { "School & toys", TCR_SCHOOL, 90, 5 },
+    { "Everyday things", TCR_STUFF, 95, 8 },
+};
+DOOMO_STATIC_ASSERT(DOOMO_COUNTOF(browse_key) < 256, talk_browse_offsets_fit);
 
 /* Real places with a real simulation action, never a random conversation
  * topic. Resolve the bank IDs on entry to the page; no per-frame reads,
@@ -1560,7 +1599,7 @@ static void topic_audience(TalkAudience *aud)
 static void topic_add(uint16_t c, int kind, int learned, const TalkAudience *aud)
 {
     int i;
-    if (c == TC_NONE) return;
+    if (c == TC_NONE || (T.page == PG_TOPIC && T.nrows >= TROWS - 1)) return;
     for (i = 0; i < T.nrows; i++)
         if (T.row[i].v == c && (T.row[i].kind == K_PICK || T.row[i].kind == K_TOPIC_LINK)) return;
     if (talk_gen_concept_ok(c, aud)) add_row(kind, learned, c);
@@ -1612,6 +1651,50 @@ static void build_topics(void)
                 topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK, 0, &aud);
     }
     for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK, 0, &aud);
+    add_row(K_BROWSE, 0, 0);             /* UP from Any topic wraps directly here */
+    list_reset();
+}
+
+static void build_topic_groups(void)
+{
+    int i;
+    T.page = PG_BROWSE;
+    T.nrows = 0;
+    for (i = 0; i < (int)DOOMO_COUNTOF(browse_groups); i++)
+        add_row(K_BROWSE_GROUP, i, 0);
+    list_reset();
+}
+
+static void build_topic_group(int group)
+{
+    int i;
+    TalkAudience aud;
+    if (group < 0 || group >= (int)DOOMO_COUNTOF(browse_groups)) {
+        build_topic_groups();
+        return;
+    }
+    T.page = PG_BROWSE_TOPICS;
+    T.cat = (uint8_t)group;
+    T.nrows = 0;
+    T.journal_label.topics.top = -1;
+    T.journal_label.topics.valid = 0;
+    topic_audience(&aud);
+    for (i = 0; i < browse_groups[group].count; i++) {
+        uint16_t cid = TC_NONE;
+        TalkConcept c;
+        uint8_t flags;
+        if (talk_lex_find(browse_key[browse_groups[group].first + i], &cid, NULL, NULL) < 0 ||
+            !talk_db_concept(cid, &c) ||
+            talk_db_cat_root(c.cat) != browse_groups[group].root ||
+            !talk_db_cat(c.cat, NULL, &flags) || !(flags & TCAT_TALKABLE) ||
+            !talk_gen_casual_topic_ok(cid, &aud)) continue;
+        topic_add(cid, K_PICK, 0, &aud);
+    }
+    if (!T.nrows) {
+        build_topic_groups();
+        ui_toast("No topics in that group right now.");
+        return;
+    }
     list_reset();
 }
 
@@ -1650,7 +1733,7 @@ static void build_invite(void)
 static void picker_topic_name(int index, uint16_t c, char *out, int cap)
 {
     int slot = index - T.list.top;
-    if (T.page == PG_TOPIC && slot >= 0 && slot < 6) {
+    if ((T.page == PG_TOPIC || T.page == PG_BROWSE_TOPICS) && slot >= 0 && slot < 6) {
         char *cached = T.journal_label.topics.names[slot];
         unsigned bit = 1u << slot;
         if (T.journal_label.topics.top != T.list.top) {
@@ -1861,6 +1944,8 @@ static const char *row_text(int index, char *buf)
         break;
     case K_BYE: memcpy(buf, "Say goodbye", sizeof "Say goodbye"); break;
     case K_NOTOPIC: memcpy(buf, "Any topic", sizeof "Any topic"); break;
+    case K_BROWSE: memcpy(buf, "Browse topics >", sizeof "Browse topics >"); break;
+    case K_BROWSE_GROUP: doomo_snprintf(buf, 48, "%s >", browse_groups[r->arg].label); break;
     case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
     case K_TOPIC_LINK:
         picker_topic_name(index, r->v, tn, (int)sizeof tn);
@@ -2922,6 +3007,8 @@ static void activate(int i)
         break;
     case K_MORE: build_more(); break;
     case K_TOPIC: T.pending = 0; build_topics(); break;
+    case K_BROWSE: build_topic_groups(); break;
+    case K_BROWSE_GROUP: build_topic_group(r->arg); break;
     case K_NOTOPIC: pick_topic(TC_NONE); break;
 #ifdef TALK_TYPING
     case K_TYPE:
@@ -3012,6 +3099,8 @@ static void change_to(int to)
         build_more();
         if (sel < T.nrows) T.list.sel = sel;
     } else if (T.page == PG_TOPIC && !T.pending) build_topics();
+    else if (T.page == PG_BROWSE && !T.pending) build_topic_groups();
+    else if (T.page == PG_BROWSE_TOPICS && !T.pending) build_topic_group(T.cat);
     else if (T.page == PG_HISTORY || T.page == PG_JOURNAL || T.page == PG_SHARED || T.page == PG_SHARED_PAIR)
         build_history();
     else {
@@ -3028,6 +3117,10 @@ static void change_to(int to)
 
 static void back_page(void)
 {
+    /* A pending Ask/Tell survives navigation inside the topic picker.
+     * Only leaving the picker entirely cancels that pending act. */
+    if (T.page == PG_BROWSE_TOPICS) { build_topic_groups(); return; }
+    if (T.page == PG_BROWSE) { build_topics(); return; }
     T.pending = 0;
     if (T.page == PG_SHARED_PAIR) build_shared(T.journal_offset);
     else if (T.page == PG_JOURNAL || T.page == PG_SHARED) build_history();
@@ -3045,9 +3138,9 @@ static int layout(int *rows_out)
     return sh - ph;
 }
 
-/* The house draws before this overlay. Only promise the interior of the
- * rounded windows: shadows/corners remain dependent on the live room.
- * The current layout is used even when a dialogue is covering Talk. */
+/* Talk uses completely opaque matte strips. The room need not restore
+ * pixels under either strip, including the former rounded corners.
+ * The live layout is also used when a dialogue covers Talk. */
 void talk_scene_room_opaque(void)
 {
     int sw, sh, py;
@@ -3055,10 +3148,9 @@ void talk_scene_room_opaque(void)
     sw = plat_screen_w();
     sh = plat_screen_h();
     py = layout(NULL);
-    if (sw <= 8) return;
-    plat_room_ui_opaque(4, 4, sw - 8, 16);
-    if (sh - py > 8)
-        plat_room_ui_opaque(4, py + 4, sw - 8, sh - py - 8);
+    if (sw <= 0) return;
+    plat_room_ui_opaque(0, 0, sw, 24);
+    if (sh > py) plat_room_ui_opaque(0, py, sw, sh - py);
 }
 
 #if DOOMO_POINTER
@@ -3178,6 +3270,8 @@ static const char *panel_title(char *buf, int cap)
     if (T.gen) return "Thinking...";
     switch (T.page) {
     case PG_TOPIC:  t = "Talk about..."; break;
+    case PG_BROWSE: t = "Choose a subject"; break;
+    case PG_BROWSE_TOPICS: t = browse_groups[T.cat].label; break;
     case PG_INVITE: t = "Who joins in?"; break;
     case PG_OUTING: t = "Where shall we go?"; break;
     case PG_SHOW: t = "Show something..."; break;
@@ -3258,6 +3352,19 @@ static uint32_t reply_panel_key(const char *title, const char *mood)
 }
 #endif
 
+/* One opaque fill, one quiet border. No glossy streak, drop shadow or
+ * checkerboard seam; retained frames copy a single rectangle. */
+static void talk_window(int y, int w, int h, const UiStyle *st)
+{
+    plat_rect(0, y, w, h, st->fill);
+    plat_rect(0, y, w, 1, st->outline);
+    plat_rect(0, y + h - 1, w, 1, st->fill_lo);
+#if UI_PANELS
+    ui_style_use(WIN_CUTE);
+    plat_panel_solid();
+#endif
+}
+
 static void talk_draw(void)
 {
     const UiStyle *st = ui_style(WIN_CUTE);
@@ -3276,12 +3383,12 @@ static void talk_draw(void)
     ui_glint_hold(1);
     /* the people: a name and (for who you speak to) how much they are into it */
 #if UI_PANELS
-    if (!plat_panel_begin(PANEL_TALK_PEOPLE, 0, 0, sw, 27, people_panel_key())) {
-        ui_window_shadow(0, 0, sw, 24);
+    if (!plat_panel_begin(PANEL_TALK_PEOPLE, 0, 0, sw, 24, people_panel_key())) {
         plat_panel_end();
+        ui_style_use(WIN_CUTE);
     } else {
 #endif
-        ui_window(0, 0, sw, 24, WIN_CUTE);
+        talk_window(0, sw, 24, st);
         colw = sw / (T.s.nparts > 0 ? T.s.nparts : 1);
         for (i = 0; i < T.s.nparts; i++) {
             const TalkPart *p = &T.s.part[i];
@@ -3309,12 +3416,11 @@ static void talk_draw(void)
      * Skip capture in that case rather than paying for a spoiled panel. */
     menu_panel = !T.busy && !T.gen && !T.after;
     if (menu_panel && !plat_panel_begin(PANEL_TALK_MENU, 0, py, sw, ph, reply_panel_key(title, mood))) {
-        ui_window_shadow(0, py, sw, ph);
         plat_panel_end();
         ui_style_use(WIN_CUTE);
     } else {
 #endif
-        ui_window(0, py, sw, ph, WIN_CUTE);
+        talk_window(py, sw, ph, st);
         plat_rect(8, py + 15, sw - 16, 1, st->fill_lo);
         if (mood) {
             mw = ui_text_width(mood);
@@ -3387,7 +3493,7 @@ const DoomoScene SCENE_TALK = { "TALK", talk_enter, talk_leave, talk_update, tal
 #ifdef DOOMO_TALK_DEBUG
 int talk_scene_debug(TalkSceneDebug *o)
 {
-    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern", "journal", "shared", "sharedpair" };
+    static const char *const pages[] = { "main", "acts", "topic", "invite", "more", "outing", "show", "give", "care", "feed", "heal", "history", "concern", "journal", "shared", "sharedpair", "browse", "browsetopics" };
     int i;
     memset(o, 0, sizeof *o);
     o->to_id = -1;
@@ -3414,7 +3520,7 @@ int talk_scene_debug(TalkSceneDebug *o)
 
 int talk_scene_row_debug(int i, const char **kind, int *arg, int *v, char *text)
 {
-    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit", "sharedtopics", "sharedpair", "sharedpage", "sharedask", "journalrepair", "topicmemory" };
+    static const char *const kinds[] = { "cat", "act", "topic", "type", "to", "invite", "bye", "pick", "notopic", "more", "quick", "out", "outing", "play", "show", "showitem", "give", "giveitem", "remember", "help", "comfort", "clean", "feed", "heal", "feeditem", "healitem", "history", "historyinfo", "historyquest", "historytopic", "historyevent", "historyrepeat", "topiclink", "historytone", "concern", "concerninfo", "concernact", "meetplan", "quirk", "historylike", "dayplan", "followup", "meetmemory", "journal", "journalnewer", "journalolder", "journalvisit", "sharedtopics", "sharedpair", "sharedpage", "sharedask", "journalrepair", "topicmemory", "browse", "browsegroup" };
     if (i < 0 || i >= T.nrows) return 0;
     if (kind) *kind = kinds[T.row[i].kind];
     if (arg) *arg = T.row[i].arg;
