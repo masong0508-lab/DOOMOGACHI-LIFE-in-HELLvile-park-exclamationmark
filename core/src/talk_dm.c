@@ -477,7 +477,7 @@ static int quest_open_plan(TalkState *s, DoomoRng *rng)
         if (id < 0 || !talker(s, k) || !talk_quest_state(id, &kind, &st, &days, NULL)) continue;
         if (talk_quest_ready(id)) ph = TQP_DONE;
         else if (st == TQS_SETTLED && days == 0) ph = TQP_EXPIRED;
-        else if (st == TQS_ACTIVE && rng_range(rng, 100) < 60) ph = TQP_LATE;
+        else if ((st == TQS_ACTIVE || st == TQS_READY) && rng_range(rng, 100) < 60) ph = TQP_LATE;
         else continue;
         plan_add(s, DK_QUEST, k, -1, QUEST_ARG(ph, kind));
         return 1;
@@ -1706,9 +1706,9 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             break;
         }
         case TQP_DONE:
+            /* The item and the request still have to exist at commit time.
+             * The outcome grants the bond/mood only if completion succeeds. */
             add_event(s, TEV_QUEST_DONE, who, qkind);
-            bump_rel(s, who, 3);
-            bump_mood(s, who, 3);
             break;
         case TQP_EXPIRED:
             add_event(s, TEV_QUEST_LAPSED, who, qkind);
