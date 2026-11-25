@@ -42,6 +42,8 @@ typedef struct UiList {
 } UiList;
 int  ui_list_update(UiList *l);         /* UI_NONE/SELECT/CANCEL/CHANGED */
 void ui_list_draw(const UiList *l, int x, int y, int w, int style);
+/* Same list with a stationary cursor and scroll arrows, for retained UI. */
+void ui_list_draw_still(const UiList *l, int x, int y, int w, int style);
 #if DOOMO_POINTER       /* T9: pointer hit tests (input.h); a console build has none of it */
 int  ui_list_hit(const UiList *l, int x, int y, int w, int px, int py);     /* row under the point, or -1 */
 int  ui_list_click(UiList *l, int x, int y, int w, int px, int py);         /* UI_SELECT for a row, as A does */

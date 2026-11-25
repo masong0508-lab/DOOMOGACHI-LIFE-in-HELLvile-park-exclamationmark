@@ -1333,6 +1333,10 @@ int  talk_dm_tick(TalkState *s, int frames);
 /* Make the next line of the planned exchange into s->line[s->nlines++]:
  * 1 a line was made, 0 the exchange is complete. tr: NULL or one trace. */
 int  talk_dm_step(TalkState *s, TalkTrace *tr);
+/* Scene scheduler: attempt at most one planned entry per tick, even
+ * when that entry emits no line. Nonzero = keep scheduling, not a line
+ * count. The completed exchange has the same lines/events as step(). */
+int  talk_dm_step_slice(TalkState *s);
 /* 1 when the conversation is over (everyone left, K-7, a goodbye). */
 int  talk_dm_over(const TalkState *s);
 /* Would slot `who` say yes to the player's romance act `act` (K-5)? Asks
@@ -1557,8 +1561,9 @@ int  home_talk_note(void);
 /* DC10B: 1 while the Talk screen is open (also while the dialogue box or the text entry is on top of it). The
  * Dreamcast draws the plain text of such a frame with its HD glyphs; the layout (6 px advance) is the same. */
 int  talk_text_hd(void);
-/* TD2: 1 = the Talk screen runs the generator one step a tick (the Dreamcast: a tick under 33.3 ms), 0 (the default) = all
- * at once. Not on the GBA (the function does not exist there). Talk's own lines are identical either way. */
+/* TD2: 1 = the Talk screen runs one generation attempt per tick, 0 =
+ * all at once. GBA always uses the sliced path; this switch is for the
+ * other ports and native tests. The completed lines are the same. */
 void talk_scene_slice(int on);
 
 /* Others to bring into the next talk (up to TALK_PARTS_MAX - 1; consumed by it): talk_scene.c, DOOMO_HAS_TALK. */

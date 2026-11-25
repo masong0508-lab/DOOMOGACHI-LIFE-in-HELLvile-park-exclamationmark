@@ -1979,7 +1979,8 @@ static void begin_talk(void)
  * the Dreamcast's SH4 (the first one of "Ask about pie" 17 ms, the three of an answer 26 ms in all, on top of the
  * 8 ms the screen costs), which is a tick over 33.3 ms: with talk_scene_slice(1) (TD2: the Dreamcast, and the unit
  * test) the steps run one a tick from talk_update, the input is dead meanwhile, and the lines are the very same.
- * T.gen: 1 an answer to the player (a farewell sets leaving), 2 the opener or the idle chatter. Not on the GBA. */
+ * T.gen: 1 an answer to the player (a farewell sets leaving), 2 the opener or the idle chatter.
+ * GBA always schedules one planned generation attempt per tick. */
 #ifndef DOOMO_PLATFORM_GBA
 static uint8_t slice_on;
 void talk_scene_slice(int on) { slice_on = (uint8_t)(on != 0); }
@@ -2005,6 +2006,13 @@ static void gen_done(void)
         for (k = 0; k < T.s.nev; k++)
             if (T.s.ev[k].kind == TEV_ACT_INVITE) { T.leaving = 1; break; }
     T.gen = 0;
+    if (!T.s.nlines) {
+        /* No queued dialog means there will never be a dialog callback.
+         * Return to the real menu (or finish a farewell) on the next tick. */
+        T.busy = 0;
+        T.after = 1;
+        return;
+    }
     show_lines();
 }
 
@@ -2012,11 +2020,13 @@ static void gen_run(int kind)
 {
     T.followup = TC_NONE;
     T.gen = (uint8_t)kind;
-#ifndef DOOMO_PLATFORM_GBA
-    if (slice_on) return;                /* talk_update takes the steps, one a tick */
-#endif
+#ifdef DOOMO_PLATFORM_GBA
+    return;                             /* keep rendering/input ticks between attempts */
+#else
+    if (slice_on) return;
     while (talk_dm_step(&T.s, NULL)) {}
     gen_done();
+#endif
 }
 
 static void say_utter(TalkUtter *u)
@@ -3100,7 +3110,7 @@ static void talk_update(void)
     if (!T.active) { scene_pop(); return; }
     if (T.busy) return;                  /* the dialogue box is up (we are not on top then) */
     if (T.gen) {                         /* sliced generation: one step a tick, no input meanwhile */
-        if (!talk_dm_step(&T.s, NULL)) gen_done();
+        if (!talk_dm_step_slice(&T.s)) gen_done();
         return;
     }
 #ifdef TALK_TYPING
@@ -3165,6 +3175,7 @@ static const char *mood_word(void)
 static const char *panel_title(char *buf, int cap)
 {
     const char *t = NULL;
+    if (T.gen) return "Thinking...";
     switch (T.page) {
     case PG_TOPIC:  t = "Talk about..."; break;
     case PG_INVITE: t = "Who joins in?"; break;
@@ -3235,10 +3246,8 @@ static uint32_t reply_panel_key(const char *title, const char *mood)
     key = ui_key_int(key, T.list.sel);
     key = ui_key_int(key, T.list.top);
     key = ui_key_int(key, T.list.visible);
-    if (T.list.count > 0)
-        key = ui_key_int(key, ui_wave((int)doomo_frame_count(), 20, 2));
-    if (T.list.count > T.list.visible)
-        key = ui_key_int(key, ui_wave((int)doomo_frame_count(), 24, 1));
+    /* Talk uses a stationary cursor and scroll arrows so the complete
+     * panel can be retained across idle frames. Other lists still bounce. */
     for (i = T.list.top; i < end; i++) {
         const char *text = row_text(i, label);
         key = ui_key_str(key, text);
@@ -3312,7 +3321,7 @@ static void talk_draw(void)
             ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
         }
         ui_text_clip(8, py + 5, title, st->text, 8, sw - 12 - mw);
-        ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
+        if (!T.gen) ui_list_draw_still(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
 #if UI_PANELS
         if (menu_panel) plat_panel_end();
     }

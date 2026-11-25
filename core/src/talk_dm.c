@@ -1749,7 +1749,7 @@ static void observe_topic_link(TalkState *s, int who, uint16_t previous, uint16_
 }
 #endif
 
-int talk_dm_step(TalkState *s, TalkTrace *tr)
+static int dm_step(TalkState *s, TalkTrace *tr, int sliced)
 {
     if (!s) return 0;
     while (s->plan_at < s->nplan && s->nlines < TALK_EXCHANGE_MAX) {
@@ -1758,7 +1758,12 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         TalkLine *L = &s->line[s->nlines];
         s->plan_at++;
         memset(L, 0, sizeof *L);
-        if (kind == DK_NONE || !make_line(s, kind, who, to, arg, L, tr, &hf)) continue;
+        if (kind == DK_NONE || !make_line(s, kind, who, to, arg, L, tr, &hf)) {
+            /* A skipped/failed generation attempt can itself be costly.
+             * The sliced scene must not try the rest in the same tick. */
+            if (sliced) return s->plan_at < s->nplan && s->nlines < TALK_EXCHANGE_MAX;
+            continue;
+        }
         if (tr && kind != DK_ANSWER) { /* the trace is the caller's one slot: only the line just made */ }
         s->nlines++;
         if (kind == DK_ANSWER && s->conv.more && !(L->flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)) && s->nplan < 6) {
@@ -1813,6 +1818,16 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         return 1;
     }
     return 0;
+}
+
+int talk_dm_step(TalkState *s, TalkTrace *tr)
+{
+    return dm_step(s, tr, 0);
+}
+
+int talk_dm_step_slice(TalkState *s)
+{
+    return dm_step(s, NULL, 1);
 }
 
 /* ---- the end ------------------------------------------------------------------------- */

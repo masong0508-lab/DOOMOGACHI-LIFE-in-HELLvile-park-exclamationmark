@@ -762,7 +762,7 @@ void ui_cursor_glyph(int x, int y, int kind, uint8_t fill)
     }
 }
 
-void ui_cursor(int x, int y)
+static void cursor_draw(int x, int y, int still)
 {
     if (plat_draw_skipped()) return;
     static const uint8_t cols[6] = {
@@ -770,16 +770,18 @@ void ui_cursor(int x, int y)
         PAL_UI_GOLD, PAL_PAINT(PAINT_BONE, 1), PAL_PAINT(PAINT_WHITE, 1)
     };
     int kind = opt_get(OPT_CURSOR);
-    int b = ui_wave(frame_t(), 20, 2);
+    int b = still ? 0 : ui_wave(frame_t(), 20, 2);
     if (kind < 0 || kind > 5) kind = 0;
     ui_cursor_glyph(x + b - 1, y, kind, cols[kind]);
 }
 
-void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down)
+void ui_cursor(int x, int y) { cursor_draw(x, y, 0); }
+
+static void scroll_arrows_draw(int x, int y_top, int y_bottom, int up, int down, int still)
 {
     if (plat_draw_skipped()) return;
     const UiStyle *st = ui_style(ui_cur_style);
-    int b = ui_wave(frame_t(), 24, 1);
+    int b = still ? 0 : ui_wave(frame_t(), 24, 1);
     if (up) {
         int y = y_top - b;
         plat_rect(x, y + 2, 5, 1, st->outline);
@@ -794,6 +796,11 @@ void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down)
         plat_rect(x + 1, y + 1, 3, 1, st->accent);
         plat_rect(x + 2, y + 2, 1, 1, st->accent);
     }
+}
+
+void ui_scroll_arrows(int x, int y_top, int y_bottom, int up, int down)
+{
+    scroll_arrows_draw(x, y_top, y_bottom, up, down, 0);
 }
 
 /* ====================================================================== */
@@ -872,7 +879,7 @@ int ui_list_click(UiList *l, int x, int y, int w, int px, int py)
 }
 #endif
 
-void ui_list_draw(const UiList *l, int x, int y, int w, int style)
+static void list_draw(const UiList *l, int x, int y, int w, int style, int still)
 {
     const UiStyle *st = ui_style(style);
     int vis = l->visible > 0 ? l->visible : 1;
@@ -898,7 +905,7 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
         if (idx == l->sel) {
             ui_pill(x + 9, ry, w - 9 - (bar ? 6 : 0), UI_LIST_ROW_H - 1,
                     st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
-            ui_cursor(x, ry + 2);
+            cursor_draw(x, ry + 2, still);
             text_draw(x + 13, ry + 2, line, locked ? st->text_dim : st->text, pieces);
         } else {
             text_draw(x + 13, ry + 2, line, locked ? st->text_dim : st->text, pieces);
@@ -919,9 +926,19 @@ void ui_list_draw(const UiList *l, int x, int y, int w, int style)
         int ty = y + 1 + (th - thumb) * l->top / DOOMO_MAX(1, l->count - vis);
         ui_round_rect(bx, y + 1, 3, th, 1, st->fill_lo);
         ui_round_rect(bx, ty, 3, thumb, 1, st->accent);
-        ui_scroll_arrows(bx - 1, y - 4, y + rows * UI_LIST_ROW_H, l->top > 0,
-                         l->top + rows < l->count);
+        scroll_arrows_draw(bx - 1, y - 4, y + rows * UI_LIST_ROW_H, l->top > 0,
+                           l->top + rows < l->count, still);
     }
+}
+
+void ui_list_draw(const UiList *l, int x, int y, int w, int style)
+{
+    list_draw(l, x, y, w, style, 0);
+}
+
+void ui_list_draw_still(const UiList *l, int x, int y, int w, int style)
+{
+    list_draw(l, x, y, w, style, 1);
 }
 
 /* ====================================================================== */
