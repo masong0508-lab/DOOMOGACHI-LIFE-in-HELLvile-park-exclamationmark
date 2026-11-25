@@ -570,17 +570,30 @@ static int visit_evict(void)
 
 static void visit_push(uint32_t key, uint32_t day)
 {
-    int i;
-    /* Same-day trips to the same venue use one record. Most days stop
-     * after a handful of rows, with no scan of the older history. */
-    for (i = 0; i < visits.count && visit_day(visits.rows[i]) == day; ++i)
+    int i, pos = 0;
+    /* Normally pos is zero. Older imported/replayed dates must not move
+     * ahead of newer memories: the save reader requires newest first,
+     * and the journal uses the first match as the most recent visit.
+     * Undated legacy records always follow dated records. */
+    while (pos < visits.count && visit_day(visits.rows[pos]) != TALK_VISIT_UNDATED &&
+           visit_day(visits.rows[pos]) > day)
+        pos++;
+    /* Same-day trips to the same venue still use just one record. */
+    for (i = pos; i < visits.count && visit_day(visits.rows[i]) == day; ++i)
         if (visit_key(visits.rows[i]) == key) break;
     if (i == visits.count || visit_day(visits.rows[i]) != day) {
         if (visits.count < SAVE_TVIS_VISITS) i = visits.count++;
         else i = visit_evict();
     }
-    memmove(visits.rows + 1, visits.rows, TVIS_REC * (unsigned)i);
-    visit_pack(visits.rows[0], key, day);
+    /* A full archive may evict a record newer than this insertion.
+     * Close that gap first; otherwise shift toward the existing hole. */
+    if (i < pos) {
+        memmove(visits.rows + i, visits.rows + i + 1, TVIS_REC * (unsigned)(pos - i - 1));
+        pos--;
+    } else {
+        memmove(visits.rows + pos + 1, visits.rows + pos, TVIS_REC * (unsigned)(i - pos));
+    }
+    visit_pack(visits.rows[pos], key, day);
 }
 
 void talk_visit_note(int guest, int avatar, int venue)
@@ -627,7 +640,8 @@ int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacit
         int venue = (int)(visit_key(row) >> 20);
         uint32_t bit = 1u << venue;
         if ((seen & bit) || !visit_matches(row, people, minor)) continue;
-        venues[count++] = venue;
+        if (venues) venues[count] = venue;
+        count++;
         seen |= bit;
     }
     return count;
@@ -656,7 +670,7 @@ int talk_visit_has(int guest, int avatar, int minor, const TalkVisit *visit)
 {
     uint32_t key;
     int i;
-    if (!visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE ||
+    if (!visit || !visit_guest_ok(guest) || avatar < 0 || avatar >= (int)NEWS_NONE ||
         !talk_act_invite_ok(TA_INVITE, visit->venue, minor, 12)) return 0;
     key = NEWS_IDS(guest, avatar, visit->venue);
     for (i = 0; i < visits.count; ++i)

@@ -125,6 +125,51 @@ TEST(talk_quick_persona_changes_the_reaction)
     talk_db_close();
 }
 
+/* talk_gen_stance returns an enum, not a signed sentiment score. Both
+ * kinds of opinion must survive into the drama manager's live state. */
+TEST(talk_quick_resident_opinions_are_not_inverted)
+{
+    TalkState s;
+    TalkSugg g = {TA_ASK_ABOUT, TONE_PLAIN, TC_NONE, -1, "Tell me about it."};
+    uint16_t pro = TC_NONE, con = TC_NONE;
+    int i, base;
+    premade_town();
+    CHECK(open_db());
+    set_persona(ID_NANA, 6, 6, 6, 6, 6);
+    town_res(ID_NANA)->mood = MOOD_OK;
+    begin2(&s, ID_NANA, -1, 91u);
+    /* Find real, ordinary concepts this particular resident likes and
+     * dislikes; avoid assuming all residents share the same opinion. */
+    for (i = 1; i <= talk_db_nconcepts() && (!pro || !con); i++) {
+        uint16_t t = (uint16_t)i;
+        int stance;
+        if (!talk_link_topic_safe(t)) continue;
+        stance = talk_gen_stance(ID_NANA, t);
+        if (stance == TST_PRO && !pro) pro = t;
+        if (stance == TST_CON && !con) con = t;
+    }
+    CHECK(pro && con);
+    if (pro && con) {
+        base = talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, TC_NONE) -
+               talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, TC_NONE);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, pro) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, pro) > base);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, con) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, con) < base);
+
+        g.topic = pro;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_PRO);
+        begin2(&s, ID_NANA, -1, 92u);
+        g.topic = con;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_CON);
+    }
+    talk_db_close();
+}
+
 TEST(talk_quick_mood_and_bond_change_the_reaction)
 {
     TalkState s;
@@ -223,6 +268,45 @@ static int has_act(const TalkSugg *g, int n, int act)
     int i;
     for (i = 0; i < n; i++) if (g[i].act == act) return 1;
     return 0;
+}
+
+TEST(talk_quick_opening_topic_stays_within_three_presses)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie, band, song;
+    int i, j, n;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    band = concept("band");
+    song = concept("song");
+    CHECK(pie && band && song);
+    begin2(&s, ID_NANA, -1, 21u);
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, 0);
+    for (i = 0; i < 64; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, pie, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, pie);
+    }
+    /* A greeting that already mentions a topic offers a related choice,
+     * rather than depending on an unrelated stock subject or RNG. */
+    put_line(&s, 0, -1, TA_GREET, band, 0);
+    for (i = 0; i < 16; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, song, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, song);
+    }
+    s.flags |= TDF_CARE;
+    n = talk_quick_replies(&s, 0, TC_NONE, song, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    s.flags &= (uint8_t)~TDF_CARE;
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, TLF_SINCERE);
+    n = talk_quick_replies(&s, 0, TC_NONE, pie, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    talk_db_close();
 }
 
 TEST(talk_quick_replies_follow_what_was_said)

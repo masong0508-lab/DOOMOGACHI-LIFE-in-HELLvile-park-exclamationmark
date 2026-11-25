@@ -780,6 +780,7 @@ int  talk_mem_shared(int id, unsigned event_flags);
  * The speaker and avatar both have to match. Minor-room rules apply to recall. */
 void talk_visit_note(int guest, int avatar, int venue);
 void talk_visit_import_news(void);
+/* A null venues buffer counts distinct matching destinations, up to capacity. */
 int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity);
 #define TALK_VISIT_UNDATED 0xFFFFu
 typedef struct TalkVisit {
@@ -1059,8 +1060,9 @@ void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u);
 /* The word the generator may name back from u (E1 to E6 and the kid-room length, not E7), lower case, into
  * out[18]: its length, or 0 when it must not be echoed. The adversarial-corpus test and the scene use it. */
 int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
-/* The speaker's stance on a concept: their likes +3, their hated food and
- * fear -3, Hellvile-born flips holy things, plus a fixed personal lean. */
+/* The speaker's TST_* stance category on a concept: their likes +3,
+ * hated food and fear -3, Hellvile-born flips holy things, plus a fixed
+ * personal lean. The signed raw score is internal to the generator. */
 int  talk_gen_stance(int id, uint16_t topic);
 /* May this concept be said in this room (age class, register, a child here)? */
 int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
@@ -1072,6 +1074,8 @@ int  talk_gen_act_class(int act);
 /* A resident's like as a concept: which 0 food, 1 hobby, 2 music, 3 fear,
  * 4 hated food; 0 none. */
 uint16_t talk_gen_like(int id, int which);
+/* Same five concepts in one bank-header read; missing values are zero. */
+void talk_gen_likes(int id, uint16_t out[5]);
 /* The roster id of cast index i (a TGP_SPEAKER value), -1 none. */
 int  talk_gen_cast_id(int i);
 /* An alternative of the grammar (tests, the census): 1 ok. */
@@ -1217,6 +1221,7 @@ typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic; } 
 #define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
 #define TDF_CARE      0x20u        /* the care window is open (K-11): after a distress line or a grief answer the next
                                       TALK_CARE_TURNS player turns are answered by the sincere bank alone */
+#define TDF_COMMITTED 0x40u        /* outcome applied once by talk_outcome_end; not a save field */
 #define TALK_CARE_TURNS 4          /* player turns of care after a distress line or a grief answer */
 
 #define TALK_LINK_OBSERVATIONS 3
@@ -1365,7 +1370,9 @@ typedef struct TalkOutcome {
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */
 void talk_outcome_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
 /* Close the conversation: the talk memory (topics, flags, refused today), then
- * talk_dm_end, then talk_outcome_apply. sum may be NULL. */
+ * talk_dm_end, then talk_outcome_apply. sum and out may be NULL.
+ * Repeated calls on the same session return zeroed results, without applying
+ * its effects again; talk_outcome_begin starts a fresh session. */
 void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 /* Apply a summary to the sim under the daily caps. Never sets a crush or a
  * dating edge: a yes to CONFESS / ASK_OUT only asks sim_confess. */
@@ -1511,6 +1518,7 @@ int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t f
  * (the act of a quick reply, the topic or the resident id of a pick) and the text the list shows. */
 typedef struct TalkSceneDebug {
     int active, busy, sel, nrows, nparts, to, to_id, tension;
+    uint32_t quick_refreshes;           /* live menu rebuilds, not draw frames */
     int gate;                           /* TG_* of the player's last line                */
     int reply_act, nlines;              /* the act of the last resident line, and how many lines the answer had */
     int care, reply_sincere;            /* TDF_CARE is open (K-11); the last resident line is a sincere-bank line */

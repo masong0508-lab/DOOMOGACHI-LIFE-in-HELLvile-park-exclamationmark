@@ -250,6 +250,26 @@ TEST(talk_gen_names_and_likes)
     talk_db_close();
 }
 
+TEST(talk_gen_batched_preferences_match_single_reads)
+{
+    static const int ids[] = { ID_NANA, ID_RIVET, ID_VEX, ID_PIP,
+                               DOOMO_PLAYER_ID, TALK_PET_ID, -1 };
+    uint16_t likes[5];
+    int i, j;
+    premade_town();
+    CHECK(open_gentest());
+    for (i = 0; i < (int)(sizeof ids / sizeof ids[0]); i++) {
+        talk_gen_likes(ids[i], likes);
+        for (j = 0; j < 5; j++)
+            CHECK_EQ(likes[j], talk_gen_like(ids[i], j));
+    }
+    talk_gen_likes(ID_NANA, NULL);
+    talk_db_close();
+    for (j = 0; j < 5; j++) likes[j] = 123;
+    talk_gen_likes(ID_NANA, likes);
+    for (j = 0; j < 5; j++) CHECK_EQ(likes[j], TC_NONE);
+}
+
 /* ---- selection ----------------------------------------------------------- */
 TEST(talk_gen_weights_novelty_subrules)
 {

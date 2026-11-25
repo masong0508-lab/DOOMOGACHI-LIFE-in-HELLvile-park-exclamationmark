@@ -224,14 +224,11 @@ static const char *name_of(int id, DoomoResident *buf)
     return r ? r->name : "";
 }
 
-uint16_t talk_gen_like(int id, int which)
+static uint16_t mapped_like(const GHdr *h, const DoomoResident *r, int which)
 {
-    GHdr h;
-    DoomoResident buf;
-    const DoomoResident *r = res_of(id, &buf);
     uint16_t v = 0;
     uint32_t at;
-    if (!r || !ghdr(&h)) return 0;
+    if (!r) return 0;
     switch (which) {
     case 0: at = MAP_FOOD + RES_LIKE_FOOD(r) % FOOD_COUNT; break;
     case 1: at = MAP_HOBBY + RES_LIKE_HOBBY(r) % HOBBY_COUNT; break;
@@ -240,8 +237,36 @@ uint16_t talk_gen_like(int id, int which)
     case 4: at = MAP_FOOD + RES_HATE_FOOD(r) % FOOD_COUNT; break;
     default: return 0;
     }
-    if (!g_u16(h.map + 2u * at, &v)) return 0;
+    if (!g_u16(h->map + 2u * at, &v)) return 0;
     return v;
+}
+
+static void mapped_likes(const GHdr *h, const DoomoResident *r, uint16_t out[5])
+{
+    int k;
+    for (k = 0; k < 5; k++) out[k] = mapped_like(h, r, k);
+}
+
+uint16_t talk_gen_like(int id, int which)
+{
+    GHdr h;
+    DoomoResident buf;
+    const DoomoResident *r = res_of(id, &buf);
+    return r && ghdr(&h) ? mapped_like(&h, r, which) : 0;
+}
+
+void talk_gen_likes(int id, uint16_t out[5])
+{
+    GHdr h;
+    DoomoResident buf;
+    const DoomoResident *r;
+    if (!out) return;
+    r = res_of(id, &buf);
+    if (!r || !ghdr(&h)) {
+        memset(out, 0, 5 * sizeof *out);
+        return;
+    }
+    mapped_likes(&h, r, out);
 }
 
 int talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud)
@@ -290,9 +315,11 @@ int talk_gen_stance(int id, uint16_t topic)
     const DoomoResident *r = res_of(id, &buf);
     uint16_t like[5];
     TalkTraitSet ts;
-    int k, has = 0;
+    GHdr h;
+    int has = 0;
     if (!topic || !talk_db_concept(topic, &c)) return TST_NEUTRAL;
-    for (k = 0; k < 5; k++) like[k] = talk_gen_like(id, k);
+    if (r && ghdr(&h)) mapped_likes(&h, r, like);
+    else memset(like, 0, sizeof like);
     if (id != TALK_PET_ID && r && talk_trait_get(id, &ts)) has = 1;
     return stance_band(stance_score(id, r, &c, topic, like, has ? &ts : NULL,
                                     !has ? 0 : id == TALK_PREVIEW_ID ? talk_preview_stage() : RES_STAGE(r)));
@@ -1399,7 +1426,8 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
             int mood = family_mood(g->sid);
             g->mood = (uint8_t)(mood <= 5 ? TMB_SAD : mood >= 11 ? TMB_HAPPY : TMB_OK);
         } else g->mood = (uint8_t)band_mood(g->r->mood);
-        for (k = 0; k < 5; k++) g->like[k] = talk_gen_like(g->sid, k);
+        /* setup already decoded the grammar header and resident. */
+        mapped_likes(&g->h, g->r, g->like);
         if (g->sid < DOOMO_MAX_RESIDENTS && !(g->r->flags & RF_CUSTOM))
             for (k = 0; k < g->h.ncast; k++)
                 if (g_u16(g->h.cast + 2u * (uint32_t)k, &v) && v == g->sid) g->cast = (uint8_t)k;
@@ -1515,6 +1543,72 @@ static int alt_topicy(const TalkAltInfo *ai)
             (p >= TGP_X_COUNTABLE && p <= TGP_X_GRIEF) || p == TGP_ROOT || (p == TGP_STANCE && v != TST_NEUTRAL))
             return 1;
     }
+    return 0;
+}
+
+/* Check the assembled parts, not a template's potential filler flags.
+ * A topic can be named by the core, the callback, or a retained reason.
+ * Use the topic's authored associations, exactly as the content census
+ * does; a reversed association need not be a suitable reply. */
+static int part_addresses_topic(const Part *p, uint16_t topic, const uint16_t *assoc, int n)
+{
+    int i, j;
+    for (i = 0; i < p->nsaid; i++) {
+        if (p->said[i] == topic) return 1;
+        for (j = 0; j < n; j++) if (p->said[i] == assoc[j]) return 1;
+    }
+    return 0;
+}
+
+/* The rare case where a fully fitted answer lost its subject while parts
+ * were shed. Try at most three authored naming reasons, keeping the core,
+ * the existing hook, and all safety fences. If none fits, keep the original
+ * fitted answer exactly, including its trace. No new persistent storage. */
+static int restore_topic_reason(Gen *g, Part *parts, int *use, char *line, int cap,
+                                int lower, const uint16_t *assoc, int n)
+{
+    static const uint8_t shed[] = { 3, 4, 0, 2 };
+    Part saved, candidate;
+    PartTrace trace;
+    PartTrace *dest_trace = parts[5].trace;
+    int avoid[3], trial[7], i, j, had_reason = use[5];
+    uint8_t depth = g->dlvl;
+    int sym = entry_sym(g, ENT_FIXED, TGE_REASON);
+    if (sym < 0) return 0;
+    if (had_reason) saved = parts[5];
+    candidate.trace = dest_trace ? &trace : NULL;
+    g->dlvl = 0;
+    for (i = 0; i < (int)DOOMO_COUNTOF(avoid); i++) {
+        if (!make_part_avoid(g, sym, 0, &candidate, avoid, i)) break;
+        avoid[i] = candidate.alt;
+        if (!part_addresses_topic(&candidate, g->topic, assoc, n)) continue;
+        if (lower) lower_codes(candidate.text);
+        parts[5] = candidate;
+        memcpy(trial, use, sizeof trial);
+        trial[5] = 1;
+        for (j = 0; j <= (int)DOOMO_COUNTOF(shed); j++) {
+            join(line, cap, parts, trial, 7, NULL, lower);
+            if (fits(line)) {
+                /* Keep the accepted part's genuine fill/alternative trace. */
+                if (dest_trace) *dest_trace = trace;
+                parts[5].trace = dest_trace;
+                memcpy(use, trial, sizeof trial);
+                g->dlvl = depth;
+                g->part = &parts[5];
+                return 1;
+            }
+            if (j < (int)DOOMO_COUNTOF(shed)) trial[shed[j]] = 0;
+        }
+    }
+    if (had_reason) parts[5] = saved;
+    else {
+        /* Unused part; only its trace pointer is read before a later fill. */
+        parts[5].trace = dest_trace;
+    }
+    g->dlvl = depth;
+    g->part = &parts[5];
+    /* Reconstruct the original line, not the last unsuccessful trial. */
+    join(line, cap, parts, use, 7, NULL, lower);
     return 0;
 }
 
@@ -1711,6 +1805,8 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         n = vis_len(line);
         want = n < 8 || (calm && n < 20) || (calm && kindly && !strchr(line, '?') && rng_range(&g->rng, 100) < 30);
         if (want) {
+            unsigned original_parts = 0;
+            for (k = 0; k < 7; k++) if (use[k]) original_parts |= 1u << k;
             g->hook_now = TH_ACK;
             use[6] = make_part(g, entry_sym(g, ENT_FIXED, TGE_HOOK), 0, &parts[6]);
             if (use[6]) {                                    /* TM2F-Q8: another acknowledgement that fits before any part is shed */
@@ -1739,6 +1835,27 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
                 }
                 if (fits(line)) g->plan.hook = TH_ACK; else use[6] = 0;
             }
+            if (!use[6]) {
+                /* A failed optional hook must not delete a previously
+                 * fitting explanation or other accepted line parts. */
+                for (k = 0; k < 7; k++) use[k] = (original_parts >> k) & 1u;
+            }
+        }
+    }
+    if (optional && g->topic && !g->grief && talk_gen_topic_act(g->act) &&
+        have_core_info && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) && !alt_topicy(&ai)) {
+        uint16_t assoc[TALK_ASSOC_TOP];
+        int n, named = 0;
+        /* Most answers mention the exact topic. Do not read the association
+         * bank on that fast path, especially on disc-backed platforms. */
+        for (k = 0; k < 7 && !named; k++)
+            if (use[k]) named = part_addresses_topic(&parts[k], g->topic, NULL, 0);
+        if (!named) {
+            n = talk_db_assoc(g->topic, assoc, NULL);
+            for (k = 0; k < 7 && !named; k++)
+                if (use[k]) named = part_addresses_topic(&parts[k], g->topic, assoc, n);
+            if (!named)
+                restore_topic_reason(g, parts, use, line, (int)sizeof line, lower, assoc, n);
         }
     }
     join(line, (int)sizeof line, parts, use, 7, tr, lower);
@@ -2443,8 +2560,12 @@ static int best_responder(TalkConv *c, uint16_t topic, DoomoRng *rng)
         int id = c->id[k], s, j;
         if (id == TALK_PET_ID) continue;
         s = rel_value(id, c->avatar) / 4 + rng_range(rng, 21) - 10;
-        for (j = 0; j < 3; j++) if (topic && talk_gen_like(id, j) == topic) s += 60;
-        if (topic && (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic)) s -= 60;
+        if (topic) {
+            uint16_t like[5];
+            talk_gen_likes(id, like);
+            for (j = 0; j < 3; j++) if (like[j] == topic) s += 60;
+            if (like[3] == topic || like[4] == topic) s -= 60;
+        }
         if (s > bs) { bs = s; best = k; }
     }
     return best;

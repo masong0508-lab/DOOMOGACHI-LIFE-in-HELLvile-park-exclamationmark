@@ -434,6 +434,38 @@ TEST(talk_visit_archive_keeps_repeat_outings_years_apart)
     CHECK_EQ(ext->size(), later_size);
 }
 
+TEST(talk_visit_archive_keeps_out_of_order_dates_across_save_and_load)
+{
+    const DoomoSaveExt *ext = doomo_save_ext_tvis;
+    TalkVisit rows[4];
+    int venues[ACT_COUNT];
+    uint32_t size;
+    premade_town();
+    sim_init();
+    doomo_town.day = 10;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_CAFE);
+    doomo_town.day = 20;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    doomo_town.day = 12;
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    size = ext->size();
+    talk_visit_note(ID_NANA, DOOMO_PLAYER_ID, ACT_PARK);
+    CHECK_EQ(ext->size(), size);
+    /* Return to the current date before saving. No future-dated record
+     * is written, but the older insertion must not hide the newer one. */
+    doomo_town.day = 20;
+    CHECK_EQ(talk_visit_latest_date(ID_NANA, DOOMO_PLAYER_ID, 0, ACT_PARK), 20);
+    CHECK(save_game(1));
+    CHECK(load_game(1));
+    CHECK_EQ(talk_visit_page(ID_NANA, DOOMO_PLAYER_ID, 0, 0, rows, 4), 3);
+    CHECK_EQ(rows[0].day, 20);
+    CHECK_EQ(rows[1].day, 12);
+    CHECK_EQ(rows[2].day, 10);
+    CHECK_EQ(talk_visit_venues(ID_NANA, DOOMO_PLAYER_ID, 0, venues, ACT_COUNT), 2);
+    CHECK_EQ(talk_visit_venues(ID_NANA, DOOMO_PLAYER_ID, 0, NULL, ACT_COUNT), 2);
+    CHECK(!talk_visit_has(ID_NANA, DOOMO_PLAYER_ID, 0, NULL));
+}
+
 TEST(talk_visit_archive_retains_early_outings_under_daily_churn)
 {
     TalkVisit oldest, newest;

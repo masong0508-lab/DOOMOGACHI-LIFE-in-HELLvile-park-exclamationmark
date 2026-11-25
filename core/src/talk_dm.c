@@ -539,10 +539,10 @@ int talk_dm_consent(const TalkState *s, int who, int act)
 /* ---- stance, affinity --------------------------------------------------------- */
 static int topic_stance(int id, uint16_t topic)
 {
-    int v;
+    /* The generator returns a TST_* category, not its raw signed score.
+     * Do not interpret CON (=2) as positive sentiment or PRO (=1) as neutral. */
     if (!topic || id == TALK_PET_ID) return TST_NEUTRAL;
-    v = talk_gen_stance(id, topic);
-    return v >= 2 ? TST_PRO : v <= -2 ? TST_CON : TST_NEUTRAL;
+    return talk_gen_stance(id, topic);
 }
 
 /* design 5.3: +3 a like, +1 a root the persona type favours, -3 a hate or fear, -1 a dull root */
@@ -552,10 +552,12 @@ static int affinity(int id, uint16_t topic)
     const DoomoResident *r;
     TalkConcept tc;
     uint8_t fav = 0, dull = 0;
+    uint16_t like[5];
     int j, root;
     if (!topic || id == TALK_PET_ID) return 0;
-    for (j = 0; j < 3; j++) if (talk_gen_like(id, j) == topic) return 3;
-    if (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic) return -3;
+    talk_gen_likes(id, like);
+    for (j = 0; j < 3; j++) if (like[j] == topic) return 3;
+    if (like[3] == topic || like[4] == topic) return -3;
     r = res_of(id, &buf);
     if (!r || !talk_db_concept(topic, &tc)) return 0;
     root = talk_db_cat_root(tc.cat);
@@ -699,12 +701,16 @@ static int take_value(int act, int tone, int speech, int expr, int att, int quir
 
 static int topic_term(int id, int act, uint16_t topic)
 {
-    int d, st;
+    int d;
     if (!topic || !act_topical(act)) return 0;
     d = affinity(id, topic);
-    st = topic_stance(id, topic);
-    if (act == TA_OPINE_POS) d += st == TST_PRO ? 2 : st == TST_CON ? -2 : 0;
-    else if (act == TA_OPINE_NEG) d += st == TST_CON ? 2 : st == TST_PRO ? -2 : 0;
+    /* Only agreeing or disagreeing with the concept uses its stance.
+     * Other topical actions need affinity, not five more bank lookups. */
+    if (act == TA_OPINE_POS || act == TA_OPINE_NEG) {
+        int st = topic_stance(id, topic);
+        int lean = st == TST_PRO ? 2 : st == TST_CON ? -2 : 0;
+        d += act == TA_OPINE_POS ? lean : -lean;
+    }
     return d;
 }
 
@@ -742,10 +748,14 @@ int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t top
     if (TA_IS_ROMANCE(act)) return talk_dm_consent(s, slot, act) ? 4 : -3;
     id = s->part[slot].id;
     r = res_of(id, &buf);
-    v = take_value(act, tone, pers(id, PERS_SPEECH), pers(id, PERS_EXPRESSION), pers(id, PERS_ATTITUDE),
-                   pers(id, PERS_QUIRK), r ? r->mood : MOOD_OK, relv(id, s->conv.avatar), topic_term(id, act, topic));
+    v = take_value(act, tone, r ? RES_PERSONA(r, PERS_SPEECH) : 6,
+                   r ? RES_PERSONA(r, PERS_EXPRESSION) : 6, r ? RES_PERSONA(r, PERS_ATTITUDE) : 6,
+                   r ? RES_PERSONA(r, PERS_QUIRK) : 6, r ? r->mood : MOOD_OK,
+                   relv(id, s->conv.avatar), topic_term(id, act, topic));
     if (id != TALK_PET_ID && act > TA_NONE && act < TA_COUNT && !TA_IS_SAFETY(act)) {     /* TM1: the traits' lean */
-        TalkTraitBias b = talk_trait_bias_id(id, act, topic_root(topic), s->conv.aud.any_minor);
+        /* Only accept/deny is used by talk_trait_take; the root-dependent
+         * stance field is not consumed here. Avoid a discarded bank read. */
+        TalkTraitBias b = talk_trait_bias_id(id, act, 0, s->conv.aud.any_minor);
         v = clampi(v + talk_trait_take(&b), -10, 8);
     }
     /* This snapshot came from talk_mem_begin at conversation entry, so
