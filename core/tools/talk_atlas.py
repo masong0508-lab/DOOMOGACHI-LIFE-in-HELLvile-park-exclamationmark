@@ -9,7 +9,10 @@ in source control so every port's existing language-bank build picks them up.
 No extra concept IDs, save fields, or runtime asset format are required.
 """
 import argparse
+import re
 from pathlib import Path
+
+from talkc_safe import hate_key, load_hate
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "talk"
 GRAMMAR = DATA / "grammar" / "en"
@@ -77,9 +80,32 @@ def read_followups(profiles):
         raise ValueError("followups must cover every existing Atlas category")
     return followups
 
+def check_literal_vocabulary(profiles, followups):
+    """Fail on the same exact squeezed-word matches as talkc_gen.
+    
+    Check authored clauses before expansion, rather than discovering a
+    rejected literal after thousands of generated alternatives. The full
+    grammar compiler still runs its other register and safety checks.
+    """
+    def die(where, message):
+        raise ValueError(f"{where}: {message}")
+
+    salt, exact, _ = load_hate(DATA / "safety" / "hate.hash", die, str)
+    blocked = set(exact)
+    checked = {}
+    for key, columns in profiles.items():
+        for column in (*columns, followups[key]):
+            for phrase in column:
+                for word in re.findall(r"[A-Za-z0-9'][A-Za-z0-9'-]*", phrase):
+                    if word not in checked:
+                        checked[word] = hate_key(salt, word) not in blocked
+                    if not checked[word]:
+                        raise ValueError(f"{key}: literal rejected by Talk vocabulary lint: {phrase!r}")
+
 def build():
     categories, profiles = read_profiles()
     followups = read_followups(profiles)
+    check_literal_vocabulary(profiles, followups)
     distinct = set()
     alternatives = 0
     result = {}
