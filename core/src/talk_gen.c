@@ -224,14 +224,11 @@ static const char *name_of(int id, DoomoResident *buf)
     return r ? r->name : "";
 }
 
-uint16_t talk_gen_like(int id, int which)
+static uint16_t mapped_like(const GHdr *h, const DoomoResident *r, int which)
 {
-    GHdr h;
-    DoomoResident buf;
-    const DoomoResident *r = res_of(id, &buf);
     uint16_t v = 0;
     uint32_t at;
-    if (!r || !ghdr(&h)) return 0;
+    if (!r) return 0;
     switch (which) {
     case 0: at = MAP_FOOD + RES_LIKE_FOOD(r) % FOOD_COUNT; break;
     case 1: at = MAP_HOBBY + RES_LIKE_HOBBY(r) % HOBBY_COUNT; break;
@@ -240,8 +237,36 @@ uint16_t talk_gen_like(int id, int which)
     case 4: at = MAP_FOOD + RES_HATE_FOOD(r) % FOOD_COUNT; break;
     default: return 0;
     }
-    if (!g_u16(h.map + 2u * at, &v)) return 0;
+    if (!g_u16(h->map + 2u * at, &v)) return 0;
     return v;
+}
+
+static void mapped_likes(const GHdr *h, const DoomoResident *r, uint16_t out[5])
+{
+    int k;
+    for (k = 0; k < 5; k++) out[k] = mapped_like(h, r, k);
+}
+
+uint16_t talk_gen_like(int id, int which)
+{
+    GHdr h;
+    DoomoResident buf;
+    const DoomoResident *r = res_of(id, &buf);
+    return r && ghdr(&h) ? mapped_like(&h, r, which) : 0;
+}
+
+void talk_gen_likes(int id, uint16_t out[5])
+{
+    GHdr h;
+    DoomoResident buf;
+    const DoomoResident *r;
+    if (!out) return;
+    r = res_of(id, &buf);
+    if (!r || !ghdr(&h)) {
+        memset(out, 0, 5 * sizeof *out);
+        return;
+    }
+    mapped_likes(&h, r, out);
 }
 
 int talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud)
@@ -290,9 +315,11 @@ int talk_gen_stance(int id, uint16_t topic)
     const DoomoResident *r = res_of(id, &buf);
     uint16_t like[5];
     TalkTraitSet ts;
-    int k, has = 0;
+    GHdr h;
+    int has = 0;
     if (!topic || !talk_db_concept(topic, &c)) return TST_NEUTRAL;
-    for (k = 0; k < 5; k++) like[k] = talk_gen_like(id, k);
+    if (r && ghdr(&h)) mapped_likes(&h, r, like);
+    else memset(like, 0, sizeof like);
     if (id != TALK_PET_ID && r && talk_trait_get(id, &ts)) has = 1;
     return stance_band(stance_score(id, r, &c, topic, like, has ? &ts : NULL,
                                     !has ? 0 : id == TALK_PREVIEW_ID ? talk_preview_stage() : RES_STAGE(r)));
@@ -1399,7 +1426,8 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
             int mood = family_mood(g->sid);
             g->mood = (uint8_t)(mood <= 5 ? TMB_SAD : mood >= 11 ? TMB_HAPPY : TMB_OK);
         } else g->mood = (uint8_t)band_mood(g->r->mood);
-        for (k = 0; k < 5; k++) g->like[k] = talk_gen_like(g->sid, k);
+        /* setup already decoded the grammar header and resident. */
+        mapped_likes(&g->h, g->r, g->like);
         if (g->sid < DOOMO_MAX_RESIDENTS && !(g->r->flags & RF_CUSTOM))
             for (k = 0; k < g->h.ncast; k++)
                 if (g_u16(g->h.cast + 2u * (uint32_t)k, &v) && v == g->sid) g->cast = (uint8_t)k;
@@ -2443,8 +2471,12 @@ static int best_responder(TalkConv *c, uint16_t topic, DoomoRng *rng)
         int id = c->id[k], s, j;
         if (id == TALK_PET_ID) continue;
         s = rel_value(id, c->avatar) / 4 + rng_range(rng, 21) - 10;
-        for (j = 0; j < 3; j++) if (topic && talk_gen_like(id, j) == topic) s += 60;
-        if (topic && (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic)) s -= 60;
+        if (topic) {
+            uint16_t like[5];
+            talk_gen_likes(id, like);
+            for (j = 0; j < 3; j++) if (like[j] == topic) s += 60;
+            if (like[3] == topic || like[4] == topic) s -= 60;
+        }
         if (s > bs) { bs = s; best = k; }
     }
     return best;
