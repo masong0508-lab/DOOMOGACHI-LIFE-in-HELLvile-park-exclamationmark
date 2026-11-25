@@ -326,24 +326,32 @@ int talk_db_attrs(int id, uint16_t *ids)
 /* string `idx` of TBK_TXT bank `id` into out */
 static int bank_string(int id, unsigned idx, char *out, int cap)
 {
-    uint8_t h[8], s[128];
-    uint32_t nblocks, base, off, at, n;
+    uint8_t scratch[128];
+    const uint8_t *s;
+    uint32_t nblocks, base, off, at, n, size = db.bank[id].packed;
     unsigned shift;
     out[0] = 0;
-    if (!rd_bank(id, 0, h, 8) || idx >= le16(h)) return -1;
-    shift = h[2];
-    nblocks = le32(h + 4);
-    if (shift > 15 || (idx >> shift) >= nblocks) return -1;
-    if (!rd_bank(id, 8u + 4u * (idx >> shift), s, 4)) return -1;
+    s = talk_db_record(id, 0, scratch, 8);
+    if (!s || idx >= le16(s)) return -1;
+    shift = s[2];
+    nblocks = le32(s + 4);
+    if (shift > 15 || (idx >> shift) >= nblocks || nblocks > (size - 8u) / 4u) return -1;
+    s = talk_db_record(id, 8u + 4u * (idx >> shift), scratch, 4);
+    if (!s) return -1;
     base = le32(s);
-    if (!rd_bank(id, 8u + 4u * nblocks + 2u * idx, s, 2)) return -1;
+    at = 8u + 4u * nblocks;
+    if (2u * idx > size - at) return -1;
+    s = talk_db_record(id, at + 2u * idx, scratch, 2);
+    if (!s) return -1;
     off = le16(s);
+    if (base >= size || off >= size - base) return -1;
     at = base + off;
-    if (at >= db.bank[id].packed) return -1;
-    n = db.bank[id].packed - at;
-    if (n > sizeof(s)) n = sizeof(s);
-    if (!rd_bank(id, at, s, n)) return -1;
-    return txt_decode(s, n, out, cap);
+    n = size - at;
+    if (n > sizeof scratch) n = sizeof scratch;
+    /* Decode directly from mapped cartridge/host memory; streamed banks
+     * still use the identical bounded temporary buffer. */
+    s = talk_db_record(id, at, scratch, n);
+    return s ? txt_decode(s, n, out, cap) : -1;
 }
 
 int talk_db_string(int bank, int idx, char *out, int cap)

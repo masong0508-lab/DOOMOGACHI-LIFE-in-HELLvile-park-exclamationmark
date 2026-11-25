@@ -3410,6 +3410,15 @@ static void talk_draw(void)
 #endif
     py = layout(NULL);
     ph = sh - py;
+    /* While the actual speech bubble owns the input, do not repaint its
+     * inactive menu, scrollbar, title, or duplicate action captions.
+     * Keep the same opaque backdrop band, so room restoration and the
+     * portrait's background stay consistent on both framebuffer pages. */
+    if (T.busy || T.after) {
+        plat_rect(0, py, sw, ph, st->fill);
+        ui_glint_hold(0);
+        return;
+    }
     title = panel_title(ttl, (int)sizeof ttl);
 #if UI_PANELS
     /* The dialogue box continually draws over this region while speaking.

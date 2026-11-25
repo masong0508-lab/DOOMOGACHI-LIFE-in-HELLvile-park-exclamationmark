@@ -509,6 +509,7 @@ typedef struct PartTrace {
 typedef struct Part {
     char text[PART_MAX];
     int alt;                    /* its top alternative, -1 none */
+    uint16_t rule;              /* selected owner, retained through nested expansion */
     uint16_t said[4];            /* the topic bridge also needs these during play */
     uint8_t face, flags, nsaid;
     PartTrace *trace;
@@ -823,14 +824,17 @@ static int pred_raw(Gen *g, int p, int v)
 
 static int terms_ok(Gen *g, uint16_t first, int n)
 {
+    uint8_t scratch[30];
+    const uint8_t *t;
     int i;
-    for (i = 0; i < n; i++) {
-        uint8_t scratch[2];
-        const uint8_t *t;
-        int r;
-        t = talk_db_record(TB_GRAMMAR, g->h.terms + 2u * (uint32_t)(first + i), scratch, sizeof scratch);
-        if (!t) return 0;
-        r = pred(g, t[0] & 0x7F, t[1]);
+    if (!n) return 1;
+    /* The compiler bounds a guard at fifteen terms. Borrow one immutable
+     * ROM span, or stream it once into this small scratch on disc ports. */
+    if (n < 0 || n > 15 || (uint32_t)first + (uint32_t)n > g->h.nterms) return 0;
+    t = talk_db_record(TB_GRAMMAR, g->h.terms + 2u * first, scratch, 2u * (uint32_t)n);
+    if (!t) return 0;
+    for (i = 0; i < n; i++, t += 2) {
+        int r = pred(g, t[0] & 0x7F, t[1]);
         if ((t[0] & 0x80) ? r : !r) return 0;
     }
     return 1;
@@ -899,7 +903,8 @@ static int stance_clash(const Gen *g, int act)
     return (g->stance == TST_PRO && side < 0) || (g->stance == TST_CON && side > 0);
 }
 
-static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt *selected)
+static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
+                GAlt *selected, uint16_t *owner)
 {
     uint8_t s[4], adjacency[16];
     int i, best = -1, best_level = 3;
@@ -954,6 +959,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt
                 if (a >= r.alt_first + r.nalt || !rd_alt(&g->h, a, selected)) return -1;
                 best = a;
                 best_level = 0;
+                if (owner) *owner = rk;
             }
             continue;
         }
@@ -973,6 +979,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt
                 best = a;
                 best_level = lv;
                 *selected = al;
+                if (owner) *owner = rk;
             }
         }
     }
@@ -1221,7 +1228,7 @@ static void expand_sym(Gen *g, int sym)
     if (++g->depth > MAX_DEPTH) { g->fail = 1; g->depth--; return; }
     for (;;) {
         GAlt selected;
-        int alt = pick(g, sym, 0, avoid, navoid, &selected);
+        int alt = pick(g, sym, 0, avoid, navoid, &selected, NULL);
         if (alt < 0) { g->fail = 1; break; }
         g->fail = 0;
         expand_alt(g, alt, &selected);
@@ -1250,7 +1257,7 @@ static int make_part_avoid(Gen *g, int sym, int novelty, Part *p, const int *pre
     if (sym < 0) return 0;
     g->part = p;
     while (navoid < AVOID_MAX * 2) {
-        p->alt = pick(g, sym, novelty, avoid, navoid, &a);
+        p->alt = pick(g, sym, novelty, avoid, navoid, &a, &p->rule);
         if (p->alt < 0) return 0;
         p->nsaid = 0;
         if (p->trace) { p->trace->nalt = 0; p->trace->nfill = 0; }
@@ -1417,13 +1424,42 @@ static int is_fact_pred(int p)
     }
 }
 
+/* The picker already knows which rule owns the chosen alternative.
+ * Preserve that ID across nested fragment expansion rather than binary
+ * searching the growing rule table after every generated core. */
+static int alt_info_rows(const GHdr *h, int k, const GRule *r, const GAlt *a, TalkAltInfo *out)
+{
+    int nr = DOOMO_MIN((int)r->nterm, 16);
+    int na = DOOMO_MIN((int)a->nterm, 16 - nr);
+    memset(out, 0, sizeof *out);
+    out->rule = (uint16_t)k;
+    out->act = r->act;
+    out->rflags = r->flags;
+    out->aflags = a->flags;
+    out->weight = a->weight;
+    if ((nr && ((uint32_t)r->term_first + (uint32_t)nr > h->nterms ||
+                !talk_db_read(TB_GRAMMAR, h->terms + 2u * r->term_first, out->term, 2u * (uint32_t)nr))) ||
+        (na && ((uint32_t)a->term_first + (uint32_t)na > h->nterms ||
+                !talk_db_read(TB_GRAMMAR, h->terms + 2u * a->term_first, out->term + 2 * nr, 2u * (uint32_t)na))))
+        return 0;
+    out->nterm = (uint8_t)(nr + na);
+    return 1;
+}
+
+static int alt_info_known(const GHdr *h, int k, int alt, TalkAltInfo *out)
+{
+    GRule r;
+    GAlt a;
+    return rd_rule(h, k, &r) && alt >= r.alt_first && alt < r.alt_first + r.nalt &&
+           rd_alt(h, alt, &a) && alt_info_rows(h, k, &r, &a, out);
+}
+
 /* the callback kind an alternative stands on (its first positive fact term) */
-static int cb_kind(const GHdr *h, int alt)
+static int cb_kind(const GHdr *h, int alt, int owner)
 {
     TalkAltInfo ai;
     int i;
-    (void)h;
-    if (!talk_gen_alt_info(alt, &ai)) return TCB_NONE;
+    if (!alt_info_known(h, owner, alt, &ai)) return TCB_NONE;
     for (i = 0; i < ai.nterm; i++) {
         int k;
         if (ai.term[2 * i] & 0x80) continue;
@@ -1438,7 +1474,7 @@ int talk_gen_alt_info(int alt, TalkAltInfo *out)
     GHdr h;
     GRule r;
     GAlt a;
-    int k, i, lo, hi;
+    int k, lo, hi;
     if (!out || !ghdr(&h) || !rd_alt(&h, alt, &a)) return 0;
     memset(out, 0, sizeof *out);
     /* the rule that owns it: rules are in alternative order */
@@ -1452,18 +1488,7 @@ int talk_gen_alt_info(int alt, TalkAltInfo *out)
         else if (alt >= r.alt_first + r.nalt) lo = mid + 1;
         else { k = mid; break; }
     }
-    if (k < 0) return 0;
-    out->rule = (uint16_t)k;
-    out->act = r.act;
-    out->rflags = r.flags;
-    out->aflags = a.flags;
-    out->weight = a.weight;
-    for (i = 0; i < r.nterm + a.nterm && i < 16; i++) {
-        uint32_t t = i < r.nterm ? (uint32_t)(r.term_first + i) : (uint32_t)(a.term_first + i - r.nterm);
-        if (!talk_db_read(TB_GRAMMAR, h.terms + 2u * t, out->term + 2 * i, 2)) return 0;
-    }
-    out->nterm = (uint8_t)i;
-    return 1;
+    return k >= 0 && alt_info_rows(&h, k, &r, &a, out);
 }
 
 /* ---- the line ---------------------------------------------------------- */
@@ -1765,7 +1790,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         if (!got && ntoo && !relaxed) { ntoo = 0; relaxed = 1; try_--; continue; }    /* the shorter cores ran out: any core, nothing required */
         if (!got) continue;
         use[1] = 1;
-        have_core_info = talk_gen_alt_info(parts[1].alt, &ai);
+        have_core_info = alt_info_known(&g->h, parts[1].rule, parts[1].alt, &ai);
         lower = have_core_info && (ai.rflags & RF_LOWER);
         if (optional && !lower) {
             if (r < 30 + (loud >= 10 ? 15 : 0) - (loud <= 5 ? 15 : 0))
@@ -1986,7 +2011,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         tr->tic = 0xFF;
         tr->core_alt = (uint16_t)parts[1].alt;
         if (use[2]) {
-            tr->cb = (uint8_t)cb_kind(&g->h, parts[2].alt);
+            tr->cb = (uint8_t)cb_kind(&g->h, parts[2].alt, parts[2].rule);
             if (tr->cb == TCB_LIKE || tr->cb == TCB_FEAR) tr->cb_val = g->topic;
             else if (tr->cb == TCB_MEMORY) tr->cb_val = c->mem_topic[g->who];
             else if (tr->cb) talk_gen_fact(g->sid, tr->cb, &tr->cb_val);

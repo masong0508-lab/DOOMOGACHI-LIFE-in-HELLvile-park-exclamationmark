@@ -903,8 +903,12 @@ static void list_draw(const UiList *l, int x, int y, int w, int style, int still
         line[n] = 0;
         pieces = tr_pieces(tr, txt);
         if (idx == l->sel) {
-            ui_pill(x + 9, ry, w - 9 - (bar ? 6 : 0), UI_LIST_ROW_H - 1,
-                    st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
+            if (still) {
+                /* Talk uses a clear, matte focus row, without repeated
+                 * bevel/shadow work as the player scrolls. */
+                plat_rect(x + 9, ry, w - 9 - (bar ? 6 : 0), UI_LIST_ROW_H - 1, st->accent_d);
+            } else ui_pill(x + 9, ry, w - 9 - (bar ? 6 : 0), UI_LIST_ROW_H - 1,
+                           st->accent_d, ui_darker(st->accent_d), ui_lighter(st->accent_d));
             cursor_draw(x, ry + 2, still);
             text_draw(x + 13, ry + 2, line, locked ? st->text_dim : st->text, pieces);
         } else {
