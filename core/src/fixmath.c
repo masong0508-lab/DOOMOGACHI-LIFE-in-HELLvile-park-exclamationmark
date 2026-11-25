@@ -222,7 +222,7 @@ fix16 fx_dist(fix16 dx, fix16 dy)
      * gives the same result in half the steps (and the GBA's THUMB code
      * avoids the 64-bit multiplies and shifts: the raycaster's actors call
      * this for every sprite every frame) */
-    if ((uint32_t)(dx + 46340) <= 92680u && (uint32_t)(dy + 46340) <= 92680u) {
+    if (((uint32_t)dx + 46340u) <= 92680u && ((uint32_t)dy + 46340u) <= 92680u) {
         uint32_t ux = (uint32_t)(dx < 0 ? -dx : dx), uy = (uint32_t)(dy < 0 ? -dy : dy);
         return (fix16)fx_isqrt(ux * ux + uy * uy);
     }
