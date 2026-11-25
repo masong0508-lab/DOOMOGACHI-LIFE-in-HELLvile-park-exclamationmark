@@ -560,13 +560,31 @@ static int q_linked(uint16_t active, uint16_t candidate)
     return 0;
 }
 
+/* A cold opening may offer a subject, but it must be valid for the
+ * audience and related to an existing thread. Never force a segue out
+ * of grief, care or an argument. The choice remains the player's. */
+static uint16_t opening_subject(const TalkState *s, uint16_t active, uint16_t fresh)
+{
+    uint16_t ids[TALK_ASSOC_TOP];
+    int i, n;
+    if (!fresh) return TC_NONE;
+    if (q_linked(active, fresh) && talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh))
+        return fresh;
+    if (!active) return TC_NONE;
+    n = talk_db_assoc(active, ids, NULL);
+    for (i = 0; i < n; i++)
+        if (ids[i] != active && talk_gen_concept_ok(ids[i], &s->conv.aud) && !q_grief(ids[i]))
+            return ids[i];
+    return TC_NONE;
+}
+
 int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt, TalkSugg *out)
 {
     QCtx q;
     TalkSugg tmp[TALK_QUICK_MAX];
     const TalkLine *th;
     const uint8_t *fl = NULL, *sl = NULL;
-    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, directed, resume = 0, bridge = 0;
+    int tslot = -1, act = TA_NONE, b = -1, i, fn, sn, argue, directed, resume = 0, bridge = 0, opening;
     int8_t bridge_to = -1;
     uint32_t h;
     if (!s || !out || (s->flags & TDF_OVER)) return 0;
@@ -600,7 +618,10 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
             q.topic = s->conv.mem_topic[slot];
     }
     if (q.topic && (!talk_gen_concept_ok(q.topic, &s->conv.aud) || q_grief(q.topic))) q.topic = TC_NONE;
-    q.fresh = fresh && !q.sincere && q_linked(q.topic, fresh) &&
+    opening = !s->turn && !q.sincere && !s->arg_step && !(s->flags & TDF_CARE) &&
+              s->tension < TALK_TENSION_ARGUE;
+    q.fresh = opening ? opening_subject(s, q.topic, fresh) :
+              fresh && !q.sincere && !(s->flags & TDF_CARE) && q_linked(q.topic, fresh) &&
               talk_gen_concept_ok(fresh, &s->conv.aud) && !q_grief(fresh)
               ? fresh : TC_NONE;
     /* An associative callback must come from this speaker's real past
@@ -651,6 +672,11 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
         q_from(&q, ql_sinc, (int)sizeof ql_sinc, slot, h >> 9, tmp);
         q_from(&q, ql_sinc, (int)sizeof ql_sinc, slot, h >> 11, tmp);
     } else {
+        /* An opening subject must be reachable in at most three presses,
+         * independent of the menu seed or whether the opener named a topic.
+         * Later conversations keep the existing earned-bridge policy. */
+        if (opening && q.fresh)
+            q_add(&q, NULL, TA_CHANGE_TOPIC, h >> 9, tmp);
         if (q.topic && th) {
             /* Continue an existing thought first; changing subjects is a
              * visible, deliberate choice only for a linked candidate. */
@@ -881,7 +907,8 @@ static void quick_refresh(void)
     uint32_t h = doomo_hash32(T.qsalt * 2654435761u + 0x51u);
     for (i = 0; i < T.nstock && !fresh; i++) {
         uint16_t c = T.stock[(h + (uint32_t)i) % (uint32_t)T.nstock];
-        if (c != T.topic && c != T.s.topic_stack[0]) fresh = c;
+        if (c != T.topic && c != T.s.topic_stack[0] &&
+            talk_gen_concept_ok(c, &T.s.conv.aud) && !q_grief(c)) fresh = c;
     }
     T.nquick = (uint8_t)talk_quick_replies(&T.s, T.to, T.topic, fresh, T.qsalt++, T.quick);
 }
