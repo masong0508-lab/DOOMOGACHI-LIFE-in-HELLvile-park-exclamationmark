@@ -1650,8 +1650,22 @@ static void picker_topic_name(int index, uint16_t c, char *out, int cap)
         char *cached = T.journal_label.topics.names[slot];
         unsigned bit = 1u << slot;
         if (T.journal_label.topics.top != T.list.top) {
+            int delta = T.list.top - T.journal_label.topics.top;
+            /* A one-row scroll keeps five decoded labels. A full page
+             * jump invalidates all; a freshly opened page has no cache. */
+            if (T.journal_label.topics.top < 0 || delta <= -6 || delta >= 6) {
+                T.journal_label.topics.valid = 0;
+            } else if (delta > 0) {
+                memmove(T.journal_label.topics.names[0], T.journal_label.topics.names[delta],
+                        (size_t)(6 - delta) * sizeof T.journal_label.topics.names[0]);
+                T.journal_label.topics.valid >>= delta;
+            } else {
+                int back = -delta;
+                memmove(T.journal_label.topics.names[back], T.journal_label.topics.names[0],
+                        (size_t)(6 - back) * sizeof T.journal_label.topics.names[0]);
+                T.journal_label.topics.valid = (uint8_t)((T.journal_label.topics.valid << back) & 63u);
+            }
             T.journal_label.topics.top = (int16_t)T.list.top;
-            T.journal_label.topics.valid = 0;
         }
         if (T.journal_label.topics.valid & bit) {
             size_t n = strlen(cached);
@@ -1686,22 +1700,22 @@ static const char *row_text(int index, char *buf)
     case K_TOPIC:
         doomo_snprintf(buf, 48, "Topic: %s >", T.topic == TC_NONE ? "any" : T.journal_label.menu_topic);
         break;
-    case K_TYPE: doomo_snprintf(buf, 48, "Type your own line..."); break;
+    case K_TYPE: memcpy(buf, "Type your own line...", sizeof "Type your own line..."); break;
     case K_TO:
         doomo_snprintf(buf, 48, "To: %s <>", T.to < 0 ? "everyone" : res_name(T.ids[T.to]));
         break;
-    case K_INVITE: doomo_snprintf(buf, 48, "Add someone to chat >"); break;
+    case K_INVITE: memcpy(buf, "Add someone to chat >", sizeof "Add someone to chat >"); break;
     case K_OUT:
         if (r->arg) doomo_snprintf(buf, 48, T.followup_day == TALK_VISIT_UNDATED ?
                                   "Plan a visit to %s >" : "Go back to %s >", outing[r->arg - 1].label);
-        else doomo_snprintf(buf, 48, "Ask to go somewhere >");
+        else memcpy(buf, "Ask to go somewhere >", sizeof "Ask to go somewhere >");
         break;
-    case K_PLAY: doomo_snprintf(buf, 48, "Play together"); break;
-    case K_SHOW: doomo_snprintf(buf, 48, "Show an item >"); break;
+    case K_PLAY: memcpy(buf, "Play together", sizeof "Play together"); break;
+    case K_SHOW: memcpy(buf, "Show an item >", sizeof "Show an item >"); break;
     case K_SHOWITEM: doomo_snprintf(buf, 48, "Show %s", doomo_items[r->arg].name); break;
-    case K_GIVE: doomo_snprintf(buf, 48, "Give a gift >"); break;
+    case K_GIVE: memcpy(buf, "Give a gift >", sizeof "Give a gift >"); break;
     case K_GIVEITEM: doomo_snprintf(buf, 48, "Give %s", doomo_items[r->arg].name); break;
-    case K_REMEMBER: doomo_snprintf(buf, 48, "Remember when we...?"); break;
+    case K_REMEMBER: memcpy(buf, "Remember when we...?", sizeof "Remember when we...?"); break;
     case K_TOPIC_MEMORY:
         doomo_snprintf(buf, 48, "Recall %s (%s)", sim_venue_name(r->arg), T.journal_label.main.date);
         break;
@@ -1709,7 +1723,7 @@ static const char *row_text(int index, char *buf)
         if (r->arg == 1)
             doomo_snprintf(buf, 48, r->v == TQS_READY ?
                            "Favor ready: check request >" : "Your favor: check goal >");
-        else doomo_snprintf(buf, 48, "Our history >");
+        else memcpy(buf, "Our history >", sizeof "Our history >");
         break;
     case K_HISTORY_INFO:
         doomo_snprintf(buf, 48, "Favors: %d open >", (int)r->arg);
@@ -1745,12 +1759,12 @@ static const char *row_text(int index, char *buf)
                        r->arg == TALK_SHARED_GIFTED ? "Give another gift >" :
                        "Invite them out again >");
         break;
-    case K_QUIRK: doomo_snprintf(buf, 48, "Tell me one little oddity"); break;
-    case K_DAY_PLAN: doomo_snprintf(buf, 48, "Ask about their day"); break;
+    case K_QUIRK: memcpy(buf, "Tell me one little oddity", sizeof "Tell me one little oddity"); break;
+    case K_DAY_PLAN: memcpy(buf, "Ask about their day", sizeof "Ask about their day"); break;
     case K_HISTORY_LIKE: {
         int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
         const DoomoResident *who = id >= 0 ? town_res(id) : NULL;
-        if (!who) { doomo_snprintf(buf, 48, "A remembered preference"); break; }
+        if (!who) { memcpy(buf, "A remembered preference", sizeof "A remembered preference"); break; }
         switch (r->arg) {
         case 0: doomo_snprintf(buf, 48, "Favorite food: %s >",
                                 doomo_food_names[RES_LIKE_FOOD(who) % FOOD_COUNT]); break;
@@ -1788,18 +1802,18 @@ static const char *row_text(int index, char *buf)
                            *detail ? " - " : "", detail);
         }
         break;
-    case K_SHARED_TOPICS: doomo_snprintf(buf, 48, "Shared topics >"); break;
+    case K_SHARED_TOPICS: memcpy(buf, "Shared topics >", sizeof "Shared topics >"); break;
     case K_SHARED_PAIR:
         doomo_snprintf(buf, 48, "%s + %s >", T.journal_label.rows[2 * r->arg], T.journal_label.rows[2 * r->arg + 1]);
         break;
     case K_SHARED_PAGE: doomo_snprintf(buf, 48, "%s", r->arg ? "Older pairs >" : "< Recent pairs"); break;
     case K_SHARED_ASK: doomo_snprintf(buf, 48, "Ask about %s", T.journal_label.subjects[r->arg % 2]); break;
-    case K_JOURNAL_REPAIR: doomo_snprintf(buf, 48, "Apologize for past hurt"); break;
+    case K_JOURNAL_REPAIR: memcpy(buf, "Apologize for past hurt", sizeof "Apologize for past hurt"); break;
     case K_CONCERN:
         doomo_snprintf(buf, 48, "On their mind: %s >", doomo_problem_names[r->arg]);
         break;
     case K_CONCERN_INFO:
-        doomo_snprintf(buf, 48, "Hear what happened");
+        memcpy(buf, "Hear what happened", sizeof "Hear what happened");
         break;
     case K_CONCERN_ACT: {
         const char *action = "Help with this";
@@ -1819,11 +1833,11 @@ static const char *row_text(int index, char *buf)
         doomo_snprintf(buf, 48, "%s >", action);
         break;
     }
-    case K_HELP: doomo_snprintf(buf, 48, "Help with their needs >"); break;
-    case K_COMFORT: doomo_snprintf(buf, 48, "Comfort them"); break;
-    case K_CLEAN: doomo_snprintf(buf, 48, "Help them wash"); break;
-    case K_FEED: doomo_snprintf(buf, 48, "Offer something to eat >"); break;
-    case K_HEAL: doomo_snprintf(buf, 48, "Use medicine >"); break;
+    case K_HELP: memcpy(buf, "Help with their needs >", sizeof "Help with their needs >"); break;
+    case K_COMFORT: memcpy(buf, "Comfort them", sizeof "Comfort them"); break;
+    case K_CLEAN: memcpy(buf, "Help them wash", sizeof "Help them wash"); break;
+    case K_FEED: memcpy(buf, "Offer something to eat >", sizeof "Offer something to eat >"); break;
+    case K_HEAL: memcpy(buf, "Use medicine >", sizeof "Use medicine >"); break;
     case K_FEEDITEM: doomo_snprintf(buf, 48, "Offer %s", doomo_items[r->arg].name); break;
     case K_HEALITEM: doomo_snprintf(buf, 48, "Use %s", doomo_items[r->arg].name); break;
     case K_OUTING:
@@ -1835,14 +1849,14 @@ static const char *row_text(int index, char *buf)
             doomo_snprintf(buf, 48, "Options (%s, %s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]), tn);
         else if (T.n > 1) doomo_snprintf(buf, 48, "Options (%s) >", T.to < 0 ? "all" : res_name(T.ids[T.to]));
         else if (T.topic != TC_NONE) doomo_snprintf(buf, 48, "Options (%s) >", tn);
-        else doomo_snprintf(buf, 48, "Options >");
+        else memcpy(buf, "Options >", sizeof "Options >");
         break;
     case K_QUICK:
         expand_named(T.quick[r->arg].text, T.quick[r->arg].topic,
                      T.journal_label.main.quick[r->arg], buf, 48);
         break;
-    case K_BYE: doomo_snprintf(buf, 48, "Say goodbye"); break;
-    case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
+    case K_BYE: memcpy(buf, "Say goodbye", sizeof "Say goodbye"); break;
+    case K_NOTOPIC: memcpy(buf, "Any topic", sizeof "Any topic"); break;
     case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
     case K_TOPIC_LINK:
         picker_topic_name(index, r->v, tn, (int)sizeof tn);

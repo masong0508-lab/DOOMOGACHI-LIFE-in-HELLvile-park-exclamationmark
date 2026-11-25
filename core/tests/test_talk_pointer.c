@@ -233,6 +233,39 @@ TEST(pointer_talk_scroll_options_invite_people_typed_line)
     CHECK(scene_top() == &SCENE_TEXT_ENTRY);
 }
 
+/* Scrolling both directions must preserve exactly the same label for
+ * each topic. Offscreen debug reads must not disturb the live viewport. */
+TEST(pointer_talk_topic_labels_survive_scrolling)
+{
+    char expected[40][48], actual[48];
+    int i, k, count;
+    if (!open_talk()) { CHECK(!"the Talk screen opened"); return; }
+    for (i = 0; i < 4; i++) click(bar_x(), ly(5));
+    click(LX, ly(4));
+    CHECK_EQ(page_of(), 4);
+    click(LX, ly(0));
+    CHECK_EQ(page_of(), 2);
+    count = rows_of();
+    CHECK(count > 6 && count <= 40);
+    if (count <= 6 || count > 40) return;
+    for (i = 0; i < count; i++) talk_scene_row(i, expected[i]);
+    for (k = 0; k < 2; k++) {
+        for (i = 0; i < count - 1; i++) {
+            int top = 0, j;
+            press(k == 0 ? BTN_DOWN : BTN_UP);
+            view(NULL, NULL, &top, NULL, NULL, NULL, NULL);
+            talk_scene_row(k ? count - 1 : 0, actual);
+            CHECK_STR(actual, expected[k ? count - 1 : 0]);
+            for (j = top; j < count && j < top + 6; j++) {
+                talk_scene_row(j, actual);
+                CHECK_STR(actual, expected[j]);
+            }
+        }
+    }
+    click(LX, hy());
+    CHECK_EQ(page_of(), 0);
+}
+
 /* a quick reply: the pad (DOWN to the row, A) and the pointer (a click on it) say the same thing, the text the
  * row showed. The talk's seed differs between the two openings, so each is held to its own row. */
 TEST(pointer_talk_quick_reply_equals_the_pad)

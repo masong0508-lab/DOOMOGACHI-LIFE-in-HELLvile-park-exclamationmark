@@ -879,11 +879,20 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid, GAlt
             tot[0] += w;
             if ((uint32_t)rng_range(&g->rng, (int)(tot[0] > 65536u ? 65536u : tot[0])) < w) {
                 rank = rng_range(&g->rng, count);
-                a = r.alt_first;
-                if (!navoid) a += rank;
-                else for (; a < r.alt_first + r.nalt; a++) {
-                    if (avoided(avoid, navoid, a)) continue;
-                    if (rank-- == 0) break;
+                a = r.alt_first + rank;
+                if (navoid) {
+                    int previous;
+                    /* Map the eligible rank to its absolute row. At most
+                     * navoid distinct holes can move it; avoid a linear
+                     * walk across up to 255 alternatives on a retry. */
+                    do {
+                        int skipped = 0;
+                        previous = a;
+                        for (j = 0; j < navoid; j++)
+                            if (avoid[j] >= r.alt_first && avoid[j] <= previous &&
+                                !avoided(avoid, j, avoid[j])) skipped++;
+                        a = r.alt_first + rank + skipped;
+                    } while (a != previous);
                 }
                 if (a >= r.alt_first + r.nalt || !rd_alt(&g->h, a, selected)) return -1;
                 best = a;
