@@ -822,7 +822,7 @@ static int pred_raw(Gen *g, int p, int v)
     }
 }
 
-static int terms_ok(Gen *g, uint16_t first, int n)
+static int terms_ok(Gen *g, uint16_t first, int n, const uint8_t *mapped)
 {
     uint8_t scratch[30];
     const uint8_t *t;
@@ -831,7 +831,8 @@ static int terms_ok(Gen *g, uint16_t first, int n)
     /* The compiler bounds a guard at fifteen terms. Borrow one immutable
      * ROM span, or stream it once into this small scratch on disc ports. */
     if (n < 0 || n > 15 || (uint32_t)first + (uint32_t)n > g->h.nterms) return 0;
-    t = talk_db_record(TB_GRAMMAR, g->h.terms + 2u * first, scratch, 2u * (uint32_t)n);
+    t = mapped ? mapped + 2u * first :
+        talk_db_record(TB_GRAMMAR, g->h.terms + 2u * first, scratch, 2u * (uint32_t)n);
     if (!t) return 0;
     for (i = 0; i < n; i++, t += 2) {
         int r = pred(g, t[0] & 0x7F, t[1]);
@@ -917,8 +918,10 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
                 GAlt *selected, uint16_t *owner)
 {
     uint8_t scratch[4], adjacency[16];
-    const uint8_t *s, *refs = NULL, *rules = NULL, *alts = NULL;
+    const uint8_t *s, *refs = NULL, *rules = NULL, *alts = NULL, *terms = NULL;
     unsigned first, count;
+    uint16_t last_first = 0;
+    int last_n = 0, last_ok = 0;
     int i, best = -1, best_level = 3;
     int check_adj = g->adj && g->depth == 0;
     uint32_t tot[3] = { 0, 0, 0 };
@@ -935,6 +938,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
         refs = talk_db_record(TB_GRAMMAR, g->h.refs + 2u * first, NULL, 2u * count);
         rules = talk_db_record(TB_GRAMMAR, g->h.rules, NULL, 8u * g->h.nrules);
         alts = talk_db_record(TB_GRAMMAR, g->h.alts, NULL, 8u * g->h.nalts);
+        terms = talk_db_record(TB_GRAMMAR, g->h.terms, NULL, 2u * g->h.nterms);
     }
     if (check_adj && !act_row_h(&g->h, g->act, adjacency)) return -1;
     for (i = 0; i < (int)count; i++) {
@@ -946,7 +950,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
         if (rules && rk < g->h.nrules) unpack_rule(rules + 8u * rk, &r);
         else if (!rd_rule(&g->h, rk, &r)) return -1;
         if (check_adj && !adjacent_row(adjacency, r.act)) continue;                     /* K-10 banks */
-        if (!terms_ok(g, r.term_first, r.nterm)) continue;
+        if (r.nterm && !terms_ok(g, r.term_first, r.nterm, terms)) continue;
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
             if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
@@ -959,8 +963,9 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             GAlt al;
             int count = r.nalt, j, rank;
             uint32_t w;
-            if (!rd_alt(&g->h, r.alt_first, &al)) return -1;
-            if (!terms_ok(g, al.term_first, al.nterm)) continue;
+            if (alts && r.alt_first < g->h.nalts) unpack_alt(alts + 8u * r.alt_first, &al);
+            else if (!rd_alt(&g->h, r.alt_first, &al)) return -1;
+            if (al.nterm && !terms_ok(g, al.term_first, al.nterm, terms)) continue;
             for (j = 0; j < navoid; j++)
                 if (avoid[j] >= r.alt_first && avoid[j] < r.alt_first + r.nalt &&
                     !avoided(avoid, j, avoid[j])) count--;
@@ -984,7 +989,9 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
                         a = r.alt_first + rank + skipped;
                     } while (a != previous);
                 }
-                if (a >= r.alt_first + r.nalt || !rd_alt(&g->h, a, selected)) return -1;
+                if (a >= r.alt_first + r.nalt) return -1;
+                if (alts && a < g->h.nalts) unpack_alt(alts + 8u * (uint32_t)a, selected);
+                else if (!rd_alt(&g->h, a, selected)) return -1;
                 best = a;
                 best_level = 0;
                 if (owner) *owner = rk;
@@ -1000,7 +1007,18 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             else if (!rd_alt(&g->h, a, &al)) continue;
             if ((al.flags & AF_SWEAR) && g->c->swears) continue;                    /* K-9 */
             if ((al.flags & AF_JMAT) && !pred(g, TGP_JMAT, 0)) continue;           /* K-6 */
-            if (!terms_ok(g, al.term_first, al.nterm)) continue;
+            if (al.nterm) {
+                /* The compiler interns identical guard spans. During this
+                 * scan the context is fixed: only the RNG advances.
+                 * Cache one repeated span, only on immutable mapped data;
+                 * streamed readers retain their existing retry semantics. */
+                if (!terms || last_first != al.term_first || last_n != al.nterm) {
+                    last_ok = terms_ok(g, al.term_first, al.nterm, terms);
+                    last_first = al.term_first;
+                    last_n = al.nterm;
+                }
+                if (!last_ok) continue;
+            }
             w = al.weight * ((al.flags & AF_CAST) ? 8u : 1u);                      /* the cast's own lines win */
             lv = novelty ? recent(g, a) : 0;
             tot[lv] += w;

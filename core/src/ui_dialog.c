@@ -588,9 +588,24 @@ static int glyph_dy(int g, int shown, uint8_t *c, uint8_t accent)
     return dy;
 }
 
+/* Every glyph before this index has offset zero and the ordinary color.
+ * Only the last HOP_RING reveals can still hop. Before the 16-bit reveal
+ * clock wraps, its newest timestamp also proves when the entire ring is
+ * settled. Explicit wave/pop effects remain on the original glyph path. */
+static int settled_prefix(int shown)
+{
+    int n = d_dead ? shown : DOOMO_MAX(0, shown - HOP_RING);
+    if (!d_dead && shown > 0 && d_line_t <= 65535 &&
+        d_line_t - d_rev[(shown - 1) & (HOP_RING - 1)] >= 6)
+        n = shown;
+    if (d_wave_from != 0xFF) n = DOOMO_MIN(n, (int)d_wave_from);
+    if (d_big_from != 0xFF) n = DOOMO_MIN(n, (int)d_big_from);
+    return n;
+}
+
 /* The page, line by line (ui.c's wrap), in runs of glyphs that share an
  * offset and a colour: settled text is one ui_text per line. */
-static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, uint8_t accent)
+static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, uint8_t accent, int settled)
 {
     const char *p = e->text + d_page;
     char run[64];
@@ -603,7 +618,16 @@ static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, ui
         if (n > 63) n = 63;
         while (k < n) {
             uint8_t c = col, c2;
-            int dy = glyph_dy(pos + k, shown, &c, accent), j = k + 1;
+            int dy, j;
+            if (pos + k < settled) {
+                dy = 0;
+                j = DOOMO_MIN(n, settled - pos);
+            } else {
+                dy = glyph_dy(pos + k, shown, &c, accent);
+                j = k + 1;
+            }
+            /* Merge with a matching animated glyph exactly as before:
+             * ui_text still receives the very same runs and translations. */
             while (j < n && (c2 = col, glyph_dy(pos + j, shown, &c2, accent) == dy) && c2 == c) j++;
             memcpy(run, p + pos + k, (size_t)(j - k));
             run[j - k] = 0;
@@ -615,13 +639,13 @@ static void dlg_text(const DlgEntry *e, const DlgBox *b, int by, uint8_t col, ui
 }
 
 /* (G7) the top row of the page's text as dlg_text() draws it this frame */
-static int text_top(const DlgEntry *e, const DlgBox *b, int shown, int by)
+static int text_top(const DlgEntry *e, const DlgBox *b, int shown, int by, int settled)
 {
     const char *p = e->text + d_page;
     int n = ui_wrap_skip(p, b->tw, 1), k, top = by;
     uint8_t c;
     if (n > shown) n = shown;
-    for (k = 0; k < n; k++) {
+    for (k = settled; k < n; k++) {
         int dy = glyph_dy(k, shown, &c, 0);
         if (by + dy < top) top = by + dy;
     }
@@ -637,7 +661,7 @@ static void dlg_draw(void)
     int t = (int)scene_ticks(), len, slide, portrait, pill, shown, done, last;
     int expr = 0, bob = 0, sx = 256, sy = 256, px = 0, talking = 0, pop = 256;
     int heart = 0, hbob = 0, choice = 0, cw = 0, ch = 0, cx = 0, cy = 0, top, i, use;
-    int hx0, hx1, hy0, hy1;
+    int hx0, hx1, hy0, hy1, settled;
     const DoomoImage *pimg = NULL, *img;
     uint32_t key;
     if (dq_n == 0) return;
@@ -645,8 +669,9 @@ static void dlg_draw(void)
     dlg_box(e, &b);
     len = page_len(e, &b);
     shown = d_shown / 2;
-    last = page_is_last(e, &b);
-    portrait = has_portrait(e->speaker);
+    settled = settled_prefix(shown);
+    last = e->text[d_page + len] == 0;
+    portrait = b.tx == b.x + 60;    /* dlg_box already checked the speaker */
     /* the box slides up with a little overshoot when the dialogue opens */
     slide = t < 8 ? (8 - t) * (8 - t) / 2 - (t >= 5 ? 2 : 0) : 0;
     b.y += slide;
@@ -708,7 +733,7 @@ static void dlg_draw(void)
     hx1 = b.x + b.w - 5;
     hy0 = b.y + 5;
     hy1 = b.y + b.h - 1;
-    use = UI_PANELS && d_bang < 0 && sx == 256 && sy == 256 && text_top(e, &b, shown, b.y + 8) >= hy0;
+    use = UI_PANELS && d_bang < 0 && sx == 256 && sy == 256 && text_top(e, &b, shown, b.y + 8, settled) >= hy0;
     if (portrait && !plat_draw_skipped()) {
         /* the portrait animates by itself (blinks, breathing): its image's
          * uid changes with its pixels (types.h). It is asked for once a
@@ -762,7 +787,7 @@ static void dlg_draw(void)
         plat_panel_end();
     } else {
         ui_window(b.x, b.y, b.w, b.h, portrait ? d_style : WIN_CREAM);
-        if (!use) dlg_text(e, &b, b.y + 8, st->text, st->accent);
+        if (!use) dlg_text(e, &b, b.y + 8, st->text, st->accent, settled);
 
         if (portrait) {
             const DoomoResident *r = dlg_res(e->speaker);
@@ -821,7 +846,7 @@ static void dlg_draw(void)
     }
     if (plat_panel_begin(PANEL_DIALOG_TEXT, hx0, hy0, hx1 - hx0, hy1 - hy0, key)) {
         ui_window_rows(b.x, b.y, b.w, b.h, portrait ? d_style : WIN_CREAM, hx0, hx1, hy0, hy1);
-        dlg_text(e, &b, b.y + 8, st->text, st->accent);
+        dlg_text(e, &b, b.y + 8, st->text, st->accent, settled);
         if (heart) ui_heart(b.x + b.w - 12, b.y + b.h - 10 + hbob, 3, st->accent);
     }
     plat_panel_end();

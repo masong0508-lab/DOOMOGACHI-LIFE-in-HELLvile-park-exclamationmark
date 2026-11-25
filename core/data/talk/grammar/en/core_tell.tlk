@@ -74,6 +74,13 @@
   "No, no. You're wrong in a very confident way."
   "Agree to disagree. I win, though."
   "I respect that. I don't agree with it. Or respect it."
+@rule core.disagree.context guard: topic&!x.grief act: disagree
+  "On {x}, I see a different side. What changed your view?"
+  "I'm not convinced about {x}. What am I missing?"
+  "We can disagree about {x} and still get along."
+@rule core.disagree.context_polite guard: topic&!x.grief&polite act: disagree
+  "I hear your point about {x}. May I explain mine?"
+  "Could we compare our reasons about {x}?"
 @rule core.disagree.joke act: joke
   "We disagree about {x}? Time for a bake-off."
 @rule core.disagree.blunt guard: blunt act: dismiss
@@ -88,6 +95,23 @@
   "Huh. Learn something new every day. Mostly about you."
 @rule core.answer.ask act: ask_about
   "Wait, really? Tell me more about {x}."
+  "That helps me understand {x}. Which detail matters most?"
+@rule core.answer.context_food guard: topic&root=food&!x.grief act: ask_about
+  "What would you serve with {x}?"
+  "How do you like {x} prepared?"
+  "Would you share {x} at a picnic?"
+@rule core.answer.context_music guard: topic&root=music&!x.grief act: ask_about
+  "What about {x} first caught your ear?"
+  "Where would you like to hear {x}?"
+  "Who would enjoy {x} with us?"
+@rule core.answer.context_places guard: topic&root=places&!x.grief act: ask_about
+  "What would you show me near {x}?"
+  "When is a good time to explore {x}?"
+  "What makes {x} memorable to you?"
+@rule core.answer.context_hobbies guard: topic&root=hobbies&!x.grief act: ask_about
+  "When do you make time for {x}?"
+  "How did you get interested in {x}?"
+  "What would you teach me about {x} first?"
 @rule core.yes.plain act: backchannel
   "Great! I knew you'd say yes. I felt it in my knee."
   "Yes! Wonderful. Nobody back out now."
