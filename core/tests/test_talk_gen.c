@@ -20,6 +20,7 @@
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
 #include "doomo/lang.h"
+#include "doomo/plat_ext.h"
 #include "doomo/roster.h"
 #include "doomo/sim.h"
 #include "doomo/ending.h"
@@ -173,6 +174,114 @@ TEST(talk_gen_repair_replies_belong_to_the_avatar_in_the_journal)
     CHECK(guarded_repair_replies(DOOMO_PLAYER_ID) > 0);
     talk_event_note(TALK_EV_APOLOGY, ID_RIVET, DOOMO_PLAYER_ID, TALK_PLACE_UNKNOWN);
     CHECK_EQ(guarded_repair_replies(DOOMO_PLAYER_ID), 0);
+    talk_db_close();
+}
+
+/* The complete English bank includes the large, uniformly sampled Atlas
+ * leaves. Verify that the compiler marked them, and observe them through
+ * the real generator, including a room with a child. */
+TEST(talk_gen_atlas_contextual_bank_and_selection)
+{
+    static const char *const keys[] = { "pie", "park", "song", "gardening", "weather" };
+    static const int ids[] = { ID_NANA, ID_PIP };
+    int a, i, batch = 0, selected = 0, kid_selected = 0, total = 0, notes_selected = 0;
+    uint32_t lint0;
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(talk_gen_ready());
+    lint0 = talk_safe_lint_hits();
+    for (a = 0; a < talk_gen_nalts(); a++) {
+        TalkAltInfo ai;
+        int j, cat = 0;
+        CHECK(talk_gen_alt_info(a, &ai));
+        if (!(ai.rflags & TALK_RULE_BATCH)) continue;
+        batch++;
+        CHECK_EQ(ai.weight, 1);
+        for (j = 0; j < ai.nterm; j++)
+            if (ai.term[2 * j] == TGP_CATEGORY) cat = ai.term[2 * j + 1];
+        CHECK(cat > 0);
+    }
+    CHECK_EQ(batch, 44489);
+    for (i = 0; i < (int)DOOMO_COUNTOF(keys); i++) {
+        uint16_t topic = concept(keys[i]);
+        TalkConcept tc;
+        int k;
+        CHECK(topic && talk_db_concept(topic, &tc));
+        if (!topic || !talk_db_concept(topic, &tc)) continue;
+        for (k = 0; k < 160; k++) {
+            TalkConv c;
+            TalkLine reply;
+            TalkTrace trace;
+            int j, got = 0, said = 0, notes = 0;
+            int kid = k & 1;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, kid ? 2 : 1, (uint32_t)(k + 5000 * i));
+            c.plain = 1;
+            if (!talk_gen_line(&c, 0, -1, TA_ASK_ABOUT, topic, &reply, &trace)) continue;
+            total++;
+            for (j = 0; j < trace.nalt; j++) {
+                TalkAltInfo ai;
+                int t, cat = -1;
+                CHECK(talk_gen_alt_info(trace.alt[j], &ai));
+                for (t = 0; t < ai.nterm; t++)
+                    if (ai.term[2 * t] == TGP_CATEGORY) cat = ai.term[2 * t + 1];
+                if (cat > 0 && !ai.act && ai.weight > 1 && (ai.aflags & 16u) &&
+                    !(ai.rflags & TALK_RULE_BATCH)) {
+                    CHECK_EQ(cat, tc.cat);
+                    notes = 1;                  /* factored branch explicitly names the topic */
+                    got = 1;
+                }
+                if (!(ai.rflags & TALK_RULE_BATCH)) continue;
+                CHECK_EQ(cat, tc.cat);
+                got = 1;
+            }
+            if (!got) continue;
+            for (j = 0; j < trace.nsaid; j++) said |= trace.said[j] == topic;
+            CHECK(said);
+            CHECK_EQ(reply.topic, topic);
+            CHECK(!(reply.flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)));
+            CHECK(talk_gen_adjacent(TA_ASK_ABOUT, reply.act));
+            selected++;
+            if (notes) notes_selected++;
+            if (kid) kid_selected++;
+        }
+    }
+    CHECK(total > 0 && selected > 0 && kid_selected > 0 && notes_selected > 0);
+    printf("      Atlas fieldnotes: %d selected replies\n", notes_selected);
+    /* The moments expansion must actually reach generated speech, not
+     * merely exist as a compiled bank. Test new authored fragments from
+     * the pie/dish category with ordinary and kid-room audiences. */
+    {
+        static const char *const moments[] = {
+            "I like browned edges", "I notice creamy sauces", "I value savory broth",
+            "I'd try a new topping", "I'd warm a soup bowl", "I'd add chopped herbs",
+            "Which side suits the dish?", "Would you serve it hot?",
+            "What gives broth flavor?", "Which plate would you use?"
+        };
+        uint16_t topic = concept("pie");
+        int seed, selected_moments = 0;
+        CHECK(topic);
+        for (seed = 0; seed < 1600; seed++) {
+            TalkConv c;
+            TalkLine line;
+            int j;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, seed & 1 ? 2 : 1,
+                           (uint32_t)(32000 + seed));
+            c.plain = 1;
+            if (!talk_gen_line(&c, 0, -1, TA_ASK_ABOUT, topic, &line, NULL)) continue;
+            for (j = 0; j < (int)DOOMO_COUNTOF(moments); j++)
+                if (strstr(line.text, moments[j])) {
+                    CHECK_EQ(line.topic, topic);
+                    CHECK(!(line.flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)));
+                    selected_moments++;
+                    break;
+                }
+        }
+        CHECK(selected_moments > 0);
+        printf("      Atlas moments: %d replies with new dish fragments\n", selected_moments);
+    }
+    CHECK_EQ(talk_safe_lint_hits(), lint0);
+    printf("      Atlas: %d batch alternatives, %d selected replies (%d kid-room) / %d generated\n",
+           batch, selected, kid_selected, total);
     talk_db_close();
 }
 
@@ -592,6 +701,79 @@ TEST(talk_gen_deterministic)
     conv(&b, ID_NANA, ID_VEX, ID_GRUMB);
     for (i = 0; i < 64; i++) CHECK_STR(line(&b, i % 3, -1, TA_COMPLIMENT, pie), ta[i]);
     talk_db_close();
+}
+
+/* Use the full shipping grammar, not just the small test grammar.
+ * Native streams it through plat_talk_read; a borrowed image exercises
+ * the cartridge fast path. The same seeds must produce the same lines,
+ * reply acts, faces, and alternative trace for mixed audiences. */
+TEST(talk_gen_mapped_and_streamed_selection_match)
+{
+    static const int acts[] = { TA_ASK_ABOUT, TA_ASK_OPINION, TA_TELL, TA_CONTINUE, TA_CHANGE_TOPIC };
+    enum { SAMPLES = 96 };
+    TalkLine expected[SAMPLES], l;
+    uint16_t core[SAMPLES];
+    uint8_t parts[SAMPLES], generated[SAMPLES];
+    int generated_count = 0;
+    TalkTrace tr;
+    TalkConv c;
+    uint8_t *image = NULL;
+    uint32_t size;
+    uint16_t topics[2];
+    int mode, k;
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(!talk_db_record(TB_GRAMMAR, 0, NULL, 4));
+    topics[0] = concept("pie"); topics[1] = concept("band");
+    CHECK(topics[0] && topics[1]);
+    for (mode = 0; mode < 2; mode++) {
+        if (mode) {
+            talk_db_close();
+            size = plat_talk_load("en");
+            CHECK(size > 0 && size != PLAT_TALK_LOADING);
+            if (!size || size == PLAT_TALK_LOADING) return;
+            image = (uint8_t *)malloc(size);
+            CHECK(image != NULL);
+            if (!image) return;
+            if (plat_talk_read(0, image, size) != size ||
+                talk_db_open_mem(image, size) != TALK_DB_OK) {
+                CHECK(0);
+                talk_db_close();
+                free(image);
+                return;
+            }
+            CHECK(talk_db_record(TB_GRAMMAR, 0, NULL, 4) != NULL);
+        }
+        for (k = 0; k < SAMPLES; k++) {
+            int ids[2] = { ID_NANA, (k & 1) ? ID_PIP : ID_VEX };
+            int got;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 17u + (uint32_t)k * 7919u);
+            memset(&l, 0, sizeof l);
+            memset(&tr, 0, sizeof tr);
+            got = talk_gen_line(&c, (k >> 1) & 1, -1,
+                      acts[(unsigned)k % (sizeof acts / sizeof acts[0])],
+                      topics[(k >> 2) & 1], &l, &tr);
+            if (!mode) {
+                expected[k] = l; core[k] = tr.core_alt; parts[k] = tr.parts;
+                generated[k] = (uint8_t)(got != 0);
+                generated_count += generated[k];
+            } else {
+                CHECK_EQ(got != 0, generated[k]);
+                CHECK_MSG(strcmp(l.text, expected[k].text) == 0,
+                          "mapped/streamed text differs at sample %d: %.95s != %.95s",
+                          k, l.text, expected[k].text);
+                CHECK_EQ(l.act, expected[k].act);
+                CHECK_EQ(l.face, expected[k].face);
+                CHECK_EQ(l.flags, expected[k].flags);
+                CHECK_EQ(l.topic, expected[k].topic);
+                CHECK_EQ(tr.core_alt, core[k]);
+                CHECK_EQ(tr.parts, parts[k]);
+            }
+        }
+    }
+    CHECK(generated_count > 0);
+    talk_db_close();
+    free(image);
 }
 
 /* ---- K-10: grief is not a punchline (SCRIPT_STYLE R6; design 3.6, 7.1) ---------

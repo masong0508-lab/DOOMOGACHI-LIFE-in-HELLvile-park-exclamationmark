@@ -1,0 +1,58 @@
+# talk.txt - Talk on the GBA game ROM (make -C gba test-talk).
+# The live Talk screen (core/src/talk_scene.c) reading its word network out of the ROM
+# (src/talk_blob.s, plat_talk_gba.c). Two entries: the house visit's host (home_talk_enter:
+# walk up to Nana Puddin and press A, the way a player does) and `push TALK`. Then a
+# conversation (quick replies, the topic list, bye), the 'TALK' save chunk through a
+# save / verify / load, and the main-stack high-water mark (Talk's generator is the deepest
+# call chain in the game; the log prints it). Screenshots go to gba/build/shots/talk.
+wait 30
+expect-log doomo: init
+seed 18                  # pinned: the resident's opening lines (and so the A presses below) follow the town seed; unpinned, the boot timing picked it
+sync on
+sync on
+scene TITLE
+wait 10
+# the first knock moves the premade island in (an empty runner town)
+push HOME 3
+wait 20
+press B
+wait 20
+expect-scene TITLE
+# 1. the house visit: walk up to the host and press A. Since 2a54b72 the resident opens
+# the talk with two lines (four A's: each line types out, then pages); the goodbye box
+# then takes four A's (GBA-500: the GBA's town of 500 gives the host a two-line goodbye,
+# "I'm out of words. / I'll buy more tomorrow."; it was three A's with 1000)
+push HOME 3
+wait 60
+shot visit_house
+hold DOWN 24
+hold LEFT 14
+press A
+wait 30
+expect-scene DIALOG
+shot visit_greeting
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+expect-scene TALK
+# Isolate an ordinary idle Talk menu after the real house greeting.
+fps visit setup
+wait 90
+expect-scene TALK
+# Protect the previously verified 30 FPS in-house menu.
+expect-fps 29.5 talk visit menu
+shot visit_menu_steady
+press A
+wait 15
+expect-scene DIALOG
+fps visit reply startup
+wait 90
+# The previous exact head measured 28 FPS. Keep that neighborhood
+# while pursuing sustained 30; do not claim a 30 FPS dialogue gate yet.
+expect-fps 27.0 talk visit dialogue
+shot visit_dialogue_steady

@@ -128,6 +128,50 @@ TEST(talk_dm_target_tension_arc)
     CHECK(talk_dm_target_tension(0) == 0);
 }
 
+/* The sliced scheduler must attempt at most one plan entry per tick,
+ * including empty/skipped entries, and preserve the completed exchange. */
+TEST(talk_dm_sliced_exchange_matches_synchronous)
+{
+    TalkState base, a, b;
+    TalkUtter u;
+    static const int acts[] = { TA_ASK_ABOUT, TA_COMPLIMENT, TA_AGREE, TA_CHANGE_TOPIC, TA_FAREWELL };
+    int i, k, steps;
+    uint16_t pie;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie);
+    for (i = 0; i < 32; i++) {
+        begin(&base, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, ID_PIP, (uint32_t)(i + 200));
+        utter(&u, acts[i % (int)DOOMO_COUNTOF(acts)], pie, 0);
+        talk_dm_say(&base, &u);
+        /* A canceled entry is a real case (e.g. an interruption that
+         * lost its target). Force one at the front in half the samples. */
+        if ((i & 1) && base.nplan) base.plan[0].kind = 0;
+        a = b = base;
+        while (talk_dm_step(&a, NULL)) {}
+        steps = 0;
+        for (k = 0; k < 12; k++) {
+            int before = b.plan_at;
+            int more = talk_dm_step_slice(&b);
+            CHECK(b.plan_at >= before && b.plan_at <= before + 1);
+            steps++;
+            if (!more) break;
+        }
+        CHECK(steps < 12);
+        CHECK_EQ(a.nlines, b.nlines);
+        CHECK_EQ(a.nev, b.nev);
+        CHECK_EQ(a.plan_at, b.plan_at);
+        for (k = 0; k < a.nlines; k++) {
+            CHECK_STR(a.line[k].text, b.line[k].text);
+            CHECK_EQ(a.line[k].act, b.line[k].act);
+            CHECK_EQ(a.line[k].topic, b.line[k].topic);
+        }
+        CHECK(!memcmp(a.ev, b.ev, a.nev * sizeof a.ev[0]));
+    }
+    talk_db_close();
+}
+
 /* ---- a scripted session ----------------------------------------------------------- */
 TEST(talk_dm_scripted_session)
 {

@@ -1,0 +1,407 @@
+#!/usr/bin/env python3
+"""Reproducible English Talk Atlas expansion.
+
+The TSV recipes contain independently authored observations, imagined
+activities, and genuine questions, grouped by exact existing topic category.
+Pairs are formed only within that category. These are composed variants, not
+independently handwritten complete sentences. Keep the expanded .tlk files
+in source control so every port's existing language-bank build picks them up.
+No extra concept IDs, save fields, or runtime asset format are required.
+"""
+import argparse
+import re
+from pathlib import Path
+
+from talkc_safe import hate_key, load_hate
+from story_register import load_register
+
+DATA = Path(__file__).resolve().parents[1] / "data" / "talk"
+GRAMMAR = DATA / "grammar" / "en"
+LIMIT = 66
+GROUPS = {
+    "01_people_places": ("people", "places"),
+    "02_food_music": ("food", "music"),
+    "03_hobbies_creatures_house": ("hobbies", "creatures", "house"),
+    "04_lore_life_work": ("lore", "hellvile", "feelings", "work"),
+    "05_time_school_stuff": ("time", "school", "stuff"),
+}
+# player act, legal response act, content lane, selection weight, optional
+# effective personality guard. All these are ordinary topic conversations.
+WRAPPERS = (
+    ("ask_about", "answer", "insight", 12, ""),
+    ("ask_about", "tell", "possibility", 10, "easygoing"),
+    ("ask_opinion", "answer", "insight", 14, ""),
+    ("tell", "ask_about", "possibility", 14, ""),
+    ("tell", "ask_about", "insight", 8, "serious"),
+    ("change_topic", "answer", "insight", 12, ""),
+    ("change_topic", "tell", "possibility", 12, "quirky"),
+    ("continue", "tell", "possibility", 14, ""),
+    ("agree", "tell", "insight", 10, ""),
+    ("answer", "ask_about", "possibility", 14, ""),
+    ("gossip", "ask_about", "insight", 6, ""),
+)
+
+def read_profiles():
+    categories = {}
+    for line in (DATA / "categories.tsv").read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            c = line.split("\t")
+            categories[c[0]] = c
+    profiles = {}
+    for path in sorted((DATA / "atlas").glob("*.tsv")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not line or line.startswith("#"):
+                continue
+            key, obs, possibilities, questions = line.split("\t")
+            c = categories[key]
+            if key in profiles or "." not in key or c[3:5] != ["clean", "any"] or "talk" not in c[1].split(","):
+                raise ValueError(f"{path}:{number}: invalid Atlas category {key}")
+            lists = tuple(s.split("|") for s in (obs, possibilities, questions))
+            for values in lists:
+                if len(values) != 12 or len(set(values)) != 12:
+                    raise ValueError(f"{path}:{number}: expected 12 distinct clauses per column")
+                if any(not v or v != v.strip() or not v.isascii() or any(ch in v for ch in '"{}[]') for v in values):
+                    raise ValueError(f"{path}:{number}: malformed clause")
+            profiles[key] = lists
+    return categories, profiles
+
+def read_followups(profiles):
+    followups = {}
+    for number, line in enumerate((DATA / "atlas_followups.tsv").read_text(encoding="ascii").splitlines(), 1):
+        if not line or line.startswith("#"):
+            continue
+        key, prompts = line.split("\t")
+        values = prompts.split("|")
+        if key not in profiles or key in followups or not 10 <= len(values) <= 14 or len(set(values)) != len(values):
+            raise ValueError(f"atlas_followups.tsv:{number}: invalid category or question count")
+        if any(not v or v != v.strip() or any(ch in v for ch in '"{}[]?') or v in profiles[key][2] for v in values):
+            raise ValueError(f"atlas_followups.tsv:{number}: invalid or repeated question")
+        followups[key] = values
+    if set(followups) != set(profiles):
+        raise ValueError("followups must cover every existing Atlas category")
+    return followups
+
+def read_fieldnotes(profiles, followups):
+    notes = {}
+    for number, line in enumerate((DATA / "atlas_fieldnotes.tsv").read_text(encoding="ascii").splitlines(), 1):
+        if not line or line.startswith("#"):
+            continue
+        key, *columns = line.split("\t")
+        if key not in profiles or key in notes or len(columns) != 3:
+            raise ValueError(f"atlas_fieldnotes.tsv:{number}: invalid category")
+        lists = [v.split("|") for v in columns]
+        previous = (*profiles[key][:2], profiles[key][2] + followups[key])
+        for i, values in enumerate(lists):
+            if not (5 if i == 2 else 4) <= len(values) <= (8 if i == 2 else 6):
+                raise ValueError(f"atlas_fieldnotes.tsv:{number}: invalid clause count")
+            if len(set(values)) != len(values) or any(
+                    not v or v != v.strip() or any(ch in v for ch in '"{}[]?!.') or v in previous[i]
+                    for v in values):
+                raise ValueError(f"atlas_fieldnotes.tsv:{number}: invalid or repeated clause")
+        notes[key] = lists
+    if set(notes) != set(profiles):
+        raise ValueError("fieldnotes must cover all Atlas categories")
+    return notes
+
+def fieldnotes_grammar(profiles, followups, notes, previous):
+    """Share question fragments across both lanes instead of duplicating
+    them for each statement length. The two rectangles of eligible pairs
+    retain the original Atlas 66-character limit and exact category guards.
+    """
+    result, added, pairs, rows = {}, set(), 0, 0
+    for group, roots in GROUPS.items():
+        lines = [
+            "# GENERATED by core/tools/talk_atlas.py --write; edit atlas_fieldnotes.tsv.",
+            "# Bounded category-local fragment combinations, weighted by compatible pair count.",
+            "",
+        ]
+        def short(values, cap):
+            return [v for v in values if len(v) <= cap]
+
+        def add_rule(name, values, key):
+            if not values:
+                raise ValueError(f"{name}: empty fragment")
+            lines.extend([f"@rule {name} guard: category={key}"] +
+                         [f'  "{v}"' for v in values] + [""])
+
+        for root in roots:
+            for key in sorted(k for k in profiles if k.split(".")[0] == root):
+                leaf = key.split(".")[1]
+                obs, poss, q = profiles[key]
+                no, np, nq = notes[key]
+                prefix = f"atlas.fragment.{root}.{leaf}"
+                oldq = q + followups[key]
+                allq = short(list(dict.fromkeys(oldq + nq)), 28)
+                newq = short(nq, 27)
+                add_rule(prefix + ".allq", allq, key)
+                add_rule(prefix + ".newq", newq, key)
+                rows += len(allq) + len(newq)
+                for lane, prior, new in (("insight", obs, no), ("possibility", poss, np)):
+                    choices = []
+                    for tag, ss, qq in (("fresh", short(new, 26), allq),
+                                        ("old", short(prior, 27), newq)):
+                        sname = f"{prefix}.{lane}.{tag}"
+                        qname = prefix + (".allq" if tag == "fresh" else ".newq")
+                        add_rule(sname, ss, key)
+                        weight = min(255, max(1, len(ss) * len(qq) // 2))
+                        choices.append(f'  "{{x:cap}}? {{{sname}}}. {{{qname}}}?" w={weight}')
+                        rows += 1 + len(ss)
+                        for s in ss:
+                            for q in qq:
+                                template = f"{{x:cap}}? {s}. {q}?"
+                                if len(template) > LIMIT:
+                                    raise ValueError(f"{key}: overlong fieldnotes pair")
+                                pairs += 1
+                                if template not in previous:
+                                    added.add(template)
+                    lines += [f"@rule atlas.{root}.{lane}.{leaf}.fieldnotes guard: category={key}"]
+                    lines += choices + [""]
+        result[GRAMMAR / f"zz_atlas_notes_{group}.tlk"] = "\n".join(lines) + "\n"
+    size = sum(len(t.encode("ascii")) for t in added)
+    if size < 2_000_000 or rows > 8_000:
+        raise ValueError(f"fieldnotes budget: {size} expanded bytes, {rows} stored alternatives")
+    return result, added, rows, pairs
+
+def read_moments(profiles, followups, notes):
+    moments = {}
+    for number, line in enumerate((DATA / "atlas_moments.tsv").read_text(encoding="ascii").splitlines(), 1):
+        if not line or line.startswith("#"):
+            continue
+        key, *columns = line.split("\t")
+        if key not in profiles or key in moments or len(columns) != 3:
+            raise ValueError(f"atlas_moments.tsv:{number}: invalid category")
+        lists = [v.split("|") for v in columns]
+        old = (profiles[key][0] + notes[key][0], profiles[key][1] + notes[key][1],
+               profiles[key][2] + followups[key] + notes[key][2])
+        for i, values in enumerate(lists):
+            if not (5 if i == 2 else 6) <= len(values) <= 16:
+                raise ValueError(f"atlas_moments.tsv:{number}: invalid clause count")
+            if len(set(values)) != len(values) or any(
+                    not v or v != v.strip() or len(v) > (27 if i == 2 else 26) or
+                    any(ch in v for ch in '"{}[]?!.') or v in old[i] for v in values):
+                raise ValueError(f"atlas_moments.tsv:{number}: invalid or repeated clause")
+        moments[key] = lists
+    if set(moments) != set(profiles):
+        raise ValueError("moments must cover all Atlas categories")
+    return moments
+
+def moments_grammar(profiles, followups, notes, moments, previous):
+    """Share the already-stored fieldnote pools. Four rectangles cover
+    new statements with previous/new questions and old statements with
+    new questions. Every combination is bounded and category-local.
+    """
+    result, added, rows = {}, set(), 0
+    for group, roots in GROUPS.items():
+        lines = [
+            "# GENERATED by core/tools/talk_atlas.py --write; edit atlas_moments.tsv.",
+            "# New moments reuse the earlier fieldnote pools; no materialized cross product.",
+            "",
+        ]
+        def short(values, cap):
+            return [v for v in values if len(v) <= cap]
+
+        def add_rule(name, values, key):
+            if not values or len(values) > 255:
+                raise ValueError(f"{name}: invalid fragment size")
+            lines.extend([f"@rule {name} guard: category={key}"] +
+                         [f'  "{v}"' for v in values] + [""])
+
+        for root in roots:
+            for key in sorted(k for k in profiles if k.split(".")[0] == root):
+                leaf = key.split(".")[1]
+                obs, poss, q = profiles[key]
+                no, np, nq = notes[key]
+                mo, mp, mq = moments[key]
+                pre = f"atlas.fragment.{root}.{leaf}"
+                prefix = pre + ".moments"
+                oldq = q + followups[key]
+                oq = short(list(dict.fromkeys(oldq + nq)), 28)
+                add_rule(prefix + ".q", mq, key)
+                rows += len(mq)
+                for lane, prior, prev_fresh, now in (("insight", obs, no, mo),
+                                                     ("possibility", poss, np, mp)):
+                    nm = prefix + "." + lane
+                    add_rule(nm, now, key)
+                    rows += len(now)
+                    lines.append(f"@rule atlas.{root}.{lane}.{leaf}.moments guard: category={key}")
+                    for sn, qn, ss, qq in ((nm, pre + ".allq", now, oq),
+                                           (nm, prefix + ".q", now, mq),
+                                           (pre + "." + lane + ".old", prefix + ".q", short(prior, 27), mq),
+                                           (pre + "." + lane + ".fresh", prefix + ".q", short(prev_fresh, 26), mq)):
+                        weight = min(255, max(1, len(ss) * len(qq) // 2))
+                        lines.append(f'  "{{x:cap}}? {{{sn}}}. {{{qn}}}?" w={weight}')
+                        rows += 1
+                        for s in ss:
+                            for q in qq:
+                                template = f"{{x:cap}}? {s}. {q}?"
+                                if len(template) > LIMIT:
+                                    raise ValueError(f"{key}: overlong moments pair")
+                                if template not in previous:
+                                    added.add(template)
+                    lines.append("")
+        result[GRAMMAR / f"zz_atlas_moments_{group}.tlk"] = "\n".join(lines) + "\n"
+    size = sum(len(t.encode("ascii")) for t in added)
+    if size < 6_000_000 or rows > 5_000:
+        raise ValueError(f"moments budget: {size} expanded bytes, {rows} stored alternatives")
+    return result, added, rows
+
+def check_register_phrase(phrase, register, key):
+    for word in register:
+        if word.rx.search(phrase):
+            raise ValueError(f"{key}: register-class literal rejected by Talk: {phrase!r}")
+
+
+def check_literal_vocabulary(profiles, followups, notes, moments):
+    """Reject restricted literal vocabulary before generating thousands of
+    alternatives. Atlas clauses are intended for any audience; use the
+    same register matchers and exact squeezed-word hashes as the compiler.
+    The full grammar compiler still runs every safety check.
+    """
+    def die(where, message):
+        raise ValueError(f"{where}: {message}")
+
+    salt, exact, _ = load_hate(DATA / "safety" / "hate.hash", die, str)
+    blocked = set(exact)
+    checked = {}
+    checked_phrases = set()
+    register = load_register()
+    # The building-context wording that escaped the old hash-only preflight
+    # must be caught here, before generation. Safe architectural wording
+    # remains accepted by the very same matcher.
+    try:
+        check_register_phrase("I like door knockers", register, "selftest")
+    except ValueError:
+        pass
+    else:
+        raise ValueError("register preflight selftest accepted a restricted phrase")
+    check_register_phrase("I like brass handles", register, "selftest")
+    for key, columns in profiles.items():
+        for column in (*columns, followups[key], *notes[key], *moments[key]):
+            for phrase in column:
+                if phrase not in checked_phrases:
+                    check_register_phrase(phrase, register, key)
+                    checked_phrases.add(phrase)
+                for word in re.findall(r"[A-Za-z0-9'][A-Za-z0-9'-]*", phrase):
+                    if word not in checked:
+                        checked[word] = hate_key(salt, word) not in blocked
+                    if not checked[word]:
+                        raise ValueError(f"{key}: literal rejected by Talk vocabulary lint: {phrase!r}")
+
+def build():
+    categories, profiles = read_profiles()
+    followups = read_followups(profiles)
+    notes = read_fieldnotes(profiles, followups)
+    moments = read_moments(profiles, followups, notes)
+    check_literal_vocabulary(profiles, followups, notes, moments)
+    distinct = set()
+    alternatives = 0
+    result = {}
+    for group, roots in GROUPS.items():
+        lines = [
+            "# GENERATED by core/tools/talk_atlas.py --write; edit the recipes in data/talk/atlas/.",
+            "# Safe category-specific conversations. The compiler checks every expanded line.",
+            "# The leaf sampler reads the shared guard, then one uniformly selected alternative.",
+            "",
+        ]
+        for root in roots:
+            keys = sorted(k for k in profiles if k.split(".")[0] == root)
+            if not keys:
+                raise ValueError(f"missing root {root}")
+            missing = sorted(k for k in categories if (k == root or k.startswith(root + ".")) and k not in keys)
+            guard = "&".join(["topic", "root=" + root, "!x.grief"] + ["!category=" + k for k in missing])
+            if len(guard.split("&")) > 14:
+                raise ValueError(f"too many guards for {root}")
+            for index, (act, reply, lane, weight, personality) in enumerate(WRAPPERS):
+                g = guard + ("&" + personality if personality else "")
+                lines += [
+                    f"@rule core.{act}.atlas.{root}.v{index} guard: {g} act: {reply}",
+                    f'  "{{atlas.{root}.{lane}}}" w={weight}',
+                    "",
+                ]
+            for key in keys:
+                leaf = key.split(".")[1]
+                obs, possibilities, questions = profiles[key]
+                for lane, statements in (("insight", obs), ("possibility", possibilities)):
+                    lines.append(f"@rule atlas.{root}.{lane}.{leaf} guard: category={key}")
+                    seen = set()
+                    for s in statements:
+                        for q in questions:
+                            template = f"{{x:cap}}? {s}. {q}?"
+                            if len(template) > LIMIT or template in seen:
+                                continue
+                            seen.add(template)
+                            distinct.add(template)
+                            lines.append(f'  "{template}"')
+                    if not 16 <= len(seen) <= 255:
+                        raise ValueError(f"{key}/{lane}: {len(seen)} alternatives outside batch bounds")
+                    alternatives += len(seen)
+                    lines.append("")
+        result[GRAMMAR / f"zz_atlas_{group}.tlk"] = "\n".join(lines) + "\n"
+    # Keep the original leaves and their wrappers intact. Additional guarded
+    # leaves join the same nested symbols; the sampler weights each batch by
+    # eligible row count without scanning individual alternatives.
+    original = set(distinct)
+    added = set()
+    for group, roots in GROUPS.items():
+        lines = [
+            "# GENERATED by core/tools/talk_atlas.py --write; edit atlas_followups.tsv.",
+            "# Category-local follow-up questions; separate bounded leaves preserve existing wrappers.",
+            "",
+        ]
+        for root in roots:
+            for key in sorted(k for k in profiles if k.split(".")[0] == root):
+                leaf = key.split(".")[1]
+                obs, possibilities, _ = profiles[key]
+                for lane, statements in (("insight", obs), ("possibility", possibilities)):
+                    lines.append(f"@rule atlas.{root}.{lane}.{leaf}.followup guard: category={key}")
+                    seen = set()
+                    for s in statements:
+                        for q in followups[key]:
+                            template = f"{{x:cap}}? {s}. {q}?"
+                            if len(template) > LIMIT or template in seen or template in original:
+                                continue
+                            seen.add(template)
+                            added.add(template)
+                            lines.append(f'  "{template}"')
+                    if not 16 <= len(seen) <= 255:
+                        raise ValueError(f"{key}/{lane}/followup: {len(seen)} alternatives outside batch bounds")
+                    alternatives += len(seen)
+                    lines.append("")
+        result[GRAMMAR / f"zz_atlas_more_{group}.tlk"] = "\n".join(lines) + "\n"
+    if sum(len(t.encode("ascii")) for t in added) < 1_000_000:
+        raise ValueError("Atlas follow-up expansion fell below 1 MB of new unique template text")
+    distinct.update(added)
+    # Keep materialized and factored counts separate: expanded pairs do
+    # not occupy a separate alternative ID or stored string per pair.
+    note_files, expanded, stored, pairs = fieldnotes_grammar(profiles, followups, notes, distinct)
+    result.update(note_files)
+    print(f"Talk fieldnotes: {len(expanded)} new distinct composed templates, "
+          f"{sum(len(t.encode('ascii')) for t in expanded)} unique expanded bytes, "
+          f"{stored} stored alternatives ({pairs} eligible pairs)")
+    moment_files, moment_templates, moment_rows = moments_grammar(profiles, followups, notes, moments, distinct | expanded)
+    result.update(moment_files)
+    print(f"Talk moments: {len(moment_templates)} additional distinct composed templates, "
+          f"{sum(len(t.encode('ascii')) for t in moment_templates)} unique expanded bytes, "
+          f"{moment_rows} stored alternatives")
+    size = sum(len(t.encode("ascii")) for t in distinct)
+    if size < 1_000_000:
+        raise ValueError(f"Atlas content fell below 1 MB: {size} unique template bytes")
+    return result, len(profiles), alternatives, len(distinct), size
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--write", action="store_true")
+    mode.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    files, profiles, alternatives, distinct, size = build()
+    for path, content in files.items():
+        if args.write:
+            path.write_text(content, encoding="ascii", newline="\n")
+        elif args.check and (not path.exists() or path.read_bytes() != content.encode("ascii")):
+            parser.error(f"{path}: stale Atlas grammar; run talk_atlas.py --write")
+    print(f"Talk Atlas: {profiles} categories, {alternatives} contextual alternatives, "
+          f"{distinct} distinct composed templates, {size} unique uncompressed text bytes")
+
+if __name__ == "__main__":
+    main()

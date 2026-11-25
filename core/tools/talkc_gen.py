@@ -78,7 +78,7 @@ import re
 
 GRAMMAR_MAGIC = 0x31524754           # "TGR1"
 HDR = 64
-RF = {"kid": 1, "refusal": 2, "romance": 4, "sincere": 8, "cast": 16, "tic": 32, "lower": 64}
+RF = {"kid": 1, "refusal": 2, "romance": 4, "sincere": 8, "cast": 16, "tic": 32, "lower": 64, "batch": 128}
 AF = {"swear": 1, "register": 2, "jmat": 4, "cast": 8, "topic": 16, "like": 32, "tic": 64, "catch": 128}
 CC = {"register": 1, "swear": 2, "forbid": 4}
 CLASSES = ["open", "ask", "tell", "warm", "cool", "third", "flow", "romance", "gesture", "safety"]
@@ -219,6 +219,7 @@ class Env:
             "pact": {k: v for k, v in c_enum(th, "TAC_").items() if k != "count"},
             "act": {k.lower(): v for k, v in self.acts.items()},
             "root": {k: v for k, v in c_enum(th, "TCR_").items() if k not in ("count", "none")},
+            "category": {cat.key: cat.id for cat in b.cats_list},
             "prob": {k: v for k, v in c_enum(os.path.join(inc, "sim.h"), "PROB_").items() if k != "count"},
             "kind": {k: v for k, v in c_enum(th, "TK_", "TK_NONE").items() if k not in ("count", "none")},
             "trait": {k: v for k, v in c_enum(os.path.join(inc, "talk_traits.h"), "TT_", "TT_NONE").items()
@@ -547,6 +548,10 @@ def build_grammar(b, files, die, rel, strict=True):
                             rom.add(m)
                             work.append(m)
     strings, str_index = [], {}
+    salt, exact_set = b.hate[0], set(b.hate[1])
+    # The same guards recur across thousands of category leaves. Share
+    # immutable term spans, rather than repeating each two-byte predicate.
+    term_spans = {(): 0}
     core_acts = {}                   # TM2c: entry act -> the reply acts some rule of core.<act> performs
     grief_rules = []                 # K-10: (rule name, reply act, [the guard terms of each line])
     rule_rows, alt_rows, term_rows = [], [], []
@@ -618,6 +623,8 @@ def build_grammar(b, files, die, rel, strict=True):
         rule_term_first = len(term_rows)
         term_rows += rterms
         alt_first = len(alt_rows)
+        batch_signature = None
+        batch_ok = rname.startswith("atlas.") and len(r["lines"]) >= 16
         if not r["lines"]:
             die(where, "rule %s has no lines" % rname)
         if len(r["lines"]) > 255:
@@ -628,7 +635,6 @@ def build_grammar(b, files, die, rel, strict=True):
             hits = comp.register_hits(vis)
             # the S3 lint's hate match on every literal word (as the lint reads it: a word with its
             # apostrophe, squeezed) would refuse the line every time
-            salt, exact_set = b.hate[0], set(b.hate[1])
             for word in re.findall(r"[A-Za-z0-9'][A-Za-z0-9'-]*", vis):
                 if ts_.hate_key(salt, word) in exact_set:
                     die(lwhere, "a word the output lint's hate list refuses (squeezed, as the S3 lint reads it)")
@@ -678,13 +684,26 @@ def build_grammar(b, files, die, rel, strict=True):
             if ctext not in str_index:
                 str_index[ctext] = len(strings)
                 strings.append(ctext)
-            alt_rows.append((str_index[ctext], opt["w"], face, len(term_rows), len(lt), af))
+            # Only compiler-proven uniform, plain, topic-specific leaves may
+            # bypass per-alternative bank reads. Never batch gated/cast/swear
+            # variants or alternatives with different guards or weights.
+            if batch_ok:
+                sig = (opt["w"], face, tuple(lt), af)
+                if refs or face or af & ~AF["topic"] or (batch_signature is not None and sig != batch_signature):
+                    batch_ok = False
+                batch_signature = sig
+            terms_key = tuple(lt)
+            if terms_key not in term_spans:
+                term_spans[terms_key] = len(term_rows)
+                term_rows += lt
+            alt_rows.append((str_index[ctext], opt["w"], face, term_spans[terms_key], len(lt), af))
             if not 1 <= opt["w"] <= 255:
                 die(lwhere, "w=1..255")
-            term_rows += lt
             alt_where.append(lwhere)
             alt_refs.append(refs)
             alt_min.append(minlen)
+        if batch_ok:
+            rf |= RF["batch"]
         rule_rows.append((alt_first, len(alt_rows) - alt_first, act, rule_term_first, len(rterms), rf))
         if grief:
             grief_rules.append((rname, by_id[act], grief_lines))

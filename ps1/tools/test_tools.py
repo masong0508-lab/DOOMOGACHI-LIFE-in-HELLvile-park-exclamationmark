@@ -30,6 +30,8 @@ import ovl_plan         # noqa: E402
 import partsbin         # noqa: E402
 import ram_ledger       # noqa: E402
 import strsec           # noqa: E402
+import verify_game_disc # noqa: E402
+from pathlib import Path
 
 CROSS = next((p for p in ("mipsel-linux-gnu-", "mipsel-none-elf-") if shutil.which(p + "gcc")), None)
 CFLAGS = ["-O1", "-G8", "-march=r3000", "-mabi=32", "-msoft-float", "-mno-abicalls", "-fno-pic",
@@ -733,6 +735,70 @@ class PartsBin(unittest.TestCase):
         idx = open(os.path.join(gen, "parts_index.c")).read()
         self.assertEqual(n, int(re.search(r"doomo_part_script_count = (\d+)", idx).group(1)))
         self.assertLessEqual(2048 + struct.unpack("<I", data[8:12])[0], 0x2E000)   # fits SPU RAM above the effects
+
+class IntegratedDisc(unittest.TestCase):
+    """Exercise the actual packaging gate over a small raw Mode 2 image."""
+    @staticmethod
+    def make_disc(files):
+        def record(name, lba, length, directory=False):
+            name = name.encode("ascii")
+            row = bytearray(33 + len(name) + (len(name) % 2 == 0))
+            row[0] = len(row)
+            struct.pack_into("<I", row, 2, lba)
+            struct.pack_into(">I", row, 6, lba)
+            struct.pack_into("<I", row, 10, length)
+            struct.pack_into(">I", row, 14, length)
+            row[25] = 2 if directory else 0
+            row[32] = len(name)
+            row[33:33 + len(name)] = name
+            return row
+
+        def raw(data):
+            sector = bytearray(2352)
+            sector[:12] = b"\x00" + b"\xff" * 10 + b"\x00"
+            sector[15] = 2
+            sector[24:24 + len(data)] = data
+            return bytes(sector)
+
+        pvd = bytearray(2048)
+        pvd[:7] = b"\x01CD001\x01"
+        root = record("\x00", 17, 2048, True)
+        pvd[156:156 + len(root)] = root
+        entries = bytearray(root)
+        entries += record("\x01", 17, 2048, True)
+        payload = []
+        lba = 18
+        for name, body in files.items():
+            entries += record(name + ";1", lba, len(body))
+            for i in range(0, len(body), 2048):
+                payload.append(raw(body[i:i + 2048]))
+                lba += 1
+        return bytes(16 * 2352) + raw(pvd) + raw(entries) + b"".join(payload)
+
+    def test_full_disc_and_missing_or_corrupt_talk(self):
+        files = {name: b"resource" for name in
+                 ("SYSTEM.CNF", "OVL.BIN", "SFX.BIN", "SPRITES.BIN",
+                  "PARTS.BIN", "TEXT.BIN", "README.TXT", "INTRO.STR")}
+        files["DOOMO.EXE"] = b"PS-X EXE" + bytes(2050)
+        files["TALK_EN.BIN"] = b"bank" * 1025
+        with tempfile.TemporaryDirectory() as d:
+            image, talk, exe = [Path(d) / name for name in ("game.bin", "talk.bin", "game.exe")]
+            talk.write_bytes(files["TALK_EN.BIN"])
+            exe.write_bytes(files["DOOMO.EXE"])
+            image.write_bytes(self.make_disc(files))
+            with contextlib.redirect_stdout(io.StringIO()):
+                verify_game_disc.verify_game_disc(image, talk, exe, True)
+                corrupt = dict(files)
+                corrupt["TALK_EN.BIN"] = b"x" + files["TALK_EN.BIN"][1:]
+                image.write_bytes(self.make_disc(corrupt))
+                with self.assertRaisesRegex(ValueError, "disc payload mismatch"):
+                    verify_game_disc.verify_game_disc(image, talk, exe, True)
+                for missing in ("TALK_EN.BIN", "OVL.BIN", "TEXT.BIN"):
+                    partial = {name: body for name, body in files.items() if name != missing}
+                    image.write_bytes(self.make_disc(partial))
+                    with self.assertRaisesRegex(ValueError, "full PS1 game disc missing"):
+                        verify_game_disc.verify_game_disc(image, talk, exe, True)
+
 
 if __name__ == "__main__":
     import warnings

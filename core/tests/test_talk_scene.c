@@ -653,6 +653,106 @@ TEST(talk_scene_everyone_options_keeps_the_cursor_on_a_visible_action)
     CHECK(d.sel >= 0 && d.sel < d.nrows);
 }
 
+TEST(talk_scene_group_menu_hides_single_recipient_actions)
+{
+    TalkSceneDebug d;
+    int other;
+    town();
+    other = roster_find("Steamy");
+    CHECK(other >= 0);
+    if (other < 0) return;
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(find_row("out", -1, -1) >= 0);
+    CHECK(find_row("give", -1, -1) >= 0);
+    press(BTN_SELECT);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    CHECK_EQ(find_row("out", -1, -1), -1);
+    CHECK_EQ(find_row("play", -1, -1), -1);
+    CHECK_EQ(find_row("show", -1, -1), -1);
+    CHECK_EQ(find_row("give", -1, -1), -1);
+    CHECK_EQ(find_row("help", -1, -1), -1);
+    CHECK_EQ(find_row("quick", -1, TA_INVITE), -1);
+    CHECK_EQ(find_row("quick", -1, TA_OFFER), -1);
+    CHECK_EQ(find_row("quick", -1, TA_GIVE), -1);
+    go_to(find_row("cat", talk_scene_act_cat(TA_INVITE), -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "acts") == 0);
+    CHECK_EQ(find_row("act", TA_INVITE, -1), -1);
+    CHECK_EQ(find_row("act", TA_OFFER, -1), -1);
+    press(BTN_B);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+    CHECK(find_row("out", -1, -1) >= 0);
+    CHECK(find_row("give", -1, -1) >= 0);
+    CHECK(find_row("help", -1, -1) >= 0);
+}
+
+TEST(talk_scene_topic_picker_has_unique_audience_safe_choices)
+{
+    TalkSceneDebug d;
+    TalkAudience aud;
+    int child = ID_PIP, i, j, count = 0;
+    uint16_t chosen[40];  /* Talk's existing bounded 40-row picker */
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("topic", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "topic") == 0);
+    talk_safe_ctx(playas_avatar(), d.ids, d.nparts, d.to, &aud);
+    CHECK(aud.any_minor);
+    CHECK_EQ(find_row("notopic", -1, -1), 0);
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        int value = 0;
+        CHECK(talk_scene_row_debug(i, &kind, NULL, &value, NULL));
+        if (strcmp(kind, "pick") && strcmp(kind, "topiclink")) continue;
+        CHECK(value > 0 && talk_gen_concept_ok((uint16_t)value, &aud));
+        for (j = 0; j < count; j++) CHECK(chosen[j] != value);
+        CHECK(count < (int)DOOMO_COUNTOF(chosen));
+        if (count < (int)DOOMO_COUNTOF(chosen)) chosen[count++] = (uint16_t)value;
+    }
+    CHECK(count >= 10);
+}
+
+TEST(talk_scene_browse_topics_keeps_quick_menu_and_audience_rules)
+{
+    TalkSceneDebug d;
+    TalkAudience aud;
+    int group, child = ID_PIP;
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("topic", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    CHECK_EQ(find_row("notopic", -1, -1), 0);
+    CHECK_EQ(find_row("browse", -1, -1), d.nrows - 1);
+    go_to(find_row("browse", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    CHECK_EQ(d.nrows, 14);
+    talk_safe_ctx(playas_avatar(), d.ids, d.nparts, d.to, &aud);
+    CHECK(aud.any_minor);
+    for (group = 0; group < 14; group++) {
+        int i;
+        go_to(find_row("browsegroup", group, -1)); press(BTN_A);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browsetopics"));
+        CHECK(d.nrows >= 2);
+        for (i = 0; i < d.nrows; i++) {
+            int value = 0;
+            CHECK(talk_scene_row_debug(i, NULL, NULL, &value, NULL));
+            CHECK(talk_gen_casual_topic_ok((uint16_t)value, &aud));
+        }
+        press(BTN_B);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    }
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "main"));
+}
+
 TEST(talk_scene_real_outing_menu_and_play_action)
 {
     TalkSceneDebug d;

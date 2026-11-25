@@ -35,21 +35,27 @@ The disc opens with the Dippinn Productions ident (`trailer/assets/dippinn_logo.
 ready-made one: `cmake -DDOOMO_INTRO_STR=/path/INTRO.STR ...`. No psxavenc and no file:
 the intro is left out (a warning; `-DDOOMO_INTRO_REQUIRED=ON` makes it an error, CI uses that). `-DDOOMO_INTRO_FMV=OFF` disables it (harness runs).
 
-### Talk game disc
+### Conversations in the full game
+
+The ordinary `ps1` and `ps1-pal` game discs include Talk as part of the
+life simulation, alongside the story, combat, home editor, music and
+other game features. There is no separate Talk edition. Choose Talk
+from a resident's care menu, use SELECT on the resident card, or talk
+to a resident during a house visit. Conversation history is saved to
+the same memory card as the rest of the game.
+
+The game streams its English dialogue bank from CD, with packed art
+and scene overlays to fit the PS1's 2 MB of RAM. Open the ordinary
+`build/doomogachi.cue` with its matching `doomogachi.bin`; loading only
+its EXE without the disc does not supply those resources. CI publishes
+the full game as `doomogachi-ps1`. The engine showcase remains a separate
+developer test disc, not a game edition.
 
 ```sh
-cmake --preset ps1 -B build-talk -DDOOMO_PS1_TALK=ON -DDOOMO_INTRO_REQUIRED=ON
-cmake --build build-talk
-python3 harness/run.py --cue build-talk/doomogachi.cue \
+cmake --build --preset ps1 --target verify_game_disc
+python3 harness/run.py --cue build/doomogachi.cue \\
     --script harness/scripts/talk_smoke.txt --out /tmp/talk-smoke
 ```
-
-Choose **Talk** for controller conversations and saved conversation history.
-The Talk build streams its dialogue bank from CD and uses packed art and
-scene overlays to fit the PS1's 2 MB of RAM. Open the Talk folder's
-`doomogachi.cue` with its matching `doomogachi.bin` alongside it.
-**Standard** runs the game with the optional Talk system disabled.
-Each edition boots independently. CI publishes Talk as `doomogachi-ps1-talk`.
 
 ## Run
 

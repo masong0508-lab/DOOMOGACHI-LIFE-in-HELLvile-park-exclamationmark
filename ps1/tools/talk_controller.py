@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Keep only the controller's exact-key vocabulary in the PS1 PARSE bank.
 
-The PS1 has no typed input. Its three menu tables are the only callers of
-the keyboard lexicon, and each only needs an exact lookup. Keep their
+The PS1 has no typed input. Its controller menu tables only need exact
+lookups, including the categorized topic browser. Keep their
 concept IDs, flags, and tags verbatim, and leave all other banks intact.
 """
 from pathlib import Path
@@ -22,7 +22,7 @@ def menu_keys(source):
             raise ValueError(f"cannot find Talk menu table {name}")
         return match[1]
 
-    words = re.findall(r'"([^"]+)"', table("stock_key") + table("everyday"))
+    words = re.findall(r'"([^"]+)"', table("stock_key") + table("everyday") + table("browse_key"))
     words += re.findall(r'\{\s*"([^"]+)"', table("outing"))
     return {word.encode("latin-1") for word in words}
 
