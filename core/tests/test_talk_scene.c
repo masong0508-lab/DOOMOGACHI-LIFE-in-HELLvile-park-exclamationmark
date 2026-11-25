@@ -560,6 +560,47 @@ TEST(talk_scene_a_pending_question_belongs_to_its_original_listener)
     CHECK(!d.busy && !d.you[0]);
 }
 
+TEST(talk_scene_controller_skips_an_unavailable_listener)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy");
+    town();
+    CHECK(other >= 0);
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d) && d.nparts == 2);
+    /* A participant can become unavailable while the scene is open. */
+    town_res(other)->status = RES_EMPTY;
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+}
+
+TEST(talk_scene_stale_gift_does_not_transfer_to_another_listener)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy"), count, row;
+    town();
+    CHECK(other >= 0);
+    CHECK(inv_add(ITEM_PLUSHIE, 1) > 0);
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    row = find_row("give", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    row = find_row("giveitem", ITEM_PLUSHIE, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    count = inv_count(ITEM_PLUSHIE);
+    town_res(ID_NANA)->status = RES_EMPTY;
+    press(BTN_A);
+    CHECK_EQ(inv_count(ITEM_PLUSHIE), count);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_STR(d.page, "main");
+}
+
 TEST(talk_scene_everyone_options_keeps_the_cursor_on_a_visible_action)
 {
     TalkSceneDebug d;
