@@ -6,6 +6,7 @@
  * dictionary refusals, bounds. Owner: TK. docs/TALK.md.
  */
 #include "test.h"
+#include <stdlib.h>
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
 #include "doomo/txt.h"
@@ -382,6 +383,66 @@ TEST(talk_db_record_matches_bounded_reads)
         talk_db_close();
         CHECK(!talk_db_record(TB_CONCEPT, 0, scratch, 1));
     }
+}
+
+/* The shipping SAF1 bank must produce the same exact/fuzzy results from
+ * mapped cartridge data and the ordinary streamed platform reader. */
+TEST(talk_db_safety_hash_lookup_mapped_stream_parity)
+{
+    static const char *const sample[] = {
+        "pie", "P.I.E", "Piiie", "p1e", "hello", "H3llooo", "cupcake",
+        "music", "town", "rain", "rainstorm", "bookcase", "pancake", "moon"
+    };
+    enum { WORDS = 256 };
+    uint64_t hashes[WORDS];
+    uint8_t exact[WORDS], fuzzy[WORDS];
+    uint8_t *img = NULL;
+    uint32_t bytes;
+    int mode, k;
+    char word[96];
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(!talk_db_record(TB_SAFETY, 0, NULL, 4));
+    for (mode = 0; mode < 2; mode++) {
+        if (mode) {
+            talk_db_close();
+            bytes = plat_talk_load("en");
+            CHECK(bytes > 0 && bytes != PLAT_TALK_LOADING);
+            img = (uint8_t *)malloc(bytes);
+            CHECK(img != NULL);
+            if (plat_talk_read(0, img, bytes) != bytes ||
+                talk_db_open_mem(img, bytes) != TALK_DB_OK) {
+                talk_db_close();
+                free(img);
+                CHECK(0);
+            }
+            CHECK(talk_db_record(TB_SAFETY, 0, NULL, 4) != NULL);
+        }
+        for (k = 0; k < WORDS; k++) {
+            const char *w;
+            uint64_t h;
+            int ex, fu;
+            if (k < (int)DOOMO_COUNTOF(sample)) w = sample[k];
+            else {
+                int id = 1 + (k * 137) % talk_db_nconcepts();
+                if (talk_db_form(id, TF_LEMMA, word, sizeof word) <= 0) word[0] = 0;
+                w = word;
+            }
+            h = talk_safe_hash(w);
+            ex = talk_safe_hate_word(w, 0);
+            fu = talk_safe_hate_word(w, 1);
+            if (!mode) {
+                hashes[k] = h;
+                exact[k] = (uint8_t)ex;
+                fuzzy[k] = (uint8_t)fu;
+            } else if (h != hashes[k] || ex != exact[k] || fu != fuzzy[k]) {
+                talk_db_close();
+                free(img);
+                CHECK_MSG(0, "mapped safety lookup differs at sample %d", k);
+            }
+        }
+    }
+    talk_db_close();
+    free(img);
 }
 
 TEST(talk_db_crc32_is_ieee)

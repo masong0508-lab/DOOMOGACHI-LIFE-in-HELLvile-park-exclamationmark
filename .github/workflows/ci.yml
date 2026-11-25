@@ -333,6 +333,18 @@ jobs:
             make -C gba profile-all 2>&1 | grep -E '^\| |^profile-all|rror' || echo '(profile-all produced no table)'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Profile Talk menu, reply generation and dialogue
+        if: always()
+        continue-on-error: true
+        run: |
+          make -C gba profile-talk > gba/build/talk_profile_command.log 2>&1
+          {
+            echo '## Talk: three independent gameplay profiles'
+            echo '~~~'
+            grep -E '^## Talk|^harness: (fps profile|slow frame tick|profile of| +[0-9.]+%)|profile-talk:' gba/build/talk_profile_command.log || true
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # The over-budget frames of the invaded map (V13: 35.8 ms max against 33.3): which functions cost
       # MORE in a slow frame than in a normal one, and at which ticks they come ("slow frame tick ...").
       - name: Profile invaded worst frames
@@ -399,6 +411,8 @@ jobs:
             gba/build/title_profile.log
             gba/build/title_spikes.log
             gba/build/profile_all.log
+            gba/build/talk_profile.log
+            gba/build/talk_profile_command.log
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
