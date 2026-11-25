@@ -85,6 +85,7 @@ static struct TalkScn {
     union {
         char rows[JOURNAL_PAGE][16];     /* dates or short names of each shared pair */
         char subjects[2][36];           /* full labels on the selected pair page */
+        char menu_topic[40];             /* Options/acts: decode on entry, not on draw */
         struct {
             char date[16];
             char topic[20];
@@ -234,7 +235,7 @@ typedef struct QCtx {
     const TalkState *s;
     uint32_t salt;
     uint16_t topic, fresh;               /* the topic the replies stay on; one to steer to        */
-    uint8_t  kid, sincere, pool, n;
+    uint8_t  kid, sincere, no_personal_actions, n;
     uint8_t  used[(TA_COUNT + 7) / 8];
     uint8_t  reception[TA_COUNT];       /* stack-local; 0 unset, score + 11 */
 } QCtx;
@@ -279,7 +280,7 @@ static const char *q_text(const QCtx *q, int act, uint32_t h)
     int ng, nt, i;
     uint16_t tp;
     if (act <= TA_NONE || act >= TA_COUNT || TA_IS_ROMANCE(act) || TA_IS_SAFETY(act) || q_used(q, act)) return NULL;
-    if (q->pool && opens_resident_menu(act)) return NULL;
+    if (q->no_personal_actions && opens_resident_menu(act)) return NULL;
     if (q->sincere && !q_sincere_act(act)) return NULL;
     if (q->kid && (act == TA_TEASE || act == TA_DISMISS || act == TA_COMPLAIN)) return NULL;
     tp = q_topic_of(q, act);
@@ -597,7 +598,9 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     directed = slot >= 0 && slot < s->nparts && !(s->part[slot].flags & (TPF_LEFT | TPF_PET));
     if (!directed)
         slot = tslot >= 0 && tslot < s->nparts ? tslot : 0;
-    q.pool = slot < s->nparts && is_pool_id(s->part[slot].id);
+    /* A group-directed utterance has no recipient for an inventory or
+     * outing menu. Never recommend an action that can only bounce back. */
+    q.no_personal_actions = !directed || is_pool_id(s->part[slot].id);
     if (th) act = th->act;
     q.kid = s->conv.aud.any_minor || (s->flags & TDF_KIDSAFE) ? 1 : 0;
     /* grief and sincerity: only comfort, and the topic is not picked up */
@@ -766,11 +769,6 @@ static int party_has(int id)
     return 0;
 }
 
-static int pool_target(void)
-{
-    return T.to >= 0 && T.to < T.n && is_pool_id(T.ids[T.to]);
-}
-
 static void topic_name(uint16_t c, char *out, int cap)
 {
     out[0] = 0;
@@ -821,17 +819,26 @@ static int needs_two(int act)
     return act == TA_DEFEND || act == TA_ACCUSE || act == TA_TAKE_SIDE || act == TA_MEDIATE || act == TA_PRAISE_OTHER;
 }
 
+static int resident_target(void)
+{
+    int id = listener_here(T.to) ? T.ids[T.to] : -1;
+    return id >= 0 && id < DOOMO_MAX_RESIDENTS ? id : -1;
+}
+
+static int care_target_id(void);
+
 static int romance_open(void)
 {
-    return T.to >= 0 && T.to < T.n && T.ids[T.to] != TALK_PET_ID &&
+    return listener_here(T.to) && T.ids[T.to] != TALK_PET_ID &&
            talk_safe_romance_ok(&T.s.conv.aud, T.avatar, T.ids[T.to]);
 }
 
 static int act_listed(int act)
 {
-    if (needs_two(act) && T.n < 2) return 0;
+    if (needs_two(act) && present_count() < 2) return 0;
     if (TA_IS_ROMANCE(act) && !romance_open()) return 0;
-    if (pool_target() && opens_resident_menu(act)) return 0;
+    if (opens_resident_menu(act) && resident_target() < 0) return 0;
+    if (act == TA_OFFER && care_target_id() < 0) return 0;
     return 1;
 }
 
@@ -955,12 +962,12 @@ static void build_main(void)
     }
     /* Deliberate shared-life actions are below the old categories so the
      * classic quick-reply and four-press compliment budgets stay intact. */
-    if (!pool_target()) {
+    if (resident_target() >= 0) {
         if (!planned_place) add_row(K_OUT, 0, 0);
         add_row(K_PLAY, 0, 0);
         add_row(K_SHOW, 0, 0);
         add_row(K_GIVE, 0, 0);
-        add_row(K_HELP, 0, 0);
+        if (care_target_id() >= 0) add_row(K_HELP, 0, 0);
     }
     /* Read-only schedule dialogue; the current ACT_* is the source, not
      * a made-up meeting promise. No per-frame activity scan or reward. */
@@ -1020,6 +1027,7 @@ static void build_more(void)
 {
     T.page = PG_MORE;
     T.nrows = 0;
+    topic_name(T.topic, T.journal_label.menu_topic, sizeof T.journal_label.menu_topic);
     add_row(K_TOPIC, 0, 0);
     if (T.n > 1) add_row(K_TO, 0, 0);
     if (present_count() < TALK_PARTS_MAX) add_row(K_INVITE, 0, 0);
@@ -1274,6 +1282,7 @@ static void build_acts(int c)
     T.page = PG_ACTS;
     T.cat = (uint8_t)c;
     T.nrows = 0;
+    topic_name(T.topic, T.journal_label.menu_topic, sizeof T.journal_label.menu_topic);
     for (i = 0; i < cats[c].n; i++)
         if (act_listed(cats[c].acts[i])) add_row(K_ACT, cats[c].acts[i], 0);
     list_reset();
@@ -1398,9 +1407,8 @@ static void build_give_items(void)
  * frame-time scan (these lists are built on button press). */
 static int care_target_id(void)
 {
-    int id = T.to >= 0 && T.to < T.n ? T.ids[T.to] : -1;
-    if (id < 0 || id >= DOOMO_MAX_RESIDENTS || !town_alive(id) ||
-        town_res(id)->status != RES_ALIVE) return -1;
+    int id = resident_target();
+    if (id < 0 || town_res(id)->status != RES_ALIVE) return -1;
     return id;
 }
 
@@ -1516,13 +1524,19 @@ static void perform_care(int kind, int item)
     build_main();
 }
 
-static void topic_add(uint16_t c, int kind, int learned)
+static void topic_audience(TalkAudience *aud)
+{
+    talk_safe_ctx(T.avatar, T.ids, T.n, T.to, aud);
+    aud->any_minor |= T.s.conv.aud.any_minor;
+}
+
+static void topic_add(uint16_t c, int kind, int learned, const TalkAudience *aud)
 {
     int i;
     if (c == TC_NONE) return;
     for (i = 0; i < T.nrows; i++)
         if (T.row[i].v == c && (T.row[i].kind == K_PICK || T.row[i].kind == K_TOPIC_LINK)) return;
-    add_row(kind, learned, c);
+    if (talk_gen_concept_ok(c, aud)) add_row(kind, learned, c);
 }
 
 static void build_topics(void)
@@ -1530,6 +1544,7 @@ static void build_topics(void)
     static const char *const everyday[] = { "band", "fishing", "gardening" };
     uint16_t links[TALK_ASSOC_TOP], concept, form;
     uint32_t tags[4];
+    TalkAudience aud;
     const TalkLine *thread = talk_quick_thread(&T.s, NULL);
     uint16_t active = T.topic ? T.topic : T.s.topic_stack[0];
     int stock_start = T.nstock > 0;
@@ -1537,31 +1552,32 @@ static void build_topics(void)
     int i, w, count;
     T.page = PG_TOPIC;
     T.nrows = 0;
+    topic_audience(&aud);
     add_row(K_NOTOPIC, 0, 0);
-    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0);
+    for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0, &aud);
     if (T.to >= 0 && T.to < T.n)
         for (w = 0; w < 5; w++)
-            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK, 0);
+            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK, 0, &aud);
     /* Preserve the shortest path to the default topic. */
-    if (stock_start) topic_add(T.stock[0], K_PICK, 0);
+    if (stock_start) topic_add(T.stock[0], K_PICK, 0, &aud);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
     if (!q_grief(active) && !sensitive_thread(thread)) {
         if (!T.pending && T.nrows + stock_remaining < TROWS &&
             !(T.s.flags & TDF_CARE) && T.s.tension < TALK_TENSION_ARGUE) {
             uint16_t learned = talk_link_pick(speaker_of(T.to), T.avatar, active, TC_NONE);
-            if (followup_open(learned)) topic_add(learned, K_TOPIC_LINK, 1);
+            if (followup_open(learned)) topic_add(learned, K_TOPIC_LINK, 1, &aud);
         }
         for (i = 0; i < (int)(sizeof everyday / sizeof everyday[0]) && T.nrows + stock_remaining < TROWS; i++)
             if (talk_lex_find(everyday[i], &concept, &form, tags) >= 0)
-                topic_add(concept, K_PICK, 0);
+                topic_add(concept, K_PICK, 0, &aud);
         count = talk_db_assoc(active, links, NULL);
         for (i = 0; i < count && T.nrows + stock_remaining < TROWS; i++)
             if (links[i] != active && !q_grief(links[i]) &&
                 talk_gen_concept_ok(links[i], &T.s.conv.aud))
-                topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK, 0);
+                topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK, 0, &aud);
     }
-    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK, 0);
+    for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK, 0, &aud);
     list_reset();
 }
 
@@ -1602,10 +1618,12 @@ static const char *row_text(int index, char *buf)
     r = &T.row[index];
     switch (r->kind) {
     case K_CAT: doomo_snprintf(buf, 48, "%s >", cats[r->arg].name); break;
-    case K_ACT: phrase(r->arg, buf, 48); break;
+    case K_ACT:
+        expand_named(r->arg > 0 && r->arg < TA_COUNT && act_text[r->arg] ? act_text[r->arg] : "...",
+                     T.topic, T.journal_label.menu_topic, buf, 48);
+        break;
     case K_TOPIC:
-        topic_name(T.topic, tn, (int)sizeof tn);
-        doomo_snprintf(buf, 48, "Topic: %s >", T.topic == TC_NONE ? "any" : tn);
+        doomo_snprintf(buf, 48, "Topic: %s >", T.topic == TC_NONE ? "any" : T.journal_label.menu_topic);
         break;
     case K_TYPE: doomo_snprintf(buf, 48, "Type your own line..."); break;
     case K_TO:
@@ -1633,8 +1651,7 @@ static const char *row_text(int index, char *buf)
         else doomo_snprintf(buf, 48, "Our history >");
         break;
     case K_HISTORY_INFO:
-        doomo_snprintf(buf, 48, "Town memory: %d/%d, %d open",
-                       (int)r->v, talk_mem_capacity(), (int)r->arg);
+        doomo_snprintf(buf, 48, "Favors: %d open >", (int)r->arg);
         break;
     case K_HISTORY_TONE:
         doomo_snprintf(buf, 48, "This talk: %s",
@@ -2555,6 +2572,13 @@ static int invite(int id)
 
 static void pick_topic(uint16_t c)
 {
+    TalkAudience aud;
+    topic_audience(&aud);
+    if (c && !talk_gen_concept_ok(c, &aud)) {
+        ui_toast("Choose another topic for this group.");
+        build_topics();
+        return;
+    }
     T.followup = TC_NONE;
     T.topic = c;
     if (T.pending) {
@@ -2620,7 +2644,12 @@ static void activate(int i)
         break;
     }
     case K_HISTORY_INFO:
-        ui_toast("Open favors are protected from eviction.");
+        {
+            char hint[64];
+            doomo_snprintf(hint, sizeof hint, "%d open favors. Check Side quests for goals.",
+                           talk_quest_open_count());
+            ui_toast(hint);
+        }
         break;
     case K_HISTORY_TONE:
         ui_toast(r->v >= TALK_TENSION_ARGUE ?
@@ -3063,8 +3092,13 @@ static const char *panel_title(char *buf, int cap)
 #endif
         return t;
     }
-    if (T.you[0]) { doomo_snprintf(buf, (size_t)cap, "You: %s", T.you); return buf; }
-    return "Say something";
+    if (T.busy || T.gen || T.after) return "Conversation";
+    if (T.to < 0 && T.n > 1) return "Reply to everyone";
+    if (T.topic) {
+        doomo_snprintf(buf, (size_t)cap, "Reply: %s", T.journal_label.main.topic);
+        return buf;
+    }
+    return T.you[0] ? "Your next reply" : "Say something";
 }
 
 static void talk_card(int y)
@@ -3107,7 +3141,9 @@ static void talk_draw(void)
     py = layout(&rows);
     ph = sh - py;
     ui_window(0, py, sw, ph, WIN_CUTE);
-    ui_glint_hold(0);
+    /* Separate the instruction from the selectable rows with one quiet
+     * hairline. Keep both panels free of moving window glints. */
+    plat_rect(8, py + 15, sw - 16, 1, st->fill_lo);
     if (mood) {
         mw = ui_text_width(mood);
         ui_text_clip(sw - 8 - mw, py + 5, mood, st->text_dim, sw - 8 - mw, sw - 8);
@@ -3115,6 +3151,7 @@ static void talk_draw(void)
     ui_text_clip(8, py + 5, panel_title(ttl, (int)sizeof ttl), st->text, 8, sw - 12 - mw);
     ui_list_draw(&T.list, 6, py + 17, sw - 12, WIN_CUTE);
     if (!T.busy && !T.gen && !T.after && py - 14 >= 26) talk_card(py - 14);   /* not under an open dialogue box (A advances the line) */
+    ui_glint_hold(0);
 #if DOOMO_POINTER
     pointer_draw();
 #endif
