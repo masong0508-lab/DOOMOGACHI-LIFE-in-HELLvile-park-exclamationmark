@@ -1137,7 +1137,7 @@ def txt_bank(strings, codec):
             raise Fail("%r encodes to %d B: talk_db.c reads at most %d B of a string's stream"
                        % (s, len(st), STREAM_MAX))
     nblocks = (len(strings) + (1 << BLOCK_SHIFT) - 1) >> BLOCK_SHIFT
-    bases, offs, data = [], [], b""
+    bases, offs, data = [], [], bytearray()
     for i, st in enumerate(streams):
         if i % (1 << BLOCK_SHIFT) == 0:
             bases.append(len(data))
@@ -1145,10 +1145,10 @@ def txt_bank(strings, codec):
         if off > 0xFFFF:
             raise Fail("a string block over 64 KB")
         offs.append(off)
-        data += st
+        data.extend(st)
     head = u16(len(strings)) + bytes((BLOCK_SHIFT, 0)) + u32(nblocks)
     hdr_len = len(head) + 4 * nblocks + 2 * len(strings)
-    body = head + b"".join(u32(hdr_len + b) for b in bases) + b"".join(u16(o) for o in offs) + data
+    body = head + b"".join(u32(hdr_len + b) for b in bases) + b"".join(u16(o) for o in offs) + bytes(data)
     raw = sum(len(s.encode("latin-1")) + 1 for s in strings)
     return body, raw
 
