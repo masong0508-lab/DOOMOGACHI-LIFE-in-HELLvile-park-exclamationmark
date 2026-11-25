@@ -552,10 +552,12 @@ static int affinity(int id, uint16_t topic)
     const DoomoResident *r;
     TalkConcept tc;
     uint8_t fav = 0, dull = 0;
+    uint16_t like[5];
     int j, root;
     if (!topic || id == TALK_PET_ID) return 0;
-    for (j = 0; j < 3; j++) if (talk_gen_like(id, j) == topic) return 3;
-    if (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic) return -3;
+    talk_gen_likes(id, like);
+    for (j = 0; j < 3; j++) if (like[j] == topic) return 3;
+    if (like[3] == topic || like[4] == topic) return -3;
     r = res_of(id, &buf);
     if (!r || !talk_db_concept(topic, &tc)) return 0;
     root = talk_db_cat_root(tc.cat);
