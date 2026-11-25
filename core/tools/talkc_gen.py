@@ -548,6 +548,10 @@ def build_grammar(b, files, die, rel, strict=True):
                             rom.add(m)
                             work.append(m)
     strings, str_index = [], {}
+    salt, exact_set = b.hate[0], set(b.hate[1])
+    # The same guards recur across thousands of category leaves. Share
+    # immutable term spans, rather than repeating each two-byte predicate.
+    term_spans = {(): 0}
     core_acts = {}                   # TM2c: entry act -> the reply acts some rule of core.<act> performs
     grief_rules = []                 # K-10: (rule name, reply act, [the guard terms of each line])
     rule_rows, alt_rows, term_rows = [], [], []
@@ -631,7 +635,6 @@ def build_grammar(b, files, die, rel, strict=True):
             hits = comp.register_hits(vis)
             # the S3 lint's hate match on every literal word (as the lint reads it: a word with its
             # apostrophe, squeezed) would refuse the line every time
-            salt, exact_set = b.hate[0], set(b.hate[1])
             for word in re.findall(r"[A-Za-z0-9'][A-Za-z0-9'-]*", vis):
                 if ts_.hate_key(salt, word) in exact_set:
                     die(lwhere, "a word the output lint's hate list refuses (squeezed, as the S3 lint reads it)")
@@ -689,10 +692,13 @@ def build_grammar(b, files, die, rel, strict=True):
                 if refs or face or af & ~AF["topic"] or (batch_signature is not None and sig != batch_signature):
                     batch_ok = False
                 batch_signature = sig
-            alt_rows.append((str_index[ctext], opt["w"], face, len(term_rows), len(lt), af))
+            terms_key = tuple(lt)
+            if terms_key not in term_spans:
+                term_spans[terms_key] = len(term_rows)
+                term_rows += lt
+            alt_rows.append((str_index[ctext], opt["w"], face, term_spans[terms_key], len(lt), af))
             if not 1 <= opt["w"] <= 255:
                 die(lwhere, "w=1..255")
-            term_rows += lt
             alt_where.append(lwhere)
             alt_refs.append(refs)
             alt_min.append(minlen)
