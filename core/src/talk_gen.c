@@ -270,17 +270,37 @@ void talk_gen_likes(int id, uint16_t out[5])
     mapped_likes(&h, r, out);
 }
 
+/* The same safety policy for an already decoded concept and category.
+ * Callers that need category flags/root need not fetch either row twice. */
+static int concept_flags_ok(const TalkConcept *c, const TalkAudience *aud, uint8_t flags)
+{
+    if (!aud || c->age == TAGE_NEVER || c->reg >= TR_SEXUAL || (flags & TCAT_SAFETY)) return 0;
+    if (aud->any_minor || aud->avatar_minor || aud->target_minor) {
+        if (c->age != TAGE_ANY || c->reg != TR_CLEAN || (flags & TCAT_GATED)) return 0;
+    }
+    return 1;
+}
+
+static int decoded_concept_ok(const TalkConcept *c, const TalkAudience *aud)
+{
+    uint8_t flags;
+    return aud && c->age != TAGE_NEVER && c->reg < TR_SEXUAL &&
+           talk_db_cat(c->cat, NULL, &flags) && concept_flags_ok(c, aud, flags);
+}
+
 int talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud)
 {
     TalkConcept c;
-    uint8_t parent = 0, flags = 0;
-    if (!concept || !talk_db_concept(concept, &c) || !aud) return 0;
-    if (c.age == TAGE_NEVER || c.reg >= TR_SEXUAL) return 0;
-    if (!talk_db_cat(c.cat, &parent, &flags) || (flags & (TCAT_SAFETY))) return 0;
-    if (aud->any_minor || aud->avatar_minor || aud->target_minor) {
-        if (c.age != TAGE_ANY || c.reg != TR_CLEAN || (flags & TCAT_GATED)) return 0;
-    }
-    return 1;
+    return aud && concept && talk_db_concept(concept, &c) && decoded_concept_ok(&c, aud);
+}
+
+/* A non-grief topic for an ordinary conversational shortcut. A failed
+ * concept/category read still fails closed. */
+int talk_gen_casual_topic_ok(uint16_t concept, const TalkAudience *aud)
+{
+    TalkConcept c;
+    return aud && concept && talk_db_concept(concept, &c) &&
+           !(c.flags & TCF_GRIEF) && decoded_concept_ok(&c, aud);
 }
 
 static int cat_is(int cat, const char *key)
@@ -593,8 +613,10 @@ static int attr_pick(Gen *g, uint16_t cid, int want, uint16_t *out)
     int n = talk_db_attrs(cid, ids), i, k = 0, pick = -1;
     for (i = 0; i < n; i++) {
         TalkConcept a;
-        if (!talk_db_concept(ids[i], &a) || talk_db_cat_root(a.cat) != TCR_DESCRIBE) continue;
-        if (!talk_gen_concept_ok(ids[i], &g->c->aud)) continue;
+        uint8_t parent, flags;
+        if (!talk_db_concept(ids[i], &a) || !talk_db_cat(a.cat, &parent, &flags) ||
+            (parent ? parent : a.cat) != TCR_DESCRIBE ||
+            !concept_flags_ok(&a, &g->c->aud, flags)) continue;
         if (want > 0 && a.sent <= 0) continue;
         if (want < 0 && a.sent >= 0) continue;
         k++;
@@ -609,13 +631,12 @@ static int attr_pick(Gen *g, uint16_t cid, int want, uint16_t *out)
 static int assoc_pick(Gen *g, uint16_t cid, uint16_t *out)
 {
     uint16_t ids[TALK_ASSOC_TOP];
-    uint8_t w[TALK_ASSOC_TOP];
-    int n = talk_db_assoc(cid, ids, w), i, k = 0, pick = -1;
+    int n = talk_db_assoc(cid, ids, NULL), i, k = 0, pick = -1;
     for (i = 0; i < n; i++) {
         TalkConcept a;
         uint8_t fl = 0;
         if (ids[i] == cid || !talk_db_concept(ids[i], &a) || !talk_db_cat(a.cat, NULL, &fl) ||
-            !(fl & TCAT_TALKABLE) || !talk_gen_concept_ok(ids[i], &g->c->aud) || ((a.flags & TCF_GRIEF) && !g->grief))
+            !(fl & TCAT_TALKABLE) || !concept_flags_ok(&a, &g->c->aud, fl) || ((a.flags & TCF_GRIEF) && !g->grief))
             continue;                                         /* K-10: no grief word in a joke */
         k++;
         if (!out) return 1;
@@ -963,7 +984,7 @@ static void fill_concept(Gen *g, uint16_t cid, char field, const char *mods)
     TalkConcept c;
     int which = TF_DEFAULT, start = g->len, rec = 1;
     uint16_t said = cid;
-    if (!cid || !talk_db_concept(cid, &c) || !talk_gen_concept_ok(cid, &g->c->aud)) { g->fail = 1; return; }
+    if (!cid || !talk_db_concept(cid, &c) || !decoded_concept_ok(&c, &g->c->aud)) { g->fail = 1; return; }
     if ((c.flags & TCF_GRIEF) && !g->grief) { g->fail = 1; return; }              /* K-10 */
     s[0] = 0;
     switch (field) {
@@ -975,7 +996,7 @@ static void fill_concept(Gen *g, uint16_t cid, char field, const char *mods)
             return;
         }
         if (has_mod(mods, 'n')) strcpy(s, (ac.flags & TCF_AN) ? "an " : "a ");
-        talk_db_form(a, TF_LEMMA, s + strlen(s), (int)(sizeof s - strlen(s)));
+        talk_db_form_decoded(&ac, TF_LEMMA, s + strlen(s), (int)(sizeof s - strlen(s)));
         apply_mods(s, mods);
         if (talk_safe_lint_probe(s, &g->c->aud, 0) != TL_OK) { g->fail = 1; return; }
         emit(g, s, -1);
@@ -1007,7 +1028,7 @@ static void fill_concept(Gen *g, uint16_t cid, char field, const char *mods)
     else if (has_mod(mods, 'n')) which = TF_INDEF;
     else if (has_mod(mods, 't')) which = TF_DEF;
     else if (has_mod(mods, 'l')) which = TF_LEMMA;
-    if (talk_db_form(cid, which, s, (int)sizeof s - 3) <= 0) { g->fail = 1; return; }
+    if (talk_db_form_decoded(&c, which, s, (int)sizeof s - 3) <= 0) { g->fail = 1; return; }
     apply_mods(s, mods);
     /* what the S3 lint would refuse is never filled in ("spice's" squeezes to a hate-list plural) */
     if (talk_safe_lint_probe(s, &g->c->aud, 0) != TL_OK) { g->fail = 1; return; }
@@ -1490,13 +1511,9 @@ static int setup(Gen *g, TalkConv *c, int who, int to, int act, uint16_t topic)
     if (talk_gen_fact(g->sid, TCB_JOB, &v)) g->job = v;
     if (talk_gen_fact(g->sid, TCB_PARTNER, &v)) g->partner = v;
     if (talk_gen_fact(g->sid, TCB_PROBLEM, &v)) g->prob = (uint8_t)v;
-    g->mem_ok = (uint8_t)(c->mem_topic[who] && talk_gen_concept_ok(c->mem_topic[who], &c->aud));
-    if (g->mem_ok) {                                         /* K-10: a remembered grief topic is no callback */
-        TalkConcept mc;
-        if (!talk_db_concept(c->mem_topic[who], &mc) || (mc.flags & TCF_GRIEF)) g->mem_ok = 0;
-    }
-    /* the topic: only a concept that may be said here */
-    if (topic && talk_gen_concept_ok(topic, &c->aud) && talk_db_concept(topic, &g->tc)) g->topic = topic;
+    g->mem_ok = (uint8_t)talk_gen_casual_topic_ok(c->mem_topic[who], &c->aud);  /* K-10 */
+    /* The topic's decoded record is also used for its stance and grammar. */
+    if (topic && talk_db_concept(topic, &g->tc) && decoded_concept_ok(&g->tc, &c->aud)) g->topic = topic;
     if (g->topic) {
         int sc = stance_score(g->sid, g->r, &g->tc, g->topic, g->like, g->has_ts ? &g->ts : NULL, g->stage);
         g->stance = (uint8_t)stance_band(sc);

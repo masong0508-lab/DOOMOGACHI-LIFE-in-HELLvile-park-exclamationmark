@@ -345,36 +345,45 @@ static int put(char *out, int cap, int n, const char *src)
     return n;
 }
 
-int talk_db_form(int id, int which, char *out, int cap)
+int talk_db_form_decoded(const TalkConcept *c, int which, char *out, int cap)
 {
-    TalkConcept c;
     char f[96];
     char *plural;
     const char *word;
     int n = 0;
     if (!out || cap <= 0) return -1;
     out[0] = 0;
-    if (!talk_db_concept(id, &c) || bank_string(TB_FORMS, c.form, f, sizeof(f)) < 0) return -1;
+    if (!db.open || !c || !c->id || c->id > db.nconcepts || !c->cat ||
+        bank_string(TB_FORMS, c->form, f, sizeof(f)) < 0) return -1;
     plural = strchr(f, '/');
     if (plural) *plural++ = 0;
     switch (which) {
     case TF_LEMMA:  return put(out, cap, 0, f);
     case TF_PLURAL: return put(out, cap, 0, plural ? plural : f);
-    case TF_DEFAULT: return put(out, cap, 0, (c.flags & TCF_PLURAL) && plural ? plural : f);
+    case TF_DEFAULT: return put(out, cap, 0, (c->flags & TCF_PLURAL) && plural ? plural : f);
     case TF_INDEF:
     case TF_DEF:
-        word = (c.flags & TCF_PLURAL) && plural ? plural : f;
-        if (c.flags & TCF_PROPER) {
-            if (c.flags & TCF_THE) n = put(out, cap, 0, "the ");
+        word = (c->flags & TCF_PLURAL) && plural ? plural : f;
+        if (c->flags & TCF_PROPER) {
+            if (c->flags & TCF_THE) n = put(out, cap, 0, "the ");
             return put(out, cap, n, f);
         }
-        if (which == TF_DEF || (c.flags & TCF_THE)) n = put(out, cap, 0, "the ");
-        else if ((c.flags & (TCF_MASS | TCF_PLURAL)) || !(c.flags & TCF_COUNTABLE)) n = put(out, cap, 0, "some ");
-        else n = put(out, cap, 0, (c.flags & TCF_AN) ? "an " : "a ");
+        if (which == TF_DEF || (c->flags & TCF_THE)) n = put(out, cap, 0, "the ");
+        else if ((c->flags & (TCF_MASS | TCF_PLURAL)) || !(c->flags & TCF_COUNTABLE)) n = put(out, cap, 0, "some ");
+        else n = put(out, cap, 0, (c->flags & TCF_AN) ? "an " : "a ");
         return put(out, cap, n, word);
     default:
         return -1;
     }
+}
+
+int talk_db_form(int id, int which, char *out, int cap)
+{
+    TalkConcept c;
+    if (!out || cap <= 0) return -1;
+    out[0] = 0;
+    if (!talk_db_concept(id, &c)) return -1;
+    return talk_db_form_decoded(&c, which, out, cap);
 }
 
 int talk_db_cat(int cat, uint8_t *parent, uint8_t *flags)

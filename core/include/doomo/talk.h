@@ -295,6 +295,9 @@ int  talk_db_attrs(int id, uint16_t *ids);
 /* A surface form into out (always NUL-terminated); returns the length,
  * -1 on error. */
 int  talk_db_form(int id, int which, char *out, int cap);
+/* Same form using a concept just decoded from the currently open bank.
+ * Do not retain the record across closing or changing language banks. */
+int  talk_db_form_decoded(const TalkConcept *c, int which, char *out, int cap);
 /* Categories: count, parent / flags, key ("food.dish"), root (TCR_*). */
 int  talk_db_ncats(void);
 int  talk_db_cat(int cat, uint8_t *parent, uint8_t *flags);
@@ -1069,6 +1072,8 @@ int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
 int  talk_gen_stance(int id, uint16_t topic);
 /* May this concept be said in this room (age class, register, a child here)? */
 int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
+/* Ordinary shortcuts must additionally exclude grief concepts. */
+int  talk_gen_casual_topic_ok(uint16_t concept, const TalkAudience *aud);
 /* May the act ask or say something about the current topic? */
 int  talk_gen_topic_act(int act);
 /* acts.tsv: may `reply` answer `act`; the act's class (TAC_*). */

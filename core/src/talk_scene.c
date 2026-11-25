@@ -869,7 +869,7 @@ static int followup_open(uint16_t topic)
         sensitive_thread(talk_quick_thread(&T.s, NULL))) return 0;
     talk_safe_ctx(T.avatar, T.ids, T.n, T.to, &aud);
     aud.any_minor |= T.s.conv.aud.any_minor;   /* A room that started age-restricted stays that way. */
-    return talk_gen_concept_ok(topic, &aud) && !q_grief(topic);
+    return talk_gen_casual_topic_ok(topic, &aud);
 }
 
 static int meet_memory_minor(int id);
@@ -943,7 +943,7 @@ static void quick_refresh(void)
     for (i = 0; i < T.nstock && !fresh; i++) {
         uint16_t c = T.stock[(h + (uint32_t)i) % (uint32_t)T.nstock];
         if (c != T.topic && c != T.s.topic_stack[0] &&
-            talk_gen_concept_ok(c, &T.s.conv.aud) && !q_grief(c)) fresh = c;
+            talk_gen_casual_topic_ok(c, &T.s.conv.aud)) fresh = c;
     }
     T.nquick = (uint8_t)talk_quick_replies(&T.s, T.to, T.topic, fresh, T.qsalt++, T.quick);
 }
@@ -1140,11 +1140,9 @@ static void build_history(void)
         for (kind = 0; kind < 3; kind++)
             if (talk_mem_like_known(id, kind))
                 add_row(K_HISTORY_LIKE, kind, talk_gen_like(id, kind));
-        if (m->topic_a && talk_gen_concept_ok(m->topic_a, &T.s.conv.aud) &&
-            !q_grief(m->topic_a))
+        if (talk_gen_casual_topic_ok(m->topic_a, &T.s.conv.aud))
             add_row(K_HISTORY_TOPIC, 0, m->topic_a);
-        if (m->topic_b && m->topic_b != m->topic_a &&
-            talk_gen_concept_ok(m->topic_b, &T.s.conv.aud) && !q_grief(m->topic_b))
+        if (m->topic_b != m->topic_a && talk_gen_casual_topic_ok(m->topic_b, &T.s.conv.aud))
             add_row(K_HISTORY_TOPIC, 1, m->topic_b);
         if (m->likes_known & TALK_SHARED_PLAYED) {
             add_row(K_HISTORY_EVENT, TALK_SHARED_PLAYED, 0);
@@ -1585,9 +1583,15 @@ static void build_topics(void)
     topic_audience(&aud);
     add_row(K_NOTOPIC, 0, 0);
     for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0, &aud);
-    if (T.to >= 0 && T.to < T.n)
+    if (T.to >= 0 && T.to < T.n) {
+        uint16_t likes[5];
+        int loaded = 0;
         for (w = 0; w < 5; w++)
-            if (talk_mem_like_known(T.ids[T.to], w)) topic_add(talk_gen_like(T.ids[T.to], w), K_PICK, 0, &aud);
+            if (talk_mem_like_known(T.ids[T.to], w)) {
+                if (!loaded) { talk_gen_likes(T.ids[T.to], likes); loaded = 1; }
+                topic_add(likes[w], K_PICK, 0, &aud);
+            }
+    }
     /* Preserve the shortest path to the default topic. */
     if (stock_start) topic_add(T.stock[0], K_PICK, 0, &aud);
     /* Read suggestions once on entering the picker. Leave room for the
@@ -1603,8 +1607,7 @@ static void build_topics(void)
                 topic_add(concept, K_PICK, 0, &aud);
         count = talk_db_assoc(active, links, NULL);
         for (i = 0; i < count && T.nrows + stock_remaining < TROWS; i++)
-            if (links[i] != active && !q_grief(links[i]) &&
-                talk_gen_concept_ok(links[i], &T.s.conv.aud))
+            if (links[i] != active && talk_gen_casual_topic_ok(links[i], &T.s.conv.aud))
                 topic_add(links[i], T.pending ? K_PICK : K_TOPIC_LINK, 0, &aud);
     }
     for (i = stock_start; i < T.nstock; i++) topic_add(T.stock[i], K_PICK, 0, &aud);

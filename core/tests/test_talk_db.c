@@ -111,6 +111,31 @@ TEST(talk_db_forms_and_articles)
     talk_db_close();
 }
 
+/* The fast path must preserve all form kinds, bounds and truncation. */
+TEST(talk_db_decoded_forms_match_id_forms)
+{
+    static const int forms[] = { TF_LEMMA, TF_PLURAL, TF_DEFAULT, TF_INDEF, TF_DEF, 99 };
+    static const int caps[] = { 1, 5, 20, 96 };
+    char a[96], b[96];
+    TalkConcept c;
+    int i, j, k;
+    CHECK_EQ(open_fixture(), TALK_DB_OK);
+    for (i = 1; i <= talk_db_nconcepts(); i++) {
+        if (!talk_db_concept(i, &c)) continue;
+        for (j = 0; j < (int)DOOMO_COUNTOF(forms); j++)
+            for (k = 0; k < (int)DOOMO_COUNTOF(caps); k++) {
+                CHECK_EQ(talk_db_form(i, forms[j], a, caps[k]),
+                         talk_db_form_decoded(&c, forms[j], b, caps[k]));
+                CHECK_STR(a, b);
+            }
+    }
+    CHECK_EQ(talk_db_form_decoded(NULL, TF_LEMMA, b, sizeof b), -1);
+    CHECK_STR(b, "");
+    talk_db_close();
+    CHECK_EQ(talk_db_form_decoded(&c, TF_LEMMA, b, sizeof b), -1);
+    CHECK_STR(b, "");
+}
+
 TEST(talk_db_concepts_categories_and_classes)
 {
     TalkConcept c;
