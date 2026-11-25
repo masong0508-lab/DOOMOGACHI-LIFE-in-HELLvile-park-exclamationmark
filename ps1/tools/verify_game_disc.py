@@ -73,6 +73,24 @@ def check_file(disc, files, name, source):
             raise ValueError(f"{name}: extra source bytes")
     print(f"verified {name}: {length} bytes, sha256 {h.hexdigest()}")
 
+def verify_game_disc(image, talk, exe, require_intro=False):
+    required = {"SYSTEM.CNF", "DOOMO.EXE", "OVL.BIN", "SFX.BIN", "SPRITES.BIN",
+                "PARTS.BIN", "TEXT.BIN", "TALK_EN.BIN", "README.TXT"}
+    if require_intro:
+        required.add("INTRO.STR")
+    with image.open("rb") as disc:
+        files = root_files(disc)
+        missing = sorted(required - files.keys())
+        if missing:
+            raise ValueError("full PS1 game disc missing: " + ", ".join(missing))
+        if any(files[name][1] <= 0 for name in required):
+            raise ValueError("empty required game file")
+        check_file(disc, files, "DOOMO.EXE", exe)
+        check_file(disc, files, "TALK_EN.BIN", talk)
+        if files["TALK_EN.BIN"][1] > 4 * 1024 * 1024:
+            raise ValueError("Talk bank exceeds PS1 streaming limit")
+    print("Full PS1 game disc: normal resources and integrated Talk verified")
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("image", type=Path)
@@ -80,22 +98,7 @@ def main():
     ap.add_argument("exe", type=Path)
     ap.add_argument("--require-intro", action="store_true")
     args = ap.parse_args()
-    required = {"SYSTEM.CNF", "DOOMO.EXE", "OVL.BIN", "SFX.BIN", "SPRITES.BIN",
-                "PARTS.BIN", "TEXT.BIN", "TALK_EN.BIN", "README.TXT"}
-    if args.require_intro:
-        required.add("INTRO.STR")
-    with args.image.open("rb") as disc:
-        files = root_files(disc)
-        missing = sorted(required - files.keys())
-        if missing:
-            raise ValueError("full PS1 game disc missing: " + ", ".join(missing))
-        if any(files[name][1] <= 0 for name in required):
-            raise ValueError("empty required game file")
-        check_file(disc, files, "DOOMO.EXE", args.exe)
-        check_file(disc, files, "TALK_EN.BIN", args.talk)
-        if files["TALK_EN.BIN"][1] > 4 * 1024 * 1024:
-            raise ValueError("Talk bank exceeds PS1 streaming limit")
-    print("Full PS1 game disc: normal resources and integrated Talk verified")
+    verify_game_disc(args.image, args.talk, args.exe, args.require_intro)
 
 if __name__ == "__main__":
     main()

@@ -452,8 +452,8 @@ if(DOOMO_PS1_TALK_ON)
                 ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.bin
                 ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
                 ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.exe ${_verify_intro}
-        DEPENDS disc
         VERBATIM)
+    add_dependencies(verify_game_disc disc)
 endif()
 
 # ---- headless tests in PCSX-Redux (ps1/harness, see README.md) ------------
@@ -584,4 +584,7 @@ else()
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"
 		VERBATIM USES_TERMINAL)
+    if(DOOMO_PS1_TALK_ON)
+        add_dependencies(harness verify_game_disc)
+    endif()
 endif()
