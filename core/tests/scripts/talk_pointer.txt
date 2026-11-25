@@ -2,7 +2,8 @@
 # T9: the pointer on the Talk screen (docs/TALK.md "The pointer"). Every target is reached with "mouse X Y
 # click" and does what the matching pad press does; the pad is only used to page the dialogue box.
 # A negative X / Y counts from the right / bottom edge, so one script fits 240x160 and 320x240: the panel is
-# 90 px tall at the bottom (header: Y -90..-73, then rows of 12 px: slot i is at Y -68 + 12 i), the people
+# 90 px tall on the main page, shorter on compact submenus. panel+N is relative to the actual panel top
+# (header +5, then rows of 12 px: slot i is at panel+22 plus 12 i). The people
 # strip is the top 24 px, the scroll bar is the right edge of the list (X -4).
 scene TITLE
 wait 10
@@ -32,7 +33,7 @@ expect-ptr-page replies
 mouse 100 -20 click
 expect-ptr-page acts
 shot talk_ptr_2_acts
-mouse 100 -85 click
+mouse 100 panel+5 click
 expect-ptr-page replies
 # the scroll bar: lower half = R (a page down: sel 0 -> 6), upper half = L (a page up: back to 0), R again
 mouse -10 -20 click
@@ -50,10 +51,10 @@ mouse 100 -20 click
 expect-ptr-page options
 shot talk_ptr_4_options
 # Topic (slot 0) -> the topic page; the header goes back to the replies
-mouse 100 -68 click
+mouse 100 panel+22 click
 expect-ptr-page topics
 shot talk_ptr_5_topics
-mouse 100 -85 click
+mouse 100 panel+5 click
 expect-ptr-page replies
 # The shared-life, needs and oddity rows lengthened the real Talk menu.
 # Four page-down pointer clicks (not the old three) reach the Options row
@@ -65,10 +66,10 @@ mouse -10 -20 click
 mouse 100 -20 click
 expect-ptr-page options
 # Invite someone (slot 1) -> who joins in (slot 0 is the one you are closest to); a click joins them in
-mouse 100 -56 click
+mouse 100 panel+34 click
 expect-ptr-page invite
 shot talk_ptr_6_invite
-mouse 100 -68 click
+mouse 100 panel+22 click
 expect-scene DIALOG
 press A
 wait 30

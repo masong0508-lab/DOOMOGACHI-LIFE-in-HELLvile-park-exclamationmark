@@ -87,6 +87,11 @@ static struct TalkScn {
         char subjects[2][36];           /* full labels on the selected pair page */
         char menu_topic[20];             /* Options/acts: decode on entry, not on draw */
         struct {
+            char names[6][20];          /* visible topic labels, reused journal scratch */
+            int16_t top;
+            uint8_t valid;
+        } topics;
+        struct {
             char date[16];
             char topic[20];
             char quick[TALK_QUICK_MAX][20];
@@ -108,6 +113,7 @@ static struct TalkScn {
 } T;
 
 DOOMO_STATIC_ASSERT(sizeof T.journal_label.main <= sizeof T.journal_label.rows, talk_menu_labels_reuse_scratch);
+DOOMO_STATIC_ASSERT(sizeof T.journal_label.topics <= sizeof T.journal_label.rows, talk_topic_labels_reuse_scratch);
 
 static int extra_ids[TALK_PARTS_MAX - 1], extra_n;   /* the others the caller wants in the room */
 static uint32_t sessions;                            /* a new seed for every talk of a day      */
@@ -1574,6 +1580,8 @@ static void build_topics(void)
     int i, w, count;
     T.page = PG_TOPIC;
     T.nrows = 0;
+    T.journal_label.topics.top = -1;
+    T.journal_label.topics.valid = 0;
     topic_audience(&aud);
     add_row(K_NOTOPIC, 0, 0);
     for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0, &aud);
@@ -1629,6 +1637,37 @@ static void build_invite(void)
         }
     for (k = 0; k < np; k++) add_row(K_PICK, 1, pick[k]);
     list_reset();
+}
+
+/* Decode visible topics only on first exposure. Preserve the old 48-byte
+ * plain label and 20-byte linked label: uncommon long plain names bypass
+ * the cache rather than silently losing text. Offscreen inspection never
+ * evicts the actual viewport. */
+static void picker_topic_name(int index, uint16_t c, char *out, int cap)
+{
+    int slot = index - T.list.top;
+    if (T.page == PG_TOPIC && slot >= 0 && slot < 6) {
+        char *cached = T.journal_label.topics.names[slot];
+        unsigned bit = 1u << slot;
+        if (T.journal_label.topics.top != T.list.top) {
+            T.journal_label.topics.top = (int16_t)T.list.top;
+            T.journal_label.topics.valid = 0;
+        }
+        if (T.journal_label.topics.valid & bit) {
+            size_t n = strlen(cached);
+            if (n >= (size_t)cap) n = (size_t)cap - 1;
+            memcpy(out, cached, n);
+            out[n] = 0;
+            return;
+        }
+        topic_name(c, out, cap);
+        if (strlen(out) < sizeof T.journal_label.topics.names[0]) {
+            memcpy(cached, out, strlen(out) + 1);
+            T.journal_label.topics.valid |= (uint8_t)bit;
+        }
+        return;
+    }
+    topic_name(c, out, cap);
 }
 
 static const char *row_text(int index, char *buf)
@@ -1806,12 +1845,12 @@ static const char *row_text(int index, char *buf)
     case K_NOTOPIC: doomo_snprintf(buf, 48, "Any topic"); break;
     case K_FOLLOW_UP: doomo_snprintf(buf, 48, "Ask about %s", T.followup_name); break;
     case K_TOPIC_LINK:
-        topic_name(r->v, tn, (int)sizeof tn);
+        picker_topic_name(index, r->v, tn, (int)sizeof tn);
         doomo_snprintf(buf, 48, r->arg ? "Revisit %s" : "Ask about %s", tn);
         break;
     case K_PICK:
         if (r->arg) doomo_snprintf(buf, 48, "%s", res_name(r->v));
-        else topic_name(r->v, buf, 48);
+        else picker_topic_name(index, r->v, buf, 48);
         break;
     default: break;
     }
