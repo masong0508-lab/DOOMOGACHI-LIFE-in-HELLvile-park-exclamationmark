@@ -1074,6 +1074,8 @@ int  talk_gen_act_class(int act);
 /* A resident's like as a concept: which 0 food, 1 hobby, 2 music, 3 fear,
  * 4 hated food; 0 none. */
 uint16_t talk_gen_like(int id, int which);
+/* Same five concepts in one bank-header read; missing values are zero. */
+void talk_gen_likes(int id, uint16_t out[5]);
 /* The roster id of cast index i (a TGP_SPEAKER value), -1 none. */
 int  talk_gen_cast_id(int i);
 /* An alternative of the grammar (tests, the census): 1 ok. */
