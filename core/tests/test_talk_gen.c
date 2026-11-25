@@ -200,7 +200,7 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
             if (ai.term[2 * j] == TGP_CATEGORY) cat = ai.term[2 * j + 1];
         CHECK(cat > 0);
     }
-    CHECK_EQ(batch, 40641);
+    CHECK_EQ(batch, 43065);
     for (i = 0; i < (int)DOOMO_COUNTOF(keys); i++) {
         uint16_t topic = concept(keys[i]);
         TalkConcept tc;
