@@ -44,12 +44,15 @@ expect-scene TALK
 fps visit setup
 wait 90
 expect-scene TALK
-fps talk visit menu
+# Protect the previously verified 30 FPS in-house menu.
+expect-fps 29.5 talk visit menu
 shot visit_menu_steady
 press A
 wait 15
 expect-scene DIALOG
 fps visit reply startup
 wait 90
-fps talk visit dialogue
+# The previous exact head measured 28 FPS. Keep that neighborhood
+# while pursuing sustained 30; do not claim a 30 FPS dialogue gate yet.
+expect-fps 27.0 talk visit dialogue
 shot visit_dialogue_steady

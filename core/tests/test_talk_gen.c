@@ -246,6 +246,38 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
     }
     CHECK(total > 0 && selected > 0 && kid_selected > 0 && notes_selected > 0);
     printf("      Atlas fieldnotes: %d selected replies\n", notes_selected);
+    /* The moments expansion must actually reach generated speech, not
+     * merely exist as a compiled bank. Test new authored fragments from
+     * the pie/dish category with ordinary and kid-room audiences. */
+    {
+        static const char *const moments[] = {
+            "I like browned edges", "I notice creamy sauces", "I value savory broth",
+            "I'd try a new topping", "I'd warm a soup bowl", "I'd add chopped herbs",
+            "Which side suits the dish?", "Would you serve it hot?",
+            "What gives broth flavor?", "Which plate would you use?"
+        };
+        uint16_t topic = concept("pie");
+        int seed, selected_moments = 0;
+        CHECK(topic);
+        for (seed = 0; seed < 1600; seed++) {
+            TalkConv c;
+            TalkLine line;
+            int j;
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, seed & 1 ? 2 : 1,
+                           (uint32_t)(32000 + seed));
+            c.plain = 1;
+            if (!talk_gen_line(&c, 0, -1, TA_ASK_ABOUT, topic, &line, NULL)) continue;
+            for (j = 0; j < (int)DOOMO_COUNTOF(moments); j++)
+                if (strstr(line.text, moments[j])) {
+                    CHECK_EQ(line.topic, topic);
+                    CHECK(!(line.flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)));
+                    selected_moments++;
+                    break;
+                }
+        }
+        CHECK(selected_moments > 0);
+        printf("      Atlas moments: %d replies with new dish fragments\n", selected_moments);
+    }
     CHECK_EQ(talk_safe_lint_hits(), lint0);
     printf("      Atlas: %d batch alternatives, %d selected replies (%d kid-room) / %d generated\n",
            batch, selected, kid_selected, total);

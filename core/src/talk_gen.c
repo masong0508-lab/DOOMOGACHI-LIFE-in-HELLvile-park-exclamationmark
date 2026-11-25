@@ -1324,6 +1324,22 @@ static int fits(const char *s)
     return talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) <= TALK_BUBBLE_LINES && sentences(v) <= TALK_SENTENCES_MAX;
 }
 
+/* A category-local reply can already have a complete answer and a
+ * genuine question. Avoid generating extra decorative parts just to
+ * discard them at the three-sentence limit. Do not short-circuit a
+ * refusal, sincere/romance line, implicit subject, or request. */
+static int full_topic_reply(const Part *p, uint16_t topic)
+{
+    char v[TALK_LINE_MAX];
+    int i;
+    if (!topic || !strchr(p->text, '?') || strlen(p->text) >= TALK_LINE_MAX) return 0;
+    for (i = 0; i < p->nsaid && p->said[i] != topic; i++) {}
+    if (i == p->nsaid) return 0;
+    visible(p->text, v, (int)sizeof v);
+    return sentences(v) == TALK_SENTENCES_MAX &&
+           talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) <= TALK_BUBBLE_LINES;
+}
+
 static int ends_sentence(const char *s)
 {
     int n = (int)strlen(s);
@@ -1792,6 +1808,25 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
         use[1] = 1;
         have_core_info = alt_info_known(&g->h, parts[1].rule, parts[1].alt, &ai);
         lower = have_core_info && (ai.rflags & RF_LOWER);
+        /* Reject an oversized core before selecting any optional parts.
+         * Joining more text cannot make that core fit. */
+        if (!fits(parts[1].text) && ntoo < AVOID_MAX) {
+            too_long[ntoo++] = parts[1].alt;
+            try_--;
+            if (ntoo >= AVOID_MAX) try_ = TRIES - 2;
+            continue;
+        }
+        if (optional && have_core_info && !lower && !g->grief &&
+            !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
+            (g->act == TA_ASK_ABOUT || g->act == TA_ASK_OPINION ||
+             g->act == TA_TELL || g->act == TA_CHANGE_TOPIC ||
+             g->act == TA_CONTINUE || g->act == TA_AGREE) &&
+            full_topic_reply(&parts[1], g->topic)) {
+            /* Already topical and at the sentence budget; preserve the
+             * whole answer, final lint, novelty and actual outcome. */
+            ok = 1;
+            break;
+        }
         if (optional && !lower) {
             if (r < 30 + (loud >= 10 ? 15 : 0) - (loud <= 5 ? 15 : 0))
                 use[0] = make_part(g, entry_sym(g, ENT_FIXED, TGE_OPEN), 0, &parts[0]);
@@ -1902,13 +1937,7 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
             }
             if (ok) break;
         }
-        if (!fits(parts[1].text) && ntoo < AVOID_MAX) {     /* the core alone is too long: set it aside */
-            too_long[ntoo++] = parts[1].alt;
-            try_--;
-            if (ntoo >= AVOID_MAX) try_ = TRIES - 2;
-            continue;
-        }
-        if (try_ == TRIES - 1) {
+         if (try_ == TRIES - 1) {
             static const uint8_t drop[] = { 3, 2, 0, 4, 5, 6 };      /* tag, callback, opener, hand-off, reason, hook */
             for (k = 0; k < 6 && !ok; k++) {
                 use[drop[k]] = 0;

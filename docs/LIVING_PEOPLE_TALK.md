@@ -683,3 +683,28 @@ It supplements the existing VMU, audio, disc, Talk, story and family
 tests rather than replacing them. Passing is required before calling
 the Dreamcast package playable; a successful ELF/CDI link alone is
 not sufficient.
+
+## Atlas moments and responsive Talk menus
+
+The English Atlas includes category-specific observations, ideas, and
+follow-up prompts. The moments recipe adds 3,258 newly written clauses,
+with 125,755 additional distinct composed templates (7,379,593 expanded
+text bytes) across the existing 79 topic categories. Its 3,890 stored
+alternatives reuse the fieldnote pools rather than materializing the
+Cartesian product. These are potential templates, not a count of distinct
+completed conversations or added ROM bytes. The full compiler, audience
+and grief guards, three-sentence bubble limit and output lint still apply.
+
+The category browser remains under Options > Topic > Browse topics; the
+main replies remain short. During actual speech, the inactive reply list
+and its redundant captions are not drawn, while the resident strip and
+dialogue portrait remain. The menu focus row is matte, not beveled.
+Grammar guards use bounded record spans and selected rule IDs rather
+than repeated searches; mapped ROM text and safety records decode in
+place. Disc-backed readers keep their existing bounded buffers.
+
+The last verified GBA revision before this pass reached 30.0 drawn FPS
+in the isolated in-house Talk menu and 28.0 during house dialogue.
+The visit harness now gates the menu at 29.5 and dialogue at 27.0 FPS
+to guard against regressions; new measurements are required before
+calling the entire Talk flow 30 FPS.
