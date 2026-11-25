@@ -59,7 +59,7 @@
 #define RF_SINCERE 8u
 #define RF_CAST 16u
 #define RF_TIC 32u
-#define RF_BATCH 128u                       /* compiler-proven uniform Atlas leaf */
+#define RF_BATCH TALK_RULE_BATCH                       /* compiler-proven uniform Atlas leaf */
 #define RF_LOWER 64u                         /* a lower-case voice (Wisp, Vapula): the line as written */
 #define AF_SWEAR 1u
 #define AF_REGISTER 2u
