@@ -120,6 +120,74 @@ TEST(talk_outcome_bond_caps)
     CHECK_EQ(town_res(ID_NANA)->level, lv0 + 2 * TALK_CAP_LEVEL_DAY);
 }
 
+/* A deferred summary belongs to its original speaker, even when the
+ * selected avatar has since changed (the hero is the default here). */
+TEST(talk_outcome_bond_uses_the_actual_speaker)
+{
+    TalkSummary s;
+    TalkOutcome o;
+    int hero_before, speaker_before;
+    premade_town();
+    rel_get_or_add(ID_NANA, ID_RIVET);
+    hero_before = rel_value(ID_NANA, HERO);
+    speaker_before = rel_value(ID_NANA, ID_RIVET);
+    summary(&s, ID_NANA, -1, -1);
+    s.avatar = ID_RIVET;
+    s.rel_d_player[0] = 3;
+    talk_outcome_apply(&s, &o);
+    CHECK_EQ(o.rel[0], 3);
+    CHECK_EQ(rel_value(ID_NANA, ID_RIVET), speaker_before + 3);
+    CHECK_EQ(rel_value(ID_NANA, HERO), hero_before);
+}
+
+TEST(talk_outcome_repeated_close_does_not_replay_effects)
+{
+    static const int ids[] = { ID_NANA };
+    TalkState s;
+    TalkOutcome out, first;
+    TalkSummary sum;
+    int bond, happy, social, level;
+    premade_town();
+    town_res(ID_NANA)->stat[STAT_HAPPY] = 40;
+    town_res(ID_NANA)->stat[STAT_SOCIAL] = 10;
+    talk_outcome_begin(&s, HERO, ids, 1, 73u);
+    s.part[0].rel_d_player = 2;
+    s.part[0].mood_d = 2;
+    s.part[0].engage = 50;
+    s.mem_to[0] = TMF_COMPLIMENTED;
+    /* An already-ended dialogue must still commit on its FIRST close. */
+    s.flags |= TDF_OVER;
+    talk_outcome_end(&s, &first, &sum);
+    CHECK_EQ(first.rel[0], 2);
+    CHECK_EQ(first.mood[0], 2);
+    CHECK(first.social > 0);
+    CHECK_EQ(sum.n, 1);
+    bond = rel_value(ID_NANA, HERO);
+    happy = town_res(ID_NANA)->stat[STAT_HAPPY];
+    social = town_res(ID_NANA)->stat[STAT_SOCIAL];
+    level = town_res(ID_NANA)->level;
+    /* Retry on the same tick and on a later day (after daily caps reset). */
+    talk_outcome_end(&s, &out, &sum);
+    CHECK_EQ(out.rel[0], 0);
+    CHECK_EQ(out.mood[0], 0);
+    CHECK_EQ(out.social, 0);
+    CHECK_EQ(sum.n, 0);
+    doomo_town.day++;
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.rel[0], 0);
+    CHECK_EQ(rel_value(ID_NANA, HERO), bond);
+    CHECK_EQ(town_res(ID_NANA)->stat[STAT_HAPPY], happy);
+    CHECK_EQ(town_res(ID_NANA)->stat[STAT_SOCIAL], social);
+    CHECK_EQ(town_res(ID_NANA)->level, level);
+    /* Starting a new conversation on the same state object resets the
+     * close guard. It is not a permanent lockout for that resident. */
+    talk_outcome_begin(&s, HERO, ids, 1, 74u);
+    s.part[0].rel_d_player = 2;
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.rel[0], 2);
+    CHECK_EQ(rel_value(ID_NANA, HERO), bond + 2);
+}
+
 TEST(talk_outcome_mood_and_social)
 {
     TalkSummary s;
