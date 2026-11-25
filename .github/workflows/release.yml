@@ -104,9 +104,14 @@ jobs:
       - name: Build the discs (NTSC game, PAL game, engine test)
         working-directory: ps1
         run: |
+          set -euo pipefail
           for preset in ps1 ps1-pal ps1-enginetest; do
             cmake --preset "$preset" -DDOOMO_INTRO_REQUIRED=ON
-            cmake --build --preset "$preset"
+            cmake --build --preset "$preset" | tee "$preset-build.log"
+            if [ "$preset" != ps1-enginetest ]; then
+              awk '/^elf2exe: -?[0-9]+ B left below the stack top / { headroom = $2 }
+                END { if (headroom < 73728) { print "PS1 full game needs 73728 B below the stack top"; exit 1 } }' "$preset-build.log"
+            fi
           done
 
       - name: Zip the discs
