@@ -1845,11 +1845,18 @@ static int gen_line(Gen *g, int core, int optional, TalkLine *out, TalkTrace *tr
     if (optional && g->topic && !g->grief && talk_gen_topic_act(g->act) &&
         have_core_info && !(ai.rflags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) && !alt_topicy(&ai)) {
         uint16_t assoc[TALK_ASSOC_TOP];
-        int n = talk_db_assoc(g->topic, assoc, NULL), named = 0;
+        int n, named = 0;
+        /* Most answers mention the exact topic. Do not read the association
+         * bank on that fast path, especially on disc-backed platforms. */
         for (k = 0; k < 7 && !named; k++)
-            if (use[k]) named = part_addresses_topic(&parts[k], g->topic, assoc, n);
-        if (!named)
-            restore_topic_reason(g, parts, use, line, (int)sizeof line, lower, assoc, n);
+            if (use[k]) named = part_addresses_topic(&parts[k], g->topic, NULL, 0);
+        if (!named) {
+            n = talk_db_assoc(g->topic, assoc, NULL);
+            for (k = 0; k < 7 && !named; k++)
+                if (use[k]) named = part_addresses_topic(&parts[k], g->topic, assoc, n);
+            if (!named)
+                restore_topic_reason(g, parts, use, line, (int)sizeof line, lower, assoc, n);
+        }
     }
     join(line, (int)sizeof line, parts, use, 7, tr, lower);
     excl_budget(line, g->pers[PERS_EXPRESSION]);
