@@ -843,6 +843,18 @@ static int terms_ok(Gen *g, uint16_t first, int n)
 typedef struct GRule { uint16_t alt_first; uint8_t nalt, act; uint16_t term_first; uint8_t nterm, flags; } GRule;
 typedef struct GAlt { uint16_t str; uint8_t weight, face; uint16_t term_first; uint8_t nterm, flags; } GAlt;
 
+static inline void unpack_rule(const uint8_t *b, GRule *r)
+{
+    r->alt_first = le16(b); r->nalt = b[2]; r->act = b[3]; r->term_first = le16(b + 4); r->nterm = b[6];
+    r->flags = b[7];
+}
+
+static inline void unpack_alt(const uint8_t *b, GAlt *a)
+{
+    a->str = le16(b); a->weight = b[2]; a->face = b[3]; a->term_first = le16(b + 4); a->nterm = b[6];
+    a->flags = b[7];
+}
+
 static int rd_rule(const GHdr *h, int k, GRule *r)
 {
     uint8_t scratch[8];
@@ -850,8 +862,7 @@ static int rd_rule(const GHdr *h, int k, GRule *r)
     if (k < 0 || k >= h->nrules) return 0;
     b = talk_db_record(TB_GRAMMAR, h->rules + 8u * (uint32_t)k, scratch, sizeof scratch);
     if (!b) return 0;
-    r->alt_first = le16(b); r->nalt = b[2]; r->act = b[3]; r->term_first = le16(b + 4); r->nterm = b[6];
-    r->flags = b[7];
+    unpack_rule(b, r);
     return 1;
 }
 
@@ -862,8 +873,7 @@ static int rd_alt(const GHdr *h, int k, GAlt *a)
     if (k < 0 || k >= h->nalts) return 0;
     b = talk_db_record(TB_GRAMMAR, h->alts + 8u * (uint32_t)k, scratch, sizeof scratch);
     if (!b) return 0;
-    a->str = le16(b); a->weight = b[2]; a->face = b[3]; a->term_first = le16(b + 4); a->nterm = b[6];
-    a->flags = b[7];
+    unpack_alt(b, a);
     return 1;
 }
 
@@ -906,17 +916,35 @@ static int stance_clash(const Gen *g, int act)
 static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
                 GAlt *selected, uint16_t *owner)
 {
-    uint8_t s[4], adjacency[16];
+    uint8_t scratch[4], adjacency[16];
+    const uint8_t *s, *refs = NULL, *rules = NULL, *alts = NULL;
+    unsigned first, count;
     int i, best = -1, best_level = 3;
     int check_adj = g->adj && g->depth == 0;
     uint32_t tot[3] = { 0, 0, 0 };
-    if (sym < 0 || sym >= g->h.nsyms || !talk_db_read(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, s, 4)) return -1;
+    if (sym < 0 || sym >= g->h.nsyms) return -1;
+    s = talk_db_record(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, scratch, sizeof scratch);
+    if (!s) return -1;
+    first = le16(s);
+    count = le16(s + 2);
+    if ((uint32_t)first + count > g->h.nrefs) return -1;
+    /* Mapped cartridges can borrow validated immutable tables once per
+     * selection instead of rechecking the bank for every candidate.
+     * Streams retain the same per-row reads, order and random draws. */
+    if (s != scratch) {
+        refs = talk_db_record(TB_GRAMMAR, g->h.refs + 2u * first, NULL, 2u * count);
+        rules = talk_db_record(TB_GRAMMAR, g->h.rules, NULL, 8u * g->h.nrules);
+        alts = talk_db_record(TB_GRAMMAR, g->h.alts, NULL, 8u * g->h.nalts);
+    }
     if (check_adj && !act_row_h(&g->h, g->act, adjacency)) return -1;
-    for (i = 0; i < le16(s + 2); i++) {
+    for (i = 0; i < (int)count; i++) {
         uint16_t rk;
         GRule r;
         int a;
-        if (!g_u16(g->h.refs + 2u * (uint32_t)(le16(s) + i), &rk) || !rd_rule(&g->h, rk, &r)) return -1;
+        if (refs) rk = le16(refs + 2u * (uint32_t)i);
+        else if (!g_u16(g->h.refs + 2u * (first + (uint32_t)i), &rk)) return -1;
+        if (rules && rk < g->h.nrules) unpack_rule(rules + 8u * rk, &r);
+        else if (!rd_rule(&g->h, rk, &r)) return -1;
         if (check_adj && !adjacent_row(adjacency, r.act)) continue;                     /* K-10 banks */
         if (!terms_ok(g, r.term_first, r.nterm)) continue;
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
@@ -967,7 +995,9 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             GAlt al;
             uint32_t w;
             int lv;
-            if (avoided(avoid, navoid, a) || !rd_alt(&g->h, a, &al)) continue;
+            if (avoided(avoid, navoid, a)) continue;
+            if (alts && a < g->h.nalts) unpack_alt(alts + 8u * (uint32_t)a, &al);
+            else if (!rd_alt(&g->h, a, &al)) continue;
             if ((al.flags & AF_SWEAR) && g->c->swears) continue;                    /* K-9 */
             if ((al.flags & AF_JMAT) && !pred(g, TGP_JMAT, 0)) continue;           /* K-6 */
             if (!terms_ok(g, al.term_first, al.nterm)) continue;

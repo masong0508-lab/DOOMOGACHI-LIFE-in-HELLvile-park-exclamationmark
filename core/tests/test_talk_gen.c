@@ -20,6 +20,7 @@
 #include "doomo/doomo.h"
 #include "doomo/talk.h"
 #include "doomo/lang.h"
+#include "doomo/plat_ext.h"
 #include "doomo/roster.h"
 #include "doomo/sim.h"
 #include "doomo/ending.h"
@@ -700,6 +701,69 @@ TEST(talk_gen_deterministic)
     conv(&b, ID_NANA, ID_VEX, ID_GRUMB);
     for (i = 0; i < 64; i++) CHECK_STR(line(&b, i % 3, -1, TA_COMPLIMENT, pie), ta[i]);
     talk_db_close();
+}
+
+/* Use the full shipping grammar, not just the small test grammar.
+ * Native streams it through plat_talk_read; a borrowed image exercises
+ * the cartridge fast path. The same seeds must produce the same lines,
+ * reply acts, faces, and alternative trace for mixed audiences. */
+TEST(talk_gen_mapped_and_streamed_selection_match)
+{
+    static const int acts[] = { TA_ASK_ABOUT, TA_ASK_OPINION, TA_TELL, TA_CONTINUE, TA_CHANGE_TOPIC };
+    enum { SAMPLES = 96 };
+    TalkLine expected[SAMPLES], l;
+    uint16_t core[SAMPLES];
+    uint8_t parts[SAMPLES];
+    TalkTrace tr;
+    TalkConv c;
+    uint8_t *image = NULL;
+    uint32_t size;
+    uint16_t topics[2];
+    int mode, k;
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(!talk_db_record(TB_GRAMMAR, 0, NULL, 4));
+    topics[0] = concept("pie"); topics[1] = concept("band");
+    CHECK(topics[0] && topics[1]);
+    for (mode = 0; mode < 2; mode++) {
+        if (mode) {
+            talk_db_close();
+            size = plat_talk_load("en");
+            CHECK(size > 0 && size != PLAT_TALK_LOADING);
+            if (!size || size == PLAT_TALK_LOADING) return;
+            image = (uint8_t *)malloc(size);
+            CHECK(image != NULL);
+            if (!image) return;
+            if (plat_talk_read(0, image, size) != size ||
+                talk_db_open_mem(image, size) != TALK_DB_OK) {
+                CHECK(0);
+                talk_db_close();
+                free(image);
+                return;
+            }
+            CHECK(talk_db_record(TB_GRAMMAR, 0, NULL, 4) != NULL);
+        }
+        for (k = 0; k < SAMPLES; k++) {
+            int ids[2] = { ID_NANA, (k & 1) ? ID_PIP : ID_VEX };
+            talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 17u + (uint32_t)k * 7919u);
+            CHECK(talk_gen_line(&c, (k >> 1) & 1, -1,
+                      acts[(unsigned)k % (sizeof acts / sizeof acts[0])],
+                      topics[(k >> 2) & 1], &l, &tr));
+            if (!mode) {
+                expected[k] = l; core[k] = tr.core_alt; parts[k] = tr.parts;
+            } else {
+                CHECK_STR(l.text, expected[k].text);
+                CHECK_EQ(l.act, expected[k].act);
+                CHECK_EQ(l.face, expected[k].face);
+                CHECK_EQ(l.flags, expected[k].flags);
+                CHECK_EQ(l.topic, expected[k].topic);
+                CHECK_EQ(tr.core_alt, core[k]);
+                CHECK_EQ(tr.parts, parts[k]);
+            }
+        }
+    }
+    talk_db_close();
+    free(image);
 }
 
 /* ---- K-10: grief is not a punchline (SCRIPT_STYLE R6; design 3.6, 7.1) ---------

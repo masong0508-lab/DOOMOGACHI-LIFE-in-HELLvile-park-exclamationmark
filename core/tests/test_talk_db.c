@@ -244,6 +244,75 @@ TEST(talk_db_attributes_and_associations)
     talk_db_close();
 }
 
+/* Compare the batched list to individual bank reads for every live concept,
+ * including zero attributes, count-only calls and untouched output tails. */
+TEST(talk_db_attributes_match_individual_reads)
+{
+    int mode, id, i, n;
+    for (mode = 0; mode < 2; mode++) {
+        CHECK_EQ(mode ? talk_db_open(lang_find("en")) : open_fixture(), TALK_DB_OK);
+        for (id = 1; id <= talk_db_nconcepts(); id++) {
+            TalkConcept c;
+            uint16_t ids[TALK_ATTR_MAX + 1];
+            if (!talk_db_concept(id, &c)) continue;
+            for (i = 0; i <= TALK_ATTR_MAX; i++) ids[i] = 0xFFFFu;
+            n = c.flags & TCF_NATTR_MASK;
+            if (n > TALK_ATTR_MAX) n = TALK_ATTR_MAX;
+            CHECK_EQ(talk_db_attrs(id, ids), n);
+            CHECK_EQ(talk_db_attrs(id, NULL), n);
+            for (i = 0; i < n; i++) {
+                uint8_t e[2] = { 0, 0 };
+                CHECK(talk_db_read(TB_ATTR, 2u * (c.attr_first + (uint32_t)i), e, 2));
+                CHECK_EQ_U(ids[i], (uint16_t)(e[0] | (e[1] << 8)));
+            }
+            for (i = n; i <= TALK_ATTR_MAX; i++) CHECK_EQ_U(ids[i], 0xFFFFu);
+        }
+        talk_db_close();
+    }
+}
+
+/* An incomplete attribute bank must return the same readable prefix,
+ * without writing beyond it, rather than failing the whole batch. */
+TEST(talk_db_attributes_truncated_bank_keeps_prefix)
+{
+    static uint8_t img[1u << 16];
+    TalkConcept c;
+    uint16_t want[TALK_ATTR_MAX], got[TALK_ATTR_MAX];
+    unsigned i, nb;
+    uint32_t packed;
+    int pie = fid("pie"), found = 0;
+    CHECK(doomo_talk_fixture_size <= sizeof img);
+    if (doomo_talk_fixture_size > sizeof img) return;
+    CHECK_EQ(open_fixture(), TALK_DB_OK);
+    if (!talk_db_concept(pie, &c) || talk_db_attrs(pie, want) < 3) {
+        CHECK(0);
+        talk_db_close();
+        return;
+    }
+    talk_db_close();
+    memcpy(img, fx(), doomo_talk_fixture_size);
+    nb = img[12] | (unsigned)img[13] << 8;
+    packed = 2u * (c.attr_first + 2u);
+    for (i = 0; i < nb; i++) {
+        uint8_t *e = img + TALK_HDR_SIZE + i * TALK_DIR_ENTRY;
+        if (e[0] == TB_ATTR && e[1] == 0) {
+            e[8] = (uint8_t)packed; e[9] = (uint8_t)(packed >> 8);
+            e[10] = (uint8_t)(packed >> 16); e[11] = (uint8_t)(packed >> 24);
+            found = 1;
+            break;
+        }
+    }
+    CHECK(found);
+    if (!found) return;
+    CHECK_EQ(talk_db_open_mem(img, doomo_talk_fixture_size), TALK_DB_OK);
+    for (i = 0; i < TALK_ATTR_MAX; i++) got[i] = 0xFFFFu;
+    CHECK_EQ(talk_db_attrs(pie, got), 2);
+    CHECK_EQ(talk_db_attrs(pie, NULL), 2);
+    CHECK_EQ_U(got[0], want[0]); CHECK_EQ_U(got[1], want[1]);
+    for (i = 2; i < TALK_ATTR_MAX; i++) CHECK_EQ_U(got[i], 0xFFFFu);
+    talk_db_close();
+}
+
 /* a corrupted, foreign or truncated file is refused, and nothing reads */
 TEST(talk_db_refuses_bad_files)
 {

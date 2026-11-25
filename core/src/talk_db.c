@@ -311,13 +311,26 @@ int talk_db_edges(int id, uint16_t *ids, uint8_t *weights, int cap)
 int talk_db_attrs(int id, uint16_t *ids)
 {
     TalkConcept c;
+    uint8_t scratch[2 * TALK_ATTR_MAX];
+    const uint8_t *p;
+    uint32_t at;
     int i, n;
     if (!talk_db_concept(id, &c)) return 0;
     n = c.flags & TCF_NATTR_MASK;
     if (n > TALK_ATTR_MAX) n = TALK_ATTR_MAX;
+    if (!n) return 0;
+    at = 2u * c.attr_first;
+    /* Contiguous attribute IDs: borrow the ROM span, or read it once.
+     * Retain the old readable-prefix behavior if a stream refuses a batch
+     * or a damaged bank ends partway through the list. */
+    p = talk_db_record(TB_ATTR, at, scratch, 2u * (uint32_t)n);
+    if (p) {
+        if (ids) for (i = 0; i < n; i++) ids[i] = le16(p + 2 * i);
+        return n;
+    }
     for (i = 0; i < n; i++) {
         uint8_t e[2];
-        if (!rd_bank(TB_ATTR, 2u * (c.attr_first + (uint32_t)i), e, 2)) return i;
+        if (!rd_bank(TB_ATTR, at + 2u * (uint32_t)i, e, 2)) return i;
         if (ids) ids[i] = le16(e);
     }
     return n;
