@@ -1515,6 +1515,7 @@ int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t f
  * (the act of a quick reply, the topic or the resident id of a pick) and the text the list shows. */
 typedef struct TalkSceneDebug {
     int active, busy, sel, nrows, nparts, to, to_id, tension;
+    uint32_t quick_refreshes;           /* live menu rebuilds, not draw frames */
     int gate;                           /* TG_* of the player's last line                */
     int reply_act, nlines;              /* the act of the last resident line, and how many lines the answer had */
     int care, reply_sincere;            /* TDF_CARE is open (K-11); the last resident line is a sincere-bank line */
