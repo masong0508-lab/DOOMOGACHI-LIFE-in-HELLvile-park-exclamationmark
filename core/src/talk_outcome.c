@@ -536,7 +536,14 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
     if (!sum) return;
     roll();
     sim_ensure_init();
-    av = playas_slot();
+    /* A delayed close must credit the person who actually spoke, not
+     * whichever avatar is now selected. Household identities still use
+     * the hero town slot for needs/ties (as in playas_slot). */
+    av = sum->avatar;
+    if (av > DOOMO_PLAYER_ID && av >= FAMILY_POOL_FIRST && av <= FAMILY_POOL_LAST && family_find(av))
+        av = DOOMO_PLAYER_ID;
+    if (av < 0 || av > DOOMO_PLAYER_ID || !town_res(av) || town_res(av)->status == RES_EMPTY)
+        av = -1;
 
     /* ---- the bond, level, mood and needs of each resident ---- */
     for (k = 0; k < sum->n && k < TALK_PARTS_MAX; k++) {
@@ -552,7 +559,7 @@ void talk_outcome_apply(const TalkSummary *sum, TalkOutcome *out)
         }
         if (!alive_resident(id)) continue;
         lp = led_p(id);
-        want = sum->rel_d_player[k];
+        want = av >= 0 && av != id ? sum->rel_d_player[k] : 0;
         applied = take_signed(&lp->rel, want, TALK_CAP_REL_DAY);
         if (applied) rel_adjust(id, av, applied);
         out->rel[k] = (int8_t)applied;
@@ -719,7 +726,14 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
 {
     TalkSummary local;
     int k;
-    if (!s) return;
+    /* Farewell, forced scene exit and hand-in callbacks can all close a
+     * conversation. A summary is a one-time transaction, not a reward
+     * that a second close is allowed to replay. */
+    if (!s || (s->flags & TDF_COMMITTED)) {
+        if (out) memset(out, 0, sizeof *out);
+        if (sum) memset(sum, 0, sizeof *sum);
+        return;
+    }
     if (!sum) sum = &local;
     for (k = 0; k < s->nparts; k++) {
         int id = s->part[k].id;
@@ -755,6 +769,7 @@ void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum)
 #endif
     talk_mem_end(&s->conv);
     talk_dm_end(s, sum);
+    s->flags |= TDF_COMMITTED;
     talk_outcome_apply(sum, out);
     talk_quest_end(sum);                                     /* TQ: what the talk did to the open requests, and the pace */
 }
