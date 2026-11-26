@@ -43,7 +43,7 @@
 @rule follow.ask guard: topic&!pact=cool&!pact=warm&!act=change_topic act: ask_opinion
   "What's your take on {x}, {you}?"
   "Anything about {x} bug you? Or delight you?"
-  "Have you ever tried {x}? Be honest."
+  "What experience have you had with {x}?"
   "Does {x} come up a lot for you?"
 @rule follow.ask.love guard: likes_topic&!pact=cool&!act=change_topic act: ask_opinion
   "I could talk about {x} all day. What's your angle?"
@@ -53,11 +53,11 @@
 @rule follow.open guard: !topic&!pact=cool&!pact=warm&!act=change_topic act: ask_about
   "So what else is going on with you?"
   "Anything else on your mind, {you}?"
-  "Keep going. I'm listening. Mostly."
-  "Pick anything. I'll pretend I picked it too."
+  "I'm listening. What would you like to share?"
+  "Is there something you've been wanting to discuss?"
 @rule follow.blunt guard: blunt&topic&!pact=cool&!act=change_topic act: ask_opinion
-  "Opinion on {x}. Go."
-  "{x:cap}. Yes or no?"
+  "What's your view on {x}?"
+  "What matters to you about {x}?"
 @rule follow.polite guard: polite&topic&!pact=cool&!act=change_topic act: ask_opinion
   "If it's not too much to ask, what do you make of {x}?"
   "I'd love to hear what you think about {x}."

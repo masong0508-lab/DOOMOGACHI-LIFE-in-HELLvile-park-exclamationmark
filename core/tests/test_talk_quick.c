@@ -554,6 +554,67 @@ TEST(talk_quick_reopens_last_subject_without_forgetting_the_thread)
     talk_db_close();
 }
 
+/* The last line can be commentary after a clear question. Answer the
+ * intended speaker, keep the real subject, and offer both opinions.
+ * The player, not the NPC's preferences, decides what they believe. */
+TEST(talk_quick_answers_the_actual_question_with_player_agency)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie, music;
+    int i, n, k;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    begin2(&s, ID_NANA, ID_RIVET, 201u);
+    s.turn = s.conv.turn = 3;
+    s.in.act[0] = TA_TELL;
+    s.in.target = 0;
+    s.topic_stack[0] = music;
+    put_line(&s, 0, -1, TA_ASK_OPINION, pie, 0);
+    strcpy(s.line[0].text, "What do you think of pie?");
+    s.nlines = 2;
+    s.line[1].who = 1;
+    s.line[1].to = -1;
+    s.line[1].act = TA_TELL;
+    s.line[1].topic = music;
+    strcpy(s.line[1].text, "I like music.");
+    s.nhist = 2;
+    s.hist[0].flags = THF_PLAYER;
+    s.hist[0].act = TA_OPINE_POS;
+    s.hist[0].topic = pie;
+    s.hist[0].to = 1;               /* unrelated listener's history */
+    s.hist[1].flags = THF_PLAYER;
+    s.hist[1].act = TA_OPINE_NEG;
+    s.hist[1].topic = pie;
+    s.hist[1].to = 0;
+    for (i = 0; i < 32; i++) {
+        n = talk_quick_replies(&s, 0, music, TC_NONE, (uint32_t)i, g);
+        CHECK_EQ(n, TALK_QUICK_MAX);
+        CHECK_EQ(g[0].act, TA_OPINE_NEG);
+        CHECK_EQ(g[1].act, TA_OPINE_POS);
+        CHECK_EQ(g[2].act, TA_ANSWER);
+        CHECK_STR(g[2].text, "I'm undecided about %t.");
+        for (k = 0; k < n; k++) {
+            CHECK_EQ(g[k].topic, pie);
+            CHECK_EQ(g[k].to, 0);
+        }
+    }
+    n = talk_quick_replies(&s, 1, music, TC_NONE, 0u, g);
+    CHECK(n > 0);
+    for (k = 0; k < n; k++) CHECK(g[k].topic != pie);
+    /* A sincere line must prevent the ordinary question taking over. */
+    s.line[1].flags = TLF_SINCERE;
+    CHECK(talk_dm_pending_question(&s, 0) == NULL);
+    n = talk_quick_replies(&s, 0, music, TC_NONE, 0u, g);
+    for (k = 0; k < n; k++)
+        CHECK(g[k].act == TA_COMFORT || g[k].act == TA_SYMPATHIZE ||
+              g[k].act == TA_OFFER || g[k].act == TA_ENCOURAGE);
+    talk_db_close();
+}
+
 TEST(talk_quick_resumes_the_selected_residents_group_subject)
 {
     TalkState s;

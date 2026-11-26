@@ -336,6 +336,33 @@ test-talk: harness
 	$(HARNESS) $(BUILD)/doomogachi.gba --script $(GBA)/harness/scripts/talk_visit_perf.txt \
 	    --shots $(SHOTS)/talk_visit --save $(BUILD)/talkvisittest.sav
 
+# Profile the three real house-Talk phases independently. Use the existing
+# gameplay regression script as the setup, never insert profiling into a
+# test's timed sequence. The profiles report only; test-talk still gates.
+.PHONY: profile-talk
+TALK_PROFILE_LOG ?= $(BUILD)/talk_profile.log
+TALK_PROFILE_N ?= 8000000
+profile-talk: harness
+	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0
+	@mkdir -p $(SHOTS)/talk_profile
+	$(NM_SYMS)
+	@awk '{print} /^shot visit_menu_steady$/ {exit}' $(GBA)/harness/scripts/talk_visit_perf.txt > $(BUILD)/talk_profile_menu.txt
+	@cp $(BUILD)/talk_profile_menu.txt $(BUILD)/talk_profile_reply.txt
+	@printf '\nfps profile menu start\nprofile %s\nfps profile menu sampled\n' $(TALK_PROFILE_N) >> $(BUILD)/talk_profile_menu.txt
+	@printf '\nfps profile reply start\npress A\nprofile %s\nfps profile reply sampled\n' $(TALK_PROFILE_N) >> $(BUILD)/talk_profile_reply.txt
+	@cp $(GBA)/harness/scripts/talk_visit_perf.txt $(BUILD)/talk_profile_dialogue.txt
+	@printf '\nfps profile dialogue start\nprofile %s\nfps profile dialogue sampled\n' $(TALK_PROFILE_N) >> $(BUILD)/talk_profile_dialogue.txt
+	@rc=0; : > $(TALK_PROFILE_LOG); \
+	for phase in menu reply dialogue; do \
+	    echo "## Talk $phase" >> $(TALK_PROFILE_LOG); \
+	    rm -f $(BUILD)/talk_profile_$phase.sav; \
+	    $(HARNESS) $(BUILD)/doomogachi.gba --script $(BUILD)/talk_profile_$phase.txt \
+	        --shots $(SHOTS)/talk_profile --save $(BUILD)/talk_profile_$phase.sav \
+	        --nm $(BUILD)/doomogachi.nm --no-fps-gates --worklog --quiet >> $(TALK_PROFILE_LOG) 2>&1 || rc=1; \
+	done; \
+	echo "profile-talk: log $(TALK_PROFILE_LOG)"; \
+	cat $(TALK_PROFILE_LOG); exit $rc
+
 # the core's streamed save_game / load_game on flash, across two runs
 test-coresave: harness
 	@$(MAKE) --no-print-directory -f $(GBA)/Makefile rom ENGINE_TEST=0

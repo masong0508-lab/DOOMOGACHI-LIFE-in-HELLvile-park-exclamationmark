@@ -117,7 +117,9 @@ static int saf_hdr(SafHdr *h)
     return 1;
 }
 
-static uint64_t fnv64(const SafHdr *h, const char *s, int len)
+/* Salt is fixed throughout a line (and all of a fuzzy word's edits).
+ * Retain the exact FNV-1a sequence while computing its prefix only once. */
+static uint64_t hash_basis(const SafHdr *h)
 {
     uint64_t x = 0xCBF29CE484222325ull;
     int i;
@@ -126,6 +128,12 @@ static uint64_t fnv64(const SafHdr *h, const char *s, int len)
         x ^= (uint8_t)(w >> (8 * (i & 3)));
         x *= 0x100000001B3ull;
     }
+    return x;
+}
+
+static uint64_t fnv64(uint64_t x, const char *s, int len)
+{
+    int i;
     for (i = 0; i < len; i++) {
         x ^= (uint8_t)s[i];
         x *= 0x100000001B3ull;
@@ -133,14 +141,35 @@ static uint64_t fnv64(const SafHdr *h, const char *s, int len)
     return x;
 }
 
-static int in_set(uint32_t off, uint32_t n, uint64_t v)
+typedef struct SafLookup {
+    uint64_t basis;
+    const uint8_t *exact, *del;
+} SafLookup;
+
+static const uint8_t *hash_rows(uint32_t off, uint32_t n)
+{
+    return n <= 0xFFFFFFFFu / 8u ?
+        talk_db_record(TB_SAFETY, off, NULL, 8u * n) : NULL;
+}
+
+static void prepare_lookup(const SafHdr *h, SafLookup *lookup, int fuzzy)
+{
+    lookup->basis = hash_basis(h);
+    lookup->exact = hash_rows(h->exact_off, h->nexact);
+    lookup->del = fuzzy ? hash_rows(h->del_off, h->ndel) : NULL;
+}
+
+/* Validate the full mapped span once. A streamed or truncated bank keeps
+ * the same bounded per-row fallback; do not bypass membership checks. */
+static int in_set(const uint8_t *rows, uint32_t off, uint32_t n, uint64_t v)
 {
     int lo = 0, hi = (int)n - 1;
     uint8_t scratch[8];
     while (lo <= hi) {
         int mid = (lo + hi) >> 1;
         uint64_t x;
-        const uint8_t *b = talk_db_record(TB_SAFETY, off + 8u * (uint32_t)mid, scratch, sizeof scratch);
+        const uint8_t *b = rows ? rows + 8u * (uint32_t)mid :
+            talk_db_record(TB_SAFETY, off + 8u * (uint32_t)mid, scratch, sizeof scratch);
         if (!b) return 0;
         x = (uint64_t)le32(b) | ((uint64_t)le32(b + 4) << 32);
         if (x == v) return 1;
@@ -176,30 +205,30 @@ uint64_t talk_safe_hash(const char *word)
     int n;
     if (!word || !saf_hdr(&h)) return 0;
     n = squeeze(word, s, (int)sizeof s);
-    return fnv64(&h, s, n);
+    return fnv64(hash_basis(&h), s, n);
 }
 
-static int hate_word(const SafHdr *h, const char *word, int fuzzy)
+static int hate_word(const SafHdr *h, const SafLookup *lookup, const char *word, int fuzzy)
 {
     char s[TALK_TOK_LEN * 2], d[TALK_TOK_LEN * 2];
     uint64_t hash;
     int n, i;
     n = squeeze(word, s, (int)sizeof s);
     if (n < 3) return 0;
-    hash = fnv64(h, s, n);
-    if (in_set(h->exact_off, h->nexact, hash)) return 1;
+    hash = fnv64(lookup->basis, s, n);
+    if (in_set(lookup->exact, h->exact_off, h->nexact, hash)) return 1;
     /* edit distance 1 after the first letter (only unknown words reach here):
      * a letter added to a listed word of 4+ letters (a typo that breaks a
      * double letter squeezes to this); a letter left out, changed or two
      * swapped in a listed word of 5+ letters (the deletion hashes hold every
      * one-letter deletion of those, after the first) */
     if (!fuzzy || n < 4) return 0;
-    if (in_set(h->del_off, h->ndel, hash)) return 1;                         /* a letter left out (4+ letters) */
+    if (in_set(lookup->del, h->del_off, h->ndel, hash)) return 1;                         /* a letter left out (4+ letters) */
     for (i = 1; i < n; i++) {
         memcpy(d, s, (size_t)i);
         memcpy(d + i, s + i + 1, (size_t)(n - i));
-        if (n - 1 >= 4 && in_set(h->exact_off, h->nexact, fnv64(h, d, n - 1))) return 1;  /* one added */
-        if (n >= 5 && in_set(h->del_off, h->ndel, fnv64(h, d, n - 1))) return 1;          /* one changed, or two swapped */
+        if (n - 1 >= 4 && in_set(lookup->exact, h->exact_off, h->nexact, fnv64(lookup->basis, d, n - 1))) return 1;  /* one added */
+        if (n >= 5 && in_set(lookup->del, h->del_off, h->ndel, fnv64(lookup->basis, d, n - 1))) return 1;          /* one changed, or two swapped */
     }
     return 0;
 }
@@ -207,7 +236,10 @@ static int hate_word(const SafHdr *h, const char *word, int fuzzy)
 int talk_safe_hate_word(const char *word, int fuzzy)
 {
     SafHdr h;
-    return word && saf_hdr(&h) && hate_word(&h, word, fuzzy);
+    SafLookup lookup;
+    if (!word || !saf_hdr(&h)) return 0;
+    prepare_lookup(&h, &lookup, fuzzy);
+    return hate_word(&h, &lookup, word, fuzzy);
 }
 
 /* ---- S1: typed input --------------------------------------------------- */
@@ -447,6 +479,7 @@ static void lint_pairs(uint8_t pairs[32], const char *line)
 static int lint_core(const char *line, const TalkAudience *aud, int *swears, int strict)
 {
     SafHdr h;
+    SafLookup lookup;
     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
     uint8_t pairs[32], rules[4 * 8];
     char strings[64];
@@ -540,14 +573,16 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
         if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
         if (r[4] == TR_STRONG) nsw += n;
     }
-    /* the hate list on every word */
+    /* The same exact membership check on every word, sharing the
+     * validated cartridge table and salt prefix for this line only. */
+    prepare_lookup(&h, &lookup, 0);
     for (i = 0; v[i]; ) {
         int l = 0;
         while (v[i] && !wordc(v[i])) i++;
         while (v[i] && (wordc(v[i]) || v[i] == '-') && l < (int)sizeof word - 1) word[l++] = v[i++];
         while (v[i] && (wordc(v[i]) || v[i] == '-')) i++;
         word[l] = 0;
-        if (l && hate_word(&h, word, 0)) return TL_HATE;
+        if (l && hate_word(&h, &lookup, word, 0)) return TL_HATE;
     }
     if (talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) > TALK_BUBBLE_LINES) return TL_LENGTH;
     if (nsw) {

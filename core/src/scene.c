@@ -251,7 +251,17 @@ void scene_draw(void)
     if (depth <= 0) return;
     draw_real = real;
     first = depth - 1;
-    while (first > 0 && stack[first].s->overlay) first--;
+    while (first > 0 && stack[first].s->overlay) {
+#ifdef DOOMO_HAS_TALK
+        /* A house visit intentionally shows the room, but talking from a
+         * care screen, city street or direct menu is a complete screen.
+         * Do not render an expensive unrelated interface behind it. */
+        if (stack[first].s == &SCENE_TALK &&
+            stack[first - 1].s != &SCENE_HOME && stack[first - 1].s != &SCENE_FAMILY)
+            break;
+#endif
+        first--;
+    }
     for (i = first; i < real; i++) {
         if (!stack[i].s->draw) continue;
         depth = i + 1;

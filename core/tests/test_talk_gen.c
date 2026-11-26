@@ -748,6 +748,9 @@ TEST(talk_gen_mapped_and_streamed_selection_match)
             int ids[2] = { ID_NANA, (k & 1) ? ID_PIP : ID_VEX };
             int got;
             talk_gen_begin(&c, DOOMO_PLAYER_ID, ids, 2, 17u + (uint32_t)k * 7919u);
+            /* Exercise both opening selection and established-thread
+             * relevance tiers on the identical mapped/streamed bank. */
+            if (k & 2) c.turn = 3;
             memset(&l, 0, sizeof l);
             memset(&tr, 0, sizeof tr);
             got = talk_gen_line(&c, (k >> 1) & 1, -1,

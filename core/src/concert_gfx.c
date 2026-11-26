@@ -207,7 +207,7 @@ void concert_confetti(int x0, int y0, int w, int h, uint32_t t, int n, int fall)
     if (fast) ws_init(&ws, (int)t, 40, 7);
     for (i = 0; i < n; i++) {
         uint32_t r = hash2((uint32_t)i, 77u), a = (r >> 8) % (uint32_t)h, yo;
-        int x = x0 + (int)(r % (uint32_t)w) + (fast ? ws_val(&ws, 3) : ui_wave((int)t + i * 7, 40, 3));
+        int x = x0 + (int)(r % (uint32_t)w) + (fast ? ws_val(&ws, 3) : ui_wave((int)(t + (uint32_t)i * 7u), 40, 3));
         int y, ph = (int)((t3 + r) & 3);
         uint8_t c = PAL_PAINT(cols[mod6(r >> 4)], 2 - (ph & 1));
         if (!fall) yo = a;

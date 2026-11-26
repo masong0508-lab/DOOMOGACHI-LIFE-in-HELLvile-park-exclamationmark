@@ -88,6 +88,31 @@ static void go_to(int row)
     for (g = 0; g < 40 && talk_scene_debug(&d) && d.sel != row; g++) press(d.sel < row ? BTN_DOWN : BTN_UP);
 }
 
+/* A real Talk screen must not draw the previous non-house interface,
+ * even when a dialogue is on top of it. Use a sentinel draw callback to
+ * catch the actual scene-stack behavior, rather than comparing menus. */
+static int unrelated_draws;
+static void unrelated_draw(void) { unrelated_draws++; plat_clear(PAL_UI_RED); }
+static const DoomoScene unrelated_scene = { "TALK_TEST_UNDER", NULL, NULL, NULL, unrelated_draw, 0 };
+
+TEST(talk_scene_standalone_does_not_redraw_the_previous_screen)
+{
+    town();
+    scene_set(&unrelated_scene, 0);
+    frames(0, 2);
+    CHECK(unrelated_draws > 0);
+    unrelated_draws = 0;
+    CHECK(home_talk_enter(ID_NANA));
+    frames(0, 12);
+    CHECK_EQ(unrelated_draws, 0);
+    CHECK(read_talk_reply());
+    frames(0, 12);
+    CHECK_EQ(unrelated_draws, 0);
+    scene_pop();
+    frames(0, 2);
+    CHECK(unrelated_draws > 0);
+}
+
 TEST(talk_scene_the_debug_view_describes_the_page)
 {
     TalkSceneDebug d;

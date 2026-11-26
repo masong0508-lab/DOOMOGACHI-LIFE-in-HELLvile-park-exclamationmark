@@ -1786,6 +1786,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     if (e->kind == CK_BODY && !e->busy && e->rid == resident_id && e->look == lh && e->key == key) {
         e->stamp = ++cache_stamp;
         e->tick = now();
+        memo[memo_slot(CK_BODY, resident_id, lh)] = m->ei;
         return &e->img;
     }
     e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
@@ -1805,10 +1806,15 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
     if (!have_look) look_for_stage(RES_LOOK_VIEW(r), RES_STAGE(r), &L);
     if (body_lazy) {
         const uint32_t smask = 0xFFFFF000u;                   /* same look and status, any facing / frame */
-        CacheEnt *st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);
+        /* A visible stand-in is a borrowed image for the entire frame.
+         * Touch it before a new cache claim so it cannot be recycled by
+         * the next sliced job; keep the last displayed pose most recent. */
+        CacheEnt *st = cache_get(CK_BODY, resident_id, key, lh, smask, 1);
         if (job.on && job.kind == CK_BODY && job_for(CK_BODY, resident_id, lh, key, 0xFFFFFFFFu)) {
             job.want = now();
-        } else if (!job.on) {
+        } else if (!job.on && (st || body_lazy != 2)) {
+            /* Mode 2 with no cached facing renders immediately below.
+             * Do not start a redundant sliced render of the same body. */
             if (body_job_start(r, resident_id, key, lh, &L, status, dir, frame) && body_lazy == 3) {
                 /* S2-7: due like a stand-in's job (PC_STANDIN ticks): its share of slices runs every tick
                  * whatever the platform's guess of the room (a parade cannot wait for idle time) */
@@ -1821,7 +1827,7 @@ const DoomoImage *bodyspr_image(int resident_id, int dir, int frame)
                 e = cache_find(CK_BODY, resident_id, key, lh, 0xFFFFFFFFu);
                 if (e) { m->ei = (uint8_t)(e - ent); return &e->img; }
             }
-            if (st) st = cache_get(CK_BODY, resident_id, key, lh, smask, 0);   /* the claim may have evicted it */
+            if (st) st = cache_get(CK_BODY, resident_id, key, lh, smask, 1);   /* recheck and pin after the claim */
         }
         if (st || body_lazy != 2) return st ? &st->img : NULL;   /* NULL: not drawn for a few ticks */
         /* body_lazy == 2 (the player) with nothing cached to show: draw it now, as before */

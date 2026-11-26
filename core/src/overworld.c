@@ -1085,7 +1085,17 @@ static void build_billboards(void)
         frame = OWP_NFR(p) > 1 ? (int)((t5 + (uint32_t)i) % (uint32_t)OWP_NFR(p)) : 0;
         add_bb(x, y + 8 * OWQ, z, sprite_image(p->spr, frame), OWP_FL(p) | (p->type == THING_PROP_FOUNTAIN ? BB_KEEP_VISIBLE : 0), 0);
     }
-    ownpc_add_billboards(vx0, vy0, vx1, vy1);
+#ifdef DOOMO_PLATFORM_GBA
+    /* In a free stroll the camera has no scripted cut or shake offset.
+     * A 240x160 view covers +/-480x320 world units; leave room for
+     * chibi width, shadows, hops and overhead markers. Avoid rendering
+     * dozens of off-screen bodies from the oversized story prefetch box. */
+    if (ow.visit)
+        ownpc_add_billboards(ow.camx - 544 * OWQ, ow.camy - 368 * OWQ,
+                             ow.camx + 544 * OWQ, vy1);
+    else
+#endif
+        ownpc_add_billboards(vx0, vy0, vx1, vy1);
     /* side quest spots (the hero's) */
     if (!ow.visit && playas_is_hero()) {
         SideSpot sp[8];
