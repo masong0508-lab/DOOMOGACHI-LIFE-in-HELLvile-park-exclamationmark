@@ -850,6 +850,38 @@ TEST(talk_dm_implicit_replies_keep_the_live_subject)
     talk_db_close();
 }
 
+/* Switch listeners mid-thread: a reply with no noun should resolve
+ * against the new listener's own history, never another's conversation. */
+TEST(talk_dm_implicit_group_reply_respects_its_addressee)
+{
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int mode;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (mode = 0; mode < 3; mode++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, -1, 810u + (uint32_t)mode);
+        s.turn = s.conv.turn = 1;
+        s.in.target = 0;
+        s.in.act[0] = TA_TELL;
+        s.topic_stack[0] = pie;
+        s.answered_topic[0] = pie | TALK_LINK_SOURCE;
+        if (mode == 0) s.answered_topic[1] = music | TALK_LINK_SOURCE;
+        if (mode == 1) s.conv.mem_topic[1] = music;
+        utter(&u, TA_CONTINUE, TC_NONE, 1);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], mode == 2 ? TC_NONE : music);
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(s.nlines > 0);
+        CHECK_EQ(s.line[0].who, 1);
+    }
+    talk_db_close();
+}
+
 TEST(talk_dm_opening_prefers_real_shared_subject)
 {
     TalkState s;

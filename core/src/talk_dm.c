@@ -1225,13 +1225,14 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
     DoomoRng rng;
-    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked;
+    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked, old_target;
     if (!s || !u) return TG_PASS;
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
     if (s->flags & TDF_OVER) return TG_PASS;
     q_was_asked = (s->q_st & TQ_ST_ASKED) != 0;
     s->q_st &= (uint8_t)~TQ_ST_ASKED;                       /* TQ: the request's quick replies last one turn */
+    old_target = s->in.target;
     s->in = *u;
     for (k = 0; k < s->nparts; k++)
         if (s->part[k].flags & TPF_REFUSED) s->conv.refused |= (uint8_t)(1u << k);
@@ -1243,11 +1244,23 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
      * a topic for a favor decision, blocked input, unresolved word,
      * grief/care window, or an explicit change of subject. */
     if (!s->in.topic[0] && !q_was_asked && !s->care_left &&
-        !s->in.safety && !s->in.unk_len && s->topic_stack[0] &&
+        !s->in.safety && !s->in.unk_len &&
         (s->in.act[0] == TA_CONTINUE || s->in.act[0] == TA_ANSWER ||
-         s->in.act[0] == TA_AGREE || s->in.act[0] == TA_DISAGREE) &&
-        talk_gen_casual_topic_ok(s->topic_stack[0], &aud))
-        s->in.topic[0] = s->topic_stack[0];
+         s->in.act[0] == TA_AGREE || s->in.act[0] == TA_DISAGREE)) {
+        uint16_t subject = s->topic_stack[0];
+        /* A topicless response directed to a different resident must not
+         * inherit the previous addressee's private conversational thread.
+         * Resume this resident's actual answer, then their remembered
+         * subject. Without either, leave the subject unresolved. */
+        if (s->turn && s->nparts > 1 && old_target >= 0 &&
+            old_target != target && target >= 0) {
+            subject = s->answered_topic[target] & TALK_MAX_CONCEPTS;
+            if (!talk_gen_casual_topic_ok(subject, &aud))
+                subject = s->conv.mem_topic[target];
+        }
+        if (talk_gen_casual_topic_ok(subject, &aud))
+            s->in.topic[0] = subject;
+    }
     g = talk_safe_gate(&s->in, &aud, s->conv.avatar, target_id, target >= 0 && ((s->conv.refused >> target) & 1));
     s->gate = (uint8_t)g;
     s->conv.tone = s->in.tone;
@@ -1557,6 +1570,10 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     TalkConv *c = &s->conv;
     uint16_t topic = s->in.topic[0] ? s->in.topic[0] : s->topic_stack[0];
     int ok = 0;
+    /* Do not undo an unresolved topic decision by borrowing the last
+     * room topic in a follow-up, reaction or scripted beat. */
+    if (s->turn && !s->in.topic[0] && talk_gen_topic_act(s->in.act[0]))
+        topic = TC_NONE;
     if (!talker(s, who) && !(kind == DK_ANSWER && here(s, who))) return 0;
     switch (kind) {
     case DK_ANSWER:

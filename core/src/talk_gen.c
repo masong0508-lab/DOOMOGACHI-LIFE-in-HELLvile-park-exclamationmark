@@ -822,7 +822,7 @@ static int pred_raw(Gen *g, int p, int v)
     }
 }
 
-static int terms_ok(Gen *g, uint16_t first, int n, const uint8_t *mapped)
+static int terms_ok(Gen *g, uint16_t first, int n, const uint8_t *mapped, int *subject)
 {
     uint8_t scratch[30];
     const uint8_t *t;
@@ -837,6 +837,13 @@ static int terms_ok(Gen *g, uint16_t first, int n, const uint8_t *mapped)
     for (i = 0; i < n; i++, t += 2) {
         int r = pred(g, t[0] & 0x7F, t[1]);
         if ((t[0] & 0x80) ? r : !r) return 0;
+        /* A positive category/preference condition is evidence that this
+         * rule was authored for the subject, not merely allowed by a
+         * generic topic-present guard. Negative guards are not evidence. */
+        if (subject && (t[0] == TGP_ROOT || t[0] == TGP_CATEGORY ||
+                        t[0] == TGP_LIKES_TOPIC || t[0] == TGP_FEARS_TOPIC ||
+                        t[0] == TGP_HATES_TOPIC))
+            *subject = 1;
     }
     return 1;
 }
@@ -922,9 +929,17 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
     unsigned first, count;
     uint16_t last_first = 0;
     int last_n = 0, last_ok = 0;
-    int i, best = -1, best_level = 3;
+    int i, best = -1, best_level = 5;
     int check_adj = g->adj && g->depth == 0;
-    uint32_t tot[3] = { 0, 0, 0 };
+    /* For an established conversation, prefer an eligible topical reply
+     * over a generic quip before expanding it. A fresh generic answer
+     * can still beat a repeated generic or tie the speaker's recent
+     * topical core. Keep the opening, plain previews and sensitive
+     * banks' selection semantics, and never bypass a guard. */
+    int prefer_subject = novelty && !g->depth && g->topic &&
+        g->c->turn >= 2 && g->plan.kind && !(g->c->plain & 1) &&
+        !g->grief && !g->c->care && talk_gen_topic_act(g->act);
+    uint32_t tot[5] = { 0, 0, 0, 0, 0 };
     if (sym < 0 || sym >= g->h.nsyms) return -1;
     s = talk_db_record(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, scratch, sizeof scratch);
     if (!s) return -1;
@@ -944,13 +959,14 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
     for (i = 0; i < (int)count; i++) {
         uint16_t rk;
         GRule r;
-        int a;
+        int a, subject = 0;
         if (refs) rk = le16(refs + 2u * (uint32_t)i);
         else if (!g_u16(g->h.refs + 2u * (first + (uint32_t)i), &rk)) return -1;
         if (rules && rk < g->h.nrules) unpack_rule(rules + 8u * rk, &r);
         else if (!rd_rule(&g->h, rk, &r)) return -1;
         if (check_adj && !adjacent_row(adjacency, r.act)) continue;                     /* K-10 banks */
-        if (r.nterm && !terms_ok(g, r.term_first, r.nterm, terms)) continue;
+        if (r.nterm && !terms_ok(g, r.term_first, r.nterm, terms,
+                                  prefer_subject ? &subject : NULL)) continue;
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
             if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
@@ -965,7 +981,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             uint32_t w;
             if (alts && r.alt_first < g->h.nalts) unpack_alt(alts + 8u * r.alt_first, &al);
             else if (!rd_alt(&g->h, r.alt_first, &al)) return -1;
-            if (al.nterm && !terms_ok(g, al.term_first, al.nterm, terms)) continue;
+            if (al.nterm && !terms_ok(g, al.term_first, al.nterm, terms, NULL)) continue;
             for (j = 0; j < navoid; j++)
                 if (avoid[j] >= r.alt_first && avoid[j] < r.alt_first + r.nalt &&
                     !avoided(avoid, j, avoid[j])) count--;
@@ -1013,7 +1029,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
                  * Cache one repeated span, only on immutable mapped data;
                  * streamed readers retain their existing retry semantics. */
                 if (!terms || last_first != al.term_first || last_n != al.nterm) {
-                    last_ok = terms_ok(g, al.term_first, al.nterm, terms);
+                    last_ok = terms_ok(g, al.term_first, al.nterm, terms, NULL);
                     last_first = al.term_first;
                     last_n = al.nterm;
                 }
@@ -1021,6 +1037,9 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             }
             w = al.weight * ((al.flags & AF_CAST) ? 8u : 1u);                      /* the cast's own lines win */
             lv = novelty ? recent(g, a) : 0;
+            if (prefer_subject && !(r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
+                !subject && !(al.flags & AF_TOPIC))
+                lv += 2;
             tot[lv] += w;
             /* Every eligible candidate still draws from the RNG, even after a fresher one wins. */
             if ((uint32_t)rng_range(&g->rng, (int)(tot[lv] > 65536u ? 65536u : tot[lv])) < w && lv <= best_level) {
@@ -1031,7 +1050,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             }
         }
     }
-    /* the freshest that is possible: not said lately, else not by this speaker lately */
+    /* The best eligible relevance/novelty tier, weighted within that tier. */
     return best;
 }
 
