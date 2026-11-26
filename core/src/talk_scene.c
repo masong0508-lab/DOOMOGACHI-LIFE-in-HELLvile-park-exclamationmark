@@ -2083,6 +2083,11 @@ static void gen_done(void)
         build_history();
         return;
     }
+    /* The DM is the authoritative accepted subject. Typed replies and
+     * implicit continuations must update the same menu as pad choices. */
+    if (T.s.gate == TG_PASS && T.s.topic_stack[0] &&
+        talk_gen_casual_topic_ok(T.s.topic_stack[0], &T.s.conv.aud))
+        T.topic = T.s.topic_stack[0];
     if (T.gen == 1 && (T.s.flags & TDF_FAREWELL)) T.leaving = 1;
     /* Once an outing has been *accepted* and the answer generated, close
      * the encounter after its dialogue box: talk_outcome_end commits the
@@ -3410,11 +3415,25 @@ static void talk_draw(void)
 #endif
     py = layout(NULL);
     ph = sh - py;
+    if (T.place != TALK_PLACE_HOME && py > 24) {
+        /* Standalone Talk owns these pixels: no care stats, duplicate
+         * portrait, or animated street behind the conversation. */
+        plat_rect(0, 24, sw, py - 24, st->fill_hi);
+        if (T.busy || T.after || T.gen) {
+            if (T.you[0] && py >= 46) {
+                ui_text_clip(8, 29, "You:", st->text_dim, 8, sw - 8);
+                ui_text_clip(38, 29, T.you, st->text, 38, sw - 8);
+            }
+        } else if (py >= 40) {
+            ui_text_clip(8, 29, T.to < 0 ? "Talking with everyone" :
+                        "Choose your reply", st->text_dim, 8, sw - 8);
+        }
+    }
     /* While the actual speech bubble owns the input, do not repaint its
      * inactive menu, scrollbar, title, or duplicate action captions.
      * Keep the same opaque backdrop band, so room restoration and the
      * portrait's background stay consistent on both framebuffer pages. */
-    if (T.busy || T.after) {
+    if (T.busy || T.after || scene_drawn_above() == &SCENE_DIALOG) {
         plat_rect(0, py, sw, ph, st->fill);
         ui_glint_hold(0);
         return;

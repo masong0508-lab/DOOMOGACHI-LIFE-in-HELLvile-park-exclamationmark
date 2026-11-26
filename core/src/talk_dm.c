@@ -1238,6 +1238,16 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
     target = s->in.target >= 0 && s->in.target < s->nparts && here(s, s->in.target) ? s->in.target : -1;
     target_id = target >= 0 ? s->part[target].id : -1;
     room_audience(s, target, &aud);
+    /* "Go on", "I agree", "I disagree" and answers without a noun
+     * refer to the live subject, not an arbitrary new one. Never infer
+     * a topic for a favor decision, blocked input, unresolved word,
+     * grief/care window, or an explicit change of subject. */
+    if (!s->in.topic[0] && !q_was_asked && !s->care_left &&
+        !s->in.safety && !s->in.unk_len && s->topic_stack[0] &&
+        (s->in.act[0] == TA_CONTINUE || s->in.act[0] == TA_ANSWER ||
+         s->in.act[0] == TA_AGREE || s->in.act[0] == TA_DISAGREE) &&
+        talk_gen_casual_topic_ok(s->topic_stack[0], &aud))
+        s->in.topic[0] = s->topic_stack[0];
     g = talk_safe_gate(&s->in, &aud, s->conv.avatar, target_id, target >= 0 && ((s->conv.refused >> target) & 1));
     s->gate = (uint8_t)g;
     s->conv.tone = s->in.tone;
@@ -1620,13 +1630,25 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             }
         break;
     }
-    case DK_FOLLOW:
+    case DK_FOLLOW: {
+        int i;
         if (s->q_kind && !(s->q_st & TQ_ST_CLOSED) && (s->q_st & TQ_ST_ASKED)) return 0;   /* TQ: the request is the question */
-        if (s->nlines > 0 && strchr(s->line[0].text, '?')) return 0;     /* the answer already asks something back */
+        /* Do not ask another unrelated question after a reaction, story,
+         * or the main answer has already handed the conversation back. */
+        for (i = 0; i < s->nlines; i++)
+            if (strchr(s->line[i].text, '?')) return 0;
+        /* On a return visit, let the resident reopen a real remembered
+         * subject rather than always drawing the generic opening prompt. */
+        if (!topic && !s->turn && talk_gen_casual_topic_ok(c->mem_topic[who], &c->aud))
+            topic = c->mem_topic[who];
         ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
         if (!ok || (L->flags & TLF_FALLBACK)) return 0;
+        if (!s->topic_stack[0] && L->topic && !(L->flags & (TLF_SAFE | TLF_SINCERE)) &&
+            talk_gen_casual_topic_ok(L->topic, &c->aud))
+            push_topic(s, L->topic);
         *hflags = 0;
         break;
+    }
     case DK_PROD:   ok = talk_gen_entry(c, who, -1, TGE_PROD, TA_NONE, TC_NONE, L, tr); *hflags = THF_IDLE; break;
     case DK_JAB:    ok = talk_gen_entry(c, who, to, TGE_JAB, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;
     case DK_ROW:    ok = talk_gen_entry(c, who, to, TGE_ROW, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;

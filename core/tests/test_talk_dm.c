@@ -812,6 +812,44 @@ TEST(talk_dm_gate_answers_stand_alone)
 }
 
 /* ---- keeping the talk going (DK_FOLLOW, TGE_FOLLOW, talk_dm_open) -------------------- */
+/* Implicit followups must keep the previous accepted topic, not choose
+ * an ungrounded answer. Explicit topic changes always win. */
+TEST(talk_dm_implicit_replies_keep_the_live_subject)
+{
+    static const int acts[] = { TA_CONTINUE, TA_ANSWER, TA_AGREE, TA_DISAGREE };
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int i;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie"); music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (i = 0; i < (int)(sizeof acts / sizeof acts[0]); i++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 500u + (uint32_t)i);
+        s.topic_stack[0] = pie;
+        utter(&u, acts[i], TC_NONE, 0);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], pie);
+        CHECK_EQ(s.topic_stack[0], pie);
+        while (talk_dm_step(&s, NULL)) {}
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 600u + (uint32_t)i);
+        s.topic_stack[0] = pie;
+        utter(&u, acts[i], music, 0);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], music);
+        CHECK_EQ(s.topic_stack[0], music);
+        while (talk_dm_step(&s, NULL)) {}
+    }
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 700u);
+    s.topic_stack[0] = pie;
+    utter(&u, TA_CONTINUE, TC_NONE, 0);
+    u.safety = TS_DISTRESS;
+    CHECK_EQ(talk_dm_say(&s, &u), TG_DISTRESS);
+    CHECK_EQ(s.in.topic[0], TC_NONE);
+    talk_db_close();
+}
+
 TEST(talk_dm_keep_going)
 {
     TalkState s, s2;
