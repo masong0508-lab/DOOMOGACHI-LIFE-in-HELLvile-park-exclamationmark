@@ -1639,8 +1639,20 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             if (strchr(s->line[i].text, '?')) return 0;
         /* On a return visit, let the resident reopen a real remembered
          * subject rather than always drawing the generic opening prompt. */
-        if (!topic && !s->turn && talk_gen_casual_topic_ok(c->mem_topic[who], &c->aud))
-            topic = c->mem_topic[who];
+        if (!topic && !s->turn && !c->care && !is_pet(s, who)) {
+            /* Prefer an actual shared memory, then the speaker's real
+             * interests. Never invent a shared event or select a random
+             * unrelated concept just to fill an opening. */
+            if (talk_gen_casual_topic_ok(c->mem_topic[who], &c->aud))
+                topic = c->mem_topic[who];
+            else {
+                for (i = 0; i < 3 && !topic; i++) {
+                    uint16_t candidate = talk_gen_like(s->part[who].id, i);
+                    if (talk_gen_casual_topic_ok(candidate, &c->aud))
+                        topic = candidate;
+                }
+            }
+        }
         ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
         if (!ok || (L->flags & TLF_FALLBACK)) return 0;
         if (!s->topic_stack[0] && L->topic && !(L->flags & (TLF_SAFE | TLF_SINCERE)) &&

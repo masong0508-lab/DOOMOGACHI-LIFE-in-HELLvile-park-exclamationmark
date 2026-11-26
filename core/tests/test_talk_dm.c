@@ -850,6 +850,24 @@ TEST(talk_dm_implicit_replies_keep_the_live_subject)
     talk_db_close();
 }
 
+TEST(talk_dm_opening_prefers_real_shared_subject)
+{
+    TalkState s;
+    uint16_t pie;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie);
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 777u);
+    s.flags |= TDF_NO_BEATS;
+    s.conv.mem_topic[0] = pie;
+    CHECK(talk_dm_open(&s));
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK(s.nlines > 0);
+    CHECK_EQ(s.topic_stack[0], pie);
+    talk_db_close();
+}
+
 TEST(talk_dm_keep_going)
 {
     TalkState s, s2;
