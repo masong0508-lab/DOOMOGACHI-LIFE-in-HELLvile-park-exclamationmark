@@ -1318,6 +1318,10 @@ void talk_dm_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t see
  * engagement of everyone, the beat, consent, and the plan of the exchange.
  * Returns the gate's TG_*. Then call talk_dm_step() until it returns 0. */
 int  talk_dm_say(TalkState *s, const TalkUtter *u);
+/* Latest ordinary, explicit topical question from this listener to the
+ * avatar/room in the current exchange. NULL for another listener's thread,
+ * sensitive/tense exchanges or a pending favor. Borrowed until next turn. */
+const TalkLine *talk_dm_pending_question(const TalkState *s, int slot);
 /* The talk opens (right after talk_dm_begin): the resident says the beat's opening line, then hands
  * the talk to the player with a follow-up. Plans the exchange; then talk_dm_step() until it returns
  * 0. Returns 1 when something was planned. */

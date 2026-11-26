@@ -1221,12 +1221,49 @@ static void care_sync(TalkState *s)
     if (s->care_left) s->flags |= TDF_CARE; else s->flags &= (uint8_t)~TDF_CARE;
 }
 
+const TalkLine *talk_dm_pending_question(const TalkState *s, int slot)
+{
+    int i;
+    if (!s || !talker(s, slot) || s->turn < 2 || s->gate != TG_PASS ||
+        (s->flags & (TDF_OVER | TDF_CARE | TDF_FAREWELL)) ||
+        s->care_left || s->conv.care || s->arg_step ||
+        s->tension >= TALK_TENSION_ARGUE ||
+        (s->q_kind && (s->q_st & TQ_ST_ASKED)) ||
+        (s->in.act[0] != TA_NONE && s->in.target >= 0 && s->in.target != slot))
+        return NULL;
+    /* A sensitive line anywhere in this exchange takes precedence over
+     * a normal question; do not let a late quip bypass the care policy. */
+    for (i = 0; i < s->nlines && i < TALK_EXCHANGE_MAX; i++) {
+        const TalkLine *l = &s->line[i];
+        if ((l->flags & (TLF_SAFE | TLF_SINCERE | TLF_END)) || TA_IS_SAFETY(l->act))
+            return NULL;
+    }
+    for (i = DOOMO_MIN(s->nlines, TALK_EXCHANGE_MAX) - 1; i >= 0; i--) {
+        const TalkLine *l = &s->line[i];
+        if (l->who != slot || l->to >= 0 || l->action ||
+            (l->flags & (TLF_FALLBACK | TLF_CUT)) || !strchr(l->text, '?'))
+            continue;
+        if ((l->act == TA_ASK_OPINION || l->act == TA_ASK_ABOUT || l->act == TA_ASK_FACT) &&
+            talk_gen_casual_topic_ok(l->topic, &s->conv.aud))
+            return l;
+    }
+    return NULL;
+}
+
 int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
     DoomoRng rng;
+    uint16_t question_topic = TC_NONE;
     int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked, old_target;
     if (!s || !u) return TG_PASS;
+    /* Read the preceding visible question before clearing the exchange. */
+    if (!u->topic[0] && !u->safety && !u->unk_len &&
+        (u->act[0] == TA_ANSWER || u->act[0] == TA_AGREE ||
+         u->act[0] == TA_DISAGREE || u->act[0] == TA_CONTINUE)) {
+        const TalkLine *question = talk_dm_pending_question(s, u->target);
+        if (question) question_topic = question->topic;
+    }
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
     if (s->flags & TDF_OVER) return TG_PASS;
@@ -1247,7 +1284,7 @@ int talk_dm_say(TalkState *s, const TalkUtter *u)
         !s->in.safety && !s->in.unk_len &&
         (s->in.act[0] == TA_CONTINUE || s->in.act[0] == TA_ANSWER ||
          s->in.act[0] == TA_AGREE || s->in.act[0] == TA_DISAGREE)) {
-        uint16_t subject = s->topic_stack[0];
+        uint16_t subject = question_topic ? question_topic : s->topic_stack[0];
         /* A topicless response directed to a different resident must not
          * inherit the previous addressee's private conversational thread.
          * Resume this resident's actual answer, then their remembered

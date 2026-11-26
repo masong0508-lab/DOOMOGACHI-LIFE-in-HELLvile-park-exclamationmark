@@ -882,6 +882,45 @@ TEST(talk_dm_implicit_group_reply_respects_its_addressee)
     talk_db_close();
 }
 
+TEST(talk_dm_topicless_answer_resolves_the_actual_question)
+{
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int mode;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (mode = 0; mode < 3; mode++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, -1, 913u + (uint32_t)mode);
+        s.turn = s.conv.turn = 3;
+        s.in.act[0] = TA_TELL;
+        s.in.target = 0;
+        s.topic_stack[0] = pie;
+        s.nlines = 2;
+        s.line[0].who = 0;
+        s.line[0].to = -1;
+        s.line[0].act = TA_ASK_OPINION;
+        s.line[0].topic = music;
+        strcpy(s.line[0].text, "What do you think of music?");
+        s.line[1].who = 1;
+        s.line[1].to = -1;
+        s.line[1].act = TA_TELL;
+        s.line[1].topic = pie;
+        strcpy(s.line[1].text, "I like pie.");
+        CHECK(talk_dm_pending_question(&s, 0) == &s.line[0]);
+        CHECK(talk_dm_pending_question(&s, 1) == NULL);
+        utter(&u, TA_ANSWER, mode == 1 ? pie : TC_NONE, 0);
+        if (mode == 2) u.safety = TS_DISTRESS;
+        CHECK_EQ(talk_dm_say(&s, &u), mode == 2 ? TG_DISTRESS : TG_PASS);
+        CHECK_EQ(s.in.topic[0], mode == 0 ? music : mode == 1 ? pie : TC_NONE);
+        while (talk_dm_step(&s, NULL)) {}
+    }
+    talk_db_close();
+}
+
 TEST(talk_dm_opening_prefers_real_shared_subject)
 {
     TalkState s;

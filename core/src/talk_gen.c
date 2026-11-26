@@ -1037,7 +1037,11 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             }
             w = al.weight * ((al.flags & AF_CAST) ? 8u : 1u);                      /* the cast's own lines win */
             lv = novelty ? recent(g, a) : 0;
-            if (prefer_subject && !(r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
+            /* A genuine, eligible topic change is not an irrelevant
+             * quip. Preserve the ability to deflect when the character's
+             * plan or open reply-kind policy permits it. */
+            if (prefer_subject && r.act != TA_CHANGE_TOPIC && g->plan.kind != TK_DEFLECT &&
+                !(r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
                 !subject && !(al.flags & AF_TOPIC))
                 lv += 2;
             tot[lv] += w;

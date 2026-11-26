@@ -625,6 +625,46 @@ static uint16_t opening_subject(const TalkState *s, uint16_t active, uint16_t fr
     return TC_NONE;
 }
 
+/* A direct question deserves answer choices, not another generic
+ * question or a mood-based guess about what the player should believe.
+ * Only the order reflects the player's own previous expressed stance.
+ * All choices still go through q_add and the ordinary DM/safety gate. */
+static int q_answer_question(QCtx *q, const TalkLine *question, int slot, uint32_t h, TalkSugg *out)
+{
+    const TalkState *s = q->s;
+    int i, negative = 0;
+    int8_t to = (int8_t)slot;
+    static const uint8_t opinion[] = { TA_OPINE_POS, TA_OPINE_NEG, TA_ANSWER, TA_ASK_OPINION };
+    static const char *const opinions[] = { "I like %t.", "I'm not a fan of %t.",
+                                            "I'm undecided about %t.", "What do you think of %t?" };
+    static const uint8_t about[] = { TA_ANSWER, TA_TELL, TA_ASK_ABOUT, TA_CONTINUE };
+    static const char *const details[] = { "I don't know much about %t.", "I've been thinking about %t.",
+                                           "What do you know about %t?", "Tell me more about %t." };
+    q->topic = question->topic;
+    q->fresh = TC_NONE;
+    if (question->act == TA_ASK_OPINION) {
+        for (i = 0; i < s->nhist && i < TALK_HIST; i++) {
+            const TalkHist *old = &s->hist[i];
+            if (!(old->flags & THF_PLAYER) || old->topic != q->topic ||
+                (old->to != slot && old->to != -1)) continue;
+            if (old->act == TA_OPINE_POS || old->act == TA_OPINE_NEG) {
+                negative = old->act == TA_OPINE_NEG;
+                break;
+            }
+        }
+        for (i = 0; i < 4; i++) {
+            int k = i < 2 ? i ^ negative : i;
+            if (q_add(q, &to, opinion[k], h, out))
+                out[q->n - 1].text = opinions[k];
+        }
+    } else {
+        for (i = 0; i < 4; i++)
+            if (q_add(q, &to, about[i], h, out))
+                out[q->n - 1].text = details[i];
+    }
+    return q->n;
+}
+
 int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fresh, uint32_t salt, TalkSugg *out)
 {
     QCtx q;
@@ -652,6 +692,13 @@ int talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t fr
     /* grief and sincerity: only comfort, and the topic is not picked up */
     q.sincere = (th && (th->flags & TLF_SINCERE)) || TA_IS_SAFETY(act) || q_grief(th ? th->topic : TC_NONE) ||
                 q_grief(topic) || q_grief(s->topic_stack[0]);
+    if (directed && !q.sincere) {
+        const TalkLine *question = talk_dm_pending_question(s, slot);
+        if (question) {
+            int answered = q_answer_question(&q, question, slot, salt, out);
+            if (answered) return answered;
+        }
+    }
     /* A directed exchange cannot become another person's thread just
      * because the player changes seats. Use an ordinary answer from
      * the selected resident, while keeping room-wide care and mediation. */
@@ -2083,11 +2130,9 @@ static void gen_done(void)
         build_history();
         return;
     }
-    /* The DM is the authoritative accepted subject. Typed replies and
-     * implicit continuations must update the same menu as pad choices. */
-    if (T.s.gate == TG_PASS && T.s.topic_stack[0] &&
-        talk_gen_casual_topic_ok(T.s.topic_stack[0], &T.s.conv.aud))
-        T.topic = T.s.topic_stack[0];
+    /* T.topic is the user's explicit composer selection, not the DM's
+     * inferred thread. Quick replies read the DM state directly, while a
+     * manually selected Ask/Tell can still open its topic picker. */
     if (T.gen == 1 && (T.s.flags & TDF_FAREWELL)) T.leaving = 1;
     /* Once an outing has been *accepted* and the answer generated, close
      * the encounter after its dialogue box: talk_outcome_end commits the
@@ -2665,7 +2710,8 @@ static void say_quick(int i)
     u.tone = g->tone;
     u.conf = 15;
     expand_named(g->text, g->topic, T.journal_label.main.quick[i], u.shown, (int)sizeof u.shown);
-    if (g->topic) T.topic = g->topic;                 /* the talk stays on it */
+    /* The suggestion already carries its own subject. Do not silently
+     * lock the manual composer to the resident's proposed topic. */
     say_utter(&u);
     build_main();
 }
@@ -3098,6 +3144,7 @@ static void change_to(int to)
 {
     if (to >= 0 && !listener_here(to)) return;
     T.followup = TC_NONE;
+    if (T.to != to) T.topic = TC_NONE;
     T.to = (int8_t)to;
     if (T.page == PG_MORE) {
         int sel = T.list.sel;
@@ -3303,6 +3350,12 @@ static const char *panel_title(char *buf, int cap)
     if (T.to < 0 && T.n > 1) return "Reply to everyone";
     if (T.topic) {
         doomo_snprintf(buf, (size_t)cap, "Reply: %s", T.journal_label.main.topic);
+        return buf;
+    }
+    /* Show the inferred thread without making it a manual selection.
+     * Labels were decoded at menu construction, never in the draw loop. */
+    if (T.nquick && T.quick[0].topic) {
+        doomo_snprintf(buf, (size_t)cap, "Reply: %s", T.journal_label.main.quick[0]);
         return buf;
     }
     return T.you[0] ? "Your next reply" : "Say something";
