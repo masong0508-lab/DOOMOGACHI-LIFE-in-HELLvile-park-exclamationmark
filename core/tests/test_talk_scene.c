@@ -1580,6 +1580,7 @@ TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
     talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
     go_to(find_row("more", -1, -1)); press(BTN_A);
     press(BTN_A);
+    CHECK_EQ(find_row("pick", 0, pie), 1); /* default controller shortcut */
     go_to(find_row("pick", 0, pie)); press(BTN_A);
     go_to(find_row("more", -1, -1)); press(BTN_A);
     press(BTN_A);

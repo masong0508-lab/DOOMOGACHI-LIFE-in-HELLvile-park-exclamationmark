@@ -955,8 +955,9 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
      * can still beat a repeated generic or tie the speaker's recent
      * topical core. Keep the opening, plain previews and sensitive
      * banks' selection semantics, and never bypass a guard. */
+    int explicit_switch = g->act == TA_CHANGE_TOPIC;
     int prefer_subject = novelty && !g->depth && g->topic &&
-        g->c->turn >= 2 && g->plan.kind && !(g->c->plain & 1) &&
+        (g->c->turn >= 2 || explicit_switch) && g->plan.kind && !(g->c->plain & 1) &&
         !g->grief && !g->c->care && talk_gen_topic_act(g->act);
     /* Context is a tie-break inside existing subject/novelty tiers. Keep
      * cast voices and deliberate deflection eligible, and never bypass
@@ -1066,7 +1067,11 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             /* A genuine, eligible topic change is not an irrelevant
              * quip. Preserve the ability to deflect when the character's
              * plan or open reply-kind policy permits it. */
-            if (prefer_subject && r.act != TA_CHANGE_TOPIC && g->plan.kind != TK_DEFLECT &&
+            /* An explicit topic switch deserves acknowledgement. The old
+             * exemption let an NPC change straight to their favourite
+             * unrelated topic, even before answering the player's request. */
+            if (prefer_subject && (explicit_switch ||
+                (r.act != TA_CHANGE_TOPIC && g->plan.kind != TK_DEFLECT)) &&
                 !(r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
                 !(subject & 1) && !(al.flags & AF_TOPIC))
                 lv += 2;
