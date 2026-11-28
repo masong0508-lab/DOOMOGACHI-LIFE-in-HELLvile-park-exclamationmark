@@ -74,7 +74,10 @@ void ow_ground(const uint8_t *const *tiles, int ntiles, int o, int y0, int y1, i
     }
 }
 
-__attribute__((optimize("Os")))
+/* Shadow colour remapping is infrequent compared with ground/sprite
+ * copying. Keep its small O(sprites) loop in ROM to recover IWRAM headroom
+ * while preserving the existing 6 KB main stack reserve. */
+ROM_COLD __attribute__((optimize("Os")))
 void ow_shade(int x0, int x1, int y0, int y1, const uint8_t *cm)
 {
     int y;
@@ -115,16 +118,24 @@ static inline uint8_t post(uint8_t c, int x, int y)
  * the rows' middles go to ow_spr_rows: four texels per word read (ROM is a
  * 16-bit bus: one word instead of four byte reads), transparent words
  * skipped, opaque pairs stored without a read. */
+/* Keep the 1x copy loop in hand-tuned ARM while shrinking its dispatch / clipping.
+ * This translation unit lives in IWRAM and has a hard linker stack reserve. */
+__attribute__((optimize("Os")))
 void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const uint8_t *cm)
 {
-    const int w = img->w * s, h = img->h * s;
-    int cx0 = x0, cx1 = x0 + w, cy0 = y0, cy1 = y0 + h, y;
+    int w, h, cx0, cx1, cy0, cy1, y;
     const int trans = flags & BB_TRANSLUCENT;
     const int flip = flags & BB_FLIPX;
     /* x / s = (x * inv) >> 16 (s == 1, nearly every sprite: no software divide) */
-    const uint32_t inv = s == 1 ? 65537u : 65536u / (uint32_t)s + 1u;
+    uint32_t inv;
     const uint8_t *lc[4];
     int x;
+    /* House callers may briefly have no image during a scene transition;
+     * never dereference a missing image or divide by an invalid scale. */
+    if (!img || !img->pix || !img->w || !img->h || s < 1 || s > 4) return;
+    w = img->w * s; h = img->h * s;
+    inv = s == 1 ? 65537u : 65536u / (uint32_t)s + 1u;
+    cx0 = x0; cx1 = x0 + w; cy0 = y0; cy1 = y0 + h;
     if (cx0 < owf.ox) cx0 = owf.ox;
     if (cx1 > owf.ox + owf.ow) cx1 = owf.ox + owf.ow;
     if (cy0 < owf.oy) cy0 = owf.oy;
@@ -156,7 +167,11 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
             const int b = xa & 2;
             for (k = 0; k < 16; k++) qq[k] = lc[owf.cls[k ^ b]];
         }
-        if (s == 1 && !flip && !trans) {
+        /* A rounded-down odd edge can lie outside the source image.
+         * Even masked pixels are fetched by the assembly loop, so only
+         * use direct ROM reads when the WHOLE aligned pair range fits. */
+        const int direct_ok = xa >= x0 && xb <= x0 + w;
+        if (s == 1 && !flip && !trans && direct_ok) {
             j.dst = gba_back + cy0 * LINE + (xa >> 1);
             j.src = img->pix + (cy0 - y0) * iw + (xa - x0);
             j.rows = cy1 - cy0;
@@ -169,7 +184,7 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
          * iw - 1 - (x - x0), so a row is the source row read backwards from there, four texels
          * a word read (ow_flip_row); the edge columns it reads outside the image are the ones
          * head / tail mask off */
-        const int mirror = s == 1 && flip && !trans;
+        const int mirror = s == 1 && flip && !trans && direct_ok;
         const int moff = iw - 1 - (xa - x0);
         if (!mirror)
             for (x = xa; x < xb; x++) {
@@ -198,6 +213,9 @@ void ow_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, const ui
 
 /* front face of a block: rows of 16 texels sampled with stride 4 from
  * texture row (y * 64 / h), lit through cm (+ night / tint dither) */
+/* The narrow 16-pixel block-front setup is code-size oriented; row_out and
+ * the full-width sprite assembly stay in IWRAM on their existing paths. */
+__attribute__((optimize("Os")))
 void ow_front(int px, int sy0, int h, int y0, int y1, const uint8_t *tp, uint8_t avg,
               const uint8_t *cm)
 {

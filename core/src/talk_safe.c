@@ -108,15 +108,18 @@ typedef struct SafHdr {
 
 static int saf_hdr(SafHdr *h)
 {
-    uint8_t b[48];
-    if (!talk_db_read(TB_SAFETY, 0, b, 48) || le32(b) != SAF_MAGIC) return 0;
+    uint8_t scratch[48];
+    const uint8_t *b = talk_db_record(TB_SAFETY, 0, scratch, sizeof scratch);
+    if (!b || le32(b) != SAF_MAGIC) return 0;
     h->nreg = le32(b + 4); h->reg_off = le32(b + 8); h->salt_lo = le32(b + 12); h->salt_hi = le32(b + 16);
     h->nexact = le32(b + 20); h->exact_off = le32(b + 24); h->ndel = le32(b + 28); h->del_off = le32(b + 32);
     h->str_off = le32(b + 36); h->str_len = le32(b + 40);
     return 1;
 }
 
-static uint64_t fnv64(const SafHdr *h, const char *s, int len)
+/* Salt is fixed throughout a line (and all of a fuzzy word's edits).
+ * Retain the exact FNV-1a sequence while computing its prefix only once. */
+static uint64_t hash_basis(const SafHdr *h)
 {
     uint64_t x = 0xCBF29CE484222325ull;
     int i;
@@ -125,6 +128,12 @@ static uint64_t fnv64(const SafHdr *h, const char *s, int len)
         x ^= (uint8_t)(w >> (8 * (i & 3)));
         x *= 0x100000001B3ull;
     }
+    return x;
+}
+
+static uint64_t fnv64(uint64_t x, const char *s, int len)
+{
+    int i;
     for (i = 0; i < len; i++) {
         x ^= (uint8_t)s[i];
         x *= 0x100000001B3ull;
@@ -132,14 +141,36 @@ static uint64_t fnv64(const SafHdr *h, const char *s, int len)
     return x;
 }
 
-static int in_set(uint32_t off, uint32_t n, uint64_t v)
+typedef struct SafLookup {
+    uint64_t basis;
+    const uint8_t *exact, *del;
+} SafLookup;
+
+static const uint8_t *hash_rows(uint32_t off, uint32_t n)
+{
+    return n <= 0xFFFFFFFFu / 8u ?
+        talk_db_record(TB_SAFETY, off, NULL, 8u * n) : NULL;
+}
+
+static void prepare_lookup(const SafHdr *h, SafLookup *lookup, int fuzzy)
+{
+    lookup->basis = hash_basis(h);
+    lookup->exact = hash_rows(h->exact_off, h->nexact);
+    lookup->del = fuzzy ? hash_rows(h->del_off, h->ndel) : NULL;
+}
+
+/* Validate the full mapped span once. A streamed or truncated bank keeps
+ * the same bounded per-row fallback; do not bypass membership checks. */
+static int in_set(const uint8_t *rows, uint32_t off, uint32_t n, uint64_t v)
 {
     int lo = 0, hi = (int)n - 1;
-    uint8_t b[8];
+    uint8_t scratch[8];
     while (lo <= hi) {
         int mid = (lo + hi) >> 1;
         uint64_t x;
-        if (!talk_db_read(TB_SAFETY, off + 8u * (uint32_t)mid, b, 8)) return 0;
+        const uint8_t *b = rows ? rows + 8u * (uint32_t)mid :
+            talk_db_record(TB_SAFETY, off + 8u * (uint32_t)mid, scratch, sizeof scratch);
+        if (!b) return 0;
         x = (uint64_t)le32(b) | ((uint64_t)le32(b + 4) << 32);
         if (x == v) return 1;
         if (x < v) lo = mid + 1; else hi = mid - 1;
@@ -174,30 +205,30 @@ uint64_t talk_safe_hash(const char *word)
     int n;
     if (!word || !saf_hdr(&h)) return 0;
     n = squeeze(word, s, (int)sizeof s);
-    return fnv64(&h, s, n);
+    return fnv64(hash_basis(&h), s, n);
 }
 
-static int hate_word(const SafHdr *h, const char *word, int fuzzy)
+static int hate_word(const SafHdr *h, const SafLookup *lookup, const char *word, int fuzzy)
 {
     char s[TALK_TOK_LEN * 2], d[TALK_TOK_LEN * 2];
     uint64_t hash;
     int n, i;
     n = squeeze(word, s, (int)sizeof s);
     if (n < 3) return 0;
-    hash = fnv64(h, s, n);
-    if (in_set(h->exact_off, h->nexact, hash)) return 1;
+    hash = fnv64(lookup->basis, s, n);
+    if (in_set(lookup->exact, h->exact_off, h->nexact, hash)) return 1;
     /* edit distance 1 after the first letter (only unknown words reach here):
      * a letter added to a listed word of 4+ letters (a typo that breaks a
      * double letter squeezes to this); a letter left out, changed or two
      * swapped in a listed word of 5+ letters (the deletion hashes hold every
      * one-letter deletion of those, after the first) */
     if (!fuzzy || n < 4) return 0;
-    if (in_set(h->del_off, h->ndel, hash)) return 1;                         /* a letter left out (4+ letters) */
+    if (in_set(lookup->del, h->del_off, h->ndel, hash)) return 1;                         /* a letter left out (4+ letters) */
     for (i = 1; i < n; i++) {
         memcpy(d, s, (size_t)i);
         memcpy(d + i, s + i + 1, (size_t)(n - i));
-        if (n - 1 >= 4 && in_set(h->exact_off, h->nexact, fnv64(h, d, n - 1))) return 1;  /* one added */
-        if (n >= 5 && in_set(h->del_off, h->ndel, fnv64(h, d, n - 1))) return 1;          /* one changed, or two swapped */
+        if (n - 1 >= 4 && in_set(lookup->exact, h->exact_off, h->nexact, fnv64(lookup->basis, d, n - 1))) return 1;  /* one added */
+        if (n >= 5 && in_set(lookup->del, h->del_off, h->ndel, fnv64(lookup->basis, d, n - 1))) return 1;          /* one changed, or two swapped */
     }
     return 0;
 }
@@ -205,7 +236,10 @@ static int hate_word(const SafHdr *h, const char *word, int fuzzy)
 int talk_safe_hate_word(const char *word, int fuzzy)
 {
     SafHdr h;
-    return word && saf_hdr(&h) && hate_word(&h, word, fuzzy);
+    SafLookup lookup;
+    if (!word || !saf_hdr(&h)) return 0;
+    prepare_lookup(&h, &lookup, fuzzy);
+    return hate_word(&h, &lookup, word, fuzzy);
 }
 
 /* ---- S1: typed input --------------------------------------------------- */
@@ -445,13 +479,20 @@ static void lint_pairs(uint8_t pairs[32], const char *line)
 static int lint_core(const char *line, const TalkAudience *aud, int *swears, int strict)
 {
     SafHdr h;
+    SafLookup lookup;
     char v[TALK_SHOWN_MAX * 3], word[TALK_TOK_LEN * 2];
     uint8_t pairs[32], rules[4 * 8];
     char strings[64];
+    const uint8_t *mapped_rules, *mapped_strings;
     uint32_t string_at = 0, string_size = 0;
     int i, o = 0, nsw = 0, k, first = 0, next = 0;
     if (!line || !aud) return TL_NO_DB;
     if (!saf_hdr(&h)) return TL_NO_DB;
+    /* On a mapped bank use the original immutable rows and strings in
+     * place. No extra cache RAM, no skipped rules, no policy change. */
+    mapped_rules = h.nreg <= 0xFFFFFFFFu / 8u ?
+        talk_db_record(TB_SAFETY, h.reg_off, NULL, 8u * h.nreg) : NULL;
+    mapped_strings = talk_db_record(TB_SAFETY, h.str_off, NULL, h.str_len);
     /* the visible text: line codes ([R4], {.}) out, '/' a space, lower case */
     for (i = 0; line[i] && o < (int)sizeof v - 1; i++) {
         char c = line[i];
@@ -469,33 +510,39 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
         const char *s;
         uint32_t so, len, available;
         int n;
-        if (k == next) {
-            int batch = DOOMO_MIN(4, (int)h.nreg - k);
-            uint32_t off = h.reg_off + 8u * (uint32_t)k;
-            /* Recover the original small read if prefetch crosses an
-             * unreadable stretch. Fail only when the requested rule fails. */
-            if (!talk_db_read(TB_SAFETY, off, rules, 8u * (uint32_t)batch)) {
-                if (batch == 1 || !talk_db_read(TB_SAFETY, off, rules, 8)) return TL_NO_DB;
-                batch = 1;
+        if (mapped_rules) r = mapped_rules + 8u * (uint32_t)k;
+        else {
+            if (k == next) {
+                int batch = DOOMO_MIN(4, (int)h.nreg - k);
+                uint32_t off = h.reg_off + 8u * (uint32_t)k;
+                /* Recover the original small read if prefetch crosses an
+                 * unreadable stretch. Fail only when the requested rule fails. */
+                if (!talk_db_read(TB_SAFETY, off, rules, 8u * (uint32_t)batch)) {
+                    if (batch == 1 || !talk_db_read(TB_SAFETY, off, rules, 8)) return TL_NO_DB;
+                    batch = 1;
+                }
+                first = k;
+                next = k + batch;
             }
-            first = k;
-            next = k + batch;
+            r = rules + 8 * (k - first);
         }
-        r = rules + 8 * (k - first);
         so = le32(r);
         if (so >= h.str_len) return TL_NO_DB;
         available = h.str_len - so;
         len = DOOMO_MIN(available, (uint32_t)sizeof w - 1);
-        if (so < string_at || so - string_at > string_size || len > string_size - (so - string_at)) {
-            uint32_t window = DOOMO_MIN(available, (uint32_t)sizeof strings);
-            if (!talk_db_read(TB_SAFETY, h.str_off + so, strings, window)) {
-                if (window == len || !talk_db_read(TB_SAFETY, h.str_off + so, strings, len)) return TL_NO_DB;
-                window = len;
+        if (mapped_strings) s = (const char *)mapped_strings + so;
+        else {
+            if (so < string_at || so - string_at > string_size || len > string_size - (so - string_at)) {
+                uint32_t window = DOOMO_MIN(available, (uint32_t)sizeof strings);
+                if (!talk_db_read(TB_SAFETY, h.str_off + so, strings, window)) {
+                    if (window == len || !talk_db_read(TB_SAFETY, h.str_off + so, strings, len)) return TL_NO_DB;
+                    window = len;
+                }
+                string_at = so;
+                string_size = window;
             }
-            string_at = so;
-            string_size = window;
+            s = strings + (so - string_at);
         }
-        s = strings + (so - string_at);
         if (!(r[5] & SR_ALLOW) && len >= 2 && s[0] && s[1]) {
             unsigned pair = lint_pair(s[0], s[1]);
             if (!(pairs[pair >> 3] & (1u << (pair & 7u)))) continue;
@@ -526,14 +573,16 @@ static int lint_core(const char *line, const TalkAudience *aud, int *swears, int
         if (aud->any_minor || aud->target_minor || aud->avatar_minor) return TL_REGISTER_KID;
         if (r[4] == TR_STRONG) nsw += n;
     }
-    /* the hate list on every word */
+    /* The same exact membership check on every word, sharing the
+     * validated cartridge table and salt prefix for this line only. */
+    prepare_lookup(&h, &lookup, 0);
     for (i = 0; v[i]; ) {
         int l = 0;
         while (v[i] && !wordc(v[i])) i++;
         while (v[i] && (wordc(v[i]) || v[i] == '-') && l < (int)sizeof word - 1) word[l++] = v[i++];
         while (v[i] && (wordc(v[i]) || v[i] == '-')) i++;
         word[l] = 0;
-        if (l && hate_word(&h, word, 0)) return TL_HATE;
+        if (l && hate_word(&h, &lookup, word, 0)) return TL_HATE;
     }
     if (talk_safe_bubble_lines(v, TALK_BUBBLE_COLS) > TALK_BUBBLE_LINES) return TL_LENGTH;
     if (nsw) {

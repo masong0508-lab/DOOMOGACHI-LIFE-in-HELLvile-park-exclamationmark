@@ -477,7 +477,7 @@ static int quest_open_plan(TalkState *s, DoomoRng *rng)
         if (id < 0 || !talker(s, k) || !talk_quest_state(id, &kind, &st, &days, NULL)) continue;
         if (talk_quest_ready(id)) ph = TQP_DONE;
         else if (st == TQS_SETTLED && days == 0) ph = TQP_EXPIRED;
-        else if (st == TQS_ACTIVE && rng_range(rng, 100) < 60) ph = TQP_LATE;
+        else if ((st == TQS_ACTIVE || st == TQS_READY) && rng_range(rng, 100) < 60) ph = TQP_LATE;
         else continue;
         plan_add(s, DK_QUEST, k, -1, QUEST_ARG(ph, kind));
         return 1;
@@ -539,10 +539,10 @@ int talk_dm_consent(const TalkState *s, int who, int act)
 /* ---- stance, affinity --------------------------------------------------------- */
 static int topic_stance(int id, uint16_t topic)
 {
-    int v;
+    /* The generator returns a TST_* category, not its raw signed score.
+     * Do not interpret CON (=2) as positive sentiment or PRO (=1) as neutral. */
     if (!topic || id == TALK_PET_ID) return TST_NEUTRAL;
-    v = talk_gen_stance(id, topic);
-    return v >= 2 ? TST_PRO : v <= -2 ? TST_CON : TST_NEUTRAL;
+    return talk_gen_stance(id, topic);
 }
 
 /* design 5.3: +3 a like, +1 a root the persona type favours, -3 a hate or fear, -1 a dull root */
@@ -552,10 +552,12 @@ static int affinity(int id, uint16_t topic)
     const DoomoResident *r;
     TalkConcept tc;
     uint8_t fav = 0, dull = 0;
+    uint16_t like[5];
     int j, root;
     if (!topic || id == TALK_PET_ID) return 0;
-    for (j = 0; j < 3; j++) if (talk_gen_like(id, j) == topic) return 3;
-    if (talk_gen_like(id, 3) == topic || talk_gen_like(id, 4) == topic) return -3;
+    talk_gen_likes(id, like);
+    for (j = 0; j < 3; j++) if (like[j] == topic) return 3;
+    if (like[3] == topic || like[4] == topic) return -3;
     r = res_of(id, &buf);
     if (!r || !talk_db_concept(topic, &tc)) return 0;
     root = talk_db_cat_root(tc.cat);
@@ -699,12 +701,16 @@ static int take_value(int act, int tone, int speech, int expr, int att, int quir
 
 static int topic_term(int id, int act, uint16_t topic)
 {
-    int d, st;
+    int d;
     if (!topic || !act_topical(act)) return 0;
     d = affinity(id, topic);
-    st = topic_stance(id, topic);
-    if (act == TA_OPINE_POS) d += st == TST_PRO ? 2 : st == TST_CON ? -2 : 0;
-    else if (act == TA_OPINE_NEG) d += st == TST_CON ? 2 : st == TST_PRO ? -2 : 0;
+    /* Only agreeing or disagreeing with the concept uses its stance.
+     * Other topical actions need affinity, not five more bank lookups. */
+    if (act == TA_OPINE_POS || act == TA_OPINE_NEG) {
+        int st = topic_stance(id, topic);
+        int lean = st == TST_PRO ? 2 : st == TST_CON ? -2 : 0;
+        d += act == TA_OPINE_POS ? lean : -lean;
+    }
     return d;
 }
 
@@ -742,10 +748,14 @@ int talk_dm_expect(const TalkState *s, int slot, int act, int tone, uint16_t top
     if (TA_IS_ROMANCE(act)) return talk_dm_consent(s, slot, act) ? 4 : -3;
     id = s->part[slot].id;
     r = res_of(id, &buf);
-    v = take_value(act, tone, pers(id, PERS_SPEECH), pers(id, PERS_EXPRESSION), pers(id, PERS_ATTITUDE),
-                   pers(id, PERS_QUIRK), r ? r->mood : MOOD_OK, relv(id, s->conv.avatar), topic_term(id, act, topic));
+    v = take_value(act, tone, r ? RES_PERSONA(r, PERS_SPEECH) : 6,
+                   r ? RES_PERSONA(r, PERS_EXPRESSION) : 6, r ? RES_PERSONA(r, PERS_ATTITUDE) : 6,
+                   r ? RES_PERSONA(r, PERS_QUIRK) : 6, r ? r->mood : MOOD_OK,
+                   relv(id, s->conv.avatar), topic_term(id, act, topic));
     if (id != TALK_PET_ID && act > TA_NONE && act < TA_COUNT && !TA_IS_SAFETY(act)) {     /* TM1: the traits' lean */
-        TalkTraitBias b = talk_trait_bias_id(id, act, topic_root(topic), s->conv.aud.any_minor);
+        /* Only accept/deny is used by talk_trait_take; the root-dependent
+         * stance field is not consumed here. Avoid a discarded bank read. */
+        TalkTraitBias b = talk_trait_bias_id(id, act, 0, s->conv.aud.any_minor);
         v = clampi(v + talk_trait_take(&b), -10, 8);
     }
     /* This snapshot came from talk_mem_begin at conversation entry, so
@@ -1211,23 +1221,83 @@ static void care_sync(TalkState *s)
     if (s->care_left) s->flags |= TDF_CARE; else s->flags &= (uint8_t)~TDF_CARE;
 }
 
+const TalkLine *talk_dm_pending_question(const TalkState *s, int slot)
+{
+    int i;
+    if (!s || !talker(s, slot) || s->turn < 2 || s->gate != TG_PASS ||
+        (s->flags & (TDF_OVER | TDF_CARE | TDF_FAREWELL)) ||
+        s->care_left || s->conv.care || s->arg_step ||
+        s->tension >= TALK_TENSION_ARGUE ||
+        (s->q_kind && (s->q_st & TQ_ST_ASKED)) ||
+        (s->in.act[0] != TA_NONE && s->in.target >= 0 && s->in.target != slot))
+        return NULL;
+    /* A sensitive line anywhere in this exchange takes precedence over
+     * a normal question; do not let a late quip bypass the care policy. */
+    for (i = 0; i < s->nlines && i < TALK_EXCHANGE_MAX; i++) {
+        const TalkLine *l = &s->line[i];
+        if ((l->flags & (TLF_SAFE | TLF_SINCERE | TLF_END)) || TA_IS_SAFETY(l->act))
+            return NULL;
+    }
+    for (i = DOOMO_MIN(s->nlines, TALK_EXCHANGE_MAX) - 1; i >= 0; i--) {
+        const TalkLine *l = &s->line[i];
+        if (l->who != slot || l->to >= 0 || l->action ||
+            (l->flags & (TLF_FALLBACK | TLF_CUT)) || !strchr(l->text, '?'))
+            continue;
+        if ((l->act == TA_ASK_OPINION || l->act == TA_ASK_ABOUT || l->act == TA_ASK_FACT) &&
+            talk_gen_casual_topic_ok(l->topic, &s->conv.aud))
+            return l;
+    }
+    return NULL;
+}
+
 int talk_dm_say(TalkState *s, const TalkUtter *u)
 {
     TalkAudience aud;
     DoomoRng rng;
-    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked;
+    uint16_t question_topic = TC_NONE;
+    int k, g, target, target_id, resp, budget, act, cls, romance, switched, want = 0, q_was_asked, old_target;
     if (!s || !u) return TG_PASS;
+    /* Read the preceding visible question before clearing the exchange. */
+    if (!u->topic[0] && !u->safety && !u->unk_len &&
+        (u->act[0] == TA_ANSWER || u->act[0] == TA_AGREE ||
+         u->act[0] == TA_DISAGREE || u->act[0] == TA_CONTINUE)) {
+        const TalkLine *question = talk_dm_pending_question(s, u->target);
+        if (question) question_topic = question->topic;
+    }
     s->nlines = s->nplan = s->plan_at = 0;
     s->gate = TG_PASS;
     if (s->flags & TDF_OVER) return TG_PASS;
     q_was_asked = (s->q_st & TQ_ST_ASKED) != 0;
     s->q_st &= (uint8_t)~TQ_ST_ASKED;                       /* TQ: the request's quick replies last one turn */
+    old_target = s->in.target;
     s->in = *u;
     for (k = 0; k < s->nparts; k++)
         if (s->part[k].flags & TPF_REFUSED) s->conv.refused |= (uint8_t)(1u << k);
     target = s->in.target >= 0 && s->in.target < s->nparts && here(s, s->in.target) ? s->in.target : -1;
     target_id = target >= 0 ? s->part[target].id : -1;
     room_audience(s, target, &aud);
+    /* "Go on", "I agree", "I disagree" and answers without a noun
+     * refer to the live subject, not an arbitrary new one. Never infer
+     * a topic for a favor decision, blocked input, unresolved word,
+     * grief/care window, or an explicit change of subject. */
+    if (!s->in.topic[0] && !q_was_asked && !s->care_left &&
+        !s->in.safety && !s->in.unk_len &&
+        (s->in.act[0] == TA_CONTINUE || s->in.act[0] == TA_ANSWER ||
+         s->in.act[0] == TA_AGREE || s->in.act[0] == TA_DISAGREE)) {
+        uint16_t subject = question_topic ? question_topic : s->topic_stack[0];
+        /* A topicless response directed to a different resident must not
+         * inherit the previous addressee's private conversational thread.
+         * Resume this resident's actual answer, then their remembered
+         * subject. Without either, leave the subject unresolved. */
+        if (s->turn && s->nparts > 1 && old_target >= 0 &&
+            old_target != target && target >= 0) {
+            subject = s->answered_topic[target] & TALK_MAX_CONCEPTS;
+            if (!talk_gen_casual_topic_ok(subject, &aud))
+                subject = s->conv.mem_topic[target];
+        }
+        if (talk_gen_casual_topic_ok(subject, &aud))
+            s->in.topic[0] = subject;
+    }
     g = talk_safe_gate(&s->in, &aud, s->conv.avatar, target_id, target >= 0 && ((s->conv.refused >> target) & 1));
     s->gate = (uint8_t)g;
     s->conv.tone = s->in.tone;
@@ -1537,6 +1607,10 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
     TalkConv *c = &s->conv;
     uint16_t topic = s->in.topic[0] ? s->in.topic[0] : s->topic_stack[0];
     int ok = 0;
+    /* Do not undo an unresolved topic decision by borrowing the last
+     * room topic in a follow-up, reaction or scripted beat. */
+    if (s->turn && !s->in.topic[0] && talk_gen_topic_act(s->in.act[0]))
+        topic = TC_NONE;
     if (!talker(s, who) && !(kind == DK_ANSWER && here(s, who))) return 0;
     switch (kind) {
     case DK_ANSWER:
@@ -1610,13 +1684,37 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             }
         break;
     }
-    case DK_FOLLOW:
+    case DK_FOLLOW: {
+        int i;
         if (s->q_kind && !(s->q_st & TQ_ST_CLOSED) && (s->q_st & TQ_ST_ASKED)) return 0;   /* TQ: the request is the question */
-        if (s->nlines > 0 && strchr(s->line[0].text, '?')) return 0;     /* the answer already asks something back */
+        /* Do not ask another unrelated question after a reaction, story,
+         * or the main answer has already handed the conversation back. */
+        for (i = 0; i < s->nlines; i++)
+            if (strchr(s->line[i].text, '?')) return 0;
+        /* On a return visit, let the resident reopen a real remembered
+         * subject rather than always drawing the generic opening prompt. */
+        if (!topic && !s->turn && !c->care && !is_pet(s, who)) {
+            /* Prefer an actual shared memory, then the speaker's real
+             * interests. Never invent a shared event or select a random
+             * unrelated concept just to fill an opening. */
+            if (talk_gen_casual_topic_ok(c->mem_topic[who], &c->aud))
+                topic = c->mem_topic[who];
+            else {
+                for (i = 0; i < 3 && !topic; i++) {
+                    uint16_t candidate = talk_gen_like(s->part[who].id, i);
+                    if (talk_gen_casual_topic_ok(candidate, &c->aud))
+                        topic = candidate;
+                }
+            }
+        }
         ok = talk_gen_entry(c, who, -1, TGE_FOLLOW, arg ? TA_CHANGE_TOPIC : s->in.act[0], topic, L, tr);
         if (!ok || (L->flags & TLF_FALLBACK)) return 0;
+        if (!s->topic_stack[0] && L->topic && !(L->flags & (TLF_SAFE | TLF_SINCERE)) &&
+            talk_gen_casual_topic_ok(L->topic, &c->aud))
+            push_topic(s, L->topic);
         *hflags = 0;
         break;
+    }
     case DK_PROD:   ok = talk_gen_entry(c, who, -1, TGE_PROD, TA_NONE, TC_NONE, L, tr); *hflags = THF_IDLE; break;
     case DK_JAB:    ok = talk_gen_entry(c, who, to, TGE_JAB, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;
     case DK_ROW:    ok = talk_gen_entry(c, who, to, TGE_ROW, TA_NONE, topic, L, tr); *hflags = THF_ARGUE; break;
@@ -1696,9 +1794,9 @@ static int make_line(TalkState *s, int kind, int who, int to, int arg, TalkLine 
             break;
         }
         case TQP_DONE:
+            /* The item and the request still have to exist at commit time.
+             * The outcome grants the bond/mood only if completion succeeds. */
             add_event(s, TEV_QUEST_DONE, who, qkind);
-            bump_rel(s, who, 3);
-            bump_mood(s, who, 3);
             break;
         case TQP_EXPIRED:
             add_event(s, TEV_QUEST_LAPSED, who, qkind);
@@ -1739,7 +1837,7 @@ static void observe_topic_link(TalkState *s, int who, uint16_t previous, uint16_
 }
 #endif
 
-int talk_dm_step(TalkState *s, TalkTrace *tr)
+static int dm_step(TalkState *s, TalkTrace *tr, int sliced)
 {
     if (!s) return 0;
     while (s->plan_at < s->nplan && s->nlines < TALK_EXCHANGE_MAX) {
@@ -1748,7 +1846,12 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         TalkLine *L = &s->line[s->nlines];
         s->plan_at++;
         memset(L, 0, sizeof *L);
-        if (kind == DK_NONE || !make_line(s, kind, who, to, arg, L, tr, &hf)) continue;
+        if (kind == DK_NONE || !make_line(s, kind, who, to, arg, L, tr, &hf)) {
+            /* A skipped/failed generation attempt can itself be costly.
+             * The sliced scene must not try the rest in the same tick. */
+            if (sliced) return s->plan_at < s->nplan && s->nlines < TALK_EXCHANGE_MAX;
+            continue;
+        }
         if (tr && kind != DK_ANSWER) { /* the trace is the caller's one slot: only the line just made */ }
         s->nlines++;
         if (kind == DK_ANSWER && s->conv.more && !(L->flags & (TLF_SAFE | TLF_FALLBACK | TLF_SINCERE)) && s->nplan < 6) {
@@ -1803,6 +1906,16 @@ int talk_dm_step(TalkState *s, TalkTrace *tr)
         return 1;
     }
     return 0;
+}
+
+int talk_dm_step(TalkState *s, TalkTrace *tr)
+{
+    return dm_step(s, tr, 0);
+}
+
+int talk_dm_step_slice(TalkState *s)
+{
+    return dm_step(s, NULL, 1);
 }
 
 /* ---- the end ------------------------------------------------------------------------- */

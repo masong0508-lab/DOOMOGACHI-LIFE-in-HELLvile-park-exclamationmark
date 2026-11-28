@@ -1,0 +1,7 @@
+# Game-only recovery: topic continuity and controller access (2026-11-27)
+
+Parent: 55130bcbba7273ae4b99946e8524817a935d351e. CI run 45834584882 recorded 1836 native checks passed and two failed; both resolution-specific talk_topic_ask journeys exceeded the existing 11-press budget (12 presses). The Q8 missing-subject census recorded 16 of 3979, versus the maximum baseline of 9. The learned-pair revisit disappeared after cycling listeners because the explicit topic was cleared and replaced by the global thread stack.
+
+Changes: keep a picker-only subject anchor when cycling listeners; do not transfer an armed action or another resident's learned link. Keep pie in the stable first stock position after Any topic, before the dynamic recent list. Explicit topic changes prefer relevant cores even at the start of a conversation, without changing the kind, age, grief, care, adjacency, refusal or novelty gates or disabling intentional deflections elsewhere. The existing census threshold and button budget are unchanged. The regression test now checks the stock shortcut as well as partner-specific learned links.
+
+Verification: run the existing native units, census, both native journeys, sanitizers and all console gates at the new head. Local checkout/SDK unavailable in this environment; source transformations validated against the pinned parent, but compiler, emulator, FPS and census results are not established until the new CI finishes. Do not merge or distribute the resulting build as stable without green checks. No pilot/show files changed.

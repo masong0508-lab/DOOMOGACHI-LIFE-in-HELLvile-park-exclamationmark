@@ -158,7 +158,7 @@ jobs:
       - name: Headless harness (engine tour, flash save round trip, game smoke)
         run: |
           # same targets, same order as `make -C gba test`, with the seconds each one took
-          for t in test-et test-save test-game test-coresave test-story test-home test-ow test-lang; do
+          for t in test-et test-save test-game test-talk test-coresave test-story test-home test-ow test-lang; do
             s=$SECONDS
             make -C gba "$t"
             echo "::notice title=$t::took $((SECONDS - s)) s"
@@ -333,6 +333,18 @@ jobs:
             make -C gba profile-all 2>&1 | grep -E '^\| |^profile-all|rror' || echo '(profile-all produced no table)'
           } 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Profile Talk menu, reply generation and dialogue
+        if: always()
+        continue-on-error: true
+        run: |
+          make -C gba profile-talk > gba/build/talk_profile_command.log 2>&1
+          {
+            echo '## Talk: three independent gameplay profiles'
+            echo '~~~'
+            grep -E '^## Talk|^harness: (fps profile|slow frame tick|profile of| +[0-9.]+%)|profile-talk:' gba/build/talk_profile_command.log || true
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # The over-budget frames of the invaded map (V13: 35.8 ms max against 33.3): which functions cost
       # MORE in a slow frame than in a normal one, and at which ticks they come ("slow frame tick ...").
       - name: Profile invaded worst frames
@@ -399,6 +411,8 @@ jobs:
             gba/build/title_profile.log
             gba/build/title_spikes.log
             gba/build/profile_all.log
+            gba/build/talk_profile.log
+            gba/build/talk_profile_command.log
             gba/build/invaded_profile.log
             gba/build/studio_profile.log
             gba/build/combat_quality_fps.log
@@ -460,11 +474,14 @@ jobs:
       - name: PS1 host test (the image cache's bordered tile rows, ps1/src/tilerow.h)
         run: cc -O2 -Wall -I ps1/src ps1/harness/tilerow_test.c -o /tmp/tilerow_test && /tmp/tilerow_test
 
-      - name: Build the game disc (preset ps1)
+      - name: Build and check the full game disc (preset ps1, Talk included)
         working-directory: ps1
         run: |
+          set -euo pipefail
           cmake --preset ps1 -DDOOMO_INTRO_REQUIRED=ON
-          cmake --build --preset ps1
+          cmake --build --preset ps1 | tee build/disc.log
+          awk '/^elf2exe: -?[0-9]+ B left below the stack top / { headroom = $2 }
+            END { if (headroom < 73728) { print "PS1 full game needs 73728 B below the stack top"; exit 1 } }' build/disc.log
 
       # The margin below the stack top and where the 2 MB go, in the job summary (docs/PS1.md "RAM
       # headroom 2026-11-12"). elf2exe.py already printed a WARNING annotation under the 72 KB plan
@@ -493,15 +510,6 @@ jobs:
       - name: Overlay planner tests (platform code in a group, guarded calls)
         run: python3 ps1/tools/test_ovl_guard.py
 
-      - name: Build and check the PS1 Talk disc
-        working-directory: ps1
-        run: |
-          set -euo pipefail
-          cmake --preset ps1 -B build-talk -DDOOMO_PS1_TALK=ON -DDOOMO_INTRO_REQUIRED=ON
-          cmake --build build-talk | tee build-talk/disc.log
-          awk '/^elf2exe: -?[0-9]+ B left below the stack top / { headroom = $2 }
-            END { if (headroom < 73728) { print "PS1 Talk needs 73728 B below the stack top"; exit 1 } }' build-talk/disc.log
-
       - name: Build the engine-test disc (preset ps1-enginetest)
         working-directory: ps1
         run: |
@@ -511,7 +519,7 @@ jobs:
       - name: Record PlayStation ROM provenance and checksums
         run: |
           set -euo pipefail
-          for d in ps1/build ps1/build-talk ps1/build-enginetest; do
+          for d in ps1/build ps1/build-enginetest; do
             printf 'repository=%s\nbranch=%s\ncommit=%s\nrun_id=%s\n' \
               "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$GITHUB_SHA" "$GITHUB_RUN_ID" \
               > "$d/BUILD_SOURCE.txt"
@@ -540,18 +548,6 @@ jobs:
             ps1/build-enginetest/doomogachi.cue
             ps1/build-enginetest/BUILD_SOURCE.txt
             ps1/build-enginetest/SHA256SUMS.txt
-          if-no-files-found: error
-
-      - name: Upload the Talk game disc
-        uses: actions/upload-artifact@v4
-        with:
-          name: doomogachi-ps1-talk
-          path: |
-            ps1/build-talk/doomogachi.exe
-            ps1/build-talk/doomogachi.bin
-            ps1/build-talk/doomogachi.cue
-            ps1/build-talk/BUILD_SOURCE.txt
-            ps1/build-talk/SHA256SUMS.txt
           if-no-files-found: error
 
   # --------------------------------------------------------------------------

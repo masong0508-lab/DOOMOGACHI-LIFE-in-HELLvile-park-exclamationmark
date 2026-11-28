@@ -239,10 +239,25 @@ int talk_db_read(int id, uint32_t at, void *dst, uint32_t len)
     return rd_bank(id, at, dst, len);
 }
 
+/* Small immutable records: ROM-backed banks need no intermediate copy.
+ * Streamed banks retain the exact old read-through/cache behavior. */
+const uint8_t *talk_db_record(int id, uint32_t at, uint8_t *scratch, uint32_t len)
+{
+    const TalkBank *b;
+    if (!len || !db.open || id <= 0 || id >= TB_COUNT || !db.bank[id].present) return NULL;
+    b = &db.bank[id];
+    if (at > b->packed || len > b->packed - at) return NULL;
+    if (db.mem) return db.mem + b->off + at;
+    return scratch && rd(b->off + at, scratch, len) ? scratch : NULL;
+}
+
 int talk_db_concept(int id, TalkConcept *out)
 {
-    uint8_t r[8];
-    if (!out || id <= 0 || id > talk_db_nconcepts() || !rd_bank(TB_CONCEPT, 8u * (uint32_t)id, r, 8)) return 0;
+    uint8_t scratch[8];
+    const uint8_t *r;
+    if (!out || id <= 0 || id > talk_db_nconcepts()) return 0;
+    r = talk_db_record(TB_CONCEPT, 8u * (uint32_t)id, scratch, sizeof scratch);
+    if (!r) return 0;
     out->id = (uint16_t)id;
     out->cat = r[0];
     out->sent = (int8_t)((r[1] & 7) - 3);
@@ -256,9 +271,12 @@ int talk_db_concept(int id, TalkConcept *out)
 
 int talk_db_assoc(int id, uint16_t *ids, uint8_t *weights)
 {
-    uint8_t r[16];
+    uint8_t scratch[16];
+    const uint8_t *r;
     int i, n = 0;
-    if (id <= 0 || id > talk_db_nconcepts() || !rd_bank(TB_ASSOC, 16u * (uint32_t)id, r, 16)) return 0;
+    if (id <= 0 || id > talk_db_nconcepts()) return 0;
+    r = talk_db_record(TB_ASSOC, 16u * (uint32_t)id, scratch, sizeof scratch);
+    if (!r) return 0;
     for (i = 0; i < TALK_ASSOC_TOP; i++) {
         uint16_t v = le16(r + 2 * i);
         if (!v) break;
@@ -293,13 +311,26 @@ int talk_db_edges(int id, uint16_t *ids, uint8_t *weights, int cap)
 int talk_db_attrs(int id, uint16_t *ids)
 {
     TalkConcept c;
+    uint8_t scratch[2 * TALK_ATTR_MAX];
+    const uint8_t *p;
+    uint32_t at;
     int i, n;
     if (!talk_db_concept(id, &c)) return 0;
     n = c.flags & TCF_NATTR_MASK;
     if (n > TALK_ATTR_MAX) n = TALK_ATTR_MAX;
+    if (!n) return 0;
+    at = 2u * c.attr_first;
+    /* Contiguous attribute IDs: borrow the ROM span, or read it once.
+     * Retain the old readable-prefix behavior if a stream refuses a batch
+     * or a damaged bank ends partway through the list. */
+    p = talk_db_record(TB_ATTR, at, scratch, 2u * (uint32_t)n);
+    if (p) {
+        if (ids) for (i = 0; i < n; i++) ids[i] = le16(p + 2 * i);
+        return n;
+    }
     for (i = 0; i < n; i++) {
         uint8_t e[2];
-        if (!rd_bank(TB_ATTR, 2u * (c.attr_first + (uint32_t)i), e, 2)) return i;
+        if (!rd_bank(TB_ATTR, at + 2u * (uint32_t)i, e, 2)) return i;
         if (ids) ids[i] = le16(e);
     }
     return n;
@@ -308,24 +339,32 @@ int talk_db_attrs(int id, uint16_t *ids)
 /* string `idx` of TBK_TXT bank `id` into out */
 static int bank_string(int id, unsigned idx, char *out, int cap)
 {
-    uint8_t h[8], s[128];
-    uint32_t nblocks, base, off, at, n;
+    uint8_t scratch[128];
+    const uint8_t *s;
+    uint32_t nblocks, base, off, at, n, size = db.bank[id].packed;
     unsigned shift;
     out[0] = 0;
-    if (!rd_bank(id, 0, h, 8) || idx >= le16(h)) return -1;
-    shift = h[2];
-    nblocks = le32(h + 4);
-    if (shift > 15 || (idx >> shift) >= nblocks) return -1;
-    if (!rd_bank(id, 8u + 4u * (idx >> shift), s, 4)) return -1;
+    s = talk_db_record(id, 0, scratch, 8);
+    if (!s || idx >= le16(s)) return -1;
+    shift = s[2];
+    nblocks = le32(s + 4);
+    if (shift > 15 || (idx >> shift) >= nblocks || nblocks > (size - 8u) / 4u) return -1;
+    s = talk_db_record(id, 8u + 4u * (idx >> shift), scratch, 4);
+    if (!s) return -1;
     base = le32(s);
-    if (!rd_bank(id, 8u + 4u * nblocks + 2u * idx, s, 2)) return -1;
+    at = 8u + 4u * nblocks;
+    if (2u * idx > size - at) return -1;
+    s = talk_db_record(id, at + 2u * idx, scratch, 2);
+    if (!s) return -1;
     off = le16(s);
+    if (base >= size || off >= size - base) return -1;
     at = base + off;
-    if (at >= db.bank[id].packed) return -1;
-    n = db.bank[id].packed - at;
-    if (n > sizeof(s)) n = sizeof(s);
-    if (!rd_bank(id, at, s, n)) return -1;
-    return txt_decode(s, n, out, cap);
+    n = size - at;
+    if (n > sizeof scratch) n = sizeof scratch;
+    /* Decode directly from mapped cartridge/host memory; streamed banks
+     * still use the identical bounded temporary buffer. */
+    s = talk_db_record(id, at, scratch, n);
+    return s ? txt_decode(s, n, out, cap) : -1;
 }
 
 int talk_db_string(int bank, int idx, char *out, int cap)
@@ -345,42 +384,54 @@ static int put(char *out, int cap, int n, const char *src)
     return n;
 }
 
-int talk_db_form(int id, int which, char *out, int cap)
+int talk_db_form_decoded(const TalkConcept *c, int which, char *out, int cap)
 {
-    TalkConcept c;
     char f[96];
     char *plural;
     const char *word;
     int n = 0;
     if (!out || cap <= 0) return -1;
     out[0] = 0;
-    if (!talk_db_concept(id, &c) || bank_string(TB_FORMS, c.form, f, sizeof(f)) < 0) return -1;
+    if (!db.open || !c || !c->id || c->id > db.nconcepts || !c->cat ||
+        bank_string(TB_FORMS, c->form, f, sizeof(f)) < 0) return -1;
     plural = strchr(f, '/');
     if (plural) *plural++ = 0;
     switch (which) {
     case TF_LEMMA:  return put(out, cap, 0, f);
     case TF_PLURAL: return put(out, cap, 0, plural ? plural : f);
-    case TF_DEFAULT: return put(out, cap, 0, (c.flags & TCF_PLURAL) && plural ? plural : f);
+    case TF_DEFAULT: return put(out, cap, 0, (c->flags & TCF_PLURAL) && plural ? plural : f);
     case TF_INDEF:
     case TF_DEF:
-        word = (c.flags & TCF_PLURAL) && plural ? plural : f;
-        if (c.flags & TCF_PROPER) {
-            if (c.flags & TCF_THE) n = put(out, cap, 0, "the ");
+        word = (c->flags & TCF_PLURAL) && plural ? plural : f;
+        if (c->flags & TCF_PROPER) {
+            if (c->flags & TCF_THE) n = put(out, cap, 0, "the ");
             return put(out, cap, n, f);
         }
-        if (which == TF_DEF || (c.flags & TCF_THE)) n = put(out, cap, 0, "the ");
-        else if ((c.flags & (TCF_MASS | TCF_PLURAL)) || !(c.flags & TCF_COUNTABLE)) n = put(out, cap, 0, "some ");
-        else n = put(out, cap, 0, (c.flags & TCF_AN) ? "an " : "a ");
+        if (which == TF_DEF || (c->flags & TCF_THE)) n = put(out, cap, 0, "the ");
+        else if ((c->flags & (TCF_MASS | TCF_PLURAL)) || !(c->flags & TCF_COUNTABLE)) n = put(out, cap, 0, "some ");
+        else n = put(out, cap, 0, (c->flags & TCF_AN) ? "an " : "a ");
         return put(out, cap, n, word);
     default:
         return -1;
     }
 }
 
+int talk_db_form(int id, int which, char *out, int cap)
+{
+    TalkConcept c;
+    if (!out || cap <= 0) return -1;
+    out[0] = 0;
+    if (!talk_db_concept(id, &c)) return -1;
+    return talk_db_form_decoded(&c, which, out, cap);
+}
+
 int talk_db_cat(int cat, uint8_t *parent, uint8_t *flags)
 {
-    uint8_t r[4];
-    if (cat <= 0 || cat > talk_db_ncats() || !rd_bank(TB_CATS, 4u + 4u * (uint32_t)cat, r, 4)) return 0;
+    uint8_t scratch[4];
+    const uint8_t *r;
+    if (cat <= 0 || cat > talk_db_ncats()) return 0;
+    r = talk_db_record(TB_CATS, 4u + 4u * (uint32_t)cat, scratch, sizeof scratch);
+    if (!r) return 0;
     if (parent) *parent = r[0];
     if (flags) *flags = r[1];
     return 1;

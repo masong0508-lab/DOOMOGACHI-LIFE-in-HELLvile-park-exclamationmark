@@ -44,8 +44,13 @@ press A
 wait 30
 expect-scene DIALOG
 shot talk_02_compliment
-# Leave the conversation, then round-trip the memory card before reopening it.
-scene RESIDENT 1
+# Normal goodbye returns to the original resident card; do not bypass
+# Talk's outcome/overlay return path with a forced scene change.
+dismiss-dialog TALK 16
+press B
+wait 30
+dismiss-dialog RESIDENT 16
+expect-scene RESIDENT
 save 1
 expect-save 1
 load 1
@@ -68,3 +73,19 @@ wait 35
 shot talk_04_recall
 # One overlay read for each of the two visits, including the reopened save.
 expect-count 2 ovl: talk (
+# The same disc still loads the full game's story and combat overlays
+# after Talk and the memory-card round trip.
+scene STORY 108
+wait 60
+expect-scene STORY
+shot integrated_story
+push COMBAT 3
+wait 70
+expect-scene COMBAT
+shot integrated_combat
+press START
+wait 14
+press B
+wait 2
+expect-scene COMBAT
+shot integrated_combat_resumed

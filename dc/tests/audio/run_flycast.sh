@@ -33,10 +33,12 @@
 set -u
 [ $# -eq 6 ] || [ $# -eq 7 ] || { echo "usage: run_flycast.sh FLYCAST DCRUN IMAGE NMFILE RUNNER OUTDIR [IRQ_RUNNER]" >&2; exit 2; }
 FLY=$1 DCRUN=$2 IMG=$3 NM=$4 RUNNER=$5 OUT=$6 IRQR=${7:-}
-# Flycast records from power-on. The shipped CDI fixtures add about
-# eleven seconds of boot time before the native and console audio align.
-startup_lag=15
+# Keep the full power-on recording. Align only at the explicit tick-zero
+# script marker, after the native-seed prefetch; allow up to one second of
+# residual stream latency, not an unbounded search through the waveform.
+startup_lag=1
 here=$(cd "$(dirname "$0")" && pwd)
+python3 "$here/test_capture_origin.py" || exit 1
 mkdir -p "$OUT"
 sum=$OUT/summary.txt
 : > "$sum"
@@ -54,6 +56,10 @@ for name in title invasion combat; do
         --shots "$d/shots" --script "$here/$name.txt" --wav "$d/dc.wav" --timeout 600 \
         > "$d/dcrun.log" 2>&1
     r=$?
+    if ! python3 -I "$here/capture_origin.py" "$d/dcrun.log" "$d/dc.wav" "$d/game.wav" > "$d/capture_origin.log" 2>&1; then
+        res "$name" FAIL "(dcrun $r) $(cat "$d/capture_origin.log")"
+        continue
+    fi
     # the reference: the lines the native runner knows
     grep -E '^(wait|seed|scene|push|press|hold|expect-scene)( |$)' "$here/$name.txt" > "$d/ref_script.txt"
     "$RUNNER" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
@@ -65,7 +71,7 @@ for name in title invasion combat; do
         DCSND_WAV="$d/ref.wav" "$IRQR" --quiet --script "$d/ref_script.txt" --shots "$d/ref_shots" --saves "$d/ref_saves" \
             --w 320 --h 240 > "$d/runner_irq.log" 2>&1
         [ $? -eq 0 ] || nr=1
-        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/dc.wav" --label "$name" --max-lag "$startup_lag" \
+        vsb=$(python3 -I "$here/compare.py" "$d/bridge.wav" "$d/game.wav" --label "$name" --max-lag "$startup_lag" \
               --drop-gaps 256 2>&1 | sed 's/^[A-Za-z]* //')
         vsb="; vs bridge (not gated): $vsb"
     fi
@@ -75,13 +81,13 @@ for name in title invasion combat; do
     # (sync stops) are not the game's sound (compare.py, DC8)
     gaps="--drop-gaps 256"; bar=
     [ -n "$IRQR" ] && { gaps=; [ $name = combat ] && bar="--min-corr 0.8"; }
-    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/dc.wav" --label "$name" --max-lag "$startup_lag" \
+    c=$(python3 -I "$here/compare.py" "$d/ref.wav" "$d/game.wav" --label "$name" --max-lag "$startup_lag" --min-coverage 0.95 \
         $gaps $bar $clip --plot "$d/envelope.png" 2>&1)
     cr=$?
     stats=$(grep '^dcrun: sound' "$d/dcrun.log" | sed 's/^dcrun: //')
     p2p=$(grep -o 'peak-to-peak [0-9]* (min' "$d/dcrun.log" | head -1)
     st=ok; [ $r -eq 0 ] && [ $nr -eq 0 ] && [ $cr -eq 0 ] || st=FAIL
-    res "$name" "$st" "(dcrun $r, runner $nr) $p2p; $c; $stats$vsb"
+    res "$name" "$st" "(dcrun $r, runner $nr) $(cat "$d/capture_origin.log"); $p2p; $c; $stats$vsb"
 done
 
 # ---- repeat: the same ticks give the same sound ----

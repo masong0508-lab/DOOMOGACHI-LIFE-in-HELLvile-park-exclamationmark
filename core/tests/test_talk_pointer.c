@@ -38,9 +38,9 @@ static void press(uint32_t b)
     frames(0, 1);
 }
 
-/* the screen's geometry (talk_scene.c layout): the panel is 90 px high at the bottom */
-static int ly(int slot) { return plat_screen_h() - 90 + 17 + slot * UI_LIST_ROW_H + 5; }
-static int hy(void) { return plat_screen_h() - 90 + 5; }
+/* Use the actual panel geometry: compact pages have fewer visible rows. */
+static int ly(int slot) { return talk_scene_panel_y() + 17 + slot * UI_LIST_ROW_H + 5; }
+static int hy(void) { return talk_scene_panel_y() + 5; }
 #define LX 100
 static int bar_x(void) { return plat_screen_w() - 10; }
 
@@ -141,6 +141,7 @@ TEST(pointer_talk_pages_rows_and_back)
     if (!open_talk()) { CHECK(!"the Talk screen opened"); return; }
     CHECK(scene_top() == &SCENE_TALK);
     CHECK_EQ(page_of(), 0);
+    CHECK_EQ(talk_scene_panel_y(), plat_screen_h() - (18 + 6 * UI_LIST_ROW_H));
     n = rows_of();
     chat = talk_scene_find("Chat >");
     CHECK(chat >= 4 && chat < 6);                        /* after the quick replies, still on the first page */
@@ -196,6 +197,7 @@ TEST(pointer_talk_scroll_options_invite_people_typed_line)
     click(LX, ly(4));                                    /* Options */
     CHECK_EQ(page_of(), 4);
     CHECK_EQ(rows_of(), 3);                              /* Topic, Invite someone, Our history */
+    CHECK_EQ(talk_scene_panel_y(), plat_screen_h() - (18 + 3 * UI_LIST_ROW_H));
     CHECK_EQ(talk_scene_find("Our history"), 2);
     click(LX, ly(0));                                    /* Topic */
     CHECK_EQ(page_of(), 2);
@@ -229,6 +231,39 @@ TEST(pointer_talk_scroll_options_invite_people_typed_line)
     for (i = 0; i < 4; i++) click(bar_x(), ly(5));
     click(LX, ly(3));
     CHECK(scene_top() == &SCENE_TEXT_ENTRY);
+}
+
+/* Scrolling both directions must preserve exactly the same label for
+ * each topic. Offscreen debug reads must not disturb the live viewport. */
+TEST(pointer_talk_topic_labels_survive_scrolling)
+{
+    char expected[40][48], actual[48];
+    int i, k, count;
+    if (!open_talk()) { CHECK(!"the Talk screen opened"); return; }
+    for (i = 0; i < 4; i++) click(bar_x(), ly(5));
+    click(LX, ly(4));
+    CHECK_EQ(page_of(), 4);
+    click(LX, ly(0));
+    CHECK_EQ(page_of(), 2);
+    count = rows_of();
+    CHECK(count > 6 && count <= 40);
+    if (count <= 6 || count > 40) return;
+    for (i = 0; i < count; i++) talk_scene_row(i, expected[i]);
+    for (k = 0; k < 2; k++) {
+        for (i = 0; i < count - 1; i++) {
+            int top = 0, j;
+            press(k == 0 ? BTN_DOWN : BTN_UP);
+            view(NULL, NULL, &top, NULL, NULL, NULL, NULL);
+            talk_scene_row(k ? count - 1 : 0, actual);
+            CHECK_STR(actual, expected[k ? count - 1 : 0]);
+            for (j = top; j < count && j < top + 6; j++) {
+                talk_scene_row(j, actual);
+                CHECK_STR(actual, expected[j]);
+            }
+        }
+    }
+    click(LX, hy());
+    CHECK_EQ(page_of(), 0);
 }
 
 /* a quick reply: the pad (DOWN to the row, A) and the pointer (a click on it) say the same thing, the text the

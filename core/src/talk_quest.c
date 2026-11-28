@@ -381,10 +381,12 @@ int talk_quest_ready(int giver)
     TalkQuest q;
     int kind, st;
     if (!talk_quest_state(giver, &kind, &st, NULL, NULL)) return 0;
-    if (st == TQS_READY) return 1;
-    if (st != TQS_ACTIVE) return 0;
-    if (kind != TQK_FETCH && kind != TQK_TOY) return 0;
-    return talk_quest_derive(giver, kind, NULL, 0, 0, &q) && inv_count(q.item) > 0;
+    if (st != TQS_ACTIVE && st != TQS_READY) return 0;
+    /* Item favors depend on the current bag even if an older save marked
+     * them ready. Spending the item must immediately remove readiness. */
+    if (kind == TQK_FETCH || kind == TQK_TOY)
+        return talk_quest_derive(giver, kind, NULL, 0, 0, &q) && inv_count(q.item) > 0;
+    return st == TQS_READY;
 }
 
 int talk_quest_complete(int giver)
@@ -444,15 +446,16 @@ void talk_quest_end(const TalkSummary *sum)
             if (e && talk_mem_quest_get(e->id, NULL, &st, NULL, NULL) && st == TQS_ACTIVE) open_ids[nopen++] = e->id;
         }
         for (i = 0; i < nopen; i++) {
-            int giver = open_ids[i], kind, st, g = -1, t = -1;
+            int giver = open_ids[i], kind, st, bonus, g = -1, t = -1;
             TalkQuest q;
-            if (!talk_mem_quest_get(giver, &kind, &st, NULL, NULL) || st != TQS_ACTIVE) continue;
+            if (!talk_mem_quest_get(giver, &kind, &st, NULL, &bonus) || st != TQS_ACTIVE) continue;
             for (k = 0; k < sum->n && k < TALK_PARTS_MAX; k++) {
                 if (sum->pflags[k] & TPF_LEFT) continue;
                 if (sum->id[k] == giver) g = k;
             }
-            for (k = 0; k < sum->nev; k++)                       /* accepted in this very conversation: it starts after it */
-                if (sum->ev[k].kind == TEV_QUEST_ACCEPT && sum->ev[k].a < sum->n && sum->id[sum->ev[k].a] == giver) g = -2;
+            for (k = 0; k < sum->nev && k < TALK_EVENTS_MAX; k++) /* accepted in this conversation: it starts after it */
+                if (sum->ev[k].kind == TEV_QUEST_ACCEPT && sum->ev[k].a < sum->n &&
+                    sum->ev[k].a < TALK_PARTS_MAX && sum->id[sum->ev[k].a] == giver) g = -2;
             if (g == -2) continue;
             if (kind == TQK_FETCH || kind == TQK_TOY) continue;      /* ready by what is in the bag */
             if (!talk_quest_derive(giver, kind, NULL, 0, 0, &q)) q.target = -1;
@@ -461,26 +464,26 @@ void talk_quest_end(const TalkSummary *sum)
                     if (sum->id[k] == q.target && !(sum->pflags[k] & TPF_LEFT)) t = k;
             switch (kind) {
             case TQK_MESSAGE:
-                if (t >= 0) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, 0);
+                if (t >= 0) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, bonus);
                 break;
             case TQK_CHEER:
-                if (t >= 0 && sum->mood_d[t] > 0) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, 0);
+                if (t >= 0 && sum->mood_d[t] > 0) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, bonus);
                 break;
             case TQK_COMPANY:
-                if (g >= 0 && sum->turns >= 3) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, 0);
+                if (g >= 0 && sum->turns >= 3) talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, bonus);
                 break;
             case TQK_PEACE: {
                 int made = 0;
-                for (k = 0; k < sum->nev; k++)
+                for (k = 0; k < sum->nev && k < TALK_EVENTS_MAX; k++)
                     if (sum->ev[k].kind == TEV_MEDIATED) made = 1;
                 if ((made || (q.target >= 0 && rel_value(giver, q.target) >= 0)) && g >= 0)
-                    talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, 0);
+                    talk_mem_quest_set(giver, kind, TQS_READY, TQ_DAYS, bonus);
                 break;
             }
             case TQK_SECRET: {
                 int d = 0;
                 talk_mem_quest_get(giver, NULL, NULL, &d, NULL);
-                if (g >= 0 && d < TQ_DAYS) talk_mem_quest_set(giver, kind, TQS_READY, d, 0);   /* a day has passed: still kept */
+                if (g >= 0 && d < TQ_DAYS) talk_mem_quest_set(giver, kind, TQS_READY, d, bonus);   /* a day has passed: still kept */
                 break;
             }
             default: break;
@@ -501,7 +504,7 @@ static void goal_text(int giver, int kind, int state, char *buf, int cap)
     if (!talk_quest_derive(giver, kind, NULL, 0, 0, &q)) memset(&q, 0, sizeof q), q.target = -1;
     t = q.target >= 0 ? town_res(q.target) : NULL;
     if (t) { strncpy(tn, t->name, DOOMO_NAME_LEN); tn[DOOMO_NAME_LEN] = 0; }
-    if (state == TQS_READY || (state == TQS_ACTIVE && (kind == TQK_FETCH || kind == TQK_TOY) && q.item && inv_count(q.item) > 0)) {
+    if (state == TQS_READY) {
         doomo_snprintf(buf, (size_t)cap, "Go back to %s.", gn);
         return;
     }
@@ -541,10 +544,10 @@ int talk_quest_log_row(int i, TalkQuestRow *out)
         memset(out, 0, sizeof *out);
         out->giver = (int16_t)e->id;
         out->kind = (uint8_t)kind;
-        out->state = (uint8_t)(talk_quest_ready(e->id) ? TQS_READY : st);
+        out->state = (uint8_t)(talk_quest_ready(e->id) ? TQS_READY : TQS_ACTIVE);
         out->days = (uint8_t)days;
         out->reward = (uint8_t)talk_quest_reward(kind, bonus);
-        goal_text(e->id, kind, st, out->goal, (int)sizeof out->goal);
+        goal_text(e->id, kind, out->state, out->goal, (int)sizeof out->goal);
         return 1;
     }
     return 0;

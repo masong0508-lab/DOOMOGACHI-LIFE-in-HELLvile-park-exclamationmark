@@ -24,7 +24,12 @@ project(
 option(DOOMO_ENGINE_TEST "Boot into the 3D engine test / benchmark" OFF)
 option(DOOMO_PAL         "Use PAL video timing"                     OFF)
 option(DOOMO_CORE        "Link the portable core (OFF = platform bring-up with fallback assets)" ON)
-option(DOOMO_PS1_TALK    "Include experimental disc-streamed Talk on the PS1 game disc" OFF)
+# The full game always includes Talk; old build caches may still carry
+# DOOMO_PS1_TALK=OFF from the former separate edition. Do not honor it.
+if(DEFINED DOOMO_PS1_TALK)
+    message(STATUS "DOOMO_PS1_TALK is obsolete: the full PS1 game includes Talk")
+    unset(DOOMO_PS1_TALK CACHE)
+endif()
 option(DOOMO_PACK_ART    "Link the core's textures and skies LZ-compressed (tools/packart.py)" ON)
 option(DOOMO_CUTSCENE_VIEWER "Debug mode: hold SELECT at boot for a cutscene viewer (src/cutview.c)" ON)
 option(DOOMO_OVERLAYS    "Game disc: load scene code from OVL.BIN into one RAM slot (tools/ovl_plan.py)" ON)
@@ -51,11 +56,11 @@ file(GLOB PS1_SRCS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 list(SORT PS1_SRCS)
 
 # Compile the Talk bank into the disc. Two RAM sectors and an SPU cache
-# back the reader. This build option applies only to the game disc.
+# back the reader. Every full game disc includes it (NTSC and PAL).
 set(DOOMO_PS1_TALK_ON OFF)
 set(DOOMO_ISO_TALK "")
 set(DOOMO_TALK_DEP "")
-if(DOOMO_CORE AND DOOMO_PS1_TALK AND NOT DOOMO_ENGINE_TEST)
+if(DOOMO_CORE AND NOT DOOMO_ENGINE_TEST)
     if(NOT DOOMO_PACK_ART OR NOT DOOMO_OVERLAYS)
         message(FATAL_ERROR "PS1 Talk requires packed art and scene overlays to fit in 2 MB")
     endif()
@@ -71,7 +76,8 @@ if(DOOMO_CORE AND DOOMO_PS1_TALK AND NOT DOOMO_ENGINE_TEST)
         BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN_FULL.BIN
         DEPENDS ${DOOMO_TALK_DATA} ${CORE_DIR}/tools/talkc.py
                 ${CORE_DIR}/tools/talkc_parse.py ${CORE_DIR}/tools/talkc_safe.py
-                ${CORE_DIR}/tools/talkc_gen.py ${CORE_DIR}/include/doomo/talk.h
+                ${CORE_DIR}/tools/talkc_gen.py ${CORE_DIR}/tools/talkc_lint.py
+                ${CORE_DIR}/tools/talkc_beats.py ${CORE_DIR}/include/doomo/talk.h
                 ${CORE_DIR}/gen/txt_dict.c ${CORE_DIR}/data/story/register.tsv
                 ${CMAKE_CURRENT_SOURCE_DIR}/tools/talk_controller.py ${CORE_DIR}/src/talk_scene.c
         COMMENT "Preparing PS1 disc-streamed Talk bank (TALK_EN.BIN)"
@@ -434,6 +440,22 @@ add_custom_target(disc ALL DEPENDS
 	${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.bin
 	${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.cue)
 
+# Inspect the actual raw disc, not only the generated XML or source files.
+# All normal game resources and the streamed Talk bank must be present.
+if(DOOMO_PS1_TALK_ON)
+    set(_verify_intro "")
+    if(DOOMO_INTRO_REQUIRED)
+        set(_verify_intro --require-intro)
+    endif()
+    add_custom_target(verify_game_disc ALL
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/verify_game_disc.py
+                ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.bin
+                ${CMAKE_CURRENT_BINARY_DIR}/TALK_EN.BIN
+                ${CMAKE_CURRENT_BINARY_DIR}/${DOOMO_EXE_NAME}.exe ${_verify_intro}
+        VERBATIM)
+    add_dependencies(verify_game_disc disc)
+endif()
+
 # ---- headless tests in PCSX-Redux (ps1/harness, see README.md) ------------
 #   cmake --build --preset ps1 --target harness              game: disc boot +
 #                                       smoke, core boot / UI gallery / saves
@@ -562,4 +584,7 @@ else()
 		DEPENDS disc
 		COMMENT "PCSX-Redux harness: game"
 		VERBATIM USES_TERMINAL)
+    if(DOOMO_PS1_TALK_ON)
+        add_dependencies(harness verify_game_disc)
+    endif()
 endif()

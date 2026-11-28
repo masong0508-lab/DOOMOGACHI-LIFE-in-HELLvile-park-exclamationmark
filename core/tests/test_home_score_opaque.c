@@ -9,6 +9,8 @@
 #include "test.h"
 #include "../src/home_int.h"
 #include "doomo/plat_ext.h"
+#include "doomo/talk.h"
+#include "doomo/lang.h"
 
 /* strong versions of the two weak platform calls: log, then do what the weak ones do */
 typedef struct { int x, y, w, h, after_room; } OpqCall;
@@ -197,3 +199,41 @@ TEST(home_mart_asks_for_the_platform_ui_loops_each_frame)
     frames(4);
     CHECK_EQ(ui_loops_asked, 4);
 }
+
+#ifdef DOOMO_HAS_TALK
+/* Native room registration uses the same geometry as Talk's pointer and
+ * draw paths. Both matte strips are opaque to their edges. */
+TEST(home_talk_names_only_opaque_panel_interiors)
+{
+    int i, found_top = 0, found_bottom = 0, py;
+    test_reset();
+    town_new(TOWN_FREEPLAY, 7, TOWN_POP_PREMADE);
+    scene_set(&SCENE_HOME, 3);
+    frames(30);
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    CHECK(home_talk_enter(1));
+    for (i = 0; i < 60; i++) {
+        int busy = 1;
+        if (scene_top() == &SCENE_TALK &&
+            talk_scene_view(NULL, NULL, NULL, NULL, NULL, &busy, NULL) && !busy) break;
+        frame(BTN_A); frames(4);
+    }
+    CHECK(scene_top() == &SCENE_TALK);
+    if (scene_top() != &SCENE_TALK) return;
+    py = talk_scene_panel_y();
+    frame(0);
+    for (i = 0; i < opq_n; i++) {
+        const OpqCall *c = &opq[i];
+        if (c->x != 0 || c->w != plat_screen_w() || c->after_room) continue;
+        if (c->y == 0 && c->h == 24) found_top++;
+        if (c->y == py && c->h == plat_screen_h() - py) found_bottom++;
+    }
+    CHECK_EQ(found_top, 1);
+    CHECK_EQ(found_bottom, 1);
+    scene_set(&SCENE_HOME, 3);
+    frame(0);
+    for (i = 0; i < opq_n; i++)
+        CHECK(opq[i].after_room || opq[i].w != plat_screen_w() || opq[i].h <= 12);
+    talk_db_close();
+}
+#endif

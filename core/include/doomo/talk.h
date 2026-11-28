@@ -283,6 +283,9 @@ int  talk_db_bank(int id, uint32_t *offset, uint32_t *packed, uint32_t *raw);
 /* len bytes at offset `at` of bank `id` (TB_*) into dst: 1 ok (T3 / T4
  * read TB_PARSE and TB_SAFETY with it). */
 int  talk_db_read(int id, uint32_t at, void *dst, uint32_t len);
+/* Bounded immutable record: mapped bank bytes or a read into the caller's
+ * len-byte scratch. NULL on failure. Never hold across close/reopen. */
+const uint8_t *talk_db_record(int id, uint32_t at, uint8_t *scratch, uint32_t len);
 /* Concept `id` (1..nconcepts): 1 ok, 0 out of range / not open. */
 int  talk_db_concept(int id, TalkConcept *out);
 /* Its top associations, strongest first: ids[] and weights 1..15; returns
@@ -295,6 +298,9 @@ int  talk_db_attrs(int id, uint16_t *ids);
 /* A surface form into out (always NUL-terminated); returns the length,
  * -1 on error. */
 int  talk_db_form(int id, int which, char *out, int cap);
+/* Same form using a concept just decoded from the currently open bank.
+ * Do not retain the record across closing or changing language banks. */
+int  talk_db_form_decoded(const TalkConcept *c, int which, char *out, int cap);
 /* Categories: count, parent / flags, key ("food.dish"), root (TCR_*). */
 int  talk_db_ncats(void);
 int  talk_db_cat(int cat, uint8_t *parent, uint8_t *flags);
@@ -642,8 +648,14 @@ enum {
     TGP_QKIND,                       /* TQ: the request's kind, TQK_* (qkind=fetch) */
     TGP_QPHASE,                      /* TQ: the phase of the request, TQP_* (qphase=ask) */
     TGP_FACT_PAST_HURT,               /* Boolean: the addressed avatar left unaddressed hurt */
+    TGP_CATEGORY,                    /* exact topic leaf, append-only guard ID */
+    TGP_REFLECT_READY,               /* Boolean: ordinary live contextual dialogue */
+    TGP_REFLECT_MODE,                /* TRM_*: current perspective on the topic */
     TGP_COUNT
 };
+
+/* Exclusive perspectives computed per utterance, never persisted. */
+enum { TRM_ORDINARY, TRM_PRACTICAL, TRM_SOCIAL, TRM_QUIET, TRM_GUARDED, TRM_DEEP, TRM_COUNT };
 
 /* One conversation as the generator needs it between lines (T6 keeps it in
  * its TalkState). talk_gen_begin() fills it. */
@@ -708,6 +720,9 @@ typedef struct TalkConv {
 #define TC_SET_UNK_SAID(c)    ((void)(c))
 #endif
 
+/* Before plat_room(), name the opaque interior of the active Talk panels. */
+void talk_scene_room_opaque(void);
+
 /* ---- T9: the Talk screen's pointer (core/src/talk_scene.c; docs/TALK.md "The pointer") ------------
  * Only where DOOMO_POINTER (input.h): a console build declares and links none of it. The view is for the
  * runner's expect-talk and the pointer test. talk_scene_view: 0 when no Talk screen is open; page 0 replies,
@@ -718,6 +733,7 @@ int talk_scene_view(int *page, int *sel, int *top, int *to, int *nrows, int *bus
 int talk_scene_find(const char *prefix);
 const char *talk_scene_row(int i, char *buf48);
 int talk_scene_person_x(int i);
+int talk_scene_panel_y(void);          /* actual panel top; -1 outside Talk */
 #endif
 
 /* ---- T6: talk memory (core/src/talk_save.c; docs/TALK.md 6e) ------------------
@@ -780,6 +796,7 @@ int  talk_mem_shared(int id, unsigned event_flags);
  * The speaker and avatar both have to match. Minor-room rules apply to recall. */
 void talk_visit_note(int guest, int avatar, int venue);
 void talk_visit_import_news(void);
+/* A null venues buffer counts distinct matching destinations, up to capacity. */
 int talk_visit_venues(int guest, int avatar, int minor, int *venues, int capacity);
 #define TALK_VISIT_UNDATED 0xFFFFu
 typedef struct TalkVisit {
@@ -1023,6 +1040,7 @@ typedef struct TalkExchange {
 } TalkExchange;
 
 /* An alternative of the grammar, decoded (tests, the census). */
+#define TALK_RULE_BATCH 0x80u /* compiler-proven uniform contextual leaf */
 typedef struct TalkAltInfo {
     uint16_t rule;
     uint8_t  act;                   /* the rule's reply act                           */
@@ -1059,11 +1077,14 @@ void talk_gen_unk_prepare(TalkConv *c, const TalkUtter *u);
 /* The word the generator may name back from u (E1 to E6 and the kid-room length, not E7), lower case, into
  * out[18]: its length, or 0 when it must not be echoed. The adversarial-corpus test and the scene use it. */
 int  talk_gen_unk_word(const TalkConv *c, const TalkUtter *u, char out[18]);
-/* The speaker's stance on a concept: their likes +3, their hated food and
- * fear -3, Hellvile-born flips holy things, plus a fixed personal lean. */
+/* The speaker's TST_* stance category on a concept: their likes +3,
+ * hated food and fear -3, Hellvile-born flips holy things, plus a fixed
+ * personal lean. The signed raw score is internal to the generator. */
 int  talk_gen_stance(int id, uint16_t topic);
 /* May this concept be said in this room (age class, register, a child here)? */
 int  talk_gen_concept_ok(uint16_t concept, const TalkAudience *aud);
+/* Ordinary shortcuts must additionally exclude grief concepts. */
+int  talk_gen_casual_topic_ok(uint16_t concept, const TalkAudience *aud);
 /* May the act ask or say something about the current topic? */
 int  talk_gen_topic_act(int act);
 /* acts.tsv: may `reply` answer `act`; the act's class (TAC_*). */
@@ -1072,6 +1093,8 @@ int  talk_gen_act_class(int act);
 /* A resident's like as a concept: which 0 food, 1 hobby, 2 music, 3 fear,
  * 4 hated food; 0 none. */
 uint16_t talk_gen_like(int id, int which);
+/* Same five concepts in one bank-header read; missing values are zero. */
+void talk_gen_likes(int id, uint16_t out[5]);
 /* The roster id of cast index i (a TGP_SPEAKER value), -1 none. */
 int  talk_gen_cast_id(int i);
 /* An alternative of the grammar (tests, the census): 1 ok. */
@@ -1217,6 +1240,7 @@ typedef struct TalkHist { uint8_t who, act, flags; int8_t to; uint16_t topic; } 
 #define TDF_NO_BEATS  0x10u        /* the database has no TB_BEATS: small talk only */
 #define TDF_CARE      0x20u        /* the care window is open (K-11): after a distress line or a grief answer the next
                                       TALK_CARE_TURNS player turns are answered by the sincere bank alone */
+#define TDF_COMMITTED 0x40u        /* outcome applied once by talk_outcome_end; not a save field */
 #define TALK_CARE_TURNS 4          /* player turns of care after a distress line or a grief answer */
 
 #define TALK_LINK_OBSERVATIONS 3
@@ -1299,6 +1323,10 @@ void talk_dm_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t see
  * engagement of everyone, the beat, consent, and the plan of the exchange.
  * Returns the gate's TG_*. Then call talk_dm_step() until it returns 0. */
 int  talk_dm_say(TalkState *s, const TalkUtter *u);
+/* Latest ordinary, explicit topical question from this listener to the
+ * avatar/room in the current exchange. NULL for another listener's thread,
+ * sensitive/tense exchanges or a pending favor. Borrowed until next turn. */
+const TalkLine *talk_dm_pending_question(const TalkState *s, int slot);
 /* The talk opens (right after talk_dm_begin): the resident says the beat's opening line, then hands
  * the talk to the player with a follow-up. Plans the exchange; then talk_dm_step() until it returns
  * 0. Returns 1 when something was planned. */
@@ -1317,6 +1345,10 @@ int  talk_dm_tick(TalkState *s, int frames);
 /* Make the next line of the planned exchange into s->line[s->nlines++]:
  * 1 a line was made, 0 the exchange is complete. tr: NULL or one trace. */
 int  talk_dm_step(TalkState *s, TalkTrace *tr);
+/* Scene scheduler: attempt at most one planned entry per tick, even
+ * when that entry emits no line. Nonzero = keep scheduling, not a line
+ * count. The completed exchange has the same lines/events as step(). */
+int  talk_dm_step_slice(TalkState *s);
 /* 1 when the conversation is over (everyone left, K-7, a goodbye). */
 int  talk_dm_over(const TalkState *s);
 /* Would slot `who` say yes to the player's romance act `act` (K-5)? Asks
@@ -1365,7 +1397,9 @@ typedef struct TalkOutcome {
  * last topic, last-time flags, "refused today" as TPF_REFUSED). */
 void talk_outcome_begin(TalkState *s, int avatar, const int *ids, int n, uint32_t seed);
 /* Close the conversation: the talk memory (topics, flags, refused today), then
- * talk_dm_end, then talk_outcome_apply. sum may be NULL. */
+ * talk_dm_end, then talk_outcome_apply. sum and out may be NULL.
+ * Repeated calls on the same session return zeroed results, without applying
+ * its effects again; talk_outcome_begin starts a fresh session. */
 void talk_outcome_end(TalkState *s, TalkOutcome *out, TalkSummary *sum);
 /* Apply a summary to the sim under the daily caps. Never sets a crush or a
  * dating edge: a yes to CONFESS / ASK_OUT only asks sim_confess. */
@@ -1511,6 +1545,7 @@ int  talk_quick_replies(const TalkState *s, int slot, uint16_t topic, uint16_t f
  * (the act of a quick reply, the topic or the resident id of a pick) and the text the list shows. */
 typedef struct TalkSceneDebug {
     int active, busy, sel, nrows, nparts, to, to_id, tension;
+    uint32_t quick_refreshes;           /* live menu rebuilds, not draw frames */
     int gate;                           /* TG_* of the player's last line                */
     int reply_act, nlines;              /* the act of the last resident line, and how many lines the answer had */
     int care, reply_sincere;            /* TDF_CARE is open (K-11); the last resident line is a sincere-bank line */
@@ -1538,8 +1573,9 @@ int  home_talk_note(void);
 /* DC10B: 1 while the Talk screen is open (also while the dialogue box or the text entry is on top of it). The
  * Dreamcast draws the plain text of such a frame with its HD glyphs; the layout (6 px advance) is the same. */
 int  talk_text_hd(void);
-/* TD2: 1 = the Talk screen runs the generator one step a tick (the Dreamcast: a tick under 33.3 ms), 0 (the default) = all
- * at once. Not on the GBA (the function does not exist there). Talk's own lines are identical either way. */
+/* TD2: 1 = the Talk screen runs one generation attempt per tick, 0 =
+ * all at once. GBA always uses the sliced path; this switch is for the
+ * other ports and native tests. The completed lines are the same. */
 void talk_scene_slice(int on);
 
 /* Others to bring into the next talk (up to TALK_PARTS_MAX - 1; consumed by it): talk_scene.c, DOOMO_HAS_TALK. */

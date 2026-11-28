@@ -446,16 +446,21 @@ void plat_room_ui_opaque(int x, int y, int w, int h)
     else if (y + h >= SCREEN_H && y < band_pend[1]) band_pend[1] = (uint8_t)DOOMO_MAX(y, SCREEN_H / 2);
 }
 
-/* 1 if block (bx, y..y+rows) lies inside one of this frame's opaque rects */
-static int block_opaque(int bx, int y, int rows)
+/* Mask of complete 16x8 blocks inside this frame's opaque rectangles.
+ * Partial blocks must still be read (rounded corners, exposed edges).
+ * Compute once per row, not once per changed block after reading VRAM. */
+static uint32_t opaque_row_mask(int y, int rows)
 {
+    uint32_t mask = 0;
     int i;
     if (op_frame != gba_frames) return 0;
     for (i = 0; i < op_n; i++) {
         const uint8_t *r = op_rect[i];
-        if (bx * 16 >= r[0] && bx * 16 + 16 <= r[2] && y >= r[1] && y + rows <= r[3]) return 1;
+        int first = (r[0] + 15) >> 4, end = r[2] >> 4;
+        if (y >= r[1] && y + rows <= r[3] && first < end)
+            mask |= ((1u << end) - 1u) ^ ((1u << first) - 1u);
     }
-    return 0;
+    return mask;
 }
 
 /* ---- geometry ---------------------------------------------------------------- */
@@ -2401,10 +2406,25 @@ __attribute__((noinline)) static void incremental(const RG *g, RPage *pg)
      *    each changed block row run becomes a rect */
     for (by = 0; by < g->nby; by++) {
         int y = g->my0 + by * 8, rows = block_rows(g, by), run = -1;
-        uint32_t ch = scan_row(g->bx0, g->bx1, y, rows, pg->sum + by * RB_BX);
+        uint32_t covered = opaque_row_mask(y, rows), ch = 0;
+        const uint32_t *sum = pg->sum + by * RB_BX;
+        if (!covered) ch = scan_row(g->bx0, g->bx1, y, rows, sum);
+        else {
+            /* Check only contiguous exposed runs. Stored room checksums
+             * remain untouched, so uncovering the panel restores its
+             * old pixels on either page through the normal dirty pass. */
+            bx = g->bx0;
+            while (bx < g->bx1) {
+                int first;
+                while (bx < g->bx1 && (covered & (1u << bx))) bx++;
+                first = bx;
+                while (bx < g->bx1 && !(covered & (1u << bx))) bx++;
+                if (first < bx) ch |= scan_row(first, bx, y, rows, sum);
+            }
+        }
         if (!ch) continue;                  /* (S2-11) no run is open at the end of a row */
         for (bx = g->bx0; bx <= g->bx1; bx++) {
-            int changed = bx < g->bx1 && ((ch >> bx) & 1) && !(op_n && block_opaque(bx, y, rows));
+            int changed = bx < g->bx1 && ((ch >> bx) & 1);
             if (changed && run < 0) run = bx;
             if (!changed && run >= 0) { add_rect(g, run * 16, y, bx * 16, y + rows); run = -1; }
         }

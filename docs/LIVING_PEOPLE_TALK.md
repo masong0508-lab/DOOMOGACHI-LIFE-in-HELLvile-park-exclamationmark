@@ -641,25 +641,27 @@ for adoption, parenting, living together, family traditions, and pets.
 
 ## PS1 disc-backed Talk integration
 
-Build the opt-in PS1 game disc with `-DDOOMO_PS1_TALK=ON`. CI publishes its
-CUE and BIN as `doomogachi-ps1-talk` with a build-source record and checksums.
+Build the ordinary PS1 game with `cmake --preset ps1` and
+`cmake --build --preset ps1`. Talk is required in the full NTSC and PAL game;
+CI publishes the normal CUE and BIN as `doomogachi-ps1` with a build-source
+record and checksums.
 Talk uses contextual quick replies, topic pickers, creator traits, gifts,
 care, outings and saved history through the controller.
 
 The overlay planner puts conversation-only code in the Talk group and
 keeps its shared save, simulation and story dependencies resident. Talk
 draws its own backdrop on PS1 so the resident card's overlay does not have
-to reload on every frame. Reply generation processes one line per tick.
+to reload on every frame. Reply generation processes at most one planned generation attempt per tick.
 The Free Play overlay loads its own menu strings and callbacks, including
 Family time, to leave stack space for the intro FMV builds.
 
-The Talk variant loads the packed sprite stream into SPU RAM at boot.
+The full game loads the packed sprite stream into SPU RAM at boot.
 Sprites still decompress on a VRAM cache miss. The disc reader uses two
 2048-byte sectors in main RAM. The current parts pack leaves room for
 22 extra SPU sectors before reverb, so Talk keeps its 72 preloaded sectors
 and has 30 more slots for demand reads. A pack that leaves too little
-room uses the original 80-slot rolling cache. The standard game and
-engine-test discs omit Talk.
+room uses the original 80-slot rolling cache. Only the developer
+engine-test disc omits Talk.
 
 The PS1 bank keeps a compact controller vocabulary and the full dialogue
 banks. On a fixed build and memory card in PCSX-Redux, retaining the
@@ -681,3 +683,28 @@ It supplements the existing VMU, audio, disc, Talk, story and family
 tests rather than replacing them. Passing is required before calling
 the Dreamcast package playable; a successful ELF/CDI link alone is
 not sufficient.
+
+## Atlas moments and responsive Talk menus
+
+The English Atlas includes category-specific observations, ideas, and
+follow-up prompts. The moments recipe adds 3,258 newly written clauses,
+with 125,755 additional distinct composed templates (7,379,593 expanded
+text bytes) across the existing 79 topic categories. Its 3,890 stored
+alternatives reuse the fieldnote pools rather than materializing the
+Cartesian product. These are potential templates, not a count of distinct
+completed conversations or added ROM bytes. The full compiler, audience
+and grief guards, three-sentence bubble limit and output lint still apply.
+
+The category browser remains under Options > Topic > Browse topics; the
+main replies remain short. During actual speech, the inactive reply list
+and its redundant captions are not drawn, while the resident strip and
+dialogue portrait remain. The menu focus row is matte, not beveled.
+Grammar guards use bounded record spans and selected rule IDs rather
+than repeated searches; mapped ROM text and safety records decode in
+place. Disc-backed readers keep their existing bounded buffers.
+
+The last verified GBA revision before this pass reached 30.0 drawn FPS
+in the isolated in-house Talk menu and 28.0 during house dialogue.
+The visit harness now gates the menu at 29.5 and dialogue at 27.0 FPS
+to guard against regressions; new measurements are required before
+calling the entire Talk flow 30 FPS.

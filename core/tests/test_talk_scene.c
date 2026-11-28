@@ -88,6 +88,31 @@ static void go_to(int row)
     for (g = 0; g < 40 && talk_scene_debug(&d) && d.sel != row; g++) press(d.sel < row ? BTN_DOWN : BTN_UP);
 }
 
+/* A real Talk screen must not draw the previous non-house interface,
+ * even when a dialogue is on top of it. Use a sentinel draw callback to
+ * catch the actual scene-stack behavior, rather than comparing menus. */
+static int unrelated_draws;
+static void unrelated_draw(void) { unrelated_draws++; plat_clear(PAL_UI_RED); }
+static const DoomoScene unrelated_scene = { "TALK_TEST_UNDER", NULL, NULL, NULL, unrelated_draw, 0 };
+
+TEST(talk_scene_standalone_does_not_redraw_the_previous_screen)
+{
+    town();
+    scene_set(&unrelated_scene, 0);
+    frames(0, 2);
+    CHECK(unrelated_draws > 0);
+    unrelated_draws = 0;
+    CHECK(home_talk_enter(ID_NANA));
+    frames(0, 12);
+    CHECK_EQ(unrelated_draws, 0);
+    CHECK(read_talk_reply());
+    frames(0, 12);
+    CHECK_EQ(unrelated_draws, 0);
+    scene_pop();
+    frames(0, 2);
+    CHECK(unrelated_draws > 0);
+}
+
 TEST(talk_scene_the_debug_view_describes_the_page)
 {
     TalkSceneDebug d;
@@ -470,6 +495,42 @@ TEST(talk_scene_thought_item_requires_inventory_and_delivers_once)
     CHECK(talk_scene_debug(&d) && d.busy);
 }
 
+/* Replacing a request, even with the same kind of request, must not let
+ * an already-selected action consume a different item. */
+TEST(talk_scene_stale_concern_does_not_consume_a_replacement_item)
+{
+    TalkSceneDebug d;
+    int first = ITEM_PLUSHIE, second = ITEM_CUPCAKE;
+    int count1, count2, row, pi;
+    extern void sim_problem_remove(int index);
+    town();
+    CHECK(inv_add(first, 1) > 0);
+    CHECK(inv_add(second, 1) > 0);
+    CHECK(sim_problem_raise(ID_NANA, PROB_WANTS_ITEM, -1, first) >= 0);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("concern", PROB_WANTS_ITEM, -1)); press(BTN_A);
+    row = find_row("concernact", PROB_WANTS_ITEM, -1);
+    CHECK(row >= 0);
+    if (row < 0) return;
+    go_to(row);
+    count1 = inv_count(first);
+    count2 = inv_count(second);
+    pi = sim_problem_for(ID_NANA);
+    CHECK(pi >= 0);
+    if (pi < 0) return;
+    sim_problem_remove(pi);
+    CHECK(sim_problem_raise(ID_NANA, PROB_WANTS_ITEM, -1, second) >= 0);
+    press(BTN_A);
+    CHECK_EQ(inv_count(first), count1);
+    CHECK_EQ(inv_count(second), count2);
+    CHECK(sim_problem_for(ID_NANA) >= 0);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "concern");
+    go_to(find_row("concernact", PROB_WANTS_ITEM, -1)); press(BTN_A);
+    CHECK_EQ(inv_count(first), count1);
+    CHECK_EQ(inv_count(second), count2 - 1);
+}
+
 TEST(talk_scene_needs_help_changes_real_sim_stats)
 {
     TalkSceneDebug d;
@@ -560,6 +621,47 @@ TEST(talk_scene_a_pending_question_belongs_to_its_original_listener)
     CHECK(!d.busy && !d.you[0]);
 }
 
+TEST(talk_scene_controller_skips_an_unavailable_listener)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy");
+    town();
+    CHECK(other >= 0);
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d) && d.nparts == 2);
+    /* A participant can become unavailable while the scene is open. */
+    town_res(other)->status = RES_EMPTY;
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+}
+
+TEST(talk_scene_stale_gift_does_not_transfer_to_another_listener)
+{
+    TalkSceneDebug d;
+    int other = roster_find("Steamy"), count, row;
+    town();
+    CHECK(other >= 0);
+    CHECK(inv_add(ITEM_PLUSHIE, 1) > 0);
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    row = find_row("give", -1, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    press(BTN_A);
+    row = find_row("giveitem", ITEM_PLUSHIE, -1);
+    CHECK(row >= 0);
+    go_to(row);
+    count = inv_count(ITEM_PLUSHIE);
+    town_res(ID_NANA)->status = RES_EMPTY;
+    press(BTN_A);
+    CHECK_EQ(inv_count(ITEM_PLUSHIE), count);
+    CHECK(talk_scene_debug(&d) && d.to_id == other);
+    CHECK_STR(d.page, "main");
+}
+
 TEST(talk_scene_everyone_options_keeps_the_cursor_on_a_visible_action)
 {
     TalkSceneDebug d;
@@ -574,6 +676,106 @@ TEST(talk_scene_everyone_options_keeps_the_cursor_on_a_visible_action)
     CHECK(talk_scene_debug(&d) && d.to_id == -1);
     CHECK_STR(d.page, "more");
     CHECK(d.sel >= 0 && d.sel < d.nrows);
+}
+
+TEST(talk_scene_group_menu_hides_single_recipient_actions)
+{
+    TalkSceneDebug d;
+    int other;
+    town();
+    other = roster_find("Steamy");
+    CHECK(other >= 0);
+    if (other < 0) return;
+    talk_scene_party(&other, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(find_row("out", -1, -1) >= 0);
+    CHECK(find_row("give", -1, -1) >= 0);
+    press(BTN_SELECT);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == -1);
+    CHECK_EQ(find_row("out", -1, -1), -1);
+    CHECK_EQ(find_row("play", -1, -1), -1);
+    CHECK_EQ(find_row("show", -1, -1), -1);
+    CHECK_EQ(find_row("give", -1, -1), -1);
+    CHECK_EQ(find_row("help", -1, -1), -1);
+    CHECK_EQ(find_row("quick", -1, TA_INVITE), -1);
+    CHECK_EQ(find_row("quick", -1, TA_OFFER), -1);
+    CHECK_EQ(find_row("quick", -1, TA_GIVE), -1);
+    go_to(find_row("cat", talk_scene_act_cat(TA_INVITE), -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "acts") == 0);
+    CHECK_EQ(find_row("act", TA_INVITE, -1), -1);
+    CHECK_EQ(find_row("act", TA_OFFER, -1), -1);
+    press(BTN_B);
+    press(BTN_SELECT);
+    CHECK(talk_scene_debug(&d) && d.to_id == ID_NANA);
+    CHECK(find_row("out", -1, -1) >= 0);
+    CHECK(find_row("give", -1, -1) >= 0);
+    CHECK(find_row("help", -1, -1) >= 0);
+}
+
+TEST(talk_scene_topic_picker_has_unique_audience_safe_choices)
+{
+    TalkSceneDebug d;
+    TalkAudience aud;
+    int child = ID_PIP, i, j, count = 0;
+    uint16_t chosen[40];  /* Talk's existing bounded 40-row picker */
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("topic", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && strcmp(d.page, "topic") == 0);
+    talk_safe_ctx(playas_avatar(), d.ids, d.nparts, d.to, &aud);
+    CHECK(aud.any_minor);
+    CHECK_EQ(find_row("notopic", -1, -1), 0);
+    for (i = 0; i < d.nrows; i++) {
+        const char *kind = "";
+        int value = 0;
+        CHECK(talk_scene_row_debug(i, &kind, NULL, &value, NULL));
+        if (strcmp(kind, "pick") && strcmp(kind, "topiclink")) continue;
+        CHECK(value > 0 && talk_gen_concept_ok((uint16_t)value, &aud));
+        for (j = 0; j < count; j++) CHECK(chosen[j] != value);
+        CHECK(count < (int)DOOMO_COUNTOF(chosen));
+        if (count < (int)DOOMO_COUNTOF(chosen)) chosen[count++] = (uint16_t)value;
+    }
+    CHECK(count >= 10);
+}
+
+TEST(talk_scene_browse_topics_keeps_quick_menu_and_audience_rules)
+{
+    TalkSceneDebug d;
+    TalkAudience aud;
+    int group, child = ID_PIP;
+    town();
+    talk_scene_party(&child, 1);
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("topic", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    CHECK_EQ(find_row("notopic", -1, -1), 0);
+    CHECK_EQ(find_row("browse", -1, -1), d.nrows - 1);
+    go_to(find_row("browse", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    CHECK_EQ(d.nrows, 14);
+    talk_safe_ctx(playas_avatar(), d.ids, d.nparts, d.to, &aud);
+    CHECK(aud.any_minor);
+    for (group = 0; group < 14; group++) {
+        int i;
+        go_to(find_row("browsegroup", group, -1)); press(BTN_A);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browsetopics"));
+        CHECK(d.nrows >= 2);
+        for (i = 0; i < d.nrows; i++) {
+            int value = 0;
+            CHECK(talk_scene_row_debug(i, NULL, NULL, &value, NULL));
+            CHECK(talk_gen_casual_topic_ok((uint16_t)value, &aud));
+        }
+        press(BTN_B);
+        CHECK(talk_scene_debug(&d) && !strcmp(d.page, "browse"));
+    }
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "topic"));
+    press(BTN_B);
+    CHECK(talk_scene_debug(&d) && !strcmp(d.page, "main"));
 }
 
 TEST(talk_scene_real_outing_menu_and_play_action)
@@ -1378,6 +1580,7 @@ TEST(talk_scene_topic_picker_revisits_a_rehearsed_pair)
     talk_link_note(ID_NANA, DOOMO_PLAYER_ID, pie, weather);
     go_to(find_row("more", -1, -1)); press(BTN_A);
     press(BTN_A);
+    CHECK_EQ(find_row("pick", 0, pie), 1); /* default controller shortcut */
     go_to(find_row("pick", 0, pie)); press(BTN_A);
     go_to(find_row("more", -1, -1)); press(BTN_A);
     press(BTN_A);
@@ -1544,6 +1747,113 @@ TEST(talk_scene_offer_and_give_are_real_actions)
     CHECK(talk_scene_debug(&d) && strcmp(d.page, "give") == 0);
     CHECK(find_row("giveitem", ITEM_PLUSHIE, -1) >= 0);
     CHECK(inv_count(ITEM_PLUSHIE) >= 1);
+}
+
+TEST(talk_scene_only_refreshes_replies_when_the_menu_returns)
+{
+    TalkSceneDebug d;
+    uint32_t before;
+    town();
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d));
+    CHECK_EQ(d.quick_refreshes, 1u);
+    before = d.quick_refreshes;
+    frames(0, 3);
+    CHECK(talk_scene_debug(&d) && d.quick_refreshes == before);
+    go_to(find_row("quick", 0, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.busy);
+    CHECK_EQ(d.quick_refreshes, before);
+    CHECK(read_talk_reply());
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(d.quick_refreshes, before + 1u);
+    CHECK(find_row("quick", 0, -1) >= 0);
+    frames(0, 3);
+    CHECK(talk_scene_debug(&d) && d.quick_refreshes == before + 1u);
+}
+
+/* The new bounded top-six selection must retain the old full-scan
+ * order, including ties, without considering the current participants. */
+TEST(talk_scene_invitation_picker_matches_stable_reference_ranking)
+{
+    TalkSceneDebug d;
+    int pick[6], n = 0, k, i, away;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "invite");
+    away = family_away_id();
+    for (k = 0; k < 6; k++) {
+        int best = -1;
+        for (i = 0; i < DOOMO_MAX_RESIDENTS; i++) {
+            int j;
+            if (i == ID_NANA || i == DOOMO_PLAYER_ID || i == away || !town_alive(i)) continue;
+            for (j = 0; j < n && pick[j] != i; j++) {}
+            if (j < n) continue;
+            if (best < 0 || rel_value(ID_NANA, i) > rel_value(ID_NANA, best)) best = i;
+        }
+        if (best < 0) break;
+        pick[n++] = best;
+    }
+    CHECK_EQ(d.nrows, n);
+    for (k = 0; k < n; k++) {
+        int arg = -1, value = -1;
+        const char *kind = NULL;
+        CHECK(talk_scene_row_debug(k, &kind, &arg, &value, NULL));
+        CHECK(kind && !strcmp(kind, "pick"));
+        CHECK_EQ(arg, 1);
+        CHECK_EQ(value, pick[k]);
+    }
+}
+
+TEST(talk_scene_failed_invitation_refreshes_the_picker)
+{
+    TalkSceneDebug d;
+    int candidate = -1;
+    town();
+    CHECK(open_talk(ID_NANA));
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.nrows > 0);
+    CHECK(talk_scene_row_debug(0, NULL, NULL, &candidate, NULL));
+    CHECK(candidate >= 0 && candidate < DOOMO_MAX_RESIDENTS);
+    if (candidate < 0 || candidate >= DOOMO_MAX_RESIDENTS) return;
+    town_res(candidate)->status = RES_EMPTY;
+    go_to(0); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_STR(d.page, "invite");
+    CHECK_EQ(d.nparts, 1);
+    CHECK_EQ(find_row("pick", 1, candidate), -1);
+    CHECK(d.nrows > 0);
+}
+
+TEST(talk_scene_inviting_someone_does_not_restore_departed_listeners)
+{
+    TalkSceneDebug d;
+    int departed = roster_find("Steamy"), candidate = -1, i;
+    town();
+    CHECK(departed >= 0 && departed < DOOMO_MAX_RESIDENTS);
+    if (departed < 0 || departed >= DOOMO_MAX_RESIDENTS) return;
+    talk_scene_party(&departed, 1);
+    CHECK(open_talk(ID_NANA));
+    CHECK(talk_scene_debug(&d) && d.nparts == 2);
+    town_res(departed)->status = RES_EMPTY;
+    go_to(find_row("more", -1, -1)); press(BTN_A);
+    go_to(find_row("invite", -1, -1)); press(BTN_A);
+    CHECK(talk_scene_debug(&d) && d.nrows > 0);
+    CHECK(talk_scene_row_debug(0, NULL, NULL, &candidate, NULL));
+    CHECK(candidate >= 0 && candidate < DOOMO_MAX_RESIDENTS && candidate != departed);
+    if (candidate < 0 || candidate >= DOOMO_MAX_RESIDENTS) return;
+    go_to(0); press(BTN_A);
+    CHECK(read_talk_reply());
+    CHECK(talk_scene_debug(&d) && !d.busy);
+    CHECK_EQ(d.nparts, 2);
+    CHECK_EQ(d.to_id, ID_NANA);
+    CHECK_EQ(d.ids[0], ID_NANA);
+    CHECK_EQ(d.ids[1], candidate);
+    for (i = 0; i < d.nparts; i++) CHECK(d.ids[i] != departed);
+    CHECK(find_row("quick", 0, -1) >= 0);
 }
 
 TEST(talk_scene_a_quick_reply_is_one_press)

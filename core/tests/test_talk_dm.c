@@ -128,6 +128,50 @@ TEST(talk_dm_target_tension_arc)
     CHECK(talk_dm_target_tension(0) == 0);
 }
 
+/* The sliced scheduler must attempt at most one plan entry per tick,
+ * including empty/skipped entries, and preserve the completed exchange. */
+TEST(talk_dm_sliced_exchange_matches_synchronous)
+{
+    TalkState base, a, b;
+    TalkUtter u;
+    static const int acts[] = { TA_ASK_ABOUT, TA_COMPLIMENT, TA_AGREE, TA_CHANGE_TOPIC, TA_FAREWELL };
+    int i, k, steps;
+    uint16_t pie;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie);
+    for (i = 0; i < 32; i++) {
+        begin(&base, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, ID_PIP, (uint32_t)(i + 200));
+        utter(&u, acts[i % (int)DOOMO_COUNTOF(acts)], pie, 0);
+        talk_dm_say(&base, &u);
+        /* A canceled entry is a real case (e.g. an interruption that
+         * lost its target). Force one at the front in half the samples. */
+        if ((i & 1) && base.nplan) base.plan[0].kind = 0;
+        a = b = base;
+        while (talk_dm_step(&a, NULL)) {}
+        steps = 0;
+        for (k = 0; k < 12; k++) {
+            int before = b.plan_at;
+            int more = talk_dm_step_slice(&b);
+            CHECK(b.plan_at >= before && b.plan_at <= before + 1);
+            steps++;
+            if (!more) break;
+        }
+        CHECK(steps < 12);
+        CHECK_EQ(a.nlines, b.nlines);
+        CHECK_EQ(a.nev, b.nev);
+        CHECK_EQ(a.plan_at, b.plan_at);
+        for (k = 0; k < a.nlines; k++) {
+            CHECK_STR(a.line[k].text, b.line[k].text);
+            CHECK_EQ(a.line[k].act, b.line[k].act);
+            CHECK_EQ(a.line[k].topic, b.line[k].topic);
+        }
+        CHECK(!memcmp(a.ev, b.ev, a.nev * sizeof a.ev[0]));
+    }
+    talk_db_close();
+}
+
 /* ---- a scripted session ----------------------------------------------------------- */
 TEST(talk_dm_scripted_session)
 {
@@ -768,6 +812,133 @@ TEST(talk_dm_gate_answers_stand_alone)
 }
 
 /* ---- keeping the talk going (DK_FOLLOW, TGE_FOLLOW, talk_dm_open) -------------------- */
+/* Implicit followups must keep the previous accepted topic, not choose
+ * an ungrounded answer. Explicit topic changes always win. */
+TEST(talk_dm_implicit_replies_keep_the_live_subject)
+{
+    static const int acts[] = { TA_CONTINUE, TA_ANSWER, TA_AGREE, TA_DISAGREE };
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int i;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie"); music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (i = 0; i < (int)(sizeof acts / sizeof acts[0]); i++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 500u + (uint32_t)i);
+        s.topic_stack[0] = pie;
+        utter(&u, acts[i], TC_NONE, 0);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], pie);
+        CHECK_EQ(s.topic_stack[0], pie);
+        while (talk_dm_step(&s, NULL)) {}
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 600u + (uint32_t)i);
+        s.topic_stack[0] = pie;
+        utter(&u, acts[i], music, 0);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], music);
+        CHECK_EQ(s.topic_stack[0], music);
+        while (talk_dm_step(&s, NULL)) {}
+    }
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 700u);
+    s.topic_stack[0] = pie;
+    utter(&u, TA_CONTINUE, TC_NONE, 0);
+    u.safety = TS_DISTRESS;
+    CHECK_EQ(talk_dm_say(&s, &u), TG_DISTRESS);
+    CHECK_EQ(s.in.topic[0], TC_NONE);
+    talk_db_close();
+}
+
+/* Switch listeners mid-thread: a reply with no noun should resolve
+ * against the new listener's own history, never another's conversation. */
+TEST(talk_dm_implicit_group_reply_respects_its_addressee)
+{
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int mode;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (mode = 0; mode < 3; mode++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, -1, 810u + (uint32_t)mode);
+        s.turn = s.conv.turn = 1;
+        s.in.target = 0;
+        s.in.act[0] = TA_TELL;
+        s.topic_stack[0] = pie;
+        s.answered_topic[0] = pie | TALK_LINK_SOURCE;
+        if (mode == 0) s.answered_topic[1] = music | TALK_LINK_SOURCE;
+        if (mode == 1) s.conv.mem_topic[1] = music;
+        utter(&u, TA_CONTINUE, TC_NONE, 1);
+        CHECK_EQ(talk_dm_say(&s, &u), TG_PASS);
+        CHECK_EQ(s.in.topic[0], mode == 2 ? TC_NONE : music);
+        while (talk_dm_step(&s, NULL)) {}
+        CHECK(s.nlines > 0);
+        CHECK_EQ(s.line[0].who, 1);
+    }
+    talk_db_close();
+}
+
+TEST(talk_dm_topicless_answer_resolves_the_actual_question)
+{
+    TalkState s;
+    TalkUtter u;
+    uint16_t pie, music;
+    int mode;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    for (mode = 0; mode < 3; mode++) {
+        begin(&s, DOOMO_PLAYER_ID, ID_NANA, ID_RIVET, -1, 913u + (uint32_t)mode);
+        s.turn = s.conv.turn = 3;
+        s.in.act[0] = TA_TELL;
+        s.in.target = 0;
+        s.topic_stack[0] = pie;
+        s.nlines = 2;
+        s.line[0].who = 0;
+        s.line[0].to = -1;
+        s.line[0].act = TA_ASK_OPINION;
+        s.line[0].topic = music;
+        strcpy(s.line[0].text, "What do you think of music?");
+        s.line[1].who = 1;
+        s.line[1].to = -1;
+        s.line[1].act = TA_TELL;
+        s.line[1].topic = pie;
+        strcpy(s.line[1].text, "I like pie.");
+        CHECK(talk_dm_pending_question(&s, 0) == &s.line[0]);
+        CHECK(talk_dm_pending_question(&s, 1) == NULL);
+        utter(&u, TA_ANSWER, mode == 1 ? pie : TC_NONE, 0);
+        if (mode == 2) u.safety = TS_DISTRESS;
+        CHECK_EQ(talk_dm_say(&s, &u), mode == 2 ? TG_DISTRESS : TG_PASS);
+        CHECK_EQ(s.in.topic[0], mode == 0 ? music : mode == 1 ? pie : TC_NONE);
+        while (talk_dm_step(&s, NULL)) {}
+    }
+    talk_db_close();
+}
+
+TEST(talk_dm_opening_prefers_real_shared_subject)
+{
+    TalkState s;
+    uint16_t pie;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    CHECK(pie);
+    begin(&s, DOOMO_PLAYER_ID, ID_NANA, -1, -1, 777u);
+    s.flags |= TDF_NO_BEATS;
+    s.conv.mem_topic[0] = pie;
+    CHECK(talk_dm_open(&s));
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK(s.nlines > 0);
+    CHECK_EQ(s.topic_stack[0], pie);
+    talk_db_close();
+}
+
 TEST(talk_dm_keep_going)
 {
     TalkState s, s2;

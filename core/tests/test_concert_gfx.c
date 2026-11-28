@@ -590,7 +590,7 @@ static void old_confetti(int x0, int y0, int w, int h, uint32_t t, int n, int fa
     if (w <= 0 || h <= 0) return;
     for (i = 0; i < n; i++) {
         uint32_t r = old_hash2((uint32_t)i, 77u);
-        int x = x0 + (int)(r % (uint32_t)w) + ui_wave((int)t + i * 7, 40, 3);
+        int x = x0 + (int)(r % (uint32_t)w) + ui_wave((int)(t + (uint32_t)i * 7u), 40, 3);
         int y = y0 + (int)(((r >> 8) % (uint32_t)h + (uint32_t)(fall ? t * (1 + (r >> 20) % 3) : 0)) %
                            (uint32_t)h);
         int ph = (int)((t / 3 + r) & 3);

@@ -58,7 +58,9 @@ static void ref_sprite(const DoomoImage *img, int x0, int y0, int s, int flags, 
     if (cy0 < owf.oy) cy0 = owf.oy;
     if (cy1 > owf.oy + owf.oh) cy1 = owf.oy + owf.oh;
     if (cx0 >= cx1 || cy0 >= cy1 || cx1 - cx0 > 256) return;
-    if (s == 1 && !flip && !trans && !post_on) {
+    /* A masked odd pair must not form a pointer before/after img->pix. */
+    if (s == 1 && !flip && !trans && !post_on &&
+        (cx0 & ~1) >= x0 && ((cx1 + 1) & ~1) <= x0 + w) {
         /* the common case: 1:1, opaque texels through the colormap,
          * walked in VRAM halfword pairs */
         int xa = cx0 & ~1, xb = (cx1 + 1) & ~1;
@@ -176,6 +178,14 @@ uint32_t ow_sprite_selftest(uint32_t arg)
         if (rnd(5) == 0) flags |= BB_TRANSLUCENT;
         x0 = (int)rnd(SCREEN_W + 2 * 60) - 60 - (w * s) / 2;
         y0 = (int)rnd(SCREEN_H + 2 * 60) - 60 - (h * s) / 2;
+        /* Repeatably exercise odd leading/trailing pixels near the image
+         * allocation. The ARM fast path must fall back to guarded gathering. */
+        if (i < 16) {
+            x0 = (i & 1) ? 1 : -1;
+            y0 = (i & 4) ? 1 : -1;
+            s = 1;
+            if (i & 2) flags |= BB_FLIPX;
+        }
         if (rnd(4) == 0) {
             owf.ox = (int)rnd(120);
             owf.oy = (int)rnd(80);

@@ -541,6 +541,10 @@ TEST(quest_accept_and_hand_in)
     CHECK(talk_quest_log_row(0, &row));
     CHECK_EQ(row.state, TQS_READY);
     CHECK(strstr(row.goal, "Go back"));
+    /* Searching for a deterministic offer above can exhaust today's bond
+     * cap. Hand in on a fresh town day to test the actual positive reward;
+     * the separate cap test below covers the same-day case explicitly. */
+    doomo_town.day++;
     /* the next conversation opens with the thanks */
     money0 = (int)doomo_town.money;
     inv0 = inv_count(q.item);
@@ -609,11 +613,108 @@ TEST(quest_hand_in_during_live_talk_has_one_real_reward)
     talk_outcome_end(&s, &out, NULL);
     CHECK_EQ(out.quests_done, 1);
     CHECK_EQ(out.skipped, 0);
+    CHECK_EQ(out.rel[0], 3);
+    CHECK_EQ(out.mood[0], 3);
     CHECK_EQ((int)doomo_town.money, cash + talk_quest_reward(TQK_FETCH, 0));
     CHECK_EQ(inv_count(q.item), before - 1);
     CHECK(talk_quest_state(giver, &kind, &st, NULL, NULL));
     CHECK_EQ(st, TQS_SETTLED);
     CHECK_EQ(talk_quest_complete(giver), -1);
+    talk_db_close();
+}
+
+/* Same-day hand-in still pays even when ordinary conversation has used
+ * the full daily relationship allowance. No extra bond farming. */
+TEST(quest_hand_in_at_daily_bond_cap)
+{
+    TalkState s;
+    TalkSummary sum;
+    TalkOutcome out;
+    TalkQuest q;
+    int g, before, cash;
+    premade_town();
+    CHECK(open_en());
+    people();
+    CHECK(nadult >= 3);
+    g = adults[2];
+    set_rel(g, DOOMO_PLAYER_ID, REL_FRIEND, 40);
+    memset(&sum, 0, sizeof sum);
+    sum.avatar = DOOMO_PLAYER_ID;
+    sum.n = 1;
+    sum.id[0] = (int16_t)g;
+    sum.rel_d_player[0] = TALK_CAP_REL_DAY;
+    talk_outcome_apply(&sum, &out);
+    CHECK_EQ(out.rel[0], TALK_CAP_REL_DAY);
+    before = rel_value(g, DOOMO_PLAYER_ID);
+    CHECK(talk_quest_add(g, TQK_FETCH, 0));
+    CHECK(talk_quest_derive(g, TQK_FETCH, NULL, 0, 0, &q));
+    while (inv_count(q.item) < 1) CHECK(inv_add(q.item, 1) >= 1);
+    cash = (int)doomo_town.money;
+    talk_outcome_begin(&s, DOOMO_PLAYER_ID, &g, 1, 4701u);
+    CHECK(talk_dm_hand_in(&s, 0));
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK_EQ(st_ev(&s, TEV_QUEST_DONE), 1);
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.quests_done, 1);
+    CHECK_EQ(out.rel[0], 0);
+    CHECK_EQ(rel_value(g, DOOMO_PLAYER_ID), before);
+    CHECK_EQ((int)doomo_town.money, cash + talk_quest_reward(TQK_FETCH, 0));
+    talk_db_close();
+}
+
+/* The inventory can change after the generated thanks but before commit.
+ * No cash, bond, mood or news is awarded until the request really settles. */
+TEST(quest_failed_hand_in_has_no_completion_bonus)
+{
+    TalkState s;
+    TalkOutcome out;
+    TalkQuest q;
+    TalkQuestRow row;
+    int g, cash, before, kind, st;
+    premade_town();
+    CHECK(open_en());
+    people();
+    CHECK(nadult >= 3);
+    g = adults[2];
+    set_rel(g, DOOMO_PLAYER_ID, REL_FRIEND, 40);
+    CHECK(talk_quest_derive(g, TQK_FETCH, NULL, 0, 0, &q));
+    while (inv_count(q.item) > 0) CHECK(inv_take(q.item, 1));
+    /* Exercise a persisted READY flag as well as the live item predicate. */
+    CHECK(talk_mem_quest_set(g, TQK_FETCH, TQS_READY, 3, 1));
+    CHECK(!talk_quest_ready(g));
+    CHECK(talk_quest_log_row(0, &row) && row.state == TQS_ACTIVE && strstr(row.goal, "Bring"));
+    CHECK(inv_add(q.item, 1) >= 1);
+    CHECK(talk_quest_log_row(0, &row) && row.state == TQS_READY && strstr(row.goal, "Go back"));
+    cash = (int)doomo_town.money;
+    before = rel_value(g, DOOMO_PLAYER_ID);
+    talk_outcome_begin(&s, DOOMO_PLAYER_ID, &g, 1, 4701u);
+    CHECK(talk_dm_hand_in(&s, 0));
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK_EQ(st_ev(&s, TEV_QUEST_DONE), 1);
+    CHECK(inv_take(q.item, 1));
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.skipped, 1);
+    CHECK_EQ(out.quests_done, 0);
+    CHECK_EQ(out.reward, 0);
+    CHECK_EQ(out.rel[0], 0);
+    CHECK_EQ(out.mood[0], 0);
+    CHECK_EQ(out.news, 0);
+    CHECK_EQ((int)doomo_town.money, cash);
+    CHECK_EQ(rel_value(g, DOOMO_PLAYER_ID), before);
+    CHECK(talk_quest_state(g, &kind, &st, NULL, NULL));
+    CHECK_EQ(kind, TQK_FETCH);
+    CHECK_EQ(st, TQS_READY);
+    CHECK(!talk_quest_ready(g));
+    CHECK(inv_add(q.item, 1) >= 1);
+    talk_outcome_begin(&s, DOOMO_PLAYER_ID, &g, 1, 4701u);
+    CHECK(talk_dm_hand_in(&s, 0));
+    while (talk_dm_step(&s, NULL)) {}
+    CHECK_EQ(st_ev(&s, TEV_QUEST_DONE), 1);
+    talk_outcome_end(&s, &out, NULL);
+    CHECK_EQ(out.quests_done, 1);
+    CHECK_EQ(out.rel[0], 3);
+    CHECK_EQ(out.reward, talk_quest_reward(TQK_FETCH, 1));
+    CHECK_EQ((int)doomo_town.money, cash + talk_quest_reward(TQK_FETCH, 1));
     talk_db_close();
 }
 
@@ -709,7 +810,7 @@ TEST(quest_ready_by_kind)
     set_rel(g, t, REL_FRIEND, 50);
     town_res(t)->mood = MOOD_SAD;
     /* a message: ready when the player has talked to the target, not before */
-    CHECK(talk_quest_add(g, TQK_MESSAGE, 0));
+    CHECK(talk_quest_add(g, TQK_MESSAGE, 1));
     CHECK(talk_quest_derive(g, TQK_MESSAGE, NULL, 0, 0, &q));
     t = q.target;
     CHECK(!talk_quest_ready(g));
@@ -722,10 +823,10 @@ TEST(quest_ready_by_kind)
     talk_outcome_end(&s, &out, &sum);
     CHECK(talk_quest_state(g, &kind, &st, NULL, NULL) && st == TQS_READY);
     CHECK(talk_quest_ready(g));
-    CHECK(talk_quest_complete(g) == talk_quest_reward(TQK_MESSAGE, 0));
+    CHECK(talk_quest_complete(g) == talk_quest_reward(TQK_MESSAGE, 1));
     /* company: ready after a later talk of three turns, not the one that took it */
     talk_mem_reset();
-    CHECK(talk_quest_add(g, TQK_COMPANY, 0));
+    CHECK(talk_quest_add(g, TQK_COMPANY, 1));
     talk_outcome_begin(&s, DOOMO_PLAYER_ID, &g, 1, 13u);
     say(&s, TA_GREET);
     talk_outcome_end(&s, &out, &sum);
@@ -734,9 +835,10 @@ TEST(quest_ready_by_kind)
     for (tn = 0; tn < 3; tn++) say(&s, tn & 1 ? TA_TELL : TA_COMPLIMENT);
     talk_outcome_end(&s, &out, &sum);
     CHECK(talk_quest_state(g, &kind, &st, NULL, NULL) && st == TQS_READY);
+    CHECK_EQ(talk_quest_complete(g), talk_quest_reward(TQK_COMPANY, 1));
     /* cheer up: the target's mood must have gone up in the talk */
     talk_mem_reset();
-    CHECK(talk_quest_add(g, TQK_CHEER, 0));
+    CHECK(talk_quest_add(g, TQK_CHEER, 1));
     CHECK(talk_quest_derive(g, TQK_CHEER, NULL, 0, 0, &q));
     t = q.target;
     talk_outcome_begin(&s, DOOMO_PLAYER_ID, &t, 1, 15u);
@@ -747,10 +849,11 @@ TEST(quest_ready_by_kind)
     for (tn = 0; tn < 3; tn++) say(&s, TA_COMPLIMENT);
     talk_outcome_end(&s, &out, &sum);
     CHECK(talk_quest_state(g, &kind, &st, NULL, NULL) && st == TQS_READY);
+    CHECK_EQ(talk_quest_complete(g), talk_quest_reward(TQK_CHEER, 1));
     /* a secret: kept after a day */
     talk_mem_reset();
     set_rel(g, DOOMO_PLAYER_ID, REL_BEST_FRIEND, 90);
-    CHECK(talk_quest_add(g, TQK_SECRET, 0));
+    CHECK(talk_quest_add(g, TQK_SECRET, 1));
     talk_outcome_begin(&s, DOOMO_PLAYER_ID, &g, 1, 17u);
     say(&s, TA_GREET);
     talk_outcome_end(&s, &out, &sum);
@@ -760,7 +863,7 @@ TEST(quest_ready_by_kind)
     say(&s, TA_GREET);
     talk_outcome_end(&s, &out, &sum);
     CHECK(talk_quest_state(g, &kind, &st, NULL, NULL) && st == TQS_READY);
-    CHECK(talk_quest_complete(g) > 0);
+    CHECK_EQ(talk_quest_complete(g), talk_quest_reward(TQK_SECRET, 1));
 }
 
 /* ---- memory and the chunk ----------------------------------------------------------------------------------------- */

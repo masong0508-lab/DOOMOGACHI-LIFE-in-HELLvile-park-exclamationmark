@@ -41,12 +41,15 @@ Options (`-D...`): `DOOMO_ENGINE_TEST=ON`, `DOOMO_PAL=ON`,
 built-in fallback art, `cmake --preset ps1 -B build-plat -DDOOMO_CORE=OFF
 -DDOOMO_ENGINE_TEST=ON`).
 
-`DOOMO_PS1_TALK` defaults to `OFF` to keep the normal game disc within
-the console's RAM budget. The experimental `ON` build places
-`TALK_EN.BIN` at the ISO root and reads it through a 2 KB sector buffer.
-CI linked that build and rejected it at disc packaging because its
-resident image left no stack space. The engine-test build always omits
-Talk. See the [Talk port notes](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
+The full NTSC and PAL game discs include controller-driven Talk by
+default and as a required feature, with `TALK_EN.BIN` at the ISO root.
+The old `DOOMO_PS1_TALK` edition switch is obsolete (including old
+CMake caches). Talk streams its data through two 2 KB RAM sector buffers
+and an SPU cache; packed art and overlays preserve the full game's RAM
+budget. The engine-test build still omits Talk. Disc verification checks
+the actual ISO directory and its Talk bank and executable bytes; game
+harness testing still requires the emulator. See the
+[Talk port notes](LIVING_PEOPLE_TALK.md#ps1-disc-backed-talk-integration).
 
 What the build does (`ps1/CMakeLists.txt`):
 

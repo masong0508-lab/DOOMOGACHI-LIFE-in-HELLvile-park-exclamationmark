@@ -830,7 +830,19 @@ static void run_line(char *line)
         } else if (argc == 3 || (argc == 4 && strcmp(argv[3], "click") == 0)) {
             mouse_on = 1;
             mouse_x = atoi(argv[1]);
-            mouse_y = atoi(argv[2]);
+            /* panel+N is a pixel offset from the live Talk panel top.
+             * Keep sending real pointer events, even with compact submenus. */
+            if (strncmp(argv[2], "panel+", 6) == 0) {
+                int py = talk_scene_panel_y();
+                char *end;
+                long offset = strtol(argv[2] + 6, &end, 10);
+                if (scene_top() != &SCENE_TALK || py < 0 || end == argv[2] + 6 || *end ||
+                    offset < 0 || offset >= plat_screen_h() - py) {
+                    fail("invalid Talk panel-relative pointer coordinate", argv[2]);
+                    return;
+                }
+                mouse_y = py + (int)offset;
+            } else mouse_y = atoi(argv[2]);
             if (mouse_x < 0) mouse_x += plat_screen_w();     /* negative: from the right / bottom edge */
             if (mouse_y < 0) mouse_y += plat_screen_h();
             mouse_down = argc == 4;

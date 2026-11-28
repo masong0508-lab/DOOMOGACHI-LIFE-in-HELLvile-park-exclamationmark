@@ -172,6 +172,7 @@ $(BUILD)/talk/TALK_gentest.BIN: $(TALK_DEPS) $(TALK_GENTEST)
 	@mkdir -p $(dir $@)
 	@$(PYTHON) $(CORE)/tools/talkc.py --bin --lang en --grammar $(CORE)/tests/talk_gen --out $@
 talk-check:
+	@$(PYTHON) $(CORE)/tools/talk_atlas.py --check
 	@$(PYTHON) $(CORE)/tools/talkc.py --check
 	@$(PYTHON) $(CORE)/tools/talkc.py --selftest
 # --- end T1/T2 ---

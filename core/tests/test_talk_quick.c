@@ -125,6 +125,51 @@ TEST(talk_quick_persona_changes_the_reaction)
     talk_db_close();
 }
 
+/* talk_gen_stance returns an enum, not a signed sentiment score. Both
+ * kinds of opinion must survive into the drama manager's live state. */
+TEST(talk_quick_resident_opinions_are_not_inverted)
+{
+    TalkState s;
+    TalkSugg g = {TA_ASK_ABOUT, TONE_PLAIN, TC_NONE, -1, "Tell me about it."};
+    uint16_t pro = TC_NONE, con = TC_NONE;
+    int i, base;
+    premade_town();
+    CHECK(open_db());
+    set_persona(ID_NANA, 6, 6, 6, 6, 6);
+    town_res(ID_NANA)->mood = MOOD_OK;
+    begin2(&s, ID_NANA, -1, 91u);
+    /* Find real, ordinary concepts this particular resident likes and
+     * dislikes; avoid assuming all residents share the same opinion. */
+    for (i = 1; i <= talk_db_nconcepts() && (!pro || !con); i++) {
+        uint16_t t = (uint16_t)i;
+        int stance;
+        if (!talk_link_topic_safe(t)) continue;
+        stance = talk_gen_stance(ID_NANA, t);
+        if (stance == TST_PRO && !pro) pro = t;
+        if (stance == TST_CON && !con) con = t;
+    }
+    CHECK(pro && con);
+    if (pro && con) {
+        base = talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, TC_NONE) -
+               talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, TC_NONE);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, pro) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, pro) > base);
+        CHECK(talk_dm_expect(&s, 0, TA_OPINE_POS, TONE_PLAIN, con) -
+              talk_dm_expect(&s, 0, TA_OPINE_NEG, TONE_PLAIN, con) < base);
+
+        g.topic = pro;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_PRO);
+        begin2(&s, ID_NANA, -1, 92u);
+        g.topic = con;
+        CHECK(say(&s, &g, 0) > 0);
+        CHECK_EQ(s.gate, TG_PASS);
+        CHECK_EQ(s.part[0].stance, TST_CON);
+    }
+    talk_db_close();
+}
+
 TEST(talk_quick_mood_and_bond_change_the_reaction)
 {
     TalkState s;
@@ -223,6 +268,45 @@ static int has_act(const TalkSugg *g, int n, int act)
     int i;
     for (i = 0; i < n; i++) if (g[i].act == act) return 1;
     return 0;
+}
+
+TEST(talk_quick_opening_topic_stays_within_three_presses)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie, band, song;
+    int i, j, n;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    band = concept("band");
+    song = concept("song");
+    CHECK(pie && band && song);
+    begin2(&s, ID_NANA, -1, 21u);
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, 0);
+    for (i = 0; i < 64; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, pie, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, pie);
+    }
+    /* A greeting that already mentions a topic offers a related choice,
+     * rather than depending on an unrelated stock subject or RNG. */
+    put_line(&s, 0, -1, TA_GREET, band, 0);
+    for (i = 0; i < 16; i++) {
+        n = talk_quick_replies(&s, 0, TC_NONE, song, (uint32_t)i, g);
+        for (j = 0; j < n && g[j].act != TA_CHANGE_TOPIC; j++) {}
+        CHECK(j < n && j < 3);
+        if (j < n) CHECK_EQ(g[j].topic, song);
+    }
+    s.flags |= TDF_CARE;
+    n = talk_quick_replies(&s, 0, TC_NONE, song, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    s.flags &= (uint8_t)~TDF_CARE;
+    put_line(&s, 0, -1, TA_GREET, TC_NONE, TLF_SINCERE);
+    n = talk_quick_replies(&s, 0, TC_NONE, pie, 0, g);
+    CHECK(!has_act(g, n, TA_CHANGE_TOPIC));
+    talk_db_close();
 }
 
 TEST(talk_quick_replies_follow_what_was_said)
@@ -467,6 +551,67 @@ TEST(talk_quick_reopens_last_subject_without_forgetting_the_thread)
     n = talk_quick_replies(&s, 0, TC_NONE, TC_NONE, 2u, g);
     CHECK(n >= 2);
     for (i = 0; i < n; i++) CHECK_EQ(g[i].topic, concept("dancing"));
+    talk_db_close();
+}
+
+/* The last line can be commentary after a clear question. Answer the
+ * intended speaker, keep the real subject, and offer both opinions.
+ * The player, not the NPC's preferences, decides what they believe. */
+TEST(talk_quick_answers_the_actual_question_with_player_agency)
+{
+    TalkState s;
+    TalkSugg g[TALK_QUICK_MAX];
+    uint16_t pie, music;
+    int i, n, k;
+    premade_town();
+    CHECK(open_db());
+    pie = concept("pie");
+    music = concept("music");
+    CHECK(pie && music && pie != music);
+    begin2(&s, ID_NANA, ID_RIVET, 201u);
+    s.turn = s.conv.turn = 3;
+    s.in.act[0] = TA_TELL;
+    s.in.target = 0;
+    s.topic_stack[0] = music;
+    put_line(&s, 0, -1, TA_ASK_OPINION, pie, 0);
+    strcpy(s.line[0].text, "What do you think of pie?");
+    s.nlines = 2;
+    s.line[1].who = 1;
+    s.line[1].to = -1;
+    s.line[1].act = TA_TELL;
+    s.line[1].topic = music;
+    strcpy(s.line[1].text, "I like music.");
+    s.nhist = 2;
+    s.hist[0].flags = THF_PLAYER;
+    s.hist[0].act = TA_OPINE_POS;
+    s.hist[0].topic = pie;
+    s.hist[0].to = 1;               /* unrelated listener's history */
+    s.hist[1].flags = THF_PLAYER;
+    s.hist[1].act = TA_OPINE_NEG;
+    s.hist[1].topic = pie;
+    s.hist[1].to = 0;
+    for (i = 0; i < 32; i++) {
+        n = talk_quick_replies(&s, 0, music, TC_NONE, (uint32_t)i, g);
+        CHECK_EQ(n, TALK_QUICK_MAX);
+        CHECK_EQ(g[0].act, TA_OPINE_NEG);
+        CHECK_EQ(g[1].act, TA_OPINE_POS);
+        CHECK_EQ(g[2].act, TA_ANSWER);
+        CHECK_STR(g[2].text, "I'm undecided about %t.");
+        for (k = 0; k < n; k++) {
+            CHECK_EQ(g[k].topic, pie);
+            CHECK_EQ(g[k].to, 0);
+        }
+    }
+    n = talk_quick_replies(&s, 1, music, TC_NONE, 0u, g);
+    CHECK(n > 0);
+    for (k = 0; k < n; k++) CHECK(g[k].topic != pie);
+    /* A sincere line must prevent the ordinary question taking over. */
+    s.line[1].flags = TLF_SINCERE;
+    CHECK(talk_dm_pending_question(&s, 0) == NULL);
+    n = talk_quick_replies(&s, 0, music, TC_NONE, 0u, g);
+    for (k = 0; k < n; k++)
+        CHECK(g[k].act == TA_COMFORT || g[k].act == TA_SYMPATHIZE ||
+              g[k].act == TA_OFFER || g[k].act == TA_ENCOURAGE);
     talk_db_close();
 }
 

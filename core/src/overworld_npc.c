@@ -448,7 +448,9 @@ void ownpc_add_billboards(int32_t vx0, int32_t vy0, int32_t vx1, int32_t vy1)
             if ((n->sflags & NSF_CLOCK) == BCLK_DOUBLE) bx += (int32_t)((t & 2) ? OWQ : -OWQ);   /* panic jitter */
             if ((n->sflags & NSF_TWITCH) && fx_sin((int)t * 4430) > 0x8000) bx += OWQ;        /* possessed twitch */
             z += n->hop;
-            if (n->flags & (NPCF_MAIN | NPCF_SIDE | NPCF_READY)) fl |= BB_KEEP_VISIBLE;
+            /* Free-stroll residents are interactive people, not disposable
+             * scenery. Never blink them on/off to satisfy the governor. */
+            if (ow.visit || (n->flags & (NPCF_MAIN | NPCF_SIDE | NPCF_READY))) fl |= BB_KEEP_VISIBLE;
             ow_add_billboard(bx, n->y, z, bodyspr_image(n->id, n->dir, f), fl, 0);
             if (n->flags & (NPCF_MAIN | NPCF_SIDE | NPCF_READY)) {
                 int bob = ui_wave((int)t + n->phase, 36, 6);
