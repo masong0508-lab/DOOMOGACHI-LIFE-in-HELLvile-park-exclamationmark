@@ -649,8 +649,13 @@ enum {
     TGP_QPHASE,                      /* TQ: the phase of the request, TQP_* (qphase=ask) */
     TGP_FACT_PAST_HURT,               /* Boolean: the addressed avatar left unaddressed hurt */
     TGP_CATEGORY,                    /* exact topic leaf, append-only guard ID */
+    TGP_REFLECT_READY,               /* Boolean: ordinary live contextual dialogue */
+    TGP_REFLECT_MODE,                /* TRM_*: current perspective on the topic */
     TGP_COUNT
 };
+
+/* Exclusive perspectives computed per utterance, never persisted. */
+enum { TRM_ORDINARY, TRM_PRACTICAL, TRM_SOCIAL, TRM_QUIET, TRM_GUARDED, TRM_DEEP, TRM_COUNT };
 
 /* One conversation as the generator needs it between lines (T6 keeps it in
  * its TalkState). talk_gen_begin() fills it. */

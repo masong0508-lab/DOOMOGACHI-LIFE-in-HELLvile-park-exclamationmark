@@ -709,6 +709,20 @@ static int gen_topic_root(Gen *g)
     return g->root_value;
 }
 
+/* Mood can temporarily outweigh the resident's usual disposition.
+ * The deep mode uses the existing trust/continuity/engagement gate;
+ * no extra resident or save bytes, no RNG. */
+static int reflect_mode(const Gen *g)
+{
+    if (g->mood == TMB_ANGRY || g->mood == TMB_SCARED) return TRM_GUARDED;
+    if (g->mood == TMB_SAD || g->mood == TMB_TIRED) return TRM_QUIET;
+    if (g->plan.depth >= 2) return TRM_DEEP;
+    if (g->pers[PERS_ATTITUDE] <= 4 || g->pers[PERS_SPEECH] >= 10) return TRM_PRACTICAL;
+    if (g->mood == TMB_HAPPY || g->pers[PERS_ATTITUDE] >= 11 || g->rel == TRB_FRIEND ||
+        g->rel == TRB_BEST || g->rel == TRB_FAMILY || g->rel == TRB_PARTNER) return TRM_SOCIAL;
+    return TRM_ORDINARY;
+}
+
 static int pred_raw(Gen *g, int p, int v)
 {
     TalkConv *c = g->c;
@@ -803,6 +817,10 @@ static int pred_raw(Gen *g, int p, int v)
     case TGP_REL: return g->rel == v;
     case TGP_ROOT: return g->topic && gen_topic_root(g) == v;
     case TGP_CATEGORY: return g->topic && g->tc.cat == v;
+    case TGP_REFLECT_READY:
+        return g->topic && g->r && g->sid != TALK_PET_ID && g->plan.kind &&
+               !(g->tc.flags & TCF_GRIEF) && !c->care && !(c->plain & 1);
+    case TGP_REFLECT_MODE: return reflect_mode(g) == v;
     case TGP_CHAPTER: return c->chapter == v;
     case TGP_TIME: return tod_band() == v;
     case TGP_BEAT: return c->beat == v;
@@ -843,7 +861,8 @@ static int terms_ok(Gen *g, uint16_t first, int n, const uint8_t *mapped, int *s
         if (subject && (t[0] == TGP_ROOT || t[0] == TGP_CATEGORY ||
                         t[0] == TGP_LIKES_TOPIC || t[0] == TGP_FEARS_TOPIC ||
                         t[0] == TGP_HATES_TOPIC))
-            *subject = 1;
+            *subject |= 1;
+        if (subject && t[0] == TGP_REFLECT_READY) *subject |= 2;
     }
     return 1;
 }
@@ -929,17 +948,25 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
     unsigned first, count;
     uint16_t last_first = 0;
     int last_n = 0, last_ok = 0;
-    int i, best = -1, best_level = 5;
+    int i, best = -1, best_level = 10;
     int check_adj = g->adj && g->depth == 0;
     /* For an established conversation, prefer an eligible topical reply
      * over a generic quip before expanding it. A fresh generic answer
      * can still beat a repeated generic or tie the speaker's recent
      * topical core. Keep the opening, plain previews and sensitive
      * banks' selection semantics, and never bypass a guard. */
+    int explicit_switch = g->act == TA_CHANGE_TOPIC;
     int prefer_subject = novelty && !g->depth && g->topic &&
-        g->c->turn >= 2 && g->plan.kind && !(g->c->plain & 1) &&
+        (g->c->turn >= 2 || explicit_switch) && g->plan.kind && !(g->c->plain & 1) &&
         !g->grief && !g->c->care && talk_gen_topic_act(g->act);
-    uint32_t tot[5] = { 0, 0, 0, 0, 0 };
+    /* Context is a tie-break inside existing subject/novelty tiers. Keep
+     * cast voices and deliberate deflection eligible, and never bypass
+     * adjacency, safety, or the reaction-kind filter. */
+    int prefer_reflect = novelty && !g->depth && g->topic && g->plan.kind &&
+        !(g->c->plain & 1) && !g->grief && !g->c->care &&
+        (g->act == TA_ASK_ABOUT || g->act == TA_ASK_OPINION || g->act == TA_CONTINUE ||
+         g->act == TA_TELL || g->act == TA_ANSWER || g->act == TA_CHANGE_TOPIC);
+    uint32_t tot[10] = { 0 };
     if (sym < 0 || sym >= g->h.nsyms) return -1;
     s = talk_db_record(TB_GRAMMAR, g->h.syms + 4u * (uint32_t)sym, scratch, sizeof scratch);
     if (!s) return -1;
@@ -966,7 +993,7 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
         else if (!rd_rule(&g->h, rk, &r)) return -1;
         if (check_adj && !adjacent_row(adjacency, r.act)) continue;                     /* K-10 banks */
         if (r.nterm && !terms_ok(g, r.term_first, r.nterm, terms,
-                                  prefer_subject ? &subject : NULL)) continue;
+                                  (prefer_subject || prefer_reflect) ? &subject : NULL)) continue;
         if (g->kf && g->depth == 0) {                                                     /* TM2c: the plan's kind */
             if ((g->kf & KF_COOL) && TALK_COOL_REPLY(r.act)) continue;                    /* a kid room: never */
             if ((g->kf & KF_KIND) && !kind_serves(g, r.act)) continue;
@@ -1040,10 +1067,20 @@ static int pick(Gen *g, int sym, int novelty, const int *avoid, int navoid,
             /* A genuine, eligible topic change is not an irrelevant
              * quip. Preserve the ability to deflect when the character's
              * plan or open reply-kind policy permits it. */
-            if (prefer_subject && r.act != TA_CHANGE_TOPIC && g->plan.kind != TK_DEFLECT &&
+            /* An explicit topic switch deserves acknowledgement. The old
+             * exemption let an NPC change straight to their favourite
+             * unrelated topic, even before answering the player's request. */
+            if (prefer_subject && (explicit_switch ||
+                (r.act != TA_CHANGE_TOPIC && g->plan.kind != TK_DEFLECT)) &&
                 !(r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) &&
-                !subject && !(al.flags & AF_TOPIC))
+                !(subject & 1) && !(al.flags & AF_TOPIC))
                 lv += 2;
+            if (prefer_reflect) {
+                int context = (subject & 2) || (al.flags & AF_CAST) ||
+                    (r.flags & (RF_SINCERE | RF_ROMANCE | RF_REFUSAL)) ||
+                    r.act == TA_CHANGE_TOPIC || g->plan.kind == TK_DEFLECT;
+                lv = 2 * lv + !context; /* 0..9: original rank remains primary */
+            }
             tot[lv] += w;
             /* Every eligible candidate still draws from the RNG, even after a fresher one wins. */
             if ((uint32_t)rng_range(&g->rng, (int)(tot[lv] > 65536u ? 65536u : tot[lv])) < w && lv <= best_level) {

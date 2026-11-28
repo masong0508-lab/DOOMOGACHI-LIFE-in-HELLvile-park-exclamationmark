@@ -77,6 +77,7 @@ static struct TalkScn {
     uint8_t   page, cat, active, busy, after, leaving, typed_ok, gen;   /* gen: TD2, steps still to run (talk_scene_slice) */
     uint8_t   pending, handin;          /* pending topic; real quest payout after thanks */
     uint16_t  topic, idle, followup;     /* transient subject offered by a live reply */
+    uint16_t  picker_anchor;            /* lookup subject while cycling listeners in this picker only */
     int       nrows, nstock;
     TRow      row[TROWS];
     union {
@@ -1659,7 +1660,7 @@ static void build_topics(void)
     uint32_t tags[4];
     TalkAudience aud;
     const TalkLine *thread = talk_quick_thread(&T.s, NULL);
-    uint16_t active = T.topic ? T.topic : T.s.topic_stack[0];
+    uint16_t active = T.topic ? T.topic : T.picker_anchor ? T.picker_anchor : T.s.topic_stack[0];
     int stock_start = T.nstock > 0;
     int stock_remaining = T.nstock - stock_start;
     int i, w, count;
@@ -1669,6 +1670,9 @@ static void build_topics(void)
     T.journal_label.topics.valid = 0;
     topic_audience(&aud);
     add_row(K_NOTOPIC, 0, 0);
+    /* Keep the common controller shortcut stable even when a recent thread
+     * has just gained a new subject. Duplicate history entries are skipped. */
+    if (stock_start) topic_add(T.stock[0], K_PICK, 0, &aud);
     for (i = 0; i < TALK_STACK_MAX; i++) topic_add(T.s.topic_stack[i], K_PICK, 0, &aud);
     if (T.to >= 0 && T.to < T.n) {
         uint16_t likes[5];
@@ -1679,8 +1683,6 @@ static void build_topics(void)
                 topic_add(likes[w], K_PICK, 0, &aud);
             }
     }
-    /* Preserve the shortest path to the default topic. */
-    if (stock_start) topic_add(T.stock[0], K_PICK, 0, &aud);
     /* Read suggestions once on entering the picker. Leave room for the
      * existing stock topics and keep sensitive threads on their subject. */
     if (!q_grief(active) && !sensitive_thread(thread)) {
@@ -2806,6 +2808,7 @@ static void pick_topic(uint16_t c)
         return;
     }
     T.followup = TC_NONE;
+    T.picker_anchor = TC_NONE;
     T.topic = c;
     if (T.pending) {
         int a = T.pending;
@@ -2834,7 +2837,11 @@ static void activate(int i)
         if (r->arg == TA_INVITE) { build_outings(0); break; }
         if (r->arg == TA_OFFER) { build_care(); break; }
         if (r->arg == TA_GIVE) { build_give_items(); break; }
-        if (wants_topic(r->arg) && T.topic == TC_NONE) { T.pending = r->arg; build_topics(); }
+        if (wants_topic(r->arg) && T.topic == TC_NONE) {
+            T.pending = r->arg;
+            T.picker_anchor = TC_NONE;
+            build_topics();
+        }
         else say_act(r->arg);
         break;
     case K_QUICK: say_quick(r->arg); break;
@@ -3057,7 +3064,7 @@ static void activate(int i)
         say_act(TA_INVITE);
         break;
     case K_MORE: build_more(); break;
-    case K_TOPIC: T.pending = 0; build_topics(); break;
+    case K_TOPIC: T.pending = 0; T.picker_anchor = T.topic; build_topics(); break;
     case K_BROWSE: build_topic_groups(); break;
     case K_BROWSE_GROUP: build_topic_group(r->arg); break;
     case K_NOTOPIC: pick_topic(TC_NONE); break;
@@ -3144,7 +3151,14 @@ static void change_to(int to)
 {
     if (to >= 0 && !listener_here(to)) return;
     T.followup = TC_NONE;
-    if (T.to != to) T.topic = TC_NONE;
+    if (T.to != to) {
+        /* Keep the search subject for this open browser, not the chosen
+         * action. A learned link is still looked up for the new listener
+         * and revalidated against the live audience. */
+        if (T.page == PG_TOPIC && !T.pending && T.topic) T.picker_anchor = T.topic;
+        else if (T.page != PG_TOPIC) T.picker_anchor = TC_NONE;
+        T.topic = TC_NONE;
+    }
     T.to = (int8_t)to;
     if (T.page == PG_MORE) {
         int sel = T.list.sel;
@@ -3174,6 +3188,7 @@ static void back_page(void)
     if (T.page == PG_BROWSE_TOPICS) { build_topic_groups(); return; }
     if (T.page == PG_BROWSE) { build_topics(); return; }
     T.pending = 0;
+    T.picker_anchor = TC_NONE;
     if (T.page == PG_SHARED_PAIR) build_shared(T.journal_offset);
     else if (T.page == PG_JOURNAL || T.page == PG_SHARED) build_history();
     else if (T.page == PG_HISTORY) build_more();

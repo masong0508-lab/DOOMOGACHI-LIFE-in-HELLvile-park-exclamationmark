@@ -120,6 +120,8 @@ def main():
     ap.add_argument("--skip", type=float, default=0.0, help="seconds of REF to ignore at the start")
     ap.add_argument("--dur", type=float, default=0.0, help="seconds of REF to compare (0: all)")
     ap.add_argument("--min-corr", type=float, default=0.9)
+    ap.add_argument("--min-coverage", type=float, default=0.0,
+                    help="minimum fraction of requested reference duration overlapping real DC samples")
     ap.add_argument("--min-pitch", type=float, default=0.0)
     ap.add_argument("--clip-pct", type=float, default=0.0,
                     help="clip both 50 ms envelopes at this percentile first (one-off effects)")
@@ -128,6 +130,8 @@ def main():
     ap.add_argument("--label", default="")
     ap.add_argument("--plot", default="")
     a = ap.parse_args()
+    if not 0.0 <= a.min_coverage <= 1.0:
+        ap.error("--min-coverage must be between 0 and 1")
 
     rr, xr = load(a.ref)
     rd, xd = load(a.dc)
@@ -142,6 +146,14 @@ def main():
     off_d = int(round(lag * 0.01 * rd))
     s0 = a.skip
     s1 = len(xr) / rr if a.dur <= 0 else min(len(xr) / rr, a.skip + a.dur)
+    requested = s1 - s0
+    # Count only genuine captured samples, not the zeros prepended below
+    # for a negative alignment offset. Reject truncated easy matches.
+    real_overlap = max(0.0, min(s1, (len(xd) - off_d) / rd) -
+                       max(s0, -off_d / rd))
+    if a.min_coverage and (requested <= 0 or real_overlap < a.min_coverage * requested):
+        print(f"FAIL {a.label}: only {real_overlap:.2f} s of {requested:.2f} s reference covered")
+        return 1
     if off_d >= 0:
         xd = xd[off_d:]
     else:

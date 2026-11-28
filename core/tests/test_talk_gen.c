@@ -285,6 +285,68 @@ TEST(talk_gen_atlas_contextual_bank_and_selection)
     talk_db_close();
 }
 
+/* Real compiled category coverage and live mood-controlled selection. */
+TEST(talk_gen_reflection_contexts)
+{
+    uint8_t modes[256] = { 0 };
+    int a, i, covered = 0;
+    const int speaker = ID_NANA;
+    uint16_t topic;
+    TalkConcept tc;
+    static const int mood[] = { MOOD_HAPPY, MOOD_SAD, MOOD_ANGRY };
+    static const int expected[] = { TRM_SOCIAL, TRM_QUIET, TRM_GUARDED };
+    premade_town();
+    CHECK_EQ(talk_db_open(lang_find("en")), TALK_DB_OK);
+    for (a = 0; a < talk_gen_nalts(); a++) {
+        TalkAltInfo ai;
+        int cat = -1, mode = -1, j;
+        CHECK(talk_gen_alt_info(a, &ai));
+        for (j = 0; j < ai.nterm; j++) {
+            if (ai.term[2*j] == TGP_CATEGORY) cat = ai.term[2*j+1];
+            if (ai.term[2*j] == TGP_REFLECT_MODE) mode = ai.term[2*j+1];
+        }
+        if (cat >= 0 && mode >= 0 && mode < TRM_COUNT)
+            modes[cat] |= (uint8_t)(1u << mode);
+    }
+    for (i = 0; i < 256; i++)
+        if (modes[i] == (1u << TRM_COUNT) - 1u) covered++;
+    CHECK_EQ(covered, 101);
+    topic = concept("weather");
+    CHECK(topic && talk_db_concept(topic, &tc));
+    if (!topic || !talk_db_concept(topic, &tc)) { talk_db_close(); return; }
+    for (i = 0; i < 3; i++) {
+        int seed, seen = 0;
+        town_res(speaker)->mood = (uint8_t)mood[i];
+        for (seed = 0; seed < 128; seed++) {
+            TalkConv cv;
+            TalkLine reply;
+            TalkTrace trace;
+            int j;
+            talk_gen_begin(&cv, DOOMO_PLAYER_ID, &speaker, 1, (uint32_t)seed);
+            if (!talk_gen_line(&cv, 0, -1, TA_CONTINUE, topic, &reply, &trace)) continue;
+            for (j = 0; j < trace.nalt; j++) {
+                TalkAltInfo ai;
+                int k, cat = -1, mode = -1;
+                CHECK(talk_gen_alt_info(trace.alt[j], &ai));
+                for (k = 0; k < ai.nterm; k++) {
+                    if (ai.term[2*k] == TGP_CATEGORY) cat = ai.term[2*k+1];
+                    if (ai.term[2*k] == TGP_REFLECT_MODE) mode = ai.term[2*k+1];
+                }
+                if (cat < 0 || mode < 0) continue;
+                CHECK_EQ(cat, tc.cat);
+                if (i == 0) CHECK(mode == expected[i] || mode == TRM_PRACTICAL);
+                else CHECK_EQ(mode, expected[i]);
+                CHECK(!(reply.flags & (TLF_SAFE | TLF_FALLBACK)));
+                CHECK_EQ(reply.topic, topic);
+                CHECK(talk_gen_adjacent(TA_CONTINUE, reply.act));
+                seen++;
+            }
+        }
+        CHECK(seen > 0);
+    }
+    talk_db_close();
+}
+
 /* ---- the modifiers and fields ------------------------------------------- */
 TEST(talk_gen_modifiers)
 {

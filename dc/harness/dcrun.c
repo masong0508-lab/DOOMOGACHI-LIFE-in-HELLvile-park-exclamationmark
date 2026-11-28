@@ -1991,8 +1991,16 @@ int main(int argc, char **argv)
         /* --sync: hold the game before its first tick, where the native
          * runner starts a script */
         if (!sync_start || (sync_on(0) &&
-                            (!native_seed_on || mb_cmd(DC_HC_NATIVE_SEED, native_seed, NULL, NULL))))
+                            (!native_seed_on || mb_cmd(DC_HC_NATIVE_SEED, native_seed, NULL, NULL)))) {
+            /* Capture begins at power-on, but the native reference begins
+             * at script entry. In particular, native-seed can prefetch a
+             * large Talk bank while the game is held at tick zero. Count
+             * actual stereo PCM frames, not video frames or wall time. */
+            if (wav)
+                printf("dcrun: script audio start frame %lu (tick %lu)\n",
+                       wav_bytes / 4, tick_now());
             run_script(f);
+        }
         fclose(f);
     }
     sync_off();

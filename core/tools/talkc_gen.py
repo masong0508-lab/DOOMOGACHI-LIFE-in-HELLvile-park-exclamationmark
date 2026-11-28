@@ -210,6 +210,7 @@ class Env:
         self.first_valued = self.tgp["first_valued"]
         self.tgp_count = self.tgp["count"]
         self.values = {
+            "reflect_mode": {k: v for k, v in c_enum(th, "TRM_").items() if k != "count"},
             "stance": {k: v for k, v in c_enum(th, "TST_").items() if k != "count"},
             "mood": {k: v for k, v in c_enum(th, "TMB_").items() if k != "count"},
             "rel": {k: v for k, v in c_enum(th, "TRB_").items() if k != "count"},
@@ -322,7 +323,7 @@ class Compiler:
             return (pred | (0x80 if neg else 0), v)
         key = name.replace(".", "_")
         pred = self.env.tgp.get(key)
-        if pred is None or pred == 0 or (pred >= self.env.first_valued and pred != self.env.tgp["fact_past_hurt"]):
+        if pred is None or pred == 0 or (pred >= self.env.first_valued and pred not in (self.env.tgp["fact_past_hurt"], self.env.tgp["reflect_ready"])):
             self.die(where, "guard %r: no such predicate (talk.h TGP_*)" % t)
         return (pred | (0x80 if neg else 0), 0)
 

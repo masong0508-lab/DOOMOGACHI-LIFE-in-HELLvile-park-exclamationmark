@@ -27,6 +27,41 @@ int main(void)
     int ticks;
     int en = lang_find("en");
     CHECK(en >= 0);
+    if (getenv("TALK_PACKED_FILE")) {
+        uint8_t expected[2048], actual[2048];
+        uint32_t off = 0;
+        size_t n;
+        FILE *raw;
+        /* Simulate a 19 ms CD sector and 22 ms of title-frame idle time.
+         * No load request: the real automatic prefetch must meet 900 ticks. */
+        clk_step = 19000;
+        for (ticks = 0; ticks < 900 && plat_talk_read(0, head, 16) == 0; ticks++)
+            dc_talk_pump(22000);
+        CHECK(ticks < 900);
+        size = plat_talk_load("en");
+        CHECK(size > 20u && size != PLAT_TALK_LOADING);
+        CHECK(mock_opens == 1 && mock_maxread == 2048);
+        CHECK(talk_db_open(en) == TALK_DB_OK);
+        CHECK(talk_db_verify() == TALK_DB_OK);
+        /* Compare every decoded byte against the compiler's original bank,
+         * including the header and directory, not merely the bank CRCs. */
+        raw = fopen(getenv("TALK_FILE"), "rb");
+        CHECK(raw != NULL);
+        if (raw) {
+            while ((n = fread(expected, 1, sizeof expected, raw)) != 0) {
+                uint32_t got = plat_talk_read(off, actual, (uint32_t)n);
+                CHECK(got == n && memcmp(expected, actual, n) == 0);
+                off += (uint32_t)n;
+                if (got != n) break;
+            }
+            CHECK(!ferror(raw));
+            fclose(raw);
+        }
+        CHECK(off == size);
+        printf("talkdisc packed host: %s (%u bytes, %ld sector reads, %d ticks)\n",
+               fails ? "FAILED" : "all checks passed", (unsigned)size, mock_reads, ticks);
+        return fails != 0;
+    }
     CHECK(plat_talk_read(0, head, 16) == 0);                  /* nothing loaded yet */
     CHECK(plat_talk_load("xx") == 0 && plat_talk_load("") == 0 && plat_talk_load(NULL) == 0);
     CHECK(plat_talk_load("waytoolongcode") == 0);

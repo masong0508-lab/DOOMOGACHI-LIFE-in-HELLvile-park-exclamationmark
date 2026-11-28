@@ -11,3 +11,5 @@ ${CC:-cc} -std=gnu99 -Wall -Wextra -Werror -DDOOMO_PLATFORM_DC=1 -DDOOMO_HAS_TAL
     "$root/core/src/talk_db.c" "$root/core/src/lang.c" "$root/core/src/weak_talk.c" \
     "$root/core/gen/lang_registry.c" "$root/core/gen/txt_dict.c" "$root/core/src/txt.c" -o "$t/t" 2>"$t/cc.log" || { cat "$t/cc.log" >&2; exit 1; }
 TALK_FILE="$t/TALK_en.BIN" "$t/t"
+python3 "$root/dc/tools/talkpack.py" "$t/TALK_en.BIN" "$t/TALK_EN.LZB"
+TALK_FILE="$t/TALK_en.BIN" TALK_PACKED_FILE="$t/TALK_EN.LZB" "$t/t"

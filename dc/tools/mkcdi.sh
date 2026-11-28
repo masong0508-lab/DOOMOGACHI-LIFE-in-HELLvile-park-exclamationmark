@@ -11,7 +11,8 @@
 # An optional PACK (a DMPK pack for port dc, E10) is copied to the disc root as PACK.DMP.
 # An optional INTRO (the boot FMV, dc/tools/mkfmv.py, DC9C) is copied there as INTRO.DMV.
 # An optional TALKDIR (core/build/talk, TD1) gives the disc Talk's databases: every TALK_<code>.BIN in
-# it is copied to the disc root in capitals (TALK_EN.BIN), which dc/src/talkdisc.c reads; the test
+# it is copied to the disc root in capitals (TALK_EN.BIN), with a lossless TLZ1 packed copy
+# (TALK_EN.LZB) preferred by dc/src/talkdisc.c; the test
 # bank TALK_gentest.BIN stays off the disc.
 # 1ST_READ.BIN and IP.BIN are also copied next to the CDI.
 #
@@ -57,6 +58,7 @@ if [ -n "$talkdir" ]; then
         [ -f "$f" ] || continue
         b=$(basename "$f" | tr '[:lower:]' '[:upper:]')
         cp "$f" "$work/cd/$b"
+        python3 "$(dirname "$0")/talkpack.py" "$f" "$work/cd/${b%.BIN}.LZB"
         n=$((n + 1))
     done
     [ "$n" -gt 0 ] || die "no TALK_<code>.BIN in $talkdir (make -C core talk)"
