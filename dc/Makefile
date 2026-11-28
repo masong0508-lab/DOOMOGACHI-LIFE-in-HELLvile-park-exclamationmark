@@ -210,7 +210,7 @@ $(INTRO_DMV): $(INTRO_SRC) $(DC)/tools/mkfmv.py
 	@mkdir -p $(BUILD)
 	$(PYTHON) -I $(DC)/tools/mkfmv.py $(INTRO_SRC) $@
 
-$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(PACKSTAMP) $(INTRO_FILE) $(TALK_BIN)
+$(CDI): $(ELF) $(DC)/ip.txt $(DC)/tools/mkcdi.sh $(DC)/tools/talkpack.py $(PACKSTAMP) $(INTRO_FILE) $(TALK_BIN)
 	@if [ -n "$(strip $(PACK))" ]; then $(PYTHON) -I $(ROOT)/tools/mpack/mpack.py validate "$(strip $(PACK))" --port dc || exit 1; fi
 	sh $(DC)/tools/mkcdi.sh $(ELF) $(DC)/ip.txt $(BUILD)/disc $(CDI) "$(strip $(PACK))" "$(INTRO_FILE)" $(TALK_DIR)
 
