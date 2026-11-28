@@ -5,6 +5,9 @@
  * (the English bank is about 0.9 MB; the Dreamcast has 16 MB and the heap is 5.8 MB above the image) and
  * plat_talk_read() is a bounds-checked memcpy out of it: Talk reads a row or a string at a time, so a
  * disc read per call would stall the frame.
+ * New discs also carry TALK_<code>.LZB: a lossless sector-aligned TLZ1
+ * stream (tools/talkpack.py), decoded directly into the same heap bank.
+ * Only one sector of temporary storage is needed; raw BIN discs still work.
  *
  * The disc is slow (Flycast: one read of the whole bank held one tick for 7.4 s; one sector takes about
  * 17 ms), so the bank is read in TALK_CHUNK slices by dc_talk_pump() (main.c, in the idle time at the end
@@ -25,6 +28,9 @@
 #include "doomo/plat_ext.h"
 
 #define TALK_NAME_MAX 24
+#define TALK_SECTOR 2048u
+#define TALK_DECODE_MAX 8192u
+#define TALK_BANK_MAX (8u * 1024u * 1024u)
 #ifndef TALK_CHUNK
 #define TALK_CHUNK 2048u                  /* bytes per slice: one CD sector (Flycast takes about 17 ms for it) */
 #endif
@@ -40,7 +46,10 @@
 
 static uint8_t *s_bank;                   /* the file (malloc): whole once s_fd < 0, else s_got bytes are in */
 static uint32_t s_size;                   /* its size in bytes (0: nothing started) */
-static uint32_t s_got;                    /* bytes read so far */
+static uint32_t s_got;                    /* decoded bytes so far */
+static uint32_t s_sectors;                /* unread packed sectors, including the header */
+static int      s_packed;
+static uint8_t  s_sector[TALK_SECTOR];
 static file_t   s_fd = -1;                /* the open file while slices are still to come */
 static char     s_code[8];                /* the language code it belongs to ("en") */
 static uint32_t s_idle;                   /* pump calls before a load was started */
@@ -54,7 +63,8 @@ static void talk_unload(void)
     s_fd = -1;
     free(s_bank);
     s_bank = NULL;
-    s_size = s_got = 0;
+    s_size = s_got = s_sectors = 0;
+    s_packed = 0;
     s_code[0] = 0;
 }
 
@@ -79,20 +89,106 @@ static int talk_begin(const char *code)
     ssize_t total;
     talk_unload();
     if (!talk_path(path, code)) return 0;
+    /* Prefer the packed copy; retain the old raw path for legacy discs. */
+    memcpy(path + strlen(path) - 3, "LZB", 3);
     s_fd = fs_open(path, O_RDONLY);
-    if (s_fd < 0) return 0;
-    total = fs_total(s_fd);
-    s_bank = total > 0 ? (uint8_t *)malloc((size_t)total) : NULL;
-    if (!s_bank) { talk_unload(); return 0; }
-    s_size = (uint32_t)total;
+    if (s_fd >= 0) {
+        s_packed = 1;
+        total = fs_total(s_fd);
+        if (total < (ssize_t)(2u * TALK_SECTOR) || total % TALK_SECTOR != 0) {
+            talk_unload();
+            return 0;
+        }
+        s_sectors = (uint32_t)total / TALK_SECTOR;
+        /* The first idle slice reads the header and allocates the output bank. */
+    } else {
+        memcpy(path + strlen(path) - 3, "BIN", 3);
+        s_fd = fs_open(path, O_RDONLY);
+        if (s_fd < 0) return 0;
+        total = fs_total(s_fd);
+        s_bank = total > 0 ? (uint8_t *)malloc((size_t)total) : NULL;
+        if (!s_bank) { talk_unload(); return 0; }
+        s_size = (uint32_t)total;
+    }
     strcpy(s_code, code);
     return 1;
+}
+
+/* Decode one independent sector's token framing. Match history lives
+ * in the bank itself and may span sectors. All reads/writes are bounded
+ * before copying; malformed streams never become visible to the core. */
+static int talk_unpack_sector(void)
+{
+    uint32_t end = (uint32_t)s_sector[0] | ((uint32_t)s_sector[1] << 8);
+    uint32_t at = 2, start = s_got;
+    if (!end || end > TALK_SECTOR - 2u) return 0;
+    end += 2;
+    while (at < end) {
+        uint32_t tag = s_sector[at++], n, dist;
+        n = tag < 128u ? tag + 1u : (tag & 63u) + 3u;
+        if (n > s_size - s_got || n > TALK_DECODE_MAX - (s_got - start)) return 0;
+        if (tag < 128u) {
+            if (n > end - at) return 0;
+            memcpy(s_bank + s_got, s_sector + at, n);
+            at += n;
+            s_got += n;
+        } else {
+            if (tag < 192u) {
+                if (at == end) return 0;
+                dist = (uint32_t)s_sector[at++] + 1u;
+            } else {
+                if (end - at < 2u) return 0;
+                dist = (uint32_t)s_sector[at] | ((uint32_t)s_sector[at + 1] << 8);
+                at += 2;
+            }
+            if (!dist || dist > s_got) return 0;
+            /* Forward byte copy deliberately supports overlapping LZ matches. */
+            while (n--) {
+                s_bank[s_got] = s_bank[s_got - dist];
+                s_got++;
+            }
+        }
+    }
+    return 1;
+}
+
+static void talk_packed_step(void)
+{
+    if (!s_sectors || fs_read(s_fd, s_sector, TALK_SECTOR) != (ssize_t)TALK_SECTOR) {
+        talk_unload();
+        return;
+    }
+    s_sectors--;
+    if (!s_size) {
+        uint32_t size = (uint32_t)s_sector[4] | ((uint32_t)s_sector[5] << 8) |
+                        ((uint32_t)s_sector[6] << 16) | ((uint32_t)s_sector[7] << 24);
+        if (memcmp(s_sector, "TLZ1", 4) || size < 20u || size > TALK_BANK_MAX || !s_sectors) {
+            talk_unload();
+            return;
+        }
+        s_bank = (uint8_t *)malloc(size);
+        if (!s_bank) { talk_unload(); return; }
+        s_size = size;
+    } else if (!talk_unpack_sector()) {
+        talk_unload();
+        return;
+    }
+    if (!s_sectors || s_got == s_size) {
+        if (s_sectors || s_got != s_size || memcmp(s_bank, "TALK", 4)) {
+            talk_unload();
+            return;
+        }
+        fs_close(s_fd);
+        s_fd = -1;
+    }
 }
 
 /* one slice; the last one closes the file */
 static void talk_step(void)
 {
-    uint32_t n = s_size - s_got;
+    uint32_t n;
+    if (s_packed) { talk_packed_step(); return; }
+    n = s_size - s_got;
     if (n > TALK_CHUNK) n = TALK_CHUNK;
     if (fs_read(s_fd, s_bank + s_got, n) != (ssize_t)n) { talk_unload(); return; }
     s_got += n;
@@ -128,7 +224,7 @@ void dc_talk_pump(uint32_t us_left)
 
 uint32_t plat_talk_load(const char *code)
 {
-    if (code && s_size && strcmp(code, s_code) == 0)     /* the one we have, or are reading */
+    if (code && (s_size || s_fd >= 0) && strcmp(code, s_code) == 0)     /* the one we have, or are reading */
         return s_fd >= 0 ? PLAT_TALK_LOADING : s_size;
     return talk_begin(code) ? PLAT_TALK_LOADING : 0;
 }
