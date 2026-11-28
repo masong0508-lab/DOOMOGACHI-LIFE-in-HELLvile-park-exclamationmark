@@ -13,6 +13,7 @@ file_t fs_open(const char *fn, int mode)
     (void)mode;
     if (!strcmp(fn, "/cd/PACK.DMP") && getenv("PACK_FILE")) { fd = open(getenv("PACK_FILE"), O_RDONLY); return fd; }
     /* TD1: the Talk bank, and only under the capitals the disc has (ISO 9660 names) */
+    if (!strcmp(fn, "/cd/TALK_EN.LZB") && getenv("TALK_PACKED_FILE")) { mock_opens++; fd = open(getenv("TALK_PACKED_FILE"), O_RDONLY); return fd; }
     if (!strcmp(fn, "/cd/TALK_EN.BIN") && getenv("TALK_FILE")) { mock_opens++; fd = open(getenv("TALK_FILE"), O_RDONLY); return fd; }
     return -1;
 }
